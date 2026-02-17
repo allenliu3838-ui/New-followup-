@@ -524,7 +524,7 @@ begin
   perform public.assert_project_write_allowed(p_project_id);
 
   -- generate token
-  v_token := encode(gen_random_bytes(16), 'hex');
+ v_token := replace(gen_random_uuid()::text, '-', '');
 
   insert into public.patient_tokens(project_id, patient_code, token, expires_at, active, created_by)
   values (p_project_id, p_patient_code, v_token, now() + make_interval(days => p_expires_in_days), true, v_uid);
