@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>肾域AI KidneySphere AI · 后台（科研优先）</title>
+  <link rel="stylesheet" href="/app.css"/>
+  <link rel="icon" href="/assets/kidneysphere-ai.png"/>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="brand">
+        <img src="/assets/kidneysphere-ai.png" alt="肾域AI KidneySphere AI"/>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+            <div>
+              <h1 class="brand-title">随访 Registry · 后台</h1>
+              <div class="brand-sub">科研优先 · 多中心合并 · IgAN MEST‑C · 基因变异长表</div>
+            </div>
+            <div id="trialBadge" class="badge" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="warnbox" style="margin-top:12px">
+        <b>科研用途优先：</b>本系统仅用于随访数据登记与研究汇总，不提供诊断/处方/急救指导；
+        <b>请勿</b>录入姓名/电话/病案号/身份证等可识别个人信息（PII）。
+      </div>
+
+      <div class="btnbar" style="margin-top:12px">
+        <a class="btn" href="/guide" target="_blank">使用说明 /guide</a>
+        <a class="btn" href="/" target="_blank">返回首页</a>
+      </div>
+    </div>
+
+    <div class="card" id="loginCard">
+      <h2 style="margin:0 0 6px 0">登录（邮箱免密码链接）</h2>
+      <div class="muted small">输入邮箱后发送登录链接到邮箱。点击邮件里的链接即可进入后台。</div>
+      <label>邮箱</label>
+      <input id="email" type="email" placeholder="name@example.com"/>
+      <div class="btnbar">
+        <button class="btn primary" id="btnSendLink">发送登录链接</button>
+        <button class="btn" id="btnSignOut" style="display:none">退出登录</button>
+      </div>
+      <div id="loginHint" class="muted small" style="margin-top:8px"></div>
+    </div>
+
+    <div class="card" id="appCard" style="display:none">
+      <div class="row">
+        <div class="col">
+          <h2 style="margin:0 0 6px 0">项目</h2>
+          <div class="muted small">每个中心建议先创建一个项目（填写 center_code），用于多中心合并与质量控制。</div>
+
+          <div class="hr"></div>
+
+          <h3 style="margin:0 0 8px 0;font-size:15px">新建项目</h3>
+          <label>项目名称</label>
+          <input id="projName" placeholder="例如：IgA肾病随访（BJ01）"/>
+          <label>中心代码 center_code（必填）</label>
+          <input id="projCenter" placeholder="例如：BJ01 / SH02"/>
+          <label>病种模块 module</label>
+          <select id="projModule">
+            <option value="IGAN">IGAN（IgA 肾病）</option>
+            <option value="LN">LN（狼疮性肾炎）</option>
+            <option value="MN">MN（膜性肾病）</option>
+            <option value="GENERAL">GENERAL（通用/混合）</option>
+          </select>
+          <label>描述（可选）</label>
+          <textarea id="projDesc" placeholder="共建单位试用 / 研究目的简述"></textarea>
+          <div class="btnbar">
+            <button class="btn primary" id="btnCreateProject">创建项目</button>
+          </div>
+
+          <div class="hr"></div>
+
+          <h3 style="margin:0 0 6px 0;font-size:15px">我的项目列表</h3>
+          <div id="projectsList" class="pills"></div>
+          <div id="projectMeta" class="kv" style="margin-top:8px"></div>
+        </div>
+
+        <div class="col">
+          <h2 style="margin:0 0 6px 0">患者（去标识化）</h2>
+          <div class="muted small">仅录入研究编号 patient_code；请勿录入姓名/MRN 等。</div>
+
+          <div class="hr"></div>
+
+          <h3 style="margin:0 0 8px 0;font-size:15px">创建患者基线</h3>
+          <div class="row">
+            <div class="col">
+              <label>patient_code（研究编号）</label>
+              <input id="patCode" placeholder="例如：0001 / A023"/>
+            </div>
+            <div class="col">
+              <label>性别</label>
+              <select id="patSex">
+                <option value="">未填</option>
+                <option value="M">男</option>
+                <option value="F">女</option>
+              </select>
+            </div>
+            <div class="col">
+              <label>出生年份（用于 eGFR）</label>
+              <input id="patBirthYear" type="number" placeholder="例如：1985"/>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col">
+              <label>基线日期（可选）</label>
+              <input id="patBaselineDate" type="date"/>
+            </div>
+            <div class="col">
+              <label>基线 Scr（μmol/L，可选）</label>
+              <input id="patBaselineScr" type="number" step="0.1" placeholder="例如：98"/>
+            </div>
+            <div class="col">
+              <label>基线 UPCR（mg/g 或 g/g，可选）</label>
+              <input id="patBaselineUpcr" type="number" step="0.01" placeholder="例如：800"/>
+            </div>
+          </div>
+
+          <div id="iganPathBox" class="infobox" style="margin-top:10px;display:none">
+            <b>IgAN 病理（Oxford MEST‑C）</b>
+            <div class="muted small" style="margin-top:4px">科研常用。未做肾穿或无报告可留空。</div>
+            <div class="row" style="margin-top:6px">
+              <div class="col">
+                <label>肾穿日期（可选）</label>
+                <input id="biopsyDate" type="date"/>
+              </div>
+              <div class="col">
+                <label>M（0/1）</label>
+                <select id="mestM"><option value=""></option><option value="0">0</option><option value="1">1</option></select>
+              </div>
+              <div class="col">
+                <label>E（0/1）</label>
+                <select id="mestE"><option value=""></option><option value="0">0</option><option value="1">1</option></select>
+              </div>
+              <div class="col">
+                <label>S（0/1）</label>
+                <select id="mestS"><option value=""></option><option value="0">0</option><option value="1">1</option></select>
+              </div>
+              <div class="col">
+                <label>T（0/1/2）</label>
+                <select id="mestT"><option value=""></option><option value="0">0</option><option value="1">1</option><option value="2">2</option></select>
+              </div>
+              <div class="col">
+                <label>C（0/1/2）</label>
+                <select id="mestC"><option value=""></option><option value="0">0</option><option value="1">1</option><option value="2">2</option></select>
+              </div>
+            </div>
+          </div>
+
+          <div class="btnbar">
+            <button class="btn primary" id="btnCreatePatient">保存基线</button>
+          </div>
+
+          <div class="hr"></div>
+
+          <h3 style="margin:0 0 6px 0;font-size:15px">患者列表</h3>
+          <div class="muted small">点击患者可生成随访链接（token）。</div>
+          <div id="patientsList"></div>
+
+          <div class="hr"></div>
+
+          <h3 style="margin:0 0 6px 0;font-size:15px">随访链接（token）</h3>
+          <div class="muted small">患者端/随访人员无需登录，用链接填写随访。token 仅用于对应患者。</div>
+          <div class="row" style="align-items:flex-end">
+            <div class="col">
+              <label>patient_code</label>
+              <input id="tokenPatientCode" placeholder="从上方患者列表点击会自动填入"/>
+            </div>
+            <div class="col">
+              <label>token 有效期（天）</label>
+              <input id="tokenDays" type="number" value="365"/>
+            </div>
+          </div>
+          <div class="btnbar">
+            <button class="btn primary" id="btnGenToken">生成链接</button>
+          </div>
+          <div id="tokenOut" class="infobox" style="margin-top:10px;display:none"></div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="row">
+        <div class="col">
+          <h2 style="margin:0 0 6px 0">导出（科研长表）</h2>
+          <div class="muted small">导出 CSV 默认带 UTF‑8 BOM，Excel 直接打开一般不乱码。</div>
+          <div class="btnbar">
+            <button class="btn" id="btnExportBaseline">导出 baseline</button>
+            <button class="btn" id="btnExportVisits">导出 visits</button>
+            <button class="btn" id="btnExportLabs">导出 labs</button>
+            <button class="btn" id="btnExportMeds">导出 meds</button>
+            <button class="btn" id="btnExportVariants">导出 variants</button>
+          </div>
+        </div>
+
+        <div class="col">
+          <h2 style="margin:0 0 6px 0">🧾 论文包（NEJM 级材料）</h2>
+          <div class="muted small">
+            一键生成 zip：去标识化数据长表 + Starter Kit（Table1/QC/趋势图/12m结局/Methods 草稿）。
+          </div>
+          <div class="btnbar">
+            <button class="btn primary" id="btnPaperPack">一键生成论文包（zip）</button>
+          </div>
+          <div class="warnbox" style="margin-top:10px">
+            <b>提醒：</b>Methods 草稿为自动生成模板，投稿前需由 PI 最终审阅；系统不提供诊疗建议。
+          </div>
+        </div>
+
+      <div class="hr"></div>
+
+      <h2 style="margin:0 0 6px 0">附加数据（可选）：基因 / 化验 / 用药</h2>
+      <div class="muted small">如果研究需要并且数据可获得，可在此补录。建议仍坚持去标识化（只用 patient_code）。</div>
+
+      <div class="row" style="margin-top:10px">
+        <div class="col">
+          <h3 style="margin:0 0 8px 0;font-size:15px">🧬 基因变异（variants_long）</h3>
+          <label>patient_code</label>
+          <input id="varPatientCode" placeholder="例如：0001"/>
+          <div class="row">
+            <div class="col">
+              <label>test_date</label>
+              <input id="varTestDate" type="date"/>
+            </div>
+            <div class="col">
+              <label>test_name（如 WES/Panel）</label>
+              <input id="varTestName" placeholder="例如：WES"/>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <label>gene</label>
+              <input id="varGene" placeholder="例如：COL4A5"/>
+            </div>
+            <div class="col">
+              <label>variant（简述）</label>
+              <input id="varVariant" placeholder="例如：c.1234A&gt;G"/>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <label>HGVS c.</label>
+              <input id="varHgvsC" placeholder="NM_...:c.1234A&gt;G"/>
+            </div>
+            <div class="col">
+              <label>HGVS p.</label>
+              <input id="varHgvsP" placeholder="p.(...)"/>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <label>Zygosity（het/hom/hem）</label>
+              <input id="varZygosity" placeholder="het"/>
+            </div>
+            <div class="col">
+              <label>ACMG（P/LP/VUS/LB/B）</label>
+              <input id="varClass" placeholder="VUS"/>
+            </div>
+          </div>
+          <label>检测/报告单位（可选）</label>
+          <input id="varLabName" placeholder="例如：XX 医学检验所"/>
+          <label>备注（可选）</label>
+          <textarea id="varNotes" placeholder="不要写任何 PII"></textarea>
+          <div class="btnbar">
+            <button class="btn" id="btnAddVariant">添加基因记录</button>
+          </div>
+          <div id="variantsPreview" class="muted small" style="margin-top:8px"></div>
+        </div>
+
+        <div class="col">
+          <h3 style="margin:0 0 8px 0;font-size:15px">🧪 化验（labs_long）</h3>
+          <label>patient_code</label>
+          <input id="labPatientCode" placeholder="例如：0001"/>
+          <div class="row">
+            <div class="col">
+              <label>lab_date</label>
+              <input id="labDate" type="date"/>
+            </div>
+            <div class="col">
+              <label>lab_name</label>
+              <input id="labName" placeholder="例如：Albumin / Hb / C3"/>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <label>lab_value</label>
+              <input id="labValue" type="number" step="0.01"/>
+            </div>
+            <div class="col">
+              <label>lab_unit</label>
+              <input id="labUnit" placeholder="g/L"/>
+            </div>
+          </div>
+          <div class="btnbar">
+            <button class="btn" id="btnAddLab">添加化验记录</button>
+          </div>
+          <div id="labsPreview" class="muted small" style="margin-top:8px"></div>
+        </div>
+
+        <div class="col">
+          <h3 style="margin:0 0 8px 0;font-size:15px">💊 用药（meds_long）</h3>
+          <label>patient_code</label>
+          <input id="medPatientCode" placeholder="例如：0001"/>
+          <label>drug_name</label>
+          <input id="medName" placeholder="例如：Prednisone / MMF / ACEI"/>
+          <label>drug_class（可选）</label>
+          <input id="medClass" placeholder="例如：Glucocorticoid"/>
+          <label>dose（可选）</label>
+          <input id="medDose" placeholder="例如：10 mg qd"/>
+          <div class="row">
+            <div class="col">
+              <label>start_date（可选）</label>
+              <input id="medStart" type="date"/>
+            </div>
+            <div class="col">
+              <label>end_date（可选）</label>
+              <input id="medEnd" type="date"/>
+            </div>
+          </div>
+          <div class="btnbar">
+            <button class="btn" id="btnAddMed">添加用药记录</button>
+          </div>
+          <div id="medsPreview" class="muted small" style="margin-top:8px"></div>
+        </div>
+      </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script type="module" src="/staff.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+[build]
+  publish = "site"
+  command = "echo 'no build'"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

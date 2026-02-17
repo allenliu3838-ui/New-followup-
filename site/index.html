@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>肾域AI KidneySphere AI · 随访 Registry（科研优先）</title>
+  <link rel="stylesheet" href="/app.css"/>
+  <link rel="icon" href="/assets/kidneysphere-ai.png"/>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="brand">
+        <img src="/assets/kidneysphere-ai.png" alt="肾域AI KidneySphere AI"/>
+        <div>
+          <h1 class="brand-title">KidneySphere AI · 随访 Registry（科研优先）</h1>
+          <div class="brand-sub">IgAN / LN / MN · 多中心合并（center_code + patient_code）· 一键论文输出（NEJM 级材料）</div>
+        </div>
+      </div>
+
+      <div class="warnbox" style="margin-top:12px">
+        <b>科研用途优先：</b>本系统仅用于随访数据登记与研究汇总，不提供诊断/处方/急救指导；
+        <b>请勿</b>录入姓名/电话/病案号/身份证等可识别个人信息（PII）。
+      </div>
+
+      <div class="btnbar" style="margin-top:14px">
+        <a class="btn primary" href="/staff">进入后台 /staff</a>
+        <a class="btn" href="/guide">使用说明 /guide</a>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="kv">
+        <div>合并键</div><div><b>center_code + patient_code</b>（全局不冲突，便于多中心合并）</div>
+        <div>IgAN 病理</div><div>支持录入 Oxford <b>MEST‑C</b>（科研分析常用）</div>
+        <div>基因</div><div>支持患者层面的变异长表（如有：gene/variant/ACMG 等）</div>
+      </div>
+
+      <div class="hr"></div>
+      <div class="muted small">提示：首次部署需先在 Supabase 执行 SQL 初始化（见仓库 supabase/migrations/0001_core.sql）。</div>
+    </div>
+  </div>
+</body>
+</html>
