@@ -74,11 +74,20 @@ const el = {
   btnAddMed: qs("#btnAddMed"),
   medsPreview: qs("#medsPreview"),
 
+  // Events
+  evtPatientCode: qs("#evtPatientCode"),
+  evtType: qs("#evtType"),
+  evtDate: qs("#evtDate"),
+  evtNotes: qs("#evtNotes"),
+  btnAddEvent: qs("#btnAddEvent"),
+  eventsPreview: qs("#eventsPreview"),
+
   btnExportBaseline: qs("#btnExportBaseline"),
   btnExportVisits: qs("#btnExportVisits"),
   btnExportLabs: qs("#btnExportLabs"),
   btnExportMeds: qs("#btnExportMeds"),
   btnExportVariants: qs("#btnExportVariants"),
+  btnExportEvents: qs("#btnExportEvents"),
 
   btnPaperPack: qs("#btnPaperPack"),
 };
@@ -159,12 +168,14 @@ async function init(){
   el.btnAddVariant?.addEventListener("click", addVariant);
   el.btnAddLab?.addEventListener("click", addLab);
   el.btnAddMed?.addEventListener("click", addMed);
+  el.btnAddEvent?.addEventListener("click", addEvent);
 
   el.btnExportBaseline.addEventListener("click", ()=>exportTable("baseline"));
   el.btnExportVisits.addEventListener("click", ()=>exportTable("visits"));
   el.btnExportLabs.addEventListener("click", ()=>exportTable("labs"));
   el.btnExportMeds.addEventListener("click", ()=>exportTable("meds"));
   el.btnExportVariants.addEventListener("click", ()=>exportTable("variants"));
+  el.btnExportEvents?.addEventListener("click", ()=>exportTable("events"));
 
   el.btnPaperPack.addEventListener("click", generatePaperPack);
 
@@ -311,22 +322,25 @@ async function loadExtras(){
     if (el.variantsPreview) el.variantsPreview.textContent = "";
     if (el.labsPreview) el.labsPreview.textContent = "";
     if (el.medsPreview) el.medsPreview.textContent = "";
+    if (el.eventsPreview) el.eventsPreview.textContent = "暂无记录";
     return;
   }
   const pid = selectedProject.id;
   try{
-    const [varsRes, labsRes, medsRes] = await Promise.all([
+    const [varsRes, labsRes, medsRes, evtsRes] = await Promise.all([
       sb.from("variants_long").select("*").eq("project_id", pid).order("created_at", {ascending:false}).limit(10),
       sb.from("labs_long").select("*").eq("project_id", pid).order("created_at", {ascending:false}).limit(10),
       sb.from("meds_long").select("*").eq("project_id", pid).order("created_at", {ascending:false}).limit(10),
+      sb.from("events_long").select("*").eq("project_id", pid).order("created_at", {ascending:false}).limit(20),
     ]);
     if (varsRes.error) throw varsRes.error;
     if (labsRes.error) throw labsRes.error;
     if (medsRes.error) throw medsRes.error;
-
+    // events_long may not exist yet — ignore error gracefully
     renderVariantsPreview(varsRes.data || []);
     renderLabsPreview(labsRes.data || []);
     renderMedsPreview(medsRes.data || []);
+    renderEventsPreview(evtsRes.error ? [] : (evtsRes.data || []));
   }catch(e){
     console.error(e);
     // do not spam toasts here
@@ -406,6 +420,30 @@ function renderMedsPreview(rows){
 }
 
 
+function renderEventsPreview(rows){
+  if (!el.eventsPreview) return;
+  if (!rows.length){
+    el.eventsPreview.innerHTML = "暂无记录";
+    return;
+  }
+  const trs = rows.map(r=>`
+    <tr>
+      <td><b>${escapeHtml(r.patient_code||"")}</b></td>
+      <td>${escapeHtml(r.event_type||"")}</td>
+      <td>${escapeHtml(r.event_date||"")}</td>
+      <td>${escapeHtml(r.source||"manual")}</td>
+      <td class="muted small">${escapeHtml((r.notes||"").slice(0,30))}</td>
+    </tr>
+  `).join("");
+  el.eventsPreview.innerHTML = `
+    <div class="muted small">最近 20 条：</div>
+    <table class="table">
+      <thead><tr><th>patient</th><th>event_type</th><th>date</th><th>source</th><th>notes</th></tr></thead>
+      <tbody>${trs}</tbody>
+    </table>
+  `;
+}
+
 function renderPatients(){
   if (!selectedProject){
     el.patientsList.innerHTML = "<div class='muted small'>请先选择/创建项目</div>";
@@ -452,7 +490,8 @@ function renderPatients(){
         if (el.varPatientCode) el.varPatientCode.value = pcode;
         if (el.labPatientCode) el.labPatientCode.value = pcode;
         if (el.medPatientCode) el.medPatientCode.value = pcode;
-        toast("已填入 patient_code（token/基因/化验/用药）");
+        if (el.evtPatientCode) el.evtPatientCode.value = pcode;
+        toast("已填入 patient_code（token/基因/化验/用药/事件）");
         el.tokenOut.style.display = "none";
       }
     });
@@ -662,6 +701,40 @@ async function addMed(){
 }
 
 
+async function addEvent(){
+  if (!selectedProject) return toast("请先选择项目");
+  const patient_code = el.evtPatientCode?.value.trim();
+  if (!patient_code) return toast("请填写 patient_code");
+  const event_type = el.evtType?.value;
+  if (!event_type) return toast("请选择事件类型");
+  const payload = {
+    project_id: selectedProject.id,
+    patient_code,
+    event_type,
+    event_date: el.evtDate?.value || null,
+    confirmed: true,
+    source: "manual",
+    notes: el.evtNotes?.value.trim().slice(0, 500) || null,
+  };
+  const btn = el.btnAddEvent;
+  btn.dataset.label = "录入终点事件";
+  setBusy(btn, true);
+  try{
+    const { error } = await sb.from("events_long").insert(payload);
+    if (error) throw error;
+    toast("已录入终点事件");
+    if (el.evtDate) el.evtDate.value = "";
+    if (el.evtNotes) el.evtNotes.value = "";
+    await loadExtras();
+  }catch(e){
+    console.error(e);
+    toast("录入失败：" + (e?.message || e));
+  }finally{
+    setBusy(btn, false);
+  }
+}
+
+
 async function exportTable(kind){
   if (!selectedProject) return toast("请先选择项目");
   const pid = selectedProject.id;
@@ -696,6 +769,10 @@ async function exportTable(kind){
     table = "variants_long";
     columns = ["center_code","module","patient_code","test_date","test_name","gene","variant","hgvs_c","hgvs_p","transcript","zygosity","classification","lab_name","notes","created_at"];
     filename = `variants_long_${center_code}_${fmtDate(new Date())}.csv`;
+  } else if (kind === "events"){
+    table = "events_long";
+    columns = ["center_code","module","patient_code","event_type","event_date","confirmed","source","notes","created_at"];
+    filename = `events_long_${center_code}_${fmtDate(new Date())}.csv`;
   }
 
   try{
@@ -730,12 +807,13 @@ async function generatePaperPack(){
     const project_name = selectedProject.name;
 
     // fetch data
-    const [baseline, visits, labs, meds, vars] = await Promise.all([
+    const [baseline, visits, labs, meds, vars, evts] = await Promise.all([
       sb.from("patients_baseline").select("*").eq("project_id", pid),
       sb.from("visits_long").select("*").eq("project_id", pid),
       sb.from("labs_long").select("*").eq("project_id", pid),
       sb.from("meds_long").select("*").eq("project_id", pid),
       sb.from("variants_long").select("*").eq("project_id", pid),
+      sb.from("events_long").select("*").eq("project_id", pid),
     ]);
 
     const check = [baseline, visits, labs, meds, vars].find(x=>x.error);
@@ -746,6 +824,7 @@ async function generatePaperPack(){
     const lRows = (labs.data||[]).map(r=>({center_code, module, ...r}));
     const mRows = (meds.data||[]).map(r=>({center_code, module, ...r}));
     const gRows = (vars.data||[]).map(r=>({center_code, module, ...r}));
+    const eRows = (evts.error ? [] : (evts.data||[])).map(r=>({center_code, module, ...r}));
 
     const today = new Date().toISOString().slice(0,10);
     const meta = {
@@ -760,7 +839,8 @@ async function generatePaperPack(){
         visits: vRows.length,
         labs: lRows.length,
         meds: mRows.length,
-        variants: gRows.length
+        variants: gRows.length,
+        events: eRows.length
       },
       merge_key: "center_code + patient_code",
       pii_policy: "No PII allowed in this system."
@@ -772,6 +852,7 @@ async function generatePaperPack(){
     const csvLabs = toCsv(lRows, ["center_code","module","patient_code","lab_date","lab_name","lab_value","lab_unit","created_at"]);
     const csvMeds = toCsv(mRows, ["center_code","module","patient_code","drug_name","drug_class","dose","start_date","end_date","created_at"]);
     const csvVars = toCsv(gRows, ["center_code","module","patient_code","test_date","test_name","gene","variant","hgvs_c","hgvs_p","transcript","zygosity","classification","lab_name","notes","created_at"]);
+    const csvEvents = toCsv(eRows, ["center_code","module","patient_code","event_type","event_date","confirmed","source","notes","created_at"]);
 
     // fetch template files (served as static assets)
     const [runPy, reqTxt, methodsTpl, readmeTpl] = await Promise.all([
@@ -808,6 +889,7 @@ async function generatePaperPack(){
     dataFolder.file("labs_long.csv", BOM + csvLabs);
     dataFolder.file("meds_long.csv", BOM + csvMeds);
     dataFolder.file("variants_long.csv", BOM + csvVars);
+    dataFolder.file("events_long.csv", BOM + csvEvents);
     analysisFolder.folder("outputs").file(".keep","");
 
     const ms = zip.folder("manuscript");
