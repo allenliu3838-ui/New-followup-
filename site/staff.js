@@ -1,5 +1,5 @@
 import { supabase } from "/lib/supabase-client.js";
-import { qs, qsa, toast, toCsv, downloadCsvUtf8Bom, fmtDate, daysLeft, humanNumber } from "/lib/utils.js";
+import { qs, qsa, toast, toCsv, downloadCsvUtf8Bom, fmtDate, daysLeft, humanNumber, escapeHtml } from "/lib/utils.js";
 
 const sb = supabase();
 
@@ -105,7 +105,6 @@ function renderTrialBadge(p){
   }
   const exp = p.trial_expires_at;
   const grace = p.trial_grace_until;
-  const now = Date.now();
   let cls = "badge";
   let txt = "试用未配置";
   if (exp){
@@ -256,10 +255,6 @@ function renderProjectMeta(){
   `;
   renderTrialBadge(p);
   showIganPathBox();
-}
-
-function escapeHtml(s){
-  return String(s||"").replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 }
 
 async function selectProject(projectId){
@@ -474,11 +469,19 @@ async function createPatientBaseline(){
   const patient_code = el.patCode.value.trim();
   if (!patient_code) return toast("请输入 patient_code");
 
+  const birth_year = el.patBirthYear.value ? Number(el.patBirthYear.value) : null;
+  if (birth_year !== null){
+    const thisYear = new Date().getFullYear();
+    if (!Number.isInteger(birth_year) || birth_year < 1900 || birth_year > thisYear){
+      return toast(`出生年份无效（应为 1900–${thisYear}）`);
+    }
+  }
+
   const payload = {
     project_id: selectedProject.id,
     patient_code,
     sex: el.patSex.value || null,
-    birth_year: el.patBirthYear.value ? Number(el.patBirthYear.value) : null,
+    birth_year,
     baseline_date: el.patBaselineDate.value || null,
     baseline_scr: el.patBaselineScr.value ? Number(el.patBaselineScr.value) : null,
     baseline_upcr: el.patBaselineUpcr.value ? Number(el.patBaselineUpcr.value) : null
@@ -703,12 +706,6 @@ async function exportTable(kind){
       module,
       ...r
     }));
-    // normalize columns that differ
-    if (kind === "visits"){
-      rows.forEach(r=>{
-        // database stores scr_umol_l as "scr_umol_l" column; keep consistent
-      });
-    }
     const csv = toCsv(rows, columns);
     downloadCsvUtf8Bom(filename, csv);
     toast("已导出：" + filename);
