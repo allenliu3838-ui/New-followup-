@@ -60,3 +60,7 @@ export function humanNumber(n){
   if (Number.isNaN(x)) return String(n);
   return x.toLocaleString();
 }
+
+export function escapeHtml(s){
+  return String(s||"").replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}

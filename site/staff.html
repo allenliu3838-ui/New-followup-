@@ -194,6 +194,7 @@
             <button class="btn" id="btnExportLabs">导出 labs</button>
             <button class="btn" id="btnExportMeds">导出 meds</button>
             <button class="btn" id="btnExportVariants">导出 variants</button>
+            <button class="btn" id="btnExportEvents">导出 events</button>
           </div>
         </div>
 
@@ -324,6 +325,43 @@
             <button class="btn" id="btnAddMed">添加用药记录</button>
           </div>
           <div id="medsPreview" class="muted small" style="margin-top:8px"></div>
+        </div>
+      </div>
+
+      <div class="hr" style="margin-top:14px"></div>
+
+      <h3 style="margin:0 0 8px 0;font-size:15px">🏁 临床终点事件（events_long）</h3>
+      <div class="muted small" style="margin-bottom:10px">手动录入终点事件（ESRD/死亡/缓解等）；eGFR 下降终点在论文包中自动计算并合并。</div>
+      <div class="row">
+        <div class="col">
+          <label>patient_code</label>
+          <input id="evtPatientCode" placeholder="例如：0001"/>
+          <div class="row">
+            <div class="col">
+              <label>事件类型 event_type</label>
+              <select id="evtType">
+                <option value="egfr_decline_40pct">eGFR 下降 ≥40%</option>
+                <option value="egfr_decline_57pct">eGFR 下降 ≥57%</option>
+                <option value="esrd">ESRD（终末期肾病）</option>
+                <option value="death">死亡</option>
+                <option value="complete_remission">完全缓解（CR）</option>
+                <option value="partial_remission">部分缓解（PR）</option>
+                <option value="custom">自定义</option>
+              </select>
+            </div>
+            <div class="col">
+              <label>事件日期（可选）</label>
+              <input id="evtDate" type="date"/>
+            </div>
+          </div>
+          <label>备注（可选，勿填 PII）</label>
+          <input id="evtNotes" placeholder="例如：透析起始 / CR 确认日期"/>
+          <div class="btnbar">
+            <button class="btn" id="btnAddEvent">录入终点事件</button>
+          </div>
+        </div>
+        <div class="col">
+          <div id="eventsPreview" class="muted small" style="margin-top:8px">暂无记录</div>
         </div>
       </div>
 

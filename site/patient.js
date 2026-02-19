@@ -1,5 +1,5 @@
 import { supabase } from "/lib/supabase-client.js";
-import { qs, toast, fmtDate, daysLeft } from "/lib/utils.js";
+import { qs, toast, fmtDate, daysLeft, escapeHtml } from "/lib/utils.js";
 
 const sb = supabase();
 
@@ -106,10 +106,6 @@ async function loadContext(){
   computeEgfr();
 }
 
-function escapeHtml(s){
-  return String(s||"").replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
-}
-
 async function submitVisit(){
   if (!ctx) return;
   const visit_date = el.visitDate.value;
@@ -136,6 +132,7 @@ async function submitVisit(){
   }catch(e){
     console.error(e);
     toast("提交失败：" + (e?.message || e));
+  }finally{
     el.btnSubmit.disabled = false;
   }
 }
