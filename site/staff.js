@@ -18,7 +18,8 @@ const el = {
   btnCreateProject: qs("#btnCreateProject"),
   projectsList: qs("#projectsList"),
   projectMeta: qs("#projectMeta"),
-  trialBadge: qs("#trialBadge"),
+  trialBadge:  qs("#trialBadge"),
+  upgradeBtn:  qs("#upgradeBtn"),
 
   patCode: qs("#patCode"),
   patSex: qs("#patSex"),
@@ -108,30 +109,85 @@ function setBusy(btn, busy){
 }
 
 function renderTrialBadge(p){
-  if (!p){
+  const hide = () => {
     el.trialBadge.style.display = "none";
-    return;
-  }
-  const exp = p.trial_expires_at;
-  const grace = p.trial_grace_until;
+    if (el.upgradeBtn) el.upgradeBtn.style.display = "none";
+  };
+  if (!p){ hide(); return; }
+
+  const exp          = p.trial_expires_at;
+  const grace        = p.trial_grace_until;
+  const subPlan      = p.subscription_plan || "trial";
+  const subUntil     = p.subscription_active_until;
+  const WARN_DAYS    = 14;   // show upgrade CTA this many days before trial end
+
+  // Build upgrade href from CONFIG
+  const upgradeHref =
+    (window.CONFIG?.UPGRADE_URL) ||
+    (window.CONFIG?.UPGRADE_EMAIL ? `mailto:${window.CONFIG.UPGRADE_EMAIL}?subject=KidneySphere升级订阅` : null);
+
+  const showUpgrade = (label = "立即升级") => {
+    if (!el.upgradeBtn) return;
+    if (upgradeHref){
+      el.upgradeBtn.href = upgradeHref;
+      el.upgradeBtn.textContent = label;
+      el.upgradeBtn.style.display = "inline-flex";
+    } else {
+      // No link configured — show a subtle hint inside the badge instead
+      el.upgradeBtn.style.display = "none";
+    }
+  };
+
   let cls = "badge";
   let txt = "试用未配置";
-  if (exp){
-    const left = daysLeft(exp);
-    if (left >= 0){
+  if (el.upgradeBtn) el.upgradeBtn.style.display = "none";
+
+  // ── 状态 1：付费订阅有效 ─────────────────────────────────────────────────
+  if (subPlan !== "trial") {
+    const paidActive = !subUntil || new Date(subUntil) > new Date();
+    if (paidActive) {
+      const planLabel = subPlan === "institution" ? "机构版" : "Pro";
       cls = "badge ok";
-      txt = `试用中：剩余 ${left} 天（到期 ${fmtDate(exp)}）`;
-    } else {
-      const graceLeft = grace ? daysLeft(grace) : null;
-      if (graceLeft !== null && graceLeft >= 0){
-        cls = "badge warn";
-        txt = `已到期（只读）：宽限剩余 ${graceLeft} 天（至 ${fmtDate(grace)}）`;
-      } else {
-        cls = "badge bad";
-        txt = `试用结束（只读）：${fmtDate(exp)}`;
-      }
+      txt = subUntil
+        ? `${planLabel} 已订阅（到期 ${fmtDate(subUntil)}）`
+        : `${planLabel} 已订阅`;
+      el.trialBadge.className = cls;
+      el.trialBadge.textContent = txt;
+      el.trialBadge.style.display = "inline-flex";
+      return;
     }
+    // Paid plan expired — fall through to trial check
   }
+
+  if (!exp){ hide(); return; }
+
+  const left      = daysLeft(exp);
+  const graceLeft = grace ? daysLeft(grace) : null;
+
+  // ── 状态 2：试用中（剩余 > 14 天）──────────────────────────────────────
+  if (left > WARN_DAYS){
+    cls = "badge ok";
+    txt = `试用中：剩余 ${left} 天（到期 ${fmtDate(exp)}）`;
+
+  // ── 状态 3：试用即将到期（0–14 天）─────────────────────────────────────
+  } else if (left >= 0){
+    cls = "badge warn";
+    txt = `试用将到期：剩余 ${left} 天`;
+    showUpgrade("升级继续使用");
+
+  // ── 状态 4：宽限期（试用到期，宽限未结束，只读）──────────────────────
+  } else if (graceLeft !== null && graceLeft >= 0){
+    cls = "badge warn";
+    txt = `试用已到期（只读）：宽限剩余 ${graceLeft} 天`;
+    showUpgrade("升级恢复写入");
+
+  // ── 状态 5：完全到期，无订阅（只读）──────────────────────────────────
+  } else {
+    cls = "badge bad";
+    txt = `试用已结束（只读）`;
+    showUpgrade("订阅以恢复使用");
+  }
+
   el.trialBadge.className = cls;
   el.trialBadge.textContent = txt;
   el.trialBadge.style.display = "inline-flex";
@@ -263,6 +319,11 @@ function renderProjectMeta(){
     <div>中心代码</div><div><code>${escapeHtml(p.center_code)}</code></div>
     <div>模块</div><div><code>${escapeHtml(p.module)}</code></div>
     <div>试用到期</div><div>${p.trial_expires_at ? fmtDate(p.trial_expires_at) : "未设置"} ${left!==null?`（剩余 ${left} 天）`:""}</div>
+    <div>订阅方案</div><div>${
+      p.subscription_plan && p.subscription_plan !== "trial"
+        ? `<b>${p.subscription_plan === "institution" ? "机构版" : "Pro"}</b>，有效至 ${p.subscription_active_until ? fmtDate(p.subscription_active_until) : "永久"}`
+        : "免费试用"
+    }</div>
   `;
   renderTrialBadge(p);
   showIganPathBox();
