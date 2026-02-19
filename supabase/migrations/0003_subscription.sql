@@ -125,13 +125,17 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_session_role text;
 BEGIN
-  -- Only callable by service_role (auth.role() = 'service_role')
-  -- or by a designated admin uid stored in a config table.
-  -- For now, enforce service_role.
-  IF current_setting('role', true) NOT IN ('service_role', 'supabase_admin') THEN
-    -- Allow authenticated call only if caller owns the project (for testing)
-    -- Remove this branch in production and use service_role only.
+  v_session_role := current_setting('role', true);
+
+  -- Allowed callers:
+  --   'service_role'    → Supabase service-role key (server-side / Edge Functions)
+  --   'supabase_admin'  → Supabase internal admin
+  --   'postgres'        → SQL Editor (superuser, trusted admin access)
+  -- All other roles (authenticated, anon) are blocked unless they own the project.
+  IF v_session_role NOT IN ('service_role', 'supabase_admin', 'postgres') THEN
     IF NOT EXISTS (
       SELECT 1 FROM public.projects
       WHERE id = p_project_id AND created_by = auth.uid()
@@ -141,7 +145,7 @@ BEGIN
   END IF;
 
   IF p_plan NOT IN ('trial', 'pro', 'institution') THEN
-    RAISE EXCEPTION 'invalid_plan: %', p_plan;
+    RAISE EXCEPTION 'invalid_plan: %. Must be one of: trial, pro, institution', p_plan;
   END IF;
 
   UPDATE public.projects
@@ -151,12 +155,22 @@ BEGIN
   WHERE id = p_project_id;
 
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'project_not_found';
+    RAISE EXCEPTION 'project_not_found: %', p_project_id;
   END IF;
 END;
 $$;
 
--- Service role can call this; anon/authenticated cannot (except owner, see above)
+-- Usage example (run in Supabase SQL Editor):
+--
+--   SELECT public.admin_set_subscription(
+--     'your-project-uuid'::uuid,
+--     'pro'::text,
+--     (now() + interval '1 year')::timestamptz
+--   );
+--
+-- To find project UUIDs:
+--   SELECT id, name, center_code, subscription_plan FROM public.projects;
+
 GRANT EXECUTE ON FUNCTION public.admin_set_subscription(uuid, text, timestamptz)
   TO authenticated;
 
@@ -164,6 +178,10 @@ GRANT EXECUTE ON FUNCTION public.admin_set_subscription(uuid, text, timestamptz)
 -- 6. Expose subscription fields via patient_get_context
 --    (so patient follow-up links also respect subscription state)
 -- ---------------------------
+
+-- Must DROP first: return type changed (added subscription_plan, subscription_active_until).
+-- CREATE OR REPLACE cannot change OUT parameter set.
+DROP FUNCTION IF EXISTS public.patient_get_context(text);
 
 CREATE OR REPLACE FUNCTION public.patient_get_context(p_token text)
 RETURNS TABLE (
