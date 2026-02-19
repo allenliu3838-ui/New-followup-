@@ -85,6 +85,157 @@ def ckdepi2021(scr_mg_dl: float, age: float, sex: str) -> float | None:
         egfr *= 1.012
     return float(egfr)
 
+
+# ---------------------------
+# KFRE helpers
+# Source: Tangri N, et al. JAMA. 2011;305(15):1553-9.
+#         doi:10.1001/jama.2011.451
+#
+# 4-variable model: age, sex, eGFR, uACR
+# 8-variable model: above + albumin, phosphate, bicarbonate, calcium
+#
+# ⚠ NOTE: UPCR (total protein-creatinine ratio) is used here as a proxy for
+#   uACR (albumin-creatinine ratio). These are NOT equivalent. UPCR ≈ uACR
+#   only when protein is predominantly albumin. PI must confirm unit conventions
+#   and whether UPCR substitution is appropriate for the study cohort.
+#
+# ⚠ NOTE: Coefficients below are from the derivation cohort. For non-North
+#   American populations, re-calibrated coefficients (e.g., Tangri 2016 JAMA IM)
+#   may be more appropriate. PI must verify before publication.
+#
+# Centering values (from Table 3, Tangri 2011):
+#   age/10       centered at 7.036  (≈ 70.4 yr mean)
+#   sex_female   centered at 0.5642
+#   eGFR/5       centered at 7.222  (≈ 36.1 mL/min)
+#   log2(uACR)   centered at 5.137  (≈ 35.3 mg/g)
+#
+# Baseline survivals:
+#   4-var: S0(2yr)=0.9832, S0(5yr)=0.9365
+#   8-var: S0(2yr)=0.9832, S0(5yr)=0.9240
+# ---------------------------
+
+_KFRE4_COEF = {
+    "age_10":        0.2201,
+    "female":        0.2467,
+    "egfr_5":       -0.5567,
+    "log2_uacr":     0.4510,
+}
+_KFRE4_CENTER = {
+    "age_10":      7.036,
+    "female":      0.5642,
+    "egfr_5":      7.222,
+    "log2_uacr":   5.137,
+}
+_KFRE4_S0_2YR = 0.9832
+_KFRE4_S0_5YR = 0.9365
+
+_KFRE8_EXTRA_COEF = {
+    # serum albumin (g/dL) centered at 3.997 g/dL
+    "albumin_gdl":      -0.3369,
+    # serum phosphate (mg/dL) centered at 3.916 mg/dL  (mmol/L × 3.097 = mg/dL)
+    "phosphate_mgdl":    0.4681,
+    # serum bicarbonate (mmol/L) centered at 25.57
+    "bicarbonate_mmoll": -0.2170,
+    # serum calcium (mg/dL) centered at 9.355 mg/dL  (mmol/L × 4.008 = mg/dL)
+    "calcium_mgdl":     -0.4573,
+}
+_KFRE8_CENTER = {
+    "albumin_gdl":       3.997,
+    "phosphate_mgdl":    3.916,
+    "bicarbonate_mmoll": 25.57,
+    "calcium_mgdl":      9.355,
+}
+_KFRE8_S0_2YR = 0.9832
+_KFRE8_S0_5YR = 0.9240
+
+
+def _kfre_risk(lp: float, s0_2yr: float, s0_5yr: float) -> tuple[float, float]:
+    """Convert linear predictor to 2-yr and 5-yr KFRE risks."""
+    exp_lp = math.exp(lp)
+    p2 = 1.0 - s0_2yr ** exp_lp
+    p5 = 1.0 - s0_5yr ** exp_lp
+    return (round(p2, 5), round(p5, 5))
+
+
+def kfre_4var(
+    age: float,
+    sex: str,
+    egfr: float,
+    upcr_mg_g: float,
+) -> tuple[float, float] | tuple[None, None]:
+    """
+    4-variable KFRE (Tangri 2011).
+    Returns (risk_2yr, risk_5yr) as proportions [0–1], or (None, None) if inputs invalid.
+    upcr_mg_g: UPCR in mg/g (used as proxy for uACR — see KFRE notes above).
+    """
+    try:
+        if any(v is None for v in [age, sex, egfr, upcr_mg_g]):
+            return (None, None)
+        a = float(age); e = float(egfr); u = float(upcr_mg_g)
+        if not all(np.isfinite(x) for x in [a, e, u]):
+            return (None, None)
+        if e <= 0 or u <= 0 or a <= 0:
+            return (None, None)
+        female = 1.0 if str(sex).upper() == "F" else 0.0
+        log2_u = math.log2(u)
+        lp = (
+            _KFRE4_COEF["age_10"]    * (a / 10 - _KFRE4_CENTER["age_10"]) +
+            _KFRE4_COEF["female"]    * (female  - _KFRE4_CENTER["female"]) +
+            _KFRE4_COEF["egfr_5"]   * (e / 5   - _KFRE4_CENTER["egfr_5"]) +
+            _KFRE4_COEF["log2_uacr"]* (log2_u  - _KFRE4_CENTER["log2_uacr"])
+        )
+        return _kfre_risk(lp, _KFRE4_S0_2YR, _KFRE4_S0_5YR)
+    except Exception:
+        return (None, None)
+
+
+def kfre_8var(
+    age: float,
+    sex: str,
+    egfr: float,
+    upcr_mg_g: float,
+    albumin_g_dl: float | None,
+    phosphate_mg_dl: float | None,
+    bicarbonate_mmol_l: float | None,
+    calcium_mg_dl: float | None,
+) -> tuple[float, float] | tuple[None, None]:
+    """
+    8-variable KFRE (Tangri 2011, 8-var extension).
+    Returns (risk_2yr, risk_5yr), or (None, None) if any required input is missing/invalid.
+    Unit conventions:
+      albumin_g_dl:      g/dL  (e.g., 4.0)   — divide g/L by 10
+      phosphate_mg_dl:   mg/dL (e.g., 3.5)   — multiply mmol/L by 3.097
+      bicarbonate_mmol_l mmol/L (mEq/L ≈ mmol/L for HCO3)
+      calcium_mg_dl:     mg/dL (e.g., 9.5)   — multiply mmol/L by 4.008
+    """
+    try:
+        extras = [albumin_g_dl, phosphate_mg_dl, bicarbonate_mmol_l, calcium_mg_dl]
+        if any(v is None for v in [age, sex, egfr, upcr_mg_g] + extras):
+            return (None, None)
+        a = float(age); e = float(egfr); u = float(upcr_mg_g)
+        alb = float(albumin_g_dl); phos = float(phosphate_mg_dl)
+        bicarb = float(bicarbonate_mmol_l); ca = float(calcium_mg_dl)
+        vals = [a, e, u, alb, phos, bicarb, ca]
+        if not all(np.isfinite(x) for x in vals) or e <= 0 or u <= 0 or a <= 0:
+            return (None, None)
+        female = 1.0 if str(sex).upper() == "F" else 0.0
+        log2_u = math.log2(u)
+        lp4 = (
+            _KFRE4_COEF["age_10"]    * (a / 10 - _KFRE4_CENTER["age_10"]) +
+            _KFRE4_COEF["female"]    * (female  - _KFRE4_CENTER["female"]) +
+            _KFRE4_COEF["egfr_5"]   * (e / 5   - _KFRE4_CENTER["egfr_5"]) +
+            _KFRE4_COEF["log2_uacr"]* (log2_u  - _KFRE4_CENTER["log2_uacr"])
+        )
+        lp_extra = (
+            _KFRE8_EXTRA_COEF["albumin_gdl"]      * (alb    - _KFRE8_CENTER["albumin_gdl"]) +
+            _KFRE8_EXTRA_COEF["phosphate_mgdl"]   * (phos   - _KFRE8_CENTER["phosphate_mgdl"]) +
+            _KFRE8_EXTRA_COEF["bicarbonate_mmoll"] * (bicarb - _KFRE8_CENTER["bicarbonate_mmoll"]) +
+            _KFRE8_EXTRA_COEF["calcium_mgdl"]     * (ca     - _KFRE8_CENTER["calcium_mgdl"])
+        )
+        return _kfre_risk(lp4 + lp_extra, _KFRE8_S0_2YR, _KFRE8_S0_5YR)
+    except Exception:
+        return (None, None)
+
 def safe_mean(x):
     x = pd.to_numeric(x, errors="coerce")
     if x.notna().sum() == 0:
@@ -239,6 +390,147 @@ v2["days_from_baseline"] = (v2["visit_date"] - v2["baseline_anchor"]).dt.days
 v2["time_yr"] = v2["days_from_baseline"] / 365.25
 
 # ---------------------------
+# KFRE SCORES
+# 4-variable: age, sex, eGFR, UPCR (proxy for uACR)
+# 8-variable: + albumin, phosphate, bicarbonate, calcium from labs_long
+#
+# Lab name matching (case-insensitive keywords):
+#   albumin      → "albumin"
+#   phosphate    → "phosphate" or "phosphorus"
+#   bicarbonate  → "bicarbonate" or "hco3" or "co2"
+#   calcium      → "calcium"
+#
+# Unit conventions expected in labs_long:
+#   albumin:     g/L → divide by 10 → g/dL  (or g/dL directly if lab_unit="g/dL")
+#   phosphate:   mmol/L → multiply by 3.097 → mg/dL  (or mg/dL directly)
+#   bicarbonate: mmol/L (mEq/L ≈ mmol/L)
+#   calcium:     mmol/L → multiply by 4.008 → mg/dL  (or mg/dL directly)
+#
+# ⚠ PI must verify lab units before accepting 8-variable results.
+# ---------------------------
+
+_LAB_KEYWORDS = {
+    "albumin":     ["albumin"],
+    "phosphate":   ["phosphate", "phosphorus"],
+    "bicarbonate": ["bicarbonate", "hco3", "co2"],
+    "calcium":     ["calcium"],
+}
+
+
+def _extract_baseline_lab(
+    labs_df: pd.DataFrame,
+    patients_df: pd.DataFrame,
+    lab_key: str,
+    keywords: list[str],
+    window_days: int = 90,
+) -> pd.Series:
+    """
+    Returns a Series indexed by (center_code, patient_code) with the lab value
+    closest to baseline_anchor within ±window_days.
+    """
+    if labs_df.empty or "lab_name" not in labs_df.columns or "lab_value" not in labs_df.columns:
+        return pd.Series(dtype=float)
+
+    mask = labs_df["lab_name"].astype(str).str.lower().str.contains(
+        "|".join(keywords), na=False
+    )
+    sub = labs_df[mask].copy()
+    if sub.empty:
+        return pd.Series(dtype=float)
+
+    sub["lab_date"] = to_dt(sub.get("lab_date"))
+    sub = sub.dropna(subset=["lab_date"])
+    sub["lab_value"] = to_num(sub["lab_value"])
+
+    # Merge with baseline anchor
+    anchor_dates = patients_df[["center_code", "patient_code", "baseline_anchor"]].copy()
+    anchor_dates = anchor_dates.dropna(subset=["baseline_anchor"])
+    anchor_dates["baseline_anchor"] = pd.to_datetime(anchor_dates["baseline_anchor"])
+
+    sub = sub.merge(anchor_dates, on=["center_code", "patient_code"], how="inner")
+    sub["days_to_baseline"] = (sub["lab_date"] - sub["baseline_anchor"]).dt.days.abs()
+    sub = sub[sub["days_to_baseline"] <= window_days]
+
+    if sub.empty:
+        return pd.Series(dtype=float)
+
+    # Pick closest
+    closest = (
+        sub.sort_values("days_to_baseline")
+        .groupby(["center_code", "patient_code"], as_index=False)
+        .first()
+    )
+    result = closest.set_index(["center_code", "patient_code"])["lab_value"]
+    return result
+
+
+# Extract each 8-var lab
+labs["lab_name"]  = labs["lab_name"].astype(str) if "lab_name" in labs.columns else ""
+labs["lab_value"] = to_num(labs.get("lab_value")) if "lab_value" in labs.columns else np.nan
+labs["lab_date"]  = to_dt(labs.get("lab_date"))   if "lab_date"  in labs.columns else pd.NaT
+labs["lab_unit"]  = labs.get("lab_unit", "")
+
+_lab_idx = patients.set_index(["center_code", "patient_code"])
+
+for _lk, _kws in _LAB_KEYWORDS.items():
+    _ser = _extract_baseline_lab(labs, patients, _lk, _kws, window_days=90)
+    if not _ser.empty:
+        patients[f"lab_{_lk}"] = patients.set_index(["center_code", "patient_code"]).index.map(_ser)
+    else:
+        patients[f"lab_{_lk}"] = np.nan
+
+# Unit auto-conversion heuristics (best-effort; PI must verify)
+# albumin: if median > 10, assume g/L → convert to g/dL
+if "lab_albumin" in patients.columns:
+    alb_vals = patients["lab_albumin"].dropna()
+    if len(alb_vals) > 0 and alb_vals.median() > 10:
+        patients["lab_albumin"] = patients["lab_albumin"] / 10  # g/L → g/dL
+
+# phosphate: if median < 3, assume mmol/L → convert to mg/dL
+if "lab_phosphate" in patients.columns:
+    phos_vals = patients["lab_phosphate"].dropna()
+    if len(phos_vals) > 0 and phos_vals.median() < 3:
+        patients["lab_phosphate"] = patients["lab_phosphate"] * 3.097  # mmol/L → mg/dL
+
+# calcium: if median < 5, assume mmol/L → convert to mg/dL
+if "lab_calcium" in patients.columns:
+    ca_vals = patients["lab_calcium"].dropna()
+    if len(ca_vals) > 0 and ca_vals.median() < 5:
+        patients["lab_calcium"] = patients["lab_calcium"] * 4.008  # mmol/L → mg/dL
+
+# Apply 4-variable KFRE
+def _apply_kfre4(row):
+    r = kfre_4var(
+        age=row.get("age_baseline"),
+        sex=row.get("sex"),
+        egfr=row.get("baseline_egfr"),
+        upcr_mg_g=row.get("baseline_upcr_final"),
+    )
+    return pd.Series({"kfre4_2yr": r[0], "kfre4_5yr": r[1]})
+
+_kfre4_df = patients.apply(_apply_kfre4, axis=1)
+patients["kfre4_2yr"] = _kfre4_df["kfre4_2yr"]
+patients["kfre4_5yr"] = _kfre4_df["kfre4_5yr"]
+
+# Apply 8-variable KFRE (only where lab values available)
+def _apply_kfre8(row):
+    r = kfre_8var(
+        age=row.get("age_baseline"),
+        sex=row.get("sex"),
+        egfr=row.get("baseline_egfr"),
+        upcr_mg_g=row.get("baseline_upcr_final"),
+        albumin_g_dl=row.get("lab_albumin"),
+        phosphate_mg_dl=row.get("lab_phosphate"),
+        bicarbonate_mmol_l=row.get("lab_bicarbonate"),
+        calcium_mg_dl=row.get("lab_calcium"),
+    )
+    return pd.Series({"kfre8_2yr": r[0], "kfre8_5yr": r[1]})
+
+_kfre8_df = patients.apply(_apply_kfre8, axis=1)
+patients["kfre8_2yr"] = _kfre8_df["kfre8_2yr"]
+patients["kfre8_5yr"] = _kfre8_df["kfre8_5yr"]
+
+# ---------------------------
 # Table 1
 # ---------------------------
 
@@ -330,6 +622,46 @@ if not meds.empty and "drug_class" in meds.columns:
             ])
 
 table1 = pd.DataFrame(table1_rows, columns=["Variable", "Value", "Notes"])
+
+# ── KFRE summary in Table 1 ───────────────────────────────────────────────────
+kfre4_2yr_valid = patients["kfre4_2yr"].dropna()
+kfre4_5yr_valid = patients["kfre4_5yr"].dropna()
+kfre8_5yr_valid = patients["kfre8_5yr"].dropna()
+
+def _pct_str(series, threshold):
+    n = int((series >= threshold).sum())
+    d = len(series)
+    return f"{n} ({pct(n, d):.1f}%)" if d > 0 else ""
+
+if not kfre4_2yr_valid.empty:
+    kfre4_med_2yr_q1, kfre4_med_2yr_q3 = float(kfre4_2yr_valid.quantile(0.25)), float(kfre4_2yr_valid.quantile(0.75))
+    kfre4_med_5yr_q1, kfre4_med_5yr_q3 = float(kfre4_5yr_valid.quantile(0.25)), float(kfre4_5yr_valid.quantile(0.75))
+    kfre4_rows = [
+        ["--- KFRE (4-variable, Tangri 2011) ---", "", "UPCR used as proxy for uACR"],
+        ["Patients with evaluable KFRE-4, n",
+         int(kfre4_2yr_valid.notna().sum()), "age+sex+eGFR+UPCR required"],
+        ["KFRE-4 2-year risk, median (IQR) %",
+         f"{kfre4_2yr_valid.median()*100:.1f}",
+         f"{kfre4_med_2yr_q1*100:.1f}–{kfre4_med_2yr_q3*100:.1f}"],
+        ["KFRE-4 5-year risk, median (IQR) %",
+         f"{kfre4_5yr_valid.median()*100:.1f}",
+         f"{kfre4_med_5yr_q1*100:.1f}–{kfre4_med_5yr_q3*100:.1f}"],
+        ["KFRE-4 5-year risk ≥40%, n (%)",
+         _pct_str(kfre4_5yr_valid, 0.40), "high-risk threshold"],
+    ]
+    if not kfre8_5yr_valid.empty:
+        kfre8_med_5yr_q1, kfre8_med_5yr_q3 = float(kfre8_5yr_valid.quantile(0.25)), float(kfre8_5yr_valid.quantile(0.75))
+        kfre4_rows += [
+            ["--- KFRE (8-variable, Tangri 2011) ---", "", "Requires albumin/phosphate/HCO3/Ca"],
+            ["Patients with evaluable KFRE-8, n", int(kfre8_5yr_valid.notna().sum()), ""],
+            ["KFRE-8 5-year risk, median (IQR) %",
+             f"{kfre8_5yr_valid.median()*100:.1f}",
+             f"{kfre8_med_5yr_q1*100:.1f}–{kfre8_med_5yr_q3*100:.1f}"],
+        ]
+    table1 = pd.concat(
+        [table1, pd.DataFrame(kfre4_rows, columns=["Variable", "Value", "Notes"])],
+        ignore_index=True
+    )
 
 # ---------------------------
 # QC
@@ -688,6 +1020,21 @@ write_excel(OUT / "qc_report.xlsx", {
 
 outcomes.to_csv(OUT / "outcomes_12m.csv", index=False, encoding="utf-8-sig")
 
+# KFRE scores per patient
+kfre_cols = ["center_code", "patient_code", "age_baseline", "sex",
+             "baseline_egfr", "baseline_upcr_final",
+             "kfre4_2yr", "kfre4_5yr",
+             "lab_albumin", "lab_phosphate", "lab_bicarbonate", "lab_calcium",
+             "kfre8_2yr", "kfre8_5yr"]
+kfre_out_cols = [c for c in kfre_cols if c in patients.columns]
+kfre_df = patients[kfre_out_cols].copy()
+# Convert proportions to percentages for readability
+for col in ["kfre4_2yr", "kfre4_5yr", "kfre8_2yr", "kfre8_5yr"]:
+    if col in kfre_df.columns:
+        kfre_df[col.replace("yr", "yr_pct")] = (kfre_df[col] * 100).round(1)
+        kfre_df.drop(columns=[col], inplace=True)
+kfre_df.to_csv(OUT / "kfre_scores.csv", index=False, encoding="utf-8-sig")
+
 # eGFR endpoints (40% / 57% decline)
 egfr_endpoints.to_csv(OUT / "endpoints_egfr_decline.csv", index=False, encoding="utf-8-sig")
 
@@ -707,6 +1054,7 @@ generated = [
     "qc_report.xlsx",
     "outcomes_12m.csv",
     "endpoints_egfr_decline.csv",
+    "kfre_scores.csv",
     "plot_egfr_trend.png",
     "plot_upcr_trend.png",
 ]
@@ -730,6 +1078,7 @@ print(f"- Table1:            {OUT / 'table1_baseline.xlsx'}")
 print(f"- QC:                {OUT / 'qc_report.xlsx'}")
 print(f"- 12m outcomes:      {OUT / 'outcomes_12m.csv'}")
 print(f"- eGFR decline:      {OUT / 'endpoints_egfr_decline.csv'}")
+print(f"- KFRE scores:       {OUT / 'kfre_scores.csv'} (4-var: {kfre4_2yr_valid.notna().sum()} pts, 8-var: {kfre8_5yr_valid.notna().sum()} pts)")
 if not remission.empty:
     print(f"- IgAN remission:    {OUT / 'endpoints_igan_remission.csv'}")
 if not df_lme.empty:

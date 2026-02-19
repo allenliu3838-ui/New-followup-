@@ -47,7 +47,22 @@ For patients enrolled under the IGAN module, remission was defined as follows:
 
 Time to first CR or PR was recorded. Investigators should confirm these definitions against the trial protocol and local unit conventions for UPCR.
 
+## Multi-center data integration
+Data from multiple centers were merged using the script `merge_centers.py`. The merge key was `center_code + patient_code`; the same `patient_code` appearing in different `center_code` values was treated as distinct patients. Within-center duplicate records (identical primary keys) were deduplicated by retaining the first occurrence. A merge QC report (`merge_qc.xlsx`) was generated documenting center-level row counts, duplicates dropped, and any cross-center patient code collisions. Investigators at each contributing center verified their own data exports before merging.
+
+## Kidney Failure Risk Equation (KFRE)
+The 2-year and 5-year predicted risk of kidney failure was estimated using the Kidney Failure Risk Equation (KFRE) published by Tangri et al. (JAMA 2011;305:1553–9, doi:10.1001/jama.2011.451).
+
+**4-variable KFRE** was applied to all patients with available age, sex, eGFR, and proteinuria:
+
+> LP = 0.2201 × (age/10 − 7.036) + 0.2467 × (female − 0.5642) − 0.5567 × (eGFR/5 − 7.222) + 0.4510 × (log₂(uACR) − 5.137)
+> P(2-year) = 1 − 0.9832^exp(LP);  P(5-year) = 1 − 0.9365^exp(LP)
+
+**8-variable KFRE** was additionally applied where serum albumin, phosphate, bicarbonate, and calcium values within 90 days of baseline were available from the laboratory table.
+
+> ⚠ **PI review required for KFRE:** (1) UPCR (total protein-creatinine ratio) was used as a proxy for uACR (albumin-creatinine ratio) where uACR was unavailable; investigators must confirm whether this substitution is appropriate. (2) Coefficients are from the derivation cohort; regional re-calibration (e.g., Tangri 2016 JAMA IM) may be preferable. (3) Laboratory unit auto-conversion was applied heuristically (albumin g/L→g/dL if median >10; phosphate mmol/L→mg/dL if median <3; calcium mmol/L→mg/dL if median <5); verify against site lab conventions.
+
 ## Statistical analysis
-Continuous variables are presented as mean ± SD or median (IQR). Categorical variables are presented as n (%). eGFR slope is expressed as mL/min/1.73m²/year (95% CI). All analyses were performed using Python with pandas, NumPy, statsmodels, and matplotlib.
+Continuous variables are presented as mean ± SD or median (IQR). Categorical variables are presented as n (%). eGFR slope is expressed as mL/min/1.73m²/year (95% CI). KFRE is expressed as median (IQR) %. All analyses were performed using Python with pandas, NumPy, statsmodels, and matplotlib.
 
 > **PI review required:** Auto-generated Methods sections are template drafts only. The PI must verify all endpoint definitions, statistical methods, and unit assumptions before manuscript submission. This system does not provide clinical decision support.
