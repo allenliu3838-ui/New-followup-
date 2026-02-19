@@ -179,6 +179,10 @@ GRANT EXECUTE ON FUNCTION public.admin_set_subscription(uuid, text, timestamptz)
 --    (so patient follow-up links also respect subscription state)
 -- ---------------------------
 
+-- Must DROP first: return type changed (added subscription_plan, subscription_active_until).
+-- CREATE OR REPLACE cannot change OUT parameter set.
+DROP FUNCTION IF EXISTS public.patient_get_context(text);
+
 CREATE OR REPLACE FUNCTION public.patient_get_context(p_token text)
 RETURNS TABLE (
   project_id              uuid,
