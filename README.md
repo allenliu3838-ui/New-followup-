@@ -112,3 +112,8 @@ Outputs go to `analysis/outputs/`.
 - **No PII**. Use local mapping table per center if needed.
 - PI must review auto-generated Methods before submission.
 
+---
+
+## 6) Commercialization reference
+
+- Pricing and billing strategy (CN): `docs/BILLING_PLAN_CN.md`
