@@ -33,10 +33,12 @@
         </div>
         <div class="guide-hero-actions">
           <a class="linkbtn primary" href="/staff" target="_blank">打开后台 /staff</a>
+          <a class="linkbtn" href="#scenarios">科研场景举例</a>
+          <a class="linkbtn" href="#general-module">GENERAL模块说明</a>
           <a class="linkbtn" href="#trial">试用必读</a>
-          <a class="linkbtn" href="#roles">选择我的角色</a>
-          <a class="linkbtn" href="/security">安全合规</a>
-          <a class="linkbtn" href="/deployment">部署方式</a>
+          <a class="linkbtn" href="#roles">选择角色</a>
+          <a class="linkbtn" href="/slides">系统介绍PPT</a>
+          <a class="linkbtn" href="/demo">预约演示</a>
         </div>
         <div class="muted small" style="margin-top:10px">
           提示：系统导出 CSV 默认带 UTF‑8 BOM，Excel 直接打开一般不乱码；若出现 <code>######</code> 多为列宽不足（双击列边界自动适配）。
@@ -81,6 +83,146 @@
         <b>试用成功验收（建议）</b><br/>
         1) 能稳定生成论文包并跑出输出；2) 至少完成 1 轮 QC→补录→复跑；3) 核心四项（日期/BP/Scr/UPCR）完整率明显提升；4) 多中心合并无冲突；5) 同一导出包重复运行结果一致。
       </div>
+
+      <div class="hr"></div>
+
+      <!-- ===== 科研场景举例 ===== -->
+      <h2 id="scenarios">📋 这套系统能做什么科研？（场景举例）</h2>
+      <div class="muted small" style="margin-bottom:10px">以下均为<b>真实常见科研需求</b>，系统可直接支持，无需额外开发。</div>
+
+      <div class="scenario-grid">
+
+        <div class="scenario-card">
+          <div class="scenario-tag igan">IgAN</div>
+          <div class="scenario-title">IgA 肾病多中心队列研究</div>
+          <div class="small">
+            <b>研究目的：</b>评估 Oxford MEST-C 病理积分与 5 年肾功能进展（eGFR 下降 ≥ 40%）的关联。<br/>
+            <b>参与方：</b>北京/上海/广州 3 家中心，合计 280 例。<br/>
+            <b>做法：</b>各中心用同一 center_code 录入基线（含 MEST-C）+ 每季度随访（BP/Scr/UPCR）；后台导出合并包 → 一键跑出 Kaplan-Meier 曲线 + Table 1 + Cox 回归 draft。<br/>
+            <b>投稿方向：</b>JASN / KI / AJKD
+          </div>
+        </div>
+
+        <div class="scenario-card">
+          <div class="scenario-tag ln">LN</div>
+          <div class="scenario-title">狼疮性肾炎诱导缓解疗效比较</div>
+          <div class="small">
+            <b>研究目的：</b>比较他克莫司 vs. MMF 在 III/IV 型 LN 的 12 个月完全缓解率。<br/>
+            <b>参与方：</b>单中心，120 例。<br/>
+            <b>做法：</b>录入基线用药方案 + 每月随访 UPCR/补体/dsDNA；12 个月时后台一键生成结局表（完全缓解 = UPCR < 0.5 + Scr 稳定）。<br/>
+            <b>投稿方向：</b>ARD / Rheumatology
+          </div>
+        </div>
+
+        <div class="scenario-card">
+          <div class="scenario-tag mn">MN</div>
+          <div class="scenario-title">膜性肾病 PLA2R 滴度与缓解预测</div>
+          <div class="small">
+            <b>研究目的：</b>分析基线 PLA2R 抗体滴度与 24 个月自发缓解率的关系。<br/>
+            <b>参与方：</b>单中心，80 例。<br/>
+            <b>做法：</b>基线录入 PLA2R 滴度（lab_long 表）+ 每 3 月随访 UPCR；系统自动判断缓解（UPCR < 0.5）并输出缓解时间分布。<br/>
+            <b>投稿方向：</b>JASN / KI
+          </div>
+        </div>
+
+        <div class="scenario-card">
+          <div class="scenario-tag ktx">KTX</div>
+          <div class="scenario-title">肾移植术后排斥反应监测</div>
+          <div class="small">
+            <b>研究目的：</b>描述活体肾移植术后 12 个月内急性排斥发生率及其危险因素。<br/>
+            <b>参与方：</b>单中心移植科，60 例。<br/>
+            <b>做法：</b>使用 KTX 模块，记录供体信息、免疫诱导方案、术后随访 Scr/他克莫司谷浓度；系统自动计算 eGFR 趋势。<br/>
+            <b>投稿方向：</b>Transplantation / AJT
+          </div>
+        </div>
+
+        <div class="scenario-card">
+          <div class="scenario-tag general">GENERAL</div>
+          <div class="scenario-title">FSGS / ANCA / 糖尿病肾病 / 任意病种真实世界研究</div>
+          <div class="small">
+            <b>研究目的：</b>例如：评估 FSGS 患者使用 sparsentan 治疗后 UPCR 变化（真实世界观察性研究）。<br/>
+            <b>参与方：</b>1–5 家中心，任意规模。<br/>
+            <b>做法：</b>选 GENERAL 模块 → 录入任何肾病患者的核心四项（日期/BP/Scr/UPCR）+可选药物/检验 → 导出分析。无需适配特定病种字段。<br/>
+            <b>投稿方向：</b>任意肾病/内科期刊
+          </div>
+        </div>
+
+        <div class="scenario-card">
+          <div class="scenario-tag general">多中心</div>
+          <div class="scenario-title">多中心 DCC 数据合并示例（任意病种）</div>
+          <div class="small">
+            <b>场景：</b>4 个中心各自独立录入，DCC（数据协调中心）负责汇总分析。<br/>
+            <b>关键：</b>各中心 center_code 不同（BJ01/SH01/GZ01/CD01），patient_code 各自分配；合并时以 center_code+patient_code 作为全局唯一键。<br/>
+            <b>操作：</b>各中心后台分别导出论文包 → DCC 将 4 份 CSV 按中心键合并 → 统一运行分析脚本 → 一键生成合并版 Table 1 + QC + 结局。
+          </div>
+        </div>
+
+      </div>
+
+      <div class="hr"></div>
+
+      <!-- ===== GENERAL 模块详解 ===== -->
+      <h2 id="general-module">🔎 什么是 GENERAL（通用 / 混合）模块？</h2>
+
+      <div class="infobox" style="margin-bottom:12px">
+        <b>一句话：</b>GENERAL 是"万能接口"——当你的病种不是 IgAN / LN / MN / KTX 时，或你想<b>混合多个病种</b>放进同一个项目，就选 GENERAL。
+      </div>
+
+      <div class="guide-grid2">
+        <div>
+          <b>什么时候选 GENERAL？</b>
+          <ul class="compact small" style="margin-top:6px">
+            <li>病种为 FSGS、ANCA、IgA 血管炎、糖尿病肾病、高血压肾病、慢性肾脏病（CKD 泛人群）等</li>
+            <li>研究对象是"所有肾内科住院患者"（混合病种）</li>
+            <li>做<b>跨病种比较</b>（如 IgAN vs. LN 对照组）</li>
+            <li>只想快速建一个随访数据库，暂时不确定病种分层</li>
+            <li>科室做<b>质量改进（QI）项目</b>，需要跑全科患者数据</li>
+          </ul>
+        </div>
+        <div>
+          <b>GENERAL 与其他模块的区别</b>
+          <table class="table" style="margin-top:6px">
+            <thead><tr><th>模块</th><th>适用场景</th><th>特有字段</th></tr></thead>
+            <tbody>
+              <tr><td>IgAN</td><td>IgA肾病研究</td><td>Oxford MEST-C 病理积分</td></tr>
+              <tr><td>LN</td><td>狼疮性肾炎</td><td>补体/dsDNA</td></tr>
+              <tr><td>MN</td><td>膜性肾病</td><td>PLA2R/THSD7A抗体</td></tr>
+              <tr><td>KTX</td><td>肾移植随访</td><td>供体/手术/排斥信息</td></tr>
+              <tr><td><b>GENERAL</b></td><td><b>任意/混合病种</b></td><td><b>无特有字段，全部通用</b></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="okbox" style="margin-top:10px">
+        <b>GENERAL 模块能做什么分析？</b><br/>
+        核心四项（日期 / BP / Scr / UPCR）全病种通用 → 可自动计算：<b>eGFR 趋势、UPCR 缓解率、12 个月结局、QC 报告、Table 1 基线特征表、Methods 草稿</b>。<br/>
+        如需病种特有指标（如补体、抗体）→ 使用 <code>labs_long</code> 表的自由字段追加即可，分析脚本中可自定义读取。
+      </div>
+
+      <details class="faq" style="margin-top:10px">
+        <summary>GENERAL 模块举例：全科 CKD 数据库</summary>
+        <div class="small">
+          <b>场景：</b>某肾内科希望建立科室级别的全患者随访数据库（不区分病种），用于年度质量报告和发表真实世界研究论文。<br/>
+          <b>做法：</b>
+          <ol>
+            <li>后台创建项目，模块选 GENERAL，center_code = 本中心代码</li>
+            <li>每位患者录入：研究编号（patient_code）、入组日期、基线 Scr/UPCR/BP</li>
+            <li>每次随访录入：日期 + Scr + UPCR + BP</li>
+            <li>年底一键导出论文包 → 运行脚本 → 自动生成：平均 eGFR 变化、UPCR 改善率、随访完整率报告</li>
+          </ol>
+          <b>结果：</b>不用 Excel，不用手写脚本，全科一年数据 1 小时出图出表，直接用于年会汇报和论文。
+        </div>
+      </details>
+
+      <details class="faq" style="margin-top:8px">
+        <summary>GENERAL 模块举例：混合病种研究（IgAN + FSGS 对照）</summary>
+        <div class="small">
+          <b>场景：</b>研究者想比较 IgAN 与 FSGS 患者对相同治疗方案的反应差异，希望把两组放在同一项目中。<br/>
+          <b>做法：</b>选 GENERAL 模块（而不是 IgAN），在 patients_baseline 的 diagnosis 字段分别填 "IgAN" 和 "FSGS" → 分析脚本按 diagnosis 分层即可。<br/>
+          <b>优势：</b>同一个项目，同一个 center_code，合并导出时不需要跨项目拼接。
+        </div>
+      </details>
 
       <div class="hr"></div>
 
