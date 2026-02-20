@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>系统介绍 · KidneySphere AI</title>
+  <link rel="icon" href="/assets/kidneysphere-ai.png"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#f0f4ff;
+      --brand:#2563eb;
+      --brand2:#0ea5e9;
+      --text:#0f172a;
+      --muted:#475569;
+      --card:#fff;
+      --accent1:#7c3aed;
+      --ok:#16a34a;
+      --warn:#d97706;
+    }
+    html,body{height:100%;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);}
+
+    /* ── Layout ── */
+    .deck{width:100%;height:100vh;overflow:hidden;position:relative;}
+    .slide{
+      position:absolute;inset:0;
+      display:flex;flex-direction:column;justify-content:center;align-items:center;
+      padding:40px 6vw;
+      opacity:0;pointer-events:none;
+      transition:opacity .35s ease;
+    }
+    .slide.active{opacity:1;pointer-events:auto;}
+
+    /* ── Nav ── */
+    .nav{
+      position:fixed;bottom:22px;left:50%;transform:translateX(-50%);
+      display:flex;align-items:center;gap:12px;
+      background:rgba(15,23,42,.82);backdrop-filter:blur(8px);
+      border:1px solid rgba(255,255,255,.12);border-radius:999px;
+      padding:10px 18px;z-index:100;
+    }
+    .nav button{appearance:none;border:none;background:none;color:#fff;font-size:20px;cursor:pointer;line-height:1;padding:2px 6px;border-radius:8px;}
+    .nav button:hover{background:rgba(255,255,255,.12);}
+    .nav .counter{color:#94a3b8;font-size:13px;min-width:52px;text-align:center;}
+    .nav a.exit{color:#94a3b8;font-size:12px;text-decoration:none;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:4px 10px;}
+    .nav a.exit:hover{color:#fff;}
+    .dots{display:flex;gap:6px;}
+    .dot{width:7px;height:7px;border-radius:999px;background:rgba(255,255,255,.22);cursor:pointer;transition:background .2s;}
+    .dot.active{background:#fff;}
+
+    /* ── Slide backgrounds ── */
+    .slide-cover{background:linear-gradient(135deg,#1e40af 0%,#0ea5e9 100%);}
+    .slide-dark{background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);}
+    .slide-green{background:linear-gradient(135deg,#064e3b 0%,#065f46 100%);}
+    .slide-purple{background:linear-gradient(135deg,#4c1d95 0%,#6d28d9 100%);}
+    .slide-light{background:#fff;}
+    .slide-amber{background:linear-gradient(135deg,#78350f 0%,#92400e 100%);}
+
+    /* ── Text helpers ── */
+    .slide-cover *,.slide-dark *,.slide-green *,.slide-purple *,.slide-amber *{color:#fff !important;}
+    .tag-white{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);border-radius:999px;font-size:12px;padding:3px 10px;display:inline-block;}
+
+    h1.slide-h1{font-size:clamp(28px,5vw,56px);font-weight:900;line-height:1.1;text-align:center;}
+    h2.slide-h2{font-size:clamp(20px,3.5vw,36px);font-weight:800;margin-bottom:16px;}
+    .sub{font-size:clamp(13px,1.8vw,18px);opacity:.85;margin-top:10px;text-align:center;line-height:1.5;}
+    .label{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;opacity:.65;margin-bottom:6px;}
+
+    /* ── Cards ── */
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;width:100%;max-width:860px;}
+    .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:100%;max-width:860px;}
+    @media(max-width:700px){.grid2,.grid3{grid-template-columns:1fr;}}
+    .scard{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);border-radius:16px;padding:16px;}
+    .scard-light{background:#f8fafc;border:1px solid rgba(15,23,42,.10);border-radius:16px;padding:16px;}
+    .scard h3{font-size:15px;font-weight:800;margin-bottom:6px;}
+    .scard ul,.scard-light ul{padding-left:18px;}
+    .scard li,.scard-light li{font-size:13px;margin:5px 0;line-height:1.45;}
+    .scard-light h3{font-size:15px;font-weight:800;margin-bottom:6px;color:var(--text);}
+
+    /* ── Steps ── */
+    .steps{display:flex;gap:0;width:100%;max-width:820px;align-items:flex-start;}
+    .step{flex:1;text-align:center;position:relative;}
+    .step:not(:last-child)::after{content:'';position:absolute;top:22px;left:50%;width:100%;height:2px;background:rgba(255,255,255,.25);}
+    .step-circle{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;margin:0 auto 8px;}
+    .step-label{font-size:12px;line-height:1.4;}
+
+    /* ── Table ── */
+    .stbl{width:100%;border-collapse:collapse;font-size:13px;}
+    .stbl th{padding:8px 10px;border-bottom:2px solid rgba(15,23,42,.10);text-align:left;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.5px;}
+    .stbl td{padding:8px 10px;border-bottom:1px solid rgba(15,23,42,.06);vertical-align:top;}
+
+    /* ── Module badge ── */
+    .mod{display:inline-block;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;margin:3px;}
+    .mod.igan{background:#dbeafe;color:#1d4ed8;}
+    .mod.ln{background:#fee2e2;color:#991b1b;}
+    .mod.mn{background:#dcfce7;color:#14532d;}
+    .mod.ktx{background:#ede9fe;color:#5b21b6;}
+    .mod.gen{background:#fef3c7;color:#92400e;}
+
+    /* ── Big number ── */
+    .bignum{font-size:clamp(36px,6vw,72px);font-weight:900;line-height:1;}
+    .bignum-label{font-size:14px;opacity:.75;margin-top:4px;}
+
+    .wide{width:100%;max-width:860px;}
+
+    /* ── Footer link row ── */
+    .link-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:20px;}
+    .link-row a{display:inline-block;padding:8px 16px;border-radius:12px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;text-decoration:none;font-size:13px;}
+    .link-row a:hover{background:rgba(255,255,255,.25);}
+    .link-row-light a{background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.2);color:#1d4ed8;}
+
+    /* keyboard hint */
+    .kbd-hint{position:fixed;top:16px;right:16px;font-size:11px;color:#94a3b8;z-index:99;}
+  </style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- ── Slide 1: Cover ── -->
+  <div class="slide slide-cover active">
+    <div class="label" style="color:rgba(255,255,255,.7)">科研随访系统 · 完整介绍</div>
+    <h1 class="slide-h1" style="margin-top:10px">KidneySphere AI<br/>随访 Registry</h1>
+    <p class="sub">IgAN · LN · MN · KTX · GENERAL（通用/混合）<br/>多中心合并 · 一键论文输出 · 科研优先</p>
+    <div class="link-row" style="margin-top:28px">
+      <a href="/guide">使用说明</a>
+      <a href="/demo">预约演示</a>
+      <a href="/staff">立即试用</a>
+    </div>
+    <div style="margin-top:20px;font-size:12px;opacity:.55">← → 键或底部按钮翻页</div>
+  </div>
+
+  <!-- ── Slide 2: 核心问题 ── -->
+  <div class="slide slide-dark">
+    <div class="label">我们解决什么问题</div>
+    <h2 class="slide-h2" style="text-align:center;margin-top:8px">肾科科研的三大痛点</h2>
+    <div class="grid3" style="margin-top:16px">
+      <div class="scard">
+        <h3>😩 数据散乱</h3>
+        <ul><li>随访数据分散在 Excel / 纸质表格</li><li>多中心合并靠人工复制粘贴</li><li>数据口径不统一，重复清洗</li></ul>
+      </div>
+      <div class="scard">
+        <h3>⏰ 出图慢</h3>
+        <ul><li>从原始数据到 Table 1 需要数天</li><li>统计脚本靠各人自写，难以复现</li><li>改一次数据，所有图表重做</li></ul>
+      </div>
+      <div class="scard">
+        <h3>🔒 合规难</h3>
+        <ul><li>PII 混入数据集，多中心共享有风险</li><li>无版本控制，"边改边分析"</li><li>结果无法复现，审稿被质疑</li></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Slide 3: 解决方案 ── -->
+  <div class="slide slide-cover">
+    <div class="label">我们的解决方案</div>
+    <h2 class="slide-h2" style="text-align:center;margin-top:8px">10 分钟科研闭环</h2>
+    <div class="steps" style="margin-top:24px">
+      <div class="step">
+        <div class="step-circle">1</div>
+        <div class="step-label">极简录入<br/>核心四项<br/>日期/BP/Scr/UPCR</div>
+      </div>
+      <div class="step">
+        <div class="step-circle">2</div>
+        <div class="step-label">一键导出<br/>论文包 zip<br/>去标识化 CSV</div>
+      </div>
+      <div class="step">
+        <div class="step-circle">3</div>
+        <div class="step-label">本地运行<br/>分析脚本<br/>python run_analysis.py</div>
+      </div>
+      <div class="step">
+        <div class="step-circle">4</div>
+        <div class="step-label">自动生成<br/>Table 1 / 图 /<br/>12m 结局 / Methods</div>
+      </div>
+      <div class="step">
+        <div class="step-circle">5</div>
+        <div class="step-label">QC→补录<br/>锁定版本<br/>多中心合并</div>
+      </div>
+    </div>
+    <p class="sub" style="margin-top:20px">科研小白也能 10 分钟内拿到首版论文材料</p>
+  </div>
+
+  <!-- ── Slide 4: 支持病种 ── -->
+  <div class="slide slide-light">
+    <div class="label" style="color:var(--muted)">支持的病种模块</div>
+    <h2 class="slide-h2" style="margin-top:8px">5 个模块，覆盖全肾科随访场景</h2>
+    <div class="wide" style="margin-top:12px">
+      <table class="stbl">
+        <thead><tr><th>模块</th><th>适用疾病</th><th>特有字段</th><th>典型投稿期刊</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="mod igan">IgAN</span></td>
+            <td>IgA 肾病</td>
+            <td>Oxford MEST-C 病理积分（M/E/S/T/C）</td>
+            <td>JASN · KI · AJKD</td>
+          </tr>
+          <tr>
+            <td><span class="mod ln">LN</span></td>
+            <td>狼疮性肾炎</td>
+            <td>补体 C3/C4 · dsDNA · ISN/RPS 分型</td>
+            <td>ARD · Rheumatology</td>
+          </tr>
+          <tr>
+            <td><span class="mod mn">MN</span></td>
+            <td>膜性肾病</td>
+            <td>PLA2R / THSD7A 抗体滴度</td>
+            <td>JASN · KI</td>
+          </tr>
+          <tr>
+            <td><span class="mod ktx">KTX</span></td>
+            <td>肾移植术后</td>
+            <td>供体信息 · 免疫诱导方案 · 排斥分级</td>
+            <td>Transplantation · AJT</td>
+          </tr>
+          <tr>
+            <td><span class="mod gen">GENERAL</span></td>
+            <td>任意 / 混合病种</td>
+            <td>无特有限制，完全通用（FSGS/ANCA/CKD/DKD…）</td>
+            <td>任意肾病 / 内科期刊</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Slide 5: GENERAL 模块详解 ── -->
+  <div class="slide slide-amber">
+    <div class="label">重点模块说明</div>
+    <h2 class="slide-h2" style="text-align:center;margin-top:8px">GENERAL（通用 / 混合）模块</h2>
+    <div class="grid2" style="margin-top:16px;max-width:820px">
+      <div class="scard">
+        <h3>什么时候用 GENERAL？</h3>
+        <ul>
+          <li>病种是 FSGS、ANCA、糖尿病肾病、高血压肾病等</li>
+          <li>研究对象是"全科患者"（混合病种）</li>
+          <li>做跨病种对照研究（如 IgAN vs. FSGS）</li>
+          <li>科室质量改进（QI）项目</li>
+          <li>尚不确定病种分层，先建库再细分</li>
+        </ul>
+      </div>
+      <div class="scard">
+        <h3>GENERAL 能做什么分析？</h3>
+        <ul>
+          <li>eGFR 趋势（全病种通用）</li>
+          <li>UPCR 缓解率（定义：UPCR &lt; 0.5）</li>
+          <li>12 个月结局（eGFR 下降 ≥ 40%）</li>
+          <li>Table 1 基线特征表</li>
+          <li>QC 报告（缺失 / 异常 / 重复）</li>
+          <li>Methods 草稿（英文，可直接用于投稿）</li>
+        </ul>
+      </div>
+    </div>
+    <p class="sub" style="margin-top:16px;opacity:.8">病种特有指标（如补体、抗体）→ 用 labs_long 自由字段追加，分析脚本可自定义读取</p>
+  </div>
+
+  <!-- ── Slide 6: 多中心架构 ── -->
+  <div class="slide slide-dark">
+    <div class="label">多中心协作</div>
+    <h2 class="slide-h2" style="text-align:center;margin-top:8px">多中心合并键设计</h2>
+    <div class="grid2" style="margin-top:16px;max-width:800px">
+      <div class="scard">
+        <h3>🔑 合并键规则</h3>
+        <ul>
+          <li>每个中心设置唯一 <strong>center_code</strong>（如 BJ01 / SH01 / GZ01）</li>
+          <li>患者研究编号 <strong>patient_code</strong> 各中心内唯一</li>
+          <li>全局唯一键 = <strong>center_code + patient_code</strong></li>
+          <li>合并时不会冲突，无需人工对齐</li>
+        </ul>
+      </div>
+      <div class="scard">
+        <h3>📦 DCC 合并流程</h3>
+        <ul>
+          <li>各中心独立录入，后台各自导出论文包</li>
+          <li>DCC 收齐 N 份 CSV 后按中心键 concat</li>
+          <li>统一运行分析脚本 → 自动生成合并版 Table 1 + QC</li>
+          <li>结果与各中心子集分析保持一致（可复现）</li>
+        </ul>
+      </div>
+    </div>
+    <div style="margin-top:20px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:12px 20px;font-size:13px;max-width:760px">
+      示例：3 中心 IgAN 研究（BJ01 / SH01 / GZ01），合计 280 例<br/>
+      → 各中心 5 分钟导出 → DCC 合并 → 1 小时出稿级 Table 1 + eGFR 趋势图
+    </div>
+  </div>
+
+  <!-- ── Slide 7: 数据安全 ── -->
+  <div class="slide slide-green">
+    <div class="label">安全与合规</div>
+    <h2 class="slide-h2" style="text-align:center;margin-top:8px">去标识化 · 可复现 · 合规</h2>
+    <div class="grid3" style="margin-top:16px">
+      <div class="scard">
+        <h3>🔒 去标识化</h3>
+        <ul>
+          <li>系统仅存储研究编号（patient_code），<b>不存 PII</b></li>
+          <li>身份映射表由各中心本地受控保管</li>
+          <li>多中心共享数据无隐私风险</li>
+        </ul>
+      </div>
+      <div class="scard">
+        <h3>📸 快照可复现</h3>
+        <ul>
+          <li>一键生成不可变 Snapshot ID</li>
+          <li>论文包含 snapshot_readme.txt</li>
+          <li>同一版本数据重复运行结果完全一致</li>
+          <li>审稿人可核查，避免"边改边分析"</li>
+        </ul>
+      </div>
+      <div class="scard">
+        <h3>⏰ 到期只读</h3>
+        <ul>
+          <li>试用到期 → 项目进入只读模式</li>
+          <li>10 天宽限期内仍可导出最终论文包</li>
+          <li>防止数据修改影响结果可复现性</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Slide 8: 论文输出 ── -->
+  <div class="slide slide-light">
+    <div class="label" style="color:var(--muted)">论文输出清单</div>
+    <h2 class="slide-h2" style="margin-top:8px">一键生成 · 直接用于投稿</h2>
+    <div class="wide" style="margin-top:12px">
+      <table class="stbl">
+        <thead><tr><th>输出文件</th><th>用于论文</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td><code>table1_baseline.xlsx</code></td><td>Table 1</td><td>基线特征表（均数±SD / 中位数 IQR / 频率），按中心分层</td></tr>
+          <tr><td><code>qc_report.xlsx</code></td><td>数据质量</td><td>缺失率 / 异常值 / 重复记录 / 各中心完整率对比</td></tr>
+          <tr><td><code>plot_egfr_trend.png</code></td><td>Figure</td><td>eGFR 随时间趋势（分中心 / 分组，带置信区间）</td></tr>
+          <tr><td><code>plot_upcr_trend.png</code></td><td>Figure</td><td>UPCR 变化趋势</td></tr>
+          <tr><td><code>outcomes_12m.csv</code></td><td>Results</td><td>12 个月结局（eGFR 下降 ≥ 40% 率 / UPCR 缓解率）</td></tr>
+          <tr><td><code>METHODS_AUTO_EN.md</code></td><td>Methods 草稿</td><td>英文方法学段落（含统计方法说明），PI 最终审阅修改</td></tr>
+          <tr><td><code>snapshot_readme.txt</code></td><td>可复现凭证</td><td>数据版本 ID + 生成时间戳，用于补充材料</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Slide 9: 操作演示 ── -->
+  <div class="slide slide-purple">
+    <div class="label">操作流程（PI / 研究生视角）</div>
+    <h2 class="slide-h2" style="text-align:center;margin-top:8px">从录入到论文：7 个步骤</h2>
+    <div class="grid2" style="margin-top:14px;max-width:820px">
+      <div class="scard">
+        <h3>后台操作（/staff）</h3>
+        <ul>
+          <li><strong>创建项目</strong>：填 center_code + 选模块（IgAN / LN / MN / GENERAL…）</li>
+          <li><strong>录入基线</strong>：patient_code + 入组日期 + Scr + UPCR + 可选病理</li>
+          <li><strong>发随访链接</strong>：生成 token → 发给随访护士，无需登录即可录入</li>
+          <li><strong>导出论文包</strong>：一键 zip，包含去标识化 CSV + 分析脚本</li>
+        </ul>
+      </div>
+      <div class="scard">
+        <h3>本地分析（研究生）</h3>
+        <ul>
+          <li>解压论文包</li>
+          <li><code>pip install -r requirements.txt</code>（首次）</li>
+          <li><code>python run_analysis.py</code></li>
+          <li>打开 <code>outputs/</code> 文件夹，直接使用图表与表格</li>
+          <li>看 QC 报告 → 回到后台补录 → 复跑 → 版本锁定</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Slide 10: 价格 ── -->
+  <div class="slide slide-light">
+    <div class="label" style="color:var(--muted)">价格与试用</div>
+    <h2 class="slide-h2" style="margin-top:8px">透明定价 · 随时退款</h2>
+    <div class="grid3" style="margin-top:14px">
+      <div class="scard-light" style="border-top:3px solid #94a3b8">
+        <h3>试用</h3>
+        <div style="font-size:28px;font-weight:900;margin:8px 0;color:var(--text)">90 天</div>
+        <ul style="color:#475569">
+          <li>完整录入 / 导出 / 论文包功能</li>
+          <li>到期后 10 天只读宽限</li>
+          <li>无需信用卡</li>
+        </ul>
+      </div>
+      <div class="scard-light" style="border-top:3px solid var(--brand)">
+        <h3 style="color:var(--brand)">Pro 团队版</h3>
+        <div style="font-size:28px;font-weight:900;margin:8px 0;color:var(--text)">¥999 <span style="font-size:14px;font-weight:400;color:#64748b">/ 月（5 席）</span></div>
+        <ul style="color:#475569">
+          <li>超出席位：¥99 / 席 / 月</li>
+          <li>年付：¥9,590（8 折）</li>
+          <li>支持随时按比例退款</li>
+        </ul>
+      </div>
+      <div class="scard-light" style="border-top:3px solid var(--accent1)">
+        <h3 style="color:var(--accent1)">机构版</h3>
+        <div style="font-size:28px;font-weight:900;margin:8px 0;color:var(--text)">联系报价</div>
+        <ul style="color:#475569">
+          <li>多中心协作治理</li>
+          <li>私有化部署可选</li>
+          <li>支持机构采购流程</li>
+        </ul>
+      </div>
+    </div>
+    <div style="margin-top:14px;font-size:13px;color:#64748b;text-align:center">
+      更多：<a href="/pricing" style="color:var(--brand)">完整价格与FAQ /pricing</a>
+    </div>
+  </div>
+
+  <!-- ── Slide 11: 适合人群 ── -->
+  <div class="slide slide-dark">
+    <div class="label">谁应该使用这套系统？</div>
+    <h2 class="slide-h2" style="text-align:center;margin-top:8px">适合 4 类用户</h2>
+    <div class="grid2" style="margin-top:16px;max-width:820px">
+      <div class="scard">
+        <h3>🔬 PI / 科研负责人</h3>
+        <ul>
+          <li>需要建立多中心随访数据库</li>
+          <li>想发 JASN / KI 级别论文，手头缺乏数据整理工具</li>
+          <li>希望数据可复现，经得起审稿人核查</li>
+        </ul>
+      </div>
+      <div class="scard">
+        <h3>🎓 研究生 / 住院医</h3>
+        <ul>
+          <li>毕业论文需要随访数据，但不会写分析脚本</li>
+          <li>想快速出图出表，省去繁琐 Excel 操作</li>
+          <li>需要规范的 Methods 段落草稿</li>
+        </ul>
+      </div>
+      <div class="scard">
+        <h3>🏥 临床协调员 / 护士</h3>
+        <ul>
+          <li>负责随访录入，希望界面简单（无需培训）</li>
+          <li>用手机 / 电脑打开随访链接即可录入</li>
+          <li>不需要登录，只需点 token 链接</li>
+        </ul>
+      </div>
+      <div class="scard">
+        <h3>🏛️ 机构 / DCC</h3>
+        <ul>
+          <li>管理多中心数据合并与质量控制</li>
+          <li>需要稳定可复现的分析基础设施</li>
+          <li>考虑私有化部署（数据完全在机构内部）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Slide 12: FAQ ── -->
+  <div class="slide slide-light">
+    <div class="label" style="color:var(--muted)">常见问题</div>
+    <h2 class="slide-h2" style="margin-top:8px">快速 FAQ</h2>
+    <div class="wide" style="margin-top:10px">
+      <table class="stbl">
+        <thead><tr><th>问题</th><th>回答</th></tr></thead>
+        <tbody>
+          <tr><td>可以用于注册临床试验（IND）吗？</td><td>不建议直接作为 EDC/eCRF 主系统；适合观察性研究、RWS、IIT。需要 GCP/Part11 请联系私有化方案。</td></tr>
+          <tr><td>数据存在哪里？</td><td>默认存 Supabase 云（新加坡节点）；机构版支持私有化部署至院内服务器。</td></tr>
+          <tr><td>GENERAL 模块没有我需要的字段怎么办？</td><td>用 labs_long / meds_long 自由字段表追加；分析脚本支持自定义读取列。</td></tr>
+          <tr><td>多个课题可以共用一个系统吗？</td><td>可以；每个课题建一个"项目"，center_code 隔离，数据互不干扰。</td></tr>
+          <tr><td>随访护士不会用电脑怎么办？</td><td>随访入口 /p/&lt;token&gt; 极简设计，手机浏览器打开即可，4 个字段，无需账号。</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Slide 13: CTA ── -->
+  <div class="slide slide-cover">
+    <h1 class="slide-h1">立即开始，<br/>90 天免费试用</h1>
+    <p class="sub" style="margin-top:14px">无需信用卡 · 完整功能 · 随时退出</p>
+    <div class="link-row" style="margin-top:28px">
+      <a href="/staff" style="background:rgba(255,255,255,.25);font-weight:700">🚀 开始试用 /staff</a>
+      <a href="/demo">📅 预约演示</a>
+      <a href="/guide">📖 使用说明</a>
+      <a href="/guide#scenarios">🔬 科研场景举例</a>
+      <a href="/pricing">💰 查看价格</a>
+    </div>
+    <div style="margin-top:24px;font-size:13px;opacity:.65">
+      bd@kidneysphere.ai · <a href="/" style="color:rgba(255,255,255,.8)">kidneysphere.ai</a>
+    </div>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- Navigation -->
+<div class="nav">
+  <button id="btnPrev" title="上一页">‹</button>
+  <div class="dots" id="dots"></div>
+  <div class="counter" id="counter">1 / 13</div>
+  <button id="btnNext" title="下一页">›</button>
+  <a class="exit" href="/">退出</a>
+</div>
+
+<div class="kbd-hint">← → 键翻页 · F 全屏</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  const dotsEl = document.getElementById('dots');
+  const counter = document.getElementById('counter');
+  let cur = 0;
+
+  // Build dots
+  slides.forEach((_, i) => {
+    const d = document.createElement('span');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.addEventListener('click', () => go(i));
+    dotsEl.appendChild(d);
+  });
+
+  function go(n) {
+    slides[cur].classList.remove('active');
+    dotsEl.children[cur].classList.remove('active');
+    cur = (n + slides.length) % slides.length;
+    slides[cur].classList.add('active');
+    dotsEl.children[cur].classList.add('active');
+    counter.textContent = (cur + 1) + ' / ' + slides.length;
+  }
+
+  document.getElementById('btnPrev').addEventListener('click', () => go(cur - 1));
+  document.getElementById('btnNext').addEventListener('click', () => go(cur + 1));
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') go(cur + 1);
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') go(cur - 1);
+    if (e.key === 'f' || e.key === 'F') document.documentElement.requestFullscreen?.();
+  });
+</script>
+</body>
+</html>
