@@ -302,13 +302,29 @@ async function loadProjects(){
 
 function renderProjects(){
   el.projectsList.innerHTML = "";
-  projects.forEach(p=>{
-    const b = document.createElement("button");
-    b.className = "pill" + (selectedProject?.id === p.id ? " active" : "");
-    b.textContent = `${p.center_code} · ${p.name}`;
-    b.addEventListener("click", ()=>selectProject(p.id));
-    el.projectsList.appendChild(b);
-  });
+
+  if (projects.length === 0){
+    // Empty state — invite user to seed demo data
+    const hint = document.createElement("div");
+    hint.style.cssText = "margin-top:10px;padding:14px;border:1.5px dashed rgba(37,99,235,.3);border-radius:14px;background:rgba(37,99,235,.04);";
+    hint.innerHTML = `
+      <div style="font-weight:700;font-size:14px;margin-bottom:6px;">还没有项目</div>
+      <div class="muted small" style="margin-bottom:10px;">
+        可以先创建空项目（填写上方表单），也可以一键加载演示数据，立刻看到完整系统效果。
+      </div>
+      <button class="btn primary small" id="btnSeedDemo">⚡ 一键加载 IgAN 演示数据（8 患者）</button>`;
+    el.projectsList.appendChild(hint);
+    hint.querySelector("#btnSeedDemo").addEventListener("click", seedDemoData);
+  } else {
+    projects.forEach(p=>{
+      const b = document.createElement("button");
+      b.className = "pill" + (selectedProject?.id === p.id ? " active" : "");
+      b.textContent = `${p.center_code} · ${p.name}`;
+      b.addEventListener("click", ()=>selectProject(p.id));
+      el.projectsList.appendChild(b);
+    });
+  }
+
   renderProjectMeta();
 }
 
@@ -374,6 +390,107 @@ async function createProject(){
     setBusy(btn,false);
   }
 }
+
+// ─── Demo data seeder ─────────────────────────────────────────────────────────
+async function seedDemoData(){
+  const btn = document.getElementById("btnSeedDemo");
+  if (btn) { btn.disabled = true; btn.textContent = "加载中…"; }
+
+  try{
+    // 1. Create demo project
+    const { data: proj, error: pe } = await sb.from("projects")
+      .insert({
+        name: "IgAN 多中心演示项目（DEMO）",
+        center_code: "DEMO01",
+        module: "IGAN",
+        registry_type: "igan",
+        description: "自动生成的演示数据集，含8位去标识化患者与随访记录，展示MEST-C、趋势图、QC报告等功能。"
+      })
+      .select()
+      .single();
+    if (pe) throw pe;
+    const pid = proj.id;
+
+    // 2. Patient baselines (realistic IgAN cohort, mix of stable/progressive)
+    const patients = [
+      { patient_code:"P001", sex:"M", birth_year:1978, baseline_date:"2023-01-15", baseline_scr:105, baseline_upcr:2.1,
+        biopsy_date:"2022-12-10", oxford_m:1, oxford_e:0, oxford_s:1, oxford_t:0, oxford_c:0 },
+      { patient_code:"P002", sex:"F", birth_year:1985, baseline_date:"2023-01-20", baseline_scr:82,  baseline_upcr:1.2,
+        biopsy_date:"2023-01-05", oxford_m:0, oxford_e:0, oxford_s:0, oxford_t:0, oxford_c:0 },
+      { patient_code:"P003", sex:"M", birth_year:1972, baseline_date:"2023-02-01", baseline_scr:145, baseline_upcr:3.5,
+        biopsy_date:"2023-01-18", oxford_m:1, oxford_e:1, oxford_s:1, oxford_t:1, oxford_c:0 },
+      { patient_code:"P004", sex:"F", birth_year:1990, baseline_date:"2023-02-08", baseline_scr:95,  baseline_upcr:2.8,
+        biopsy_date:"2023-01-25", oxford_m:1, oxford_e:0, oxford_s:1, oxford_t:0, oxford_c:0 },
+      { patient_code:"P005", sex:"M", birth_year:1968, baseline_date:"2023-02-15", baseline_scr:178, baseline_upcr:5.2,
+        biopsy_date:"2023-02-01", oxford_m:1, oxford_e:1, oxford_s:1, oxford_t:2, oxford_c:1 },
+      { patient_code:"P006", sex:"F", birth_year:1982, baseline_date:"2023-03-01", baseline_scr:88,  baseline_upcr:1.8,
+        biopsy_date:"2023-02-15", oxford_m:0, oxford_e:0, oxford_s:1, oxford_t:0, oxford_c:0 },
+      { patient_code:"P007", sex:"M", birth_year:1975, baseline_date:"2023-03-10", baseline_scr:132, baseline_upcr:2.5,
+        biopsy_date:"2023-02-28", oxford_m:1, oxford_e:0, oxford_s:0, oxford_t:1, oxford_c:0 },
+      { patient_code:"P008", sex:"F", birth_year:1993, baseline_date:"2023-03-15", baseline_scr:75,  baseline_upcr:1.5,
+        biopsy_date:"2023-03-01", oxford_m:1, oxford_e:1, oxford_s:0, oxford_t:0, oxford_c:0 },
+    ].map(p => ({ ...p, project_id: pid }));
+
+    const { error: bpe } = await sb.from("patients_baseline").insert(patients);
+    if (bpe) throw bpe;
+
+    // 3. Visits (4 per patient; P007 missing last visit, P008 missing Scr at visit2 — to demo QC report)
+    const visits = [
+      // P001 – stable, responds to treatment
+      { patient_code:"P001", visit_date:"2023-01-15", sbp:138, dbp:88, scr_umol_l:105, upcr:2.1 },
+      { patient_code:"P001", visit_date:"2023-04-15", sbp:135, dbp:85, scr_umol_l:103, upcr:1.8 },
+      { patient_code:"P001", visit_date:"2023-07-15", sbp:128, dbp:82, scr_umol_l:98,  upcr:0.9 },
+      { patient_code:"P001", visit_date:"2024-01-15", sbp:125, dbp:80, scr_umol_l:96,  upcr:0.5 },
+      // P002 – mild, full remission
+      { patient_code:"P002", visit_date:"2023-01-20", sbp:120, dbp:76, scr_umol_l:82,  upcr:1.2 },
+      { patient_code:"P002", visit_date:"2023-04-20", sbp:118, dbp:74, scr_umol_l:80,  upcr:0.8 },
+      { patient_code:"P002", visit_date:"2023-07-20", sbp:116, dbp:73, scr_umol_l:78,  upcr:0.5 },
+      { patient_code:"P002", visit_date:"2024-01-20", sbp:115, dbp:72, scr_umol_l:79,  upcr:0.4 },
+      // P003 – progressive, eGFR declining (QC注意：此类患者需密切随访)
+      { patient_code:"P003", visit_date:"2023-02-01", sbp:155, dbp:98, scr_umol_l:145, upcr:3.5 },
+      { patient_code:"P003", visit_date:"2023-05-01", sbp:158, dbp:100, scr_umol_l:162, upcr:4.2 },
+      { patient_code:"P003", visit_date:"2023-08-01", sbp:162, dbp:102, scr_umol_l:198, upcr:5.8 },
+      { patient_code:"P003", visit_date:"2024-02-01", sbp:165, dbp:104, scr_umol_l:234, upcr:7.6 },
+      // P004 – partial response
+      { patient_code:"P004", visit_date:"2023-02-08", sbp:132, dbp:84, scr_umol_l:95,  upcr:2.8 },
+      { patient_code:"P004", visit_date:"2023-05-08", sbp:128, dbp:82, scr_umol_l:92,  upcr:2.0 },
+      { patient_code:"P004", visit_date:"2023-08-08", sbp:124, dbp:80, scr_umol_l:90,  upcr:1.5 },
+      { patient_code:"P004", visit_date:"2024-02-08", sbp:122, dbp:78, scr_umol_l:88,  upcr:1.2 },
+      // P005 – rapid progressive (high risk: M1E1S1T2C1)
+      { patient_code:"P005", visit_date:"2023-02-15", sbp:162, dbp:104, scr_umol_l:178, upcr:5.2 },
+      { patient_code:"P005", visit_date:"2023-05-15", sbp:165, dbp:106, scr_umol_l:210, upcr:6.8 },
+      { patient_code:"P005", visit_date:"2023-08-15", sbp:168, dbp:108, scr_umol_l:265, upcr:9.2 },
+      { patient_code:"P005", visit_date:"2024-02-15", sbp:170, dbp:110, scr_umol_l:342, upcr:12.5 },
+      // P006 – good response, near complete remission
+      { patient_code:"P006", visit_date:"2023-03-01", sbp:125, dbp:80, scr_umol_l:88,  upcr:1.8 },
+      { patient_code:"P006", visit_date:"2023-06-01", sbp:120, dbp:78, scr_umol_l:86,  upcr:0.9 },
+      { patient_code:"P006", visit_date:"2023-09-01", sbp:118, dbp:76, scr_umol_l:84,  upcr:0.5 },
+      { patient_code:"P006", visit_date:"2024-03-01", sbp:116, dbp:74, scr_umol_l:83,  upcr:0.4 },
+      // P007 – moderate, missing last visit (QC will flag incomplete follow-up)
+      { patient_code:"P007", visit_date:"2023-03-10", sbp:142, dbp:90, scr_umol_l:132, upcr:2.5 },
+      { patient_code:"P007", visit_date:"2023-06-10", sbp:140, dbp:88, scr_umol_l:130, upcr:2.2 },
+      { patient_code:"P007", visit_date:"2023-09-10", sbp:138, dbp:86, scr_umol_l:128, upcr:2.0 },
+      // P008 – missing Scr at visit 2 (QC will flag missing core field)
+      { patient_code:"P008", visit_date:"2023-03-15", sbp:118, dbp:74, scr_umol_l:75,  upcr:1.5 },
+      { patient_code:"P008", visit_date:"2023-06-15", sbp:116, dbp:72, scr_umol_l:null, upcr:1.2 },  // missing Scr
+      { patient_code:"P008", visit_date:"2023-09-15", sbp:115, dbp:71, scr_umol_l:74,  upcr:0.8 },
+      { patient_code:"P008", visit_date:"2024-03-15", sbp:114, dbp:70, scr_umol_l:73,  upcr:0.6 },
+    ].map(v => ({ ...v, project_id: pid }));
+
+    const { error: ve } = await sb.from("visits_long").insert(visits);
+    if (ve) throw ve;
+
+    toast("✅ 演示数据加载完成！已创建 8 名患者 + 31 次随访（含QC测试项）");
+    await loadProjects();
+    if (projects.length) selectProject(projects[0].id);
+
+  }catch(e){
+    console.error(e);
+    toast("演示数据加载失败：" + (e?.message || e));
+    if (btn){ btn.disabled = false; btn.textContent = "⚡ 一键加载 IgAN 演示数据（8 患者）"; }
+  }
+}
+// ──────────────────────────────────────────────────────────────────────────────
 
 async function loadPatients(){
   if (!selectedProject){ patients = []; renderPatients(); return; }
