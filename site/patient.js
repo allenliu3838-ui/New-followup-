@@ -10,12 +10,16 @@ const el = {
   sbp: qs("#sbp"),
   dbp: qs("#dbp"),
   scr: qs("#scr"),
+  scrUnit: qs("#scrUnit"),
   upcr: qs("#upcr"),
+  upcrUnit: qs("#upcrUnit"),
   egfr: qs("#egfr"),
   notes: qs("#notes"),
   btnSubmit: qs("#btnSubmit"),
   btnRefresh: qs("#btnRefresh"),
   submitHint: qs("#submitHint"),
+  qcBox: qs("#qcBox"),
+  receiptBox: qs("#receiptBox"),
   visitsBox: qs("#visitsBox"),
 };
 
@@ -23,7 +27,6 @@ let token = null;
 let ctx = null;
 
 function getToken(){
-  // supports /p/<token> or ?token=
   const path = window.location.pathname || "";
   const m = path.match(/\/p\/([^\/]+)$/);
   if (m && m[1]) return m[1];
@@ -32,8 +35,6 @@ function getToken(){
 }
 
 function ckdepi2021(scr_mg_dl, age, sex){
-  // CKD-EPI 2021 creatinine equation (race-free)
-  // ref: Inker et al. 2021
   if (!scr_mg_dl || !age || !sex) return null;
   const isF = String(sex).toUpperCase() === "F";
   const k = isF ? 0.7 : 0.9;
@@ -45,10 +46,35 @@ function ckdepi2021(scr_mg_dl, age, sex){
   return egfr;
 }
 
+function toInternalScrUmol(){
+  const raw = el.scr.value ? Number(el.scr.value) : null;
+  if (raw === null || Number.isNaN(raw)) return null;
+  return el.scrUnit.value === "mgdl" ? raw * 88.4 : raw;
+}
+
+function toInternalUpcrMgG(){
+  const raw = el.upcr.value ? Number(el.upcr.value) : null;
+  if (raw === null || Number.isNaN(raw)) return null;
+  return el.upcrUnit.value === "gg" ? raw * 1000 : raw;
+}
+
+function detectPII(s){
+  if (!s) return false;
+  const v = String(s).trim();
+  if (!v) return false;
+  const rules = [
+    /(?:^|\D)1[3-9][0-9]{9}(?:\D|$)/, // CN mobile
+    /(?:^|\D)[1-9]\d{5}(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[0-9xX](?:\D|$)/, // CN ID
+    /(MRN|病案号|住院号|门诊号|姓名|身份证|手机号|电话)/i,
+    /\d{8,}/,
+  ];
+  return rules.some((r) => r.test(v));
+}
+
 function computeEgfr(){
   if (!ctx) return;
-  const scr_umol = Number(el.scr.value);
-  if (!scr_umol || Number.isNaN(scr_umol)) { el.egfr.value = ""; return; }
+  const scr_umol = toInternalScrUmol();
+  if (!scr_umol) { el.egfr.value = ""; return; }
   const scr_mg = scr_umol / 88.4;
   const year = Number(ctx.birth_year);
   const vdate = el.visitDate.value ? new Date(el.visitDate.value) : null;
@@ -56,6 +82,60 @@ function computeEgfr(){
   const egfr = ckdepi2021(scr_mg, age, ctx.sex);
   if (!egfr || Number.isNaN(egfr)) { el.egfr.value = ""; return; }
   el.egfr.value = egfr.toFixed(1);
+}
+
+function getQcState(){
+  const visitDate = el.visitDate.value;
+  const sbp = el.sbp.value ? Number(el.sbp.value) : null;
+  const dbp = el.dbp.value ? Number(el.dbp.value) : null;
+  const scr_umol = toInternalScrUmol();
+  const upcr_mgg = toInternalUpcrMgG();
+  const notes = el.notes.value || "";
+
+  const missing = [];
+  if (!visitDate) missing.push("日期");
+  if (sbp === null || Number.isNaN(sbp)) missing.push("SBP");
+  if (dbp === null || Number.isNaN(dbp)) missing.push("DBP");
+  if (scr_umol === null || Number.isNaN(scr_umol)) missing.push("Scr");
+  if (upcr_mgg === null || Number.isNaN(upcr_mgg)) missing.push("UPCR");
+
+  const warnings = [];
+  if (sbp !== null && (sbp < 70 || sbp > 220)) warnings.push(`SBP=${sbp} 超出常见范围(70-220)`);
+  if (dbp !== null && (dbp < 40 || dbp > 130)) warnings.push(`DBP=${dbp} 超出常见范围(40-130)`);
+  if (scr_umol !== null && (scr_umol < 20 || scr_umol > 2000)) warnings.push(`Scr=${scr_umol.toFixed(1)} μmol/L 超出常见范围(20-2000)`);
+  if (upcr_mgg !== null && (upcr_mgg < 0 || upcr_mgg > 10000)) warnings.push(`UPCR=${upcr_mgg.toFixed(2)} mg/g 超出常见范围(0-10000)`);
+
+  const piiHit = detectPII(ctx?.patient_code || "") || detectPII(notes);
+  const status = (missing.length === 0 && !piiHit) ? "达标" : "未达标";
+
+  return { visitDate, sbp, dbp, scr_umol, upcr_mgg, notes, missing, warnings, piiHit, status };
+}
+
+function renderQc(){
+  const q = getQcState();
+  let html = `<b>本次随访：${q.status}</b>`;
+  if (q.missing.length) html += `<div style="margin-top:6px;color:#b91c1c">缺失：${escapeHtml(q.missing.join(" / "))}</div>`;
+  if (q.piiHit) html += `<div style="margin-top:6px;color:#b91c1c">检测到疑似 PII（patient_code 或备注），已禁止提交。</div>`;
+  if (q.warnings.length) html += `<div style="margin-top:6px;color:#92400e">QC 警告：${escapeHtml(q.warnings.join("；"))}</div>`;
+  if (!q.missing.length && !q.piiHit && !q.warnings.length) html += `<div style="margin-top:6px;color:#166534">核心四项完整，未见明显异常。</div>`;
+  el.qcBox.innerHTML = html;
+}
+
+function renderReceipt(row, qcWarnings){
+  if (!row) return;
+  const payload = JSON.stringify({ rid: row.visit_id, t: row.receipt_token, exp: row.receipt_expires_at });
+  const qr = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(payload)}`;
+  el.receiptBox.style.display = "block";
+  el.receiptBox.innerHTML = `
+    <div><b>提交回执</b></div>
+    <div class="small" style="margin-top:6px">record_id：<code>${escapeHtml(row.visit_id)}</code></div>
+    <div class="small">服务器时间：${escapeHtml(fmtDate(row.server_time))}</div>
+    <div class="small">摘要：${escapeHtml(el.visitDate.value)} · BP ${escapeHtml(el.sbp.value)}/${escapeHtml(el.dbp.value)} · Scr ${escapeHtml((toInternalScrUmol()||"").toString())} μmol/L · UPCR ${escapeHtml((toInternalUpcrMgG()||"").toString())} mg/g</div>
+    <div class="small">QC：${qcWarnings.length ? `<span style="color:#92400e">${escapeHtml(qcWarnings.join('；'))}</span>` : `<span style="color:#166534">无警告</span>`}</div>
+    <div class="small">校验 token 有效期：至 ${escapeHtml(fmtDate(row.receipt_expires_at))}</div>
+    <img src="${qr}" alt="receipt qr" style="margin-top:8px;border:1px solid rgba(15,23,42,.12);border-radius:8px;background:#fff"/>
+    <div class="small muted">二维码仅包含 record_id + 短期校验 token，不含医学值和身份信息。</div>
+  `;
 }
 
 async function loadContext(){
@@ -99,39 +179,66 @@ async function loadContext(){
     <div>试用状态</div><div>${trialBadge} <span class="muted small">${escapeHtml(trialTxt)}</span></div>
   `;
 
-  // default date = today
   if (!el.visitDate.value){
     el.visitDate.value = new Date().toISOString().slice(0,10);
   }
   computeEgfr();
+  renderQc();
 }
 
 async function submitVisit(){
   if (!ctx) return;
-  const visit_date = el.visitDate.value;
-  if (!visit_date){ toast("请填写随访日期"); return; }
+  const q = getQcState();
+
+  if (q.missing.length){
+    toast(`核心四项缺失：${q.missing.join('/')}`);
+    renderQc();
+    return;
+  }
+  if (q.piiHit){
+    toast("检测到疑似 PII，已禁止提交");
+    renderQc();
+    return;
+  }
+
+  if (q.warnings.length){
+    const ok = window.confirm(`检测到数值异常：\n- ${q.warnings.join("\n- ")}\n\n确认仍要提交吗？`);
+    if (!ok) return;
+  }
 
   const payload = {
     p_token: token,
-    p_visit_date: visit_date,
-    p_sbp: el.sbp.value ? Number(el.sbp.value) : null,
-    p_dbp: el.dbp.value ? Number(el.dbp.value) : null,
-    p_scr_umol_l: el.scr.value ? Number(el.scr.value) : null,
-    p_upcr: el.upcr.value ? Number(el.upcr.value) : null,
+    p_visit_date: q.visitDate,
+    p_sbp: q.sbp,
+    p_dbp: q.dbp,
+    p_scr_umol_l: q.scr_umol,
+    p_upcr: q.upcr_mgg,
     p_egfr: el.egfr.value ? Number(el.egfr.value) : null,
-    p_notes: el.notes.value ? el.notes.value.slice(0, 500) : null,
+    p_notes: q.notes ? q.notes.slice(0, 500) : null,
   };
 
   el.btnSubmit.disabled = true;
   try{
-    const { data, error } = await sb.rpc("patient_submit_visit", payload);
+    const { data, error } = await sb.rpc("patient_submit_visit_v2", payload);
     if (error) throw error;
+    const row = data?.[0];
     toast("已提交随访");
     el.notes.value = "";
+    renderReceipt(row, q.warnings);
+    renderQc();
     await loadVisits();
   }catch(e){
     console.error(e);
-    toast("提交失败：" + (e?.message || e));
+    const msg = e?.message || String(e);
+    if (msg.includes("pii_detected_blocked")){
+      toast("疑似 PII，提交已被系统阻止");
+    }else if (msg.includes("missing_core_fields")){
+      toast("核心四项缺失，提交已被系统阻止");
+    }else if (msg.includes("rate_limited") || msg.includes("frozen")){
+      toast("提交过于频繁，token 已自动冻结，请联系管理员");
+    }else{
+      toast("提交失败：" + msg);
+    }
   }finally{
     el.btnSubmit.disabled = false;
   }
@@ -162,7 +269,7 @@ async function loadVisits(){
   `).join("");
   el.visitsBox.innerHTML = `
     <table class="table">
-      <thead><tr><th>日期</th><th>BP</th><th>Scr(μmol/L)</th><th>UPCR</th><th>eGFR</th><th>备注</th></tr></thead>
+      <thead><tr><th>日期</th><th>BP</th><th>Scr(μmol/L)</th><th>UPCR(mg/g)</th><th>eGFR</th><th>备注</th></tr></thead>
       <tbody>${trs}</tbody>
     </table>
   `;
@@ -171,8 +278,10 @@ async function loadVisits(){
 function bind(){
   el.btnSubmit.addEventListener("click", submitVisit);
   el.btnRefresh.addEventListener("click", loadVisits);
-  el.scr.addEventListener("input", computeEgfr);
-  el.visitDate.addEventListener("change", computeEgfr);
+  [el.scr, el.scrUnit, el.upcr, el.upcrUnit, el.sbp, el.dbp, el.visitDate, el.notes].forEach((n)=>{
+    n.addEventListener("input", ()=>{ computeEgfr(); renderQc(); });
+    n.addEventListener("change", ()=>{ computeEgfr(); renderQc(); });
+  });
 }
 
 async function main(){

@@ -35,6 +35,8 @@
           <a class="linkbtn primary" href="/staff" target="_blank">打开后台 /staff</a>
           <a class="linkbtn" href="#trial">试用必读</a>
           <a class="linkbtn" href="#roles">选择我的角色</a>
+          <a class="linkbtn" href="/security">安全合规</a>
+          <a class="linkbtn" href="/deployment">部署方式</a>
         </div>
         <div class="muted small" style="margin-top:10px">
           提示：系统导出 CSV 默认带 UTF‑8 BOM，Excel 直接打开一般不乱码；若出现 <code>######</code> 多为列宽不足（双击列边界自动适配）。
@@ -55,7 +57,7 @@
         <div class="trial-card">
           <div class="trial-title">试用周期（默认建议）</div>
           <div class="small">
-            <b>8 周试用</b>（可录入/修改/导出） + <b>2 周宽限</b>（仅用于导出最终论文包与复核，原则上不再新增/修改）。<br/>
+            <b>3 个月试用（90 天）</b>（可录入/修改/导出） + <b>10 天宽限</b>（仅用于导出最终论文包与复核，原则上不再新增/修改）。<br/>
             以后台显示的到期日为准。
           </div>
         </div>
@@ -297,10 +299,19 @@ pip --version</code></pre>
         <div class="small">为了合规与多中心协作。系统用研究编号即可完成随访与分析；身份映射表由各中心本地受控保存。</div>
       </details>
 
+
+      <details class="faq" data-faq>
+        <summary>这套系统可以直接用于药厂 1/2/3 期注册临床试验吗？</summary>
+        <div class="small">
+          <b>不建议直接作为注册试验主系统（eCRF/EDC）</b>。当前系统定位是科研随访与论文产出加速工具，适合观察性研究、真实世界研究（RWS）或研究者发起课题（IIT）的数据整理与分析。<br/>
+          若用于药厂 I/II/III 期注册路径，通常还需满足 GCP 稽查追踪、21 CFR Part 11 / 电子签名、完整审计追踪、受控变更、冻结锁库、角色分离、医学编码（MedDRA/WHODrug）、SDTM/ADaM 规范输出等要求。
+        </div>
+      </details>
+
       <div class="hr"></div>
 
       <div class="muted small">
-        最后更新：2026-02-17。可直接分享链接作为中心培训：<code>/guide#trial</code> 或 <code>/guide#research</code>。
+        最后更新：2026-02-20。可直接分享链接作为中心培训：<code>/guide#trial</code> 或 <code>/guide#research</code>。
       </div>
     </div>
   </div>

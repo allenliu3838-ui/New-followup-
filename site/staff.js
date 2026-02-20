@@ -91,6 +91,11 @@ const el = {
   btnExportEvents: qs("#btnExportEvents"),
 
   btnPaperPack: qs("#btnPaperPack"),
+  btnCreateSnapshot: qs("#btnCreateSnapshot"),
+  btnPaperPackWithSnapshot: qs("#btnPaperPackWithSnapshot"),
+  btnRefreshSnapshots: qs("#btnRefreshSnapshots"),
+  snapshotOut: qs("#snapshotOut"),
+  snapshotsList: qs("#snapshotsList"),
 };
 
 let session = null;
@@ -233,7 +238,10 @@ async function init(){
   el.btnExportVariants.addEventListener("click", ()=>exportTable("variants"));
   el.btnExportEvents?.addEventListener("click", ()=>exportTable("events"));
 
-  el.btnPaperPack.addEventListener("click", generatePaperPack);
+  el.btnPaperPack.addEventListener("click", ()=>generatePaperPack({withSnapshot:false}));
+  el.btnCreateSnapshot?.addEventListener("click", createSnapshotOnly);
+  el.btnPaperPackWithSnapshot?.addEventListener("click", ()=>generatePaperPack({withSnapshot:true}));
+  el.btnRefreshSnapshots?.addEventListener("click", loadSnapshots);
 
   renderAuthState();
 }
@@ -334,6 +342,7 @@ async function selectProject(projectId){
   renderProjects();
   await loadPatients();
   await loadExtras();
+  await loadSnapshots();
 }
 
 async function createProject(){
@@ -639,12 +648,24 @@ async function genToken(){
       <div class="btnbar" style="margin-top:8px">
         <button class="btn small" id="btnCopyLink">复制链接</button>
         <a class="btn small" href="${escapeHtml(link)}" target="_blank">打开随访页</a>
+        <button class="btn small danger" id="btnRevokeToken">一键失效该 token</button>
       </div>
-      <div class="muted small" style="margin-top:6px">提示：泄露可重新生成 token；系统不保存任何 PII。</div>
+      <div class="muted small" style="margin-top:6px">提示：泄露可立即失效 token；系统不保存任何 PII。</div>
     `;
     qs("#btnCopyLink", el.tokenOut).addEventListener("click", async ()=>{
       await navigator.clipboard.writeText(link);
       toast("已复制随访链接");
+    });
+    qs("#btnRevokeToken", el.tokenOut).addEventListener("click", async ()=>{
+      const ok = window.confirm("确认立即使该 token 失效？失效后链接将不可用。");
+      if (!ok) return;
+      const { error: revokeError } = await sb.rpc("revoke_patient_token", { p_token: token });
+      if (revokeError) {
+        console.error(revokeError);
+        toast("失效失败：" + (revokeError?.message || revokeError));
+        return;
+      }
+      toast("已使 token 失效");
     });
   }catch(e){
     console.error(e);
@@ -687,6 +708,7 @@ async function addVariant(){
     if (el.varHgvsP) el.varHgvsP.value = "";
     if (el.varNotes) el.varNotes.value = "";
     await loadExtras();
+  await loadSnapshots();
   }catch(e){
     console.error(e);
     toast("添加失败：" + (e?.message || e));
@@ -720,6 +742,7 @@ async function addLab(){
     if (el.labValue) el.labValue.value = "";
     if (el.labUnit) el.labUnit.value = "";
     await loadExtras();
+  await loadSnapshots();
   }catch(e){
     console.error(e);
     toast("添加失败：" + (e?.message || e));
@@ -753,6 +776,7 @@ async function addMed(){
     if (el.medName) el.medName.value = "";
     if (el.medDose) el.medDose.value = "";
     await loadExtras();
+  await loadSnapshots();
   }catch(e){
     console.error(e);
     toast("添加失败：" + (e?.message || e));
@@ -787,6 +811,7 @@ async function addEvent(){
     if (el.evtDate) el.evtDate.value = "";
     if (el.evtNotes) el.evtNotes.value = "";
     await loadExtras();
+  await loadSnapshots();
   }catch(e){
     console.error(e);
     toast("录入失败：" + (e?.message || e));
@@ -846,6 +871,12 @@ async function exportTable(kind){
     }));
     const csv = toCsv(rows, columns);
     downloadCsvUtf8Bom(filename, csv);
+    await sb.rpc("log_project_audit", {
+      p_project_id: pid,
+      p_action: "export_csv",
+      p_snapshot_id: null,
+      p_details: { kind, filename, rows: rows.length }
+    });
     toast("已导出：" + filename);
   }catch(e){
     console.error(e);
@@ -853,7 +884,119 @@ async function exportTable(kind){
   }
 }
 
-async function generatePaperPack(){
+
+async function fetchProjectRows(pid, center_code, module){
+  const [baseline, visits, labs, meds, vars, evts] = await Promise.all([
+    sb.from("patients_baseline").select("*").eq("project_id", pid),
+    sb.from("visits_long").select("*").eq("project_id", pid),
+    sb.from("labs_long").select("*").eq("project_id", pid),
+    sb.from("meds_long").select("*").eq("project_id", pid),
+    sb.from("variants_long").select("*").eq("project_id", pid),
+    sb.from("events_long").select("*").eq("project_id", pid),
+  ]);
+  const check = [baseline, visits, labs, meds, vars].find(x=>x.error);
+  if (check) throw check.error;
+  return {
+    bRows: (baseline.data||[]).map(r=>({center_code, module, ...r})),
+    vRows: (visits.data||[]).map(r=>({center_code, module, ...r})),
+    lRows: (labs.data||[]).map(r=>({center_code, module, ...r})),
+    mRows: (meds.data||[]).map(r=>({center_code, module, ...r})),
+    gRows: (vars.data||[]).map(r=>({center_code, module, ...r})),
+    eRows: (evts.error ? [] : (evts.data||[])).map(r=>({center_code, module, ...r})),
+  };
+}
+
+function calcQcSummary(vRows){
+  const n = vRows.length || 0;
+  const miss = (k)=>vRows.filter(r=>r[k]===null || r[k]===undefined || r[k]==="").length;
+  return {
+    n_visits: n,
+    missing: {
+      sbp: miss("sbp"), dbp: miss("dbp"), scr_umol_l: miss("scr_umol_l"), upcr: miss("upcr")
+    },
+    missing_rate_pct: n ? Number(((vRows.filter(r=>r.sbp==null||r.dbp==null||r.scr_umol_l==null||r.upcr==null).length / n) * 100).toFixed(2)) : 0
+  };
+}
+
+async function createSnapshot(kind = "snapshot"){
+  if (!selectedProject) return null;
+  const { data, error } = await sb.rpc("create_project_snapshot", {
+    p_project_id: selectedProject.id,
+    p_kind: kind,
+    p_filter_summary: { module: selectedProject.module, center_code: selectedProject.center_code },
+    p_schema_version: "core_v2"
+  });
+  if (error) throw error;
+  return data?.[0] || null;
+}
+
+async function createSnapshotOnly(){
+  if (!selectedProject) return toast("请先选择项目");
+  const btn = el.btnCreateSnapshot;
+  btn.dataset.label = "生成数据快照（Snapshot）";
+  setBusy(btn, true);
+  try{
+    const snap = await createSnapshot("snapshot");
+    if (snap){
+      el.snapshotOut.style.display = "block";
+      el.snapshotOut.innerHTML = `<div><b>已创建 Snapshot：</b><code>${escapeHtml(snap.snapshot_id)}</code></div>`;
+      await loadSnapshots();
+      toast("Snapshot 已创建");
+    }
+  }catch(e){
+    console.error(e);
+    toast("创建 Snapshot 失败：" + (e?.message || e));
+  }finally{ setBusy(btn,false); }
+}
+
+function citationText(snapshotId, createdAt){
+  const d = createdAt ? String(createdAt).slice(0,10) : fmtDate(new Date());
+  return `Data snapshot v3.0 (Snapshot ID: ${snapshotId}) exported on ${d}.`;
+}
+
+async function lockSnapshot(rowId){
+  const ok = window.confirm("锁定后不可覆盖；如需更新请新建快照。确认锁定？");
+  if (!ok) return;
+  const { error } = await sb.rpc("lock_project_snapshot", { p_snapshot_id: rowId });
+  if (error){ toast("锁定失败：" + error.message); return; }
+  toast("已锁定快照");
+  await loadSnapshots();
+}
+
+async function loadSnapshots(){
+  if (!selectedProject || !el.snapshotsList) return;
+  const { data, error } = await sb.rpc("list_project_snapshots", { p_project_id: selectedProject.id });
+  if (error){
+    el.snapshotsList.innerHTML = `<div class='muted small'>读取 snapshots 失败：${escapeHtml(error.message)}</div>`;
+    return;
+  }
+  const rows = data || [];
+  if (!rows.length){
+    el.snapshotsList.innerHTML = "<div class='muted small'>暂无 Snapshot。</div>";
+    return;
+  }
+  const trs = rows.map(r=>`<tr>
+    <td><code>${escapeHtml(r.snapshot_id)}</code></td>
+    <td>${escapeHtml(fmtDate(r.created_at))}</td>
+    <td>${escapeHtml(r.status)}</td>
+    <td>${escapeHtml(r.n_patients ?? "")}</td>
+    <td>${escapeHtml(r.n_visits ?? "")}</td>
+    <td>${escapeHtml(r.missing_rate ?? "")}%</td>
+    <td>
+      <button class='btn small' data-act='copy' data-id='${escapeHtml(r.snapshot_id)}' data-at='${escapeHtml(r.created_at)}'>复制引用</button>
+      ${r.status !== 'locked' ? `<button class='btn small danger' data-act='lock' data-row='${escapeHtml(r.id)}'>锁定</button>` : ""}
+    </td>
+  </tr>`).join("");
+  el.snapshotsList.innerHTML = `<table class='table'><thead><tr><th>snapshot_id</th><th>created_at</th><th>status</th><th>n_patients</th><th>n_visits</th><th>missing_rate</th><th>actions</th></tr></thead><tbody>${trs}</tbody></table>`;
+  qsa("button[data-act='copy']", el.snapshotsList).forEach(b=>b.addEventListener("click", async ()=>{
+    const txt = citationText(b.dataset.id, b.dataset.at);
+    await navigator.clipboard.writeText(txt);
+    toast("已复制论文引用语句");
+  }));
+  qsa("button[data-act='lock']", el.snapshotsList).forEach(b=>b.addEventListener("click", ()=>lockSnapshot(b.dataset.row)));
+}
+
+async function generatePaperPack({ withSnapshot = false } = {}){
   if (!selectedProject) return toast("请先选择项目");
   if (typeof JSZip === "undefined") return toast("JSZip 未加载，无法打包");
 
@@ -867,25 +1010,10 @@ async function generatePaperPack(){
     const module = selectedProject.module;
     const project_name = selectedProject.name;
 
-    // fetch data
-    const [baseline, visits, labs, meds, vars, evts] = await Promise.all([
-      sb.from("patients_baseline").select("*").eq("project_id", pid),
-      sb.from("visits_long").select("*").eq("project_id", pid),
-      sb.from("labs_long").select("*").eq("project_id", pid),
-      sb.from("meds_long").select("*").eq("project_id", pid),
-      sb.from("variants_long").select("*").eq("project_id", pid),
-      sb.from("events_long").select("*").eq("project_id", pid),
-    ]);
-
-    const check = [baseline, visits, labs, meds, vars].find(x=>x.error);
-    if (check) throw check.error;
-
-    const bRows = (baseline.data||[]).map(r=>({center_code, module, ...r}));
-    const vRows = (visits.data||[]).map(r=>({center_code, module, ...r}));
-    const lRows = (labs.data||[]).map(r=>({center_code, module, ...r}));
-    const mRows = (meds.data||[]).map(r=>({center_code, module, ...r}));
-    const gRows = (vars.data||[]).map(r=>({center_code, module, ...r}));
-    const eRows = (evts.error ? [] : (evts.data||[])).map(r=>({center_code, module, ...r}));
+    const { bRows, vRows, lRows, mRows, gRows, eRows } = await fetchProjectRows(pid, center_code, module);
+    const qcSummary = calcQcSummary(vRows);
+    const snapshot = withSnapshot ? await createSnapshot("paper_package") : null;
+    const snapshotId = snapshot?.snapshot_id || `TEMP-${Date.now()}`;
 
     const today = new Date().toISOString().slice(0,10);
     const meta = {
@@ -957,6 +1085,37 @@ async function generatePaperPack(){
     ms.file("METHODS_AUTO_EN.md", methods);
     ms.file("README.md", readme);
 
+    zip.file("snapshot_readme.txt", [
+      `snapshot_id: ${snapshotId}`,
+      `exported_at: ${new Date().toISOString()}`,
+      `project_id: ${pid}`,
+      `project_name: ${project_name}`,
+      `center_code: ${center_code}`,
+      `module: ${module}`,
+      `n_patients: ${bRows.length}`,
+      `n_visits: ${vRows.length}`,
+      `filter_summary: center_code=${center_code},module=${module}`,
+      `schema_version: core_v2`
+    ].join("\n"));
+    zip.file("qc_summary.json", JSON.stringify(qcSummary, null, 2));
+
+    if ((module || "").toUpperCase() === "KTX"){
+      zip.file("KTX_FIELD_DICTIONARY.md", [
+        "KTx Baseline: transplant_date, donor_type, induction_therapy, maintenance_immuno, HLA_mismatch_count, PRA/DSA, baseline_creatinine, baseline_eGFR",
+        "KTx Follow-up: Scr/eGFR, urine protein, tac/csa trough, BP, weight, infection, rejection, Banff biopsy, graft_failure_date, death_date, return_to_dialysis"
+      ].join("\n"));
+      zip.file("ktx_summary.json", JSON.stringify({
+        n_bk_or_cmv_events: eRows.filter(r=>/BK|CMV/i.test(String(r.event_type||""))).length,
+        n_rejection_events: eRows.filter(r=>/rejection|排斥/i.test(String(r.event_type||""))).length
+      }, null, 2));
+    }
+
+    const table1 = toCsv(bRows, ["center_code","module","patient_code","sex","birth_year","baseline_date","baseline_scr","baseline_upcr"]);
+    dataFolder.file("table1_baseline.csv", BOM + table1);
+    analysisFolder.folder("outputs").file("trend_egfr_placeholder.txt", "Run analysis/run_analysis.py for rendered trajectory plots.");
+    analysisFolder.folder("outputs").file("trend_proteinuria_placeholder.txt", "Run analysis/run_analysis.py for rendered trajectory plots.");
+    analysisFolder.folder("outputs").file("endpoint_12m_summary.json", JSON.stringify({ n_patients: bRows.length, n_visits: vRows.length }, null, 2));
+
     const fnameSafe = project_name.replace(/[^\w\u4e00-\u9fa5-]+/g, "_").slice(0,40);
     const zipName = `paper_pack_${fnameSafe}_${today}.zip`;
 
@@ -967,6 +1126,17 @@ async function generatePaperPack(){
     document.body.appendChild(a);
     a.click();
     setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 400);
+    if (snapshot){
+      el.snapshotOut.style.display = "block";
+      el.snapshotOut.innerHTML = `<div><b>Snapshot ID：</b><code>${escapeHtml(snapshot.snapshot_id)}</code></div><div class="small" style="margin-top:6px">${escapeHtml(citationText(snapshot.snapshot_id, snapshot.created_at))}</div>`;
+      await loadSnapshots();
+    }
+    await sb.rpc("log_project_audit", {
+      p_project_id: pid,
+      p_action: "paper_package",
+      p_snapshot_id: snapshot?.snapshot_id || null,
+      p_details: { zip_name: zipName, with_snapshot: !!snapshot }
+    });
     toast("论文包已生成：" + zipName);
   }catch(e){
     console.error(e);
