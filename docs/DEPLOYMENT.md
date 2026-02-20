@@ -113,8 +113,8 @@ Open the token link:
 ## 5) Trial expiry behavior (expected)
 
 In `projects` table:
-- `trial_expires_at` defaults to now + 56 days
-- After expiry, **all writes are blocked** (backend trigger)
+- `trial_expires_at` defaults to now + 90 days
+- After expiry, **all writes are blocked** (backend trigger).
   - baseline insert/update/delete blocked
   - visit insert/update/delete blocked
   - token creation blocked
