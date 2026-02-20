@@ -69,7 +69,7 @@ Commit this file (or keep a private deploy copy).
 2. Login with email magic-link
 3. Create a project:
    - set `center_code` (e.g., BJ01, SH02)
-   - choose module (IGAN / LN / MN / GENERAL)
+   - choose module (IGAN / LN / MN / GENERAL / KTX)
 4. Add patients baseline:
    - `patient_code` only (no PII)
    - If IGAN, optionally enter Oxford **MEST‑C**
