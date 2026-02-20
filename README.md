@@ -4,6 +4,9 @@ A **static** (no-build) research registry for nephrology follow-up:
 - `/staff` admin portal (magic-link login)
 - `/p/<token>` follow-up entry page (no login)
 - `/guide` world-class training + FAQ (for all trial users)
+- `/pricing` progressive pricing details + FAQ
+- `/security` security/compliance overview
+- `/deployment` SaaS/private deployment options
 - Supabase Postgres schema includes:
   - multicenter merge key: **center_code + patient_code**
   - IgAN pathology: **Oxford MEST‑C**
@@ -111,9 +114,34 @@ Outputs go to `analysis/outputs/`.
 - This system is **not** a diagnostic or treatment system.
 - **No PII**. Use local mapping table per center if needed.
 - PI must review auto-generated Methods before submission.
+- For pharma registration trials (Phase I/II/III), this repo is **not** a validated EDC replacement by default; additional GCP/Part11-grade controls are required.
 
 ---
 
 ## 6) Commercialization reference
 
 - Pricing and billing strategy (CN): `docs/BILLING_PLAN_CN.md`
+
+
+## 7) Snapshot / reproducibility workflow
+
+Snapshot IDs are immutable references for manuscript reproducibility.
+
+In `/staff`:
+- Click `生成数据快照（Snapshot）` to create a snapshot ID.
+- Click `生成论文包（含 Snapshot）` to bundle data with snapshot metadata.
+- Use `Snapshots` list to copy citation text and lock a snapshot for submission.
+
+Paper package now includes:
+- `snapshot_readme.txt`
+- `qc_summary.json`
+- baseline table placeholder (`table1_baseline.csv`)
+
+## 8) KTx template (minimal extension)
+
+Project module now includes `KTX` (kidney transplant post-op cohort).
+The migration adds:
+- `ktx_baseline_ext`
+- `ktx_visits_ext`
+
+These are optional extension tables for structured transplant fields.

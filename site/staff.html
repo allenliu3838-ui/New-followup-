@@ -35,6 +35,9 @@
       <div class="btnbar" style="margin-top:12px">
         <a class="btn" href="/guide" target="_blank">使用说明 /guide</a>
         <a class="btn" href="/" target="_blank">返回首页</a>
+        <a class="btn" href="/pricing" target="_blank">价格 /pricing</a>
+        <a class="btn" href="/security" target="_blank">安全合规 /security</a>
+        <a class="btn" href="/deployment" target="_blank">部署方式 /deployment</a>
       </div>
     </div>
 
@@ -69,6 +72,7 @@
             <option value="LN">LN（狼疮性肾炎）</option>
             <option value="MN">MN（膜性肾病）</option>
             <option value="GENERAL">GENERAL（通用/混合）</option>
+            <option value="KTX">KTx（肾移植术后）</option>
           </select>
           <label>描述（可选）</label>
           <textarea id="projDesc" placeholder="共建单位试用 / 研究目的简述"></textarea>
@@ -215,8 +219,19 @@
           </div>
         </div>
 
-      <div class="hr"></div>
+          <div class="hr"></div>
 
+          <h3 style="margin:0 0 6px 0;font-size:15px">🧷 快照 / Snapshots（可复现版本）</h3>
+          <div class="muted small">生成快照后会得到 Snapshot ID，可用于论文 Methods 引用；可锁定用于投稿。</div>
+          <div class="btnbar" style="margin-top:8px">
+            <button class="btn" id="btnCreateSnapshot">生成数据快照（Snapshot）</button>
+            <button class="btn primary" id="btnPaperPackWithSnapshot">生成论文包（含 Snapshot）</button>
+            <button class="btn" id="btnRefreshSnapshots">刷新 Snapshots</button>
+          </div>
+          <div id="snapshotOut" class="infobox" style="margin-top:10px;display:none"></div>
+          <div id="snapshotsList" style="margin-top:10px"></div>
+
+      <div class="hr"></div>
       <h2 style="margin:0 0 6px 0">附加数据（可选）：基因 / 化验 / 用药</h2>
       <div class="muted small">如果研究需要并且数据可获得，可在此补录。建议仍坚持去标识化（只用 patient_code）。</div>
 
