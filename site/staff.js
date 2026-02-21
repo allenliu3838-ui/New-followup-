@@ -100,6 +100,17 @@ const el = {
   snapshotOut: qs("#snapshotOut"),
   snapshotsList: qs("#snapshotsList"),
 
+  // Profile
+  profileCard: qs("#profileCard"),
+  profileStatus: qs("#profileStatus"),
+  profName: qs("#profName"),
+  profHospital: qs("#profHospital"),
+  profDept: qs("#profDept"),
+  profPlan: qs("#profPlan"),
+  profContact: qs("#profContact"),
+  profNotes: qs("#profNotes"),
+  btnSaveProfile: qs("#btnSaveProfile"),
+
   // Admin panel
   adminCard: qs("#adminCard"),
   adminSearchEmail: qs("#adminSearchEmail"),
@@ -259,6 +270,8 @@ async function init(){
   el.btnPaperPackWithSnapshot?.addEventListener("click", ()=>generatePaperPack({withSnapshot:true}));
   el.btnRefreshSnapshots?.addEventListener("click", loadSnapshots);
 
+  el.btnSaveProfile?.addEventListener("click", saveProfile);
+
   el.btnAdminSearch?.addEventListener("click", adminSearch);
   el.adminSearchEmail?.addEventListener("keydown", e=>{ if(e.key==="Enter") adminSearch(); });
 
@@ -269,6 +282,7 @@ function renderAuthState(){
   if (!user){
     el.loginCard.style.display = "block";
     el.appCard.style.display = "none";
+    if (el.profileCard) el.profileCard.style.display = "none";
     if (el.adminCard) el.adminCard.style.display = "none";
     el.btnSignOut.style.display = "none";
     isPlatformAdmin = false;
@@ -277,9 +291,11 @@ function renderAuthState(){
   }
   el.loginCard.style.display = "block";
   el.appCard.style.display = "block";
+  if (el.profileCard) el.profileCard.style.display = "block";
   el.btnSignOut.style.display = "inline-flex";
   setLoginHint(`已登录：${user.email}`);
   loadAll();
+  loadProfile();
   checkPlatformAdmin();
 }
 
@@ -1296,6 +1312,65 @@ async function generatePaperPack({ withSnapshot = false } = {}){
 }
 
 // ═══════════════════════════════════════════════════════════
+// 研究者资料
+// ═══════════════════════════════════════════════════════════
+
+async function loadProfile(){
+  const { data } = await sb.from("user_profiles")
+    .select("*")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!data) {
+    // 新用户，提示引导
+    if (el.profileStatus){
+      el.profileStatus.textContent = "请完善资料";
+      el.profileStatus.className = "badge warn";
+      el.profileStatus.style.display = "inline-flex";
+    }
+    return;
+  }
+
+  // 回填表单
+  if (el.profName)     el.profName.value     = data.real_name       || "";
+  if (el.profHospital) el.profHospital.value  = data.hospital        || "";
+  if (el.profDept)     el.profDept.value      = data.department      || "";
+  if (el.profPlan)     el.profPlan.value      = data.interested_plan || "";
+  if (el.profContact)  el.profContact.value   = data.contact         || "";
+  if (el.profNotes)    el.profNotes.value     = data.notes           || "";
+
+  const hasCore = data.real_name && data.hospital;
+  if (el.profileStatus){
+    el.profileStatus.textContent = hasCore ? "已填写" : "资料不完整";
+    el.profileStatus.className   = `badge ${hasCore ? "ok" : "warn"}`;
+    el.profileStatus.style.display = "inline-flex";
+  }
+}
+
+async function saveProfile(){
+  const btn = el.btnSaveProfile;
+  btn.dataset.label = "保存资料";
+  setBusy(btn, true);
+  try {
+    const { error } = await sb.rpc("upsert_my_profile", {
+      p_real_name:       el.profName?.value.trim()    || null,
+      p_hospital:        el.profHospital?.value.trim()|| null,
+      p_department:      el.profDept?.value.trim()    || null,
+      p_interested_plan: el.profPlan?.value           || null,
+      p_contact:         el.profContact?.value.trim() || null,
+      p_notes:           el.profNotes?.value.trim()   || null,
+    });
+    if (error) throw error;
+    toast("资料已保存");
+    await loadProfile();
+  } catch(e) {
+    toast("保存失败：" + (e?.message || e));
+  } finally {
+    setBusy(btn, false);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 // 平台管理员功能
 // ═══════════════════════════════════════════════════════════
 
@@ -1316,31 +1391,63 @@ async function adminSearch(){
   }
 }
 
+function planBadgeHtml(plan){
+  const map = { partner:"合作伙伴", pro:"Pro", institution:"机构版" };
+  const label = map[plan] || "试用";
+  const cls   = plan && plan !== "trial" ? "badge ok" : "badge";
+  return `<span class="${cls}" style="font-size:11px">${label}</span>`;
+}
+
 function renderAdminResults(rows){
   const c = el.adminResults;
   if (!rows.length){
     c.innerHTML = `<div class="muted small">未找到项目。请检查邮箱是否正确。</div>`;
     return;
   }
+
+  // 所有行属于同一用户，资料取第一行
+  const first = rows[0];
+  const na = v => escapeHtml(v || "—");
+
+  // ── 用户资料区块 ────────────────────────────────────────────
+  const profileFilled = first.real_name || first.hospital;
+  const profileHtml = `
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <b style="font-size:14px">用户资料</b>
+        <span class="badge ${profileFilled?"ok":"warn"}" style="font-size:11px">
+          ${profileFilled?"已填写":"未填写"}
+        </span>
+        <span class="muted small" style="margin-left:auto">${na(first.owner_email)}</span>
+      </div>
+      <div class="kv" style="grid-template-columns:max-content 1fr max-content 1fr;gap:4px 16px">
+        <div class="muted small">姓名</div>      <div>${na(first.real_name)}</div>
+        <div class="muted small">医院/单位</div>  <div>${na(first.hospital)}</div>
+        <div class="muted small">科室</div>       <div>${na(first.department)}</div>
+        <div class="muted small">意向套餐</div>   <div>${na(first.interested_plan)}</div>
+        <div class="muted small">联系方式</div>   <div>${na(first.contact)}</div>
+        <div class="muted small">备注</div>       <div>${na(first.profile_notes)}</div>
+      </div>
+      ${first.profile_updated_at
+        ? `<div class="muted small" style="margin-top:8px">资料更新：${fmtDate(first.profile_updated_at)}</div>`
+        : ""}
+    </div>`;
+
+  // ── 项目列表表格 ─────────────────────────────────────────────
   const thead = `<thead><tr>
-    <th>项目名称</th><th>中心</th><th>模块</th><th>所有者邮箱</th>
+    <th>项目名称</th><th>中心</th><th>模块</th>
     <th>当前计划</th><th>试用到期</th><th>宽限到期</th><th>操作</th>
   </tr></thead>`;
+
   const rows_html = rows.map(r => {
-    const plan = r.subscription_plan || "trial";
-    const planBadge = plan === "partner"      ? `<span class="badge ok" style="font-size:11px">合作伙伴</span>`
-                    : plan === "pro"           ? `<span class="badge ok" style="font-size:11px">Pro</span>`
-                    : plan === "institution"   ? `<span class="badge ok" style="font-size:11px">机构版</span>`
-                    :                           `<span class="badge" style="font-size:11px">试用</span>`;
-    const trialExp   = r.trial_expires_at  ? fmtDate(r.trial_expires_at)  : "—";
-    const graceExp   = r.trial_grace_until ? fmtDate(r.trial_grace_until) : "—";
+    const trialExp = r.trial_expires_at  ? fmtDate(r.trial_expires_at)  : "—";
+    const graceExp = r.trial_grace_until ? fmtDate(r.trial_grace_until) : "—";
     const pid = escapeHtml(r.project_id);
     return `<tr>
       <td>${escapeHtml(r.project_name)}</td>
       <td>${escapeHtml(r.center_code||"—")}</td>
       <td>${escapeHtml(r.module||"—")}</td>
-      <td style="font-size:12px">${escapeHtml(r.owner_email)}</td>
-      <td>${planBadge}</td>
+      <td>${planBadgeHtml(r.subscription_plan)}</td>
       <td style="font-size:12px">${trialExp}</td>
       <td style="font-size:12px">${graceExp}</td>
       <td>
@@ -1353,7 +1460,10 @@ function renderAdminResults(rows){
       </td>
     </tr>`;
   }).join("");
-  c.innerHTML = `<table class="table" style="font-size:13px">${thead}<tbody>${rows_html}</tbody></table>`;
+
+  c.innerHTML = profileHtml +
+    `<b style="font-size:13px">项目列表（${rows.length} 个）</b>
+     <table class="table" style="font-size:13px;margin-top:6px">${thead}<tbody>${rows_html}</tbody></table>`;
 }
 
 async function adminExtend(projectId, days){
