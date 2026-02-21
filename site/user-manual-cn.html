@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>详细使用说明（培训版）· KidneySphere AI</title>
+  <link rel="stylesheet" href="/app.css"/>
+  <link rel="icon" href="/assets/kidneysphere-ai.png"/>
+  <style>
+    .doc { max-width: 980px; margin: 24px auto; }
+    .doc h1,.doc h2,.doc h3 { margin-top: 18px; }
+    .doc p,.doc li { line-height: 1.75; }
+    .toc a { margin-right: 10px; white-space: nowrap; }
+    .example { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; }
+  </style>
+</head>
+<body>
+  <div class="container doc">
+    <div class="card">
+      <div class="brand">
+        <img src="/assets/kidneysphere-ai.png" alt="KidneySphere AI"/>
+        <div>
+          <h1 class="brand-title">随访登记系统详细使用说明（网站版）</h1>
+          <div class="brand-sub">用于培训 PI / CRC / 录入员 / 随访护士</div>
+        </div>
+      </div>
+
+      <div class="warnbox" style="margin-top:12px">
+        本系统用于科研随访登记，不用于诊疗决策；请勿录入姓名、电话、身份证、住院号等 PII。
+      </div>
+
+      <div class="toc small" style="margin-top:12px">
+        快速跳转：
+        <a href="#concepts">核心概念</a>
+        <a href="#setup">上线准备</a>
+        <a href="#sop">标准流程</a>
+        <a href="#scenario">实战示例</a>
+        <a href="#rules">填写规范</a>
+        <a href="#faq">FAQ</a>
+      </div>
+
+      <h2 id="concepts">1）核心概念（培训先讲这 3 点）</h2>
+      <ul>
+        <li><b>入口：</b>管理端 <code>/staff</code>（需要登录），录入端 <code>/p/&lt;token&gt;</code>（无需登录）。</li>
+        <li><b>组织：</b>project（项目）→ patient_code（研究编号）→ visit（访视记录）。</li>
+        <li><b>合并键：</b>多中心最终按 <code>center_code + patient_code</code> 合并。</li>
+      </ul>
+
+      <h2 id="setup">2）上线准备（管理员一次性完成）</h2>
+      <ol>
+        <li>创建 Supabase 项目并记录 <code>Project URL</code> 与 <code>anon key</code>。</li>
+        <li>在 SQL Editor 运行 <code>supabase/migrations/0001_core.sql</code>。</li>
+        <li>Auth 配置 Redirect URLs（至少包含 <code>/staff</code> 与 <code>/p/*</code>）。</li>
+        <li>在 <code>site/config.js</code> 填写 <code>SUPABASE_URL</code> 和 <code>SUPABASE_ANON_KEY</code>。</li>
+        <li>部署静态站点（Publish directory: <code>site</code>）。</li>
+      </ol>
+
+      <h2 id="sop">3）标准操作流程（SOP）</h2>
+      <h3>步骤 1：管理员创建项目</h3>
+      <ul>
+        <li>进入 <code>/staff</code>，邮箱魔法链接登录。</li>
+        <li>创建项目并填写：项目名、<code>center_code</code>、module。</li>
+      </ul>
+      <div class="example small">
+        示例：项目 <code>IgAN 前瞻随访队列 2026</code>；center_code <code>BJ01</code>；module <code>IGAN</code>
+      </div>
+
+      <h3>步骤 2：录入患者基线</h3>
+      <ul>
+        <li>必填：<code>patient_code</code>（如 <code>BJ01-0001</code>）</li>
+        <li>IGAN 可选填 Oxford MEST-C</li>
+      </ul>
+
+      <h3>步骤 3：生成 token 并分发</h3>
+      <ul>
+        <li>在患者行点击“生成随访 token”。</li>
+        <li>将 <code>/p/&lt;token&gt;</code> 链接发给随访录入人员。</li>
+      </ul>
+
+      <h3>步骤 4：随访人员录入访视</h3>
+      <ul>
+        <li>录入核心四项：日期、BP、Scr、UPCR。</li>
+      </ul>
+      <div class="example small">
+        示例第 1 次：2026-03-15，132/84，Scr 1.42，UPCR 0.88<br/>
+        示例第 2 次：2026-06-15，128/80，Scr 1.31，UPCR 0.62
+      </div>
+
+      <h3>步骤 5：管理员质控与导出</h3>
+      <ul>
+        <li>检查缺失值/异常值。</li>
+        <li>生成 Snapshot。</li>
+        <li>导出论文包 ZIP 并进行统计分析。</li>
+      </ul>
+
+      <h2 id="scenario">4）实战演示模板（15 分钟培训）</h2>
+      <ol>
+        <li>创建项目：<code>IgAN-BJ-2026</code>（center_code: <code>BJ01</code>）。</li>
+        <li>新增患者：<code>BJ01-0123</code>，MEST-C: <code>M1 E0 S1 T0 C1</code>。</li>
+        <li>发送 token 给护士 A。</li>
+        <li>完成两次随访录入并核查时间递增、数值合理。</li>
+      </ol>
+
+      <h2 id="rules">5）填写规范</h2>
+      <ul>
+        <li>patient_code 建议格式：中心代码 + 流水号（如 <code>BJ01-0001</code>）。</li>
+        <li>日期统一 <code>YYYY-MM-DD</code>。</li>
+        <li>缺失值留空，不要用 0 代替。</li>
+        <li>统一单位，异常值先复核再提交。</li>
+      </ul>
+
+      <h2 id="faq">6）FAQ</h2>
+      <p><b>Q：</b>收到了登录邮件但进不去？<br/><b>A：</b>通常是 Redirect URLs 配置缺失，请检查 Supabase Auth 配置。</p>
+      <p><b>Q：</b>可以录入姓名电话吗？<br/><b>A：</b>不可以，只能用研究编号。</p>
+      <p><b>Q：</b>如何保证论文复现？<br/><b>A：</b>先生成 Snapshot，再基于 Snapshot 导出论文包并引用 snapshot ID。</p>
+
+      <div class="okbox small" style="margin-top:12px">
+        提示：如需离线培训资料，可同时使用仓库版详细文档 <code>docs/USER_MANUAL_CN.md</code>。
+      </div>
+
+      <div class="muted small" style="margin-top:14px">
+        你可以直接把这个链接发给用户：<code>/user-manual-cn</code>
+      </div>
+    </div>
+  </div>
+  <footer class="site-footer">© 2025 上海胤域医学科技有限公司 · KidneySphere AI · <a href="/guide">使用说明</a></footer>
+</body>
+</html>
