@@ -34,6 +34,7 @@
         <div class="guide-hero-actions">
           <a class="linkbtn primary" href="/staff" target="_blank">打开后台 /staff</a>
           <a class="linkbtn" href="#scenarios">科研场景举例</a>
+          <a class="linkbtn" href="#rct">RCT随机化说明</a>
           <a class="linkbtn" href="#general-module">GENERAL模块说明</a>
           <a class="linkbtn" href="#trial">试用必读</a>
           <a class="linkbtn" href="#roles">选择角色</a>
@@ -157,6 +158,17 @@
           </div>
         </div>
 
+        <div class="scenario-card" id="rct-scenario">
+          <div class="scenario-tag" style="background:#7c3aed;color:#fff">RCT</div>
+          <div class="scenario-title">随机对照试验（RCT）干预效果评估</div>
+          <div class="small">
+            <b>研究目的：</b>比较干预组 vs. 对照组在 12 个月主要终点（UPCR 下降 ≥ 50% 或 eGFR 稳定）的差异。<br/>
+            <b>参与方：</b>单中心或多中心，例如 120 例（干预组 60 例、对照组 60 例）。<br/>
+            <b>做法：</b>创建患者基线时填写"RCT 随机化信息"（干预组别 / 随机号 / 随机化日期）→ 每季度随访 BP / Scr / UPCR → 后台导出论文包，CSV 中含 <code>treatment_arm</code> 分组列，一键出组间比较表 + KM 曲线草稿。<br/>
+            <b>投稿方向：</b>NEJM / Lancet / JASN
+          </div>
+        </div>
+
       </div>
 
       <div class="hr"></div>
@@ -223,6 +235,72 @@
           <b>优势：</b>同一个项目，同一个 center_code，合并导出时不需要跨项目拼接。
         </div>
       </details>
+
+      <div class="hr"></div>
+
+      <!-- ===== RCT 随机化说明 ===== -->
+      <h2 id="rct">🎲 RCT 随机化说明（适用于干预性研究）</h2>
+
+      <div class="infobox" style="margin-bottom:12px">
+        <b>一句话：</b>在创建患者基线时填写"RCT 随机化信息"三个字段，导出 CSV 后即可按组分析。观察性研究全部留空，不受影响。
+      </div>
+
+      <div class="guide-grid2">
+        <div>
+          <b>三个字段说明</b>
+          <table class="table" style="margin-top:6px">
+            <thead><tr><th>字段</th><th>含义</th><th>示例值</th></tr></thead>
+            <tbody>
+              <tr><td><code>treatment_arm</code></td><td>干预组别</td><td>干预组 / 对照组 / 安慰剂组</td></tr>
+              <tr><td><code>randomization_id</code></td><td>随机号</td><td>R-0001</td></tr>
+              <tr><td><code>randomization_date</code></td><td>随机化日期</td><td>2024-03-01</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <b>导出后的 CSV 长什么样？</b>
+          <div class="codebox" style="margin-top:6px">
+            <div class="codebox-head">
+              <div><b>patients_baseline.csv（节选）</b></div>
+              <button class="copybtn" type="button" data-copy="patient_code,treatment_arm,randomization_id,randomization_date&#10;0001,干预组,R-0001,2024-03-01&#10;0002,对照组,R-0002,2024-03-01&#10;0003,干预组,R-0003,2024-03-02">复制</button>
+            </div>
+            <pre><code>patient_code,treatment_arm,randomization_id,randomization_date
+0001,干预组,R-0001,2024-03-01
+0002,对照组,R-0002,2024-03-01
+0003,干预组,R-0003,2024-03-02</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <details class="faq" style="margin-top:10px">
+        <summary>完整举例：某 IgAN 双臂 RCT（120 例）录入全流程</summary>
+        <div class="small">
+          <b>研究设计：</b>单中心，IgAN 患者 120 例，1:1 随机分配至干预组（SGLT2 抑制剂）vs. 对照组（安慰剂），主要终点为 12 个月 UPCR 下降 ≥ 50%。<br/><br/>
+          <b>Step 1 — 创建项目</b><br/>
+          后台 → 新建项目 → 病种模块选 <b>IgAN</b> → 中心代码填 <code>BJ01</code>。<br/><br/>
+          <b>Step 2 — 登记每位患者基线（含随机化信息）</b>
+          <table class="table" style="margin-top:6px">
+            <thead><tr><th>研究编号</th><th>干预组别</th><th>随机号</th><th>随机化日期</th><th>基线 Scr</th><th>基线 UPCR</th></tr></thead>
+            <tbody>
+              <tr><td>0001</td><td>干预组</td><td>R-0001</td><td>2024-03-01</td><td>112 μmol/L</td><td>1200 mg/g</td></tr>
+              <tr><td>0002</td><td>对照组</td><td>R-0002</td><td>2024-03-01</td><td>98 μmol/L</td><td>950 mg/g</td></tr>
+              <tr><td>0003</td><td>干预组</td><td>R-0003</td><td>2024-03-02</td><td>125 μmol/L</td><td>1450 mg/g</td></tr>
+              <tr><td class="muted">…</td><td class="muted">…</td><td class="muted">…</td><td class="muted">…</td><td class="muted">…</td><td class="muted">…</td></tr>
+            </tbody>
+          </table>
+          <b>Step 3 — 每季度随访</b><br/>
+          发放随访链接 → 录入：日期 / 血压 / Scr / UPCR，与观察性研究完全相同。<br/><br/>
+          <b>Step 4 — 导出论文包</b><br/>
+          后台 → 一键生成论文包 → CSV 中 <code>treatment_arm</code> 列即为分组标识。<br/>
+          分析脚本按 <code>treatment_arm</code> 分组，自动计算：12 个月主要终点达标率、eGFR 变化均值、KM 曲线数据。<br/><br/>
+          <b>Methods 草稿参考写法：</b><br/>
+          <i>"Patients were randomized 1:1 to intervention or control using a computer-generated list (randomization_id). Primary endpoint was UPCR reduction ≥ 50% at 12 months. Data were collected using KidneySphere AI (Snapshot ID: xxxxx)."</i>
+        </div>
+      </details>
+
+      <div class="warnbox" style="margin-top:10px">
+        <b>注意：</b>本系统适用于研究者发起课题（IIT）和真实世界干预性研究；不适合作为药厂注册临床试验（GCP 稽查路径）的主系统。<a href="#faq">见下方 FAQ</a>。
+      </div>
 
       <div class="hr"></div>
 
@@ -402,6 +480,7 @@ pip --version</code></pre>
           <div>试用到期</div><div>到期后只读，避免边分析边改数据，保证可复现</div>
           <div>IgAN 病理</div><div>支持 Oxford <b>MEST‑C</b>（常用于分层/预测/敏感性分析）</div>
           <div>基因</div><div>支持 variants_long（如有：ACMG、zygosity、HGVS 等）</div>
+          <div>RCT 随机化</div><div>基线可录入干预组别 / 随机号 / 随机化日期；导出 CSV 含 <code>treatment_arm</code> 分组列，可直接用于组间比较分析</div>
         </div>
       </section>
 
@@ -443,6 +522,22 @@ pip --version</code></pre>
 
 
       <details class="faq" data-faq>
+        <summary>RCT 研究怎么录入随机化信息？导出后如何按组分析？</summary>
+        <div class="small">
+          <b>录入：</b>后台 → 创建患者基线 → 在底部"RCT 随机化信息"框中填写三项：<br/>
+          · <b>干预组别</b>：选"干预组"或"对照组"（也可手动输入自定义文字）<br/>
+          · <b>随机号</b>：如 R-0001（与纸质盲底对应）<br/>
+          · <b>随机化日期</b>：随机化当天日期<br/><br/>
+          <b>导出：</b>后台 → 导出基线数据 → CSV 中即含 <code>treatment_arm</code>、<code>randomization_id</code>、<code>randomization_date</code> 三列。<br/><br/>
+          <b>分析（R 示例）：</b><br/>
+          <code>df &lt;- read.csv("patients_baseline.csv")</code><br/>
+          <code>table(df$treatment_arm) # 查看各组人数</code><br/>
+          <code>by(df$baseline_upcr, df$treatment_arm, summary) # 组间基线比较</code><br/><br/>
+          观察性研究的患者三个字段留空即可，<b>不影响任何现有功能</b>。
+        </div>
+      </details>
+
+      <details class="faq" data-faq>
         <summary>这套系统可以直接用于药厂 1/2/3 期注册临床试验吗？</summary>
         <div class="small">
           <b>不建议直接作为注册试验主系统（eCRF/EDC）</b>。当前系统定位是科研随访与论文产出加速工具，适合观察性研究、真实世界研究（RWS）或研究者发起课题（IIT）的数据整理与分析。<br/>
@@ -453,7 +548,7 @@ pip --version</code></pre>
       <div class="hr"></div>
 
       <div class="muted small">
-        最后更新：2026-02-20。可直接分享链接作为中心培训：<code>/guide#trial</code> 或 <code>/guide#research</code>。
+        最后更新：2026-02-21。可直接分享链接作为中心培训：<code>/guide#trial</code> 或 <code>/guide#research</code>。
       </div>
     </div>
   </div>
