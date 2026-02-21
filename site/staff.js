@@ -1518,14 +1518,17 @@ const CONTRACT_STATUS_LABEL = {
 };
 
 async function loadMyContract(){
-  const { data } = await sb.rpc("get_my_contract");
+  const { data: rows } = await sb.rpc("get_my_contract");
   const c = el.contractStatus;
   const form = el.contractApplyForm;
   if (!c || !form) return;
 
+  // get_my_contract returns a table → rows is an array
+  const data = Array.isArray(rows) ? rows[0] : rows;
+
   if (!data) {
     // 没有申请记录 → 显示申请表单
-    c.innerHTML = `<div class="muted small">暂无申请记录。如需优惠合作，请填写后提交。</div>`;
+    c.innerHTML = `<div class="muted small">暂无申请记录。如贵中心符合条件，请填写后提交。</div>`;
     form.style.display = "block";
     return;
   }
@@ -1592,7 +1595,11 @@ async function applyContract(){
 async function adminLoadContracts(){
   if (!isPlatformAdmin) return;
   const { data, error } = await sb.rpc("admin_list_contracts", { p_status: null });
-  if (error){ if(el.adminContracts) el.adminContracts.innerHTML = `<span class="muted small">加载失败</span>`; return; }
+  if (error){
+    if(el.adminContracts) el.adminContracts.innerHTML =
+      `<span class="muted small" style="color:#c0392b">加载失败：${escapeHtml(error.message)}</span>`;
+    return;
+  }
   renderAdminContracts(data || []);
 }
 
