@@ -239,66 +239,168 @@
       <div class="hr"></div>
 
       <!-- ===== RCT 随机化说明 ===== -->
-      <h2 id="rct">🎲 RCT 随机化说明（适用于干预性研究）</h2>
+      <h2 id="rct">🎲 RCT 随机化录入说明（从未做过 RCT 也能一看就会）</h2>
 
-      <div class="infobox" style="margin-bottom:12px">
-        <b>一句话：</b>在创建患者基线时填写"RCT 随机化信息"三个字段，导出 CSV 后即可按组分析。观察性研究全部留空，不受影响。
-      </div>
-
-      <div class="guide-grid2">
-        <div>
-          <b>三个字段说明</b>
-          <table class="table" style="margin-top:6px">
-            <thead><tr><th>字段</th><th>含义</th><th>示例值</th></tr></thead>
-            <tbody>
-              <tr><td><code>treatment_arm</code></td><td>干预组别</td><td>干预组 / 对照组 / 安慰剂组</td></tr>
-              <tr><td><code>randomization_id</code></td><td>随机号</td><td>R-0001</td></tr>
-              <tr><td><code>randomization_date</code></td><td>随机化日期</td><td>2024-03-01</td></tr>
-            </tbody>
-          </table>
+      <!-- 第一块：概念解释 -->
+      <div class="guide-grid2" style="margin-bottom:12px">
+        <div class="callout">
+          <div class="callout-title">RCT 是什么？（给没做过的人）</div>
+          <div class="small" style="margin-top:6px">
+            把符合入组条件的患者<b>随机</b>分成两组，然后比较谁效果更好：<br/><br/>
+            <table class="table">
+              <thead><tr><th>组别</th><th>接受什么治疗</th><th>常见叫法</th></tr></thead>
+              <tbody>
+                <tr><td><b>干预组</b></td><td>新药 / 新方案</td><td>试验组、治疗组</td></tr>
+                <tr><td><b>对照组</b></td><td>常规治疗 / 安慰剂</td><td>空白对照组</td></tr>
+                <tr><td><b>安慰剂组</b></td><td>外观相同的无效药</td><td>三臂试验时用</td></tr>
+              </tbody>
+            </table>
+            <div style="margin-top:6px"><b>随机号</b>：统计师提前生成的随机分配表，每个编号对应一个组别，按顺序分配给入组患者。</div>
+          </div>
         </div>
-        <div>
-          <b>导出后的 CSV 长什么样？</b>
-          <div class="codebox" style="margin-top:6px">
-            <div class="codebox-head">
-              <div><b>patients_baseline.csv（节选）</b></div>
-              <button class="copybtn" type="button" data-copy="patient_code,treatment_arm,randomization_id,randomization_date&#10;0001,干预组,R-0001,2024-03-01&#10;0002,对照组,R-0002,2024-03-01&#10;0003,干预组,R-0003,2024-03-02">复制</button>
-            </div>
-            <pre><code>patient_code,treatment_arm,randomization_id,randomization_date
-0001,干预组,R-0001,2024-03-01
-0002,对照组,R-0002,2024-03-01
-0003,干预组,R-0003,2024-03-02</code></pre>
+        <div class="callout">
+          <div class="callout-title">在本系统里只需做一件事</div>
+          <div class="small" style="margin-top:6px">
+            创建患者基线时，在底部"<b>RCT 随机化信息</b>"框里额外填 <b>3 个字段</b>，其余步骤（随访录入 / 导出 / 分析）与普通观察性研究<b>完全相同</b>。<br/><br/>
+            <table class="table">
+              <thead><tr><th>字段名称</th><th>填什么</th><th>填写示例</th></tr></thead>
+              <tbody>
+                <tr><td>干预组别</td><td>这位患者被分到哪组</td><td>干预组</td></tr>
+                <tr><td>随机号</td><td>纸质盲底上的编号</td><td>R-0042</td></tr>
+                <tr><td>随机化日期</td><td>患者正式入组当天</td><td>2024-03-01</td></tr>
+              </tbody>
+            </table>
+            <div class="muted" style="margin-top:6px">⚑ 观察性队列研究 → 三个字段全部留空即可，不影响任何现有功能。</div>
           </div>
         </div>
       </div>
 
-      <details class="faq" style="margin-top:10px">
-        <summary>完整举例：某 IgAN 双臂 RCT（120 例）录入全流程</summary>
-        <div class="small">
-          <b>研究设计：</b>单中心，IgAN 患者 120 例，1:1 随机分配至干预组（SGLT2 抑制剂）vs. 对照组（安慰剂），主要终点为 12 个月 UPCR 下降 ≥ 50%。<br/><br/>
-          <b>Step 1 — 创建项目</b><br/>
-          后台 → 新建项目 → 病种模块选 <b>IgAN</b> → 中心代码填 <code>BJ01</code>。<br/><br/>
-          <b>Step 2 — 登记每位患者基线（含随机化信息）</b>
+      <!-- 第二块：完整操作流程 -->
+      <b>完整操作流程（5 步，含 RCT 专属动作）</b>
+      <table class="table" style="margin-top:8px">
+        <thead><tr><th>步骤</th><th>谁来做</th><th>具体操作</th><th>RCT 额外动作</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>① 建项目</b></td>
+            <td>PI / 管理员</td>
+            <td>后台 → 新建项目，选病种模块 + 填中心代码</td>
+            <td>无，和普通研究相同</td>
+          </tr>
+          <tr>
+            <td><b>② 录基线</b></td>
+            <td>研究助理</td>
+            <td>每位患者录入性别、出生年、基线 Scr / UPCR</td>
+            <td>⭐ <b>额外填写"RCT 随机化信息"三个字段</b></td>
+          </tr>
+          <tr>
+            <td><b>③ 发链接</b></td>
+            <td>研究助理</td>
+            <td>后台 → 患者列表 → 生成随访链接 → 发给患者/随访员</td>
+            <td>无，和普通研究相同</td>
+          </tr>
+          <tr>
+            <td><b>④ 按时随访</b></td>
+            <td>患者 / 随访员</td>
+            <td>用链接录入：日期 / BP / Scr / UPCR（每季度一次）</td>
+            <td>无，和普通研究相同</td>
+          </tr>
+          <tr>
+            <td><b>⑤ 导出分析</b></td>
+            <td>统计人员</td>
+            <td>后台 → 一键生成论文包 → 运行脚本</td>
+            <td>CSV 中自动含 <code>treatment_arm</code> 列，按组分析即可</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 第三块：手把手举例（默认展开） -->
+      <details class="faq" style="margin-top:14px" open>
+        <summary><b>手把手举例：某 IgAN 双臂 RCT（120 例）从零到出图全流程</b></summary>
+        <div class="small" style="padding-top:8px">
+
+          <b>研究设计</b><br/>
+          单中心，IgAN 患者 120 例，由统计师提前生成随机分配表（1:1），患者按入组顺序领取随机号，分配至：<br/>
+          &nbsp;&nbsp;· <b>干预组（60 例）</b>：恩格列净（SGLT2 抑制剂）10 mg/d + 标准治疗<br/>
+          &nbsp;&nbsp;· <b>对照组（60 例）</b>：安慰剂 + 标准治疗<br/>
+          主要终点：12 个月 UPCR 下降 ≥ 50%。<br/><br/>
+
+          <b>① 建项目（管理员，做一次）</b><br/>
+          后台 → 新建项目 → 项目名称填"IgAN_RCT_BJ01" → 病种模块选 <b>IgAN</b> → 中心代码 <code>BJ01</code>。<br/><br/>
+
+          <b>② 录基线（研究助理，每位患者做一次）——重点看第 4 列起</b>
           <table class="table" style="margin-top:6px">
-            <thead><tr><th>研究编号</th><th>干预组别</th><th>随机号</th><th>随机化日期</th><th>基线 Scr</th><th>基线 UPCR</th></tr></thead>
+            <thead>
+              <tr>
+                <th>研究编号</th><th>性别</th><th>出生年</th>
+                <th style="background:#fef9c3">干预组别 ⭐</th>
+                <th style="background:#fef9c3">随机号 ⭐</th>
+                <th style="background:#fef9c3">随机化日期 ⭐</th>
+                <th>基线 Scr</th><th>基线 UPCR</th>
+              </tr>
+            </thead>
             <tbody>
-              <tr><td>0001</td><td>干预组</td><td>R-0001</td><td>2024-03-01</td><td>112 μmol/L</td><td>1200 mg/g</td></tr>
-              <tr><td>0002</td><td>对照组</td><td>R-0002</td><td>2024-03-01</td><td>98 μmol/L</td><td>950 mg/g</td></tr>
-              <tr><td>0003</td><td>干预组</td><td>R-0003</td><td>2024-03-02</td><td>125 μmol/L</td><td>1450 mg/g</td></tr>
-              <tr><td class="muted">…</td><td class="muted">…</td><td class="muted">…</td><td class="muted">…</td><td class="muted">…</td><td class="muted">…</td></tr>
+              <tr><td>0001</td><td>男</td><td>1978</td><td style="background:#fef9c3">干预组</td><td style="background:#fef9c3">R-0001</td><td style="background:#fef9c3">2024-03-01</td><td>112 μmol/L</td><td>1200 mg/g</td></tr>
+              <tr><td>0002</td><td>女</td><td>1985</td><td style="background:#fef9c3">对照组</td><td style="background:#fef9c3">R-0002</td><td style="background:#fef9c3">2024-03-01</td><td>98 μmol/L</td><td>950 mg/g</td></tr>
+              <tr><td>0003</td><td>男</td><td>1990</td><td style="background:#fef9c3">干预组</td><td style="background:#fef9c3">R-0003</td><td style="background:#fef9c3">2024-03-02</td><td>125 μmol/L</td><td>1450 mg/g</td></tr>
+              <tr><td>0004</td><td>女</td><td>1972</td><td style="background:#fef9c3">对照组</td><td style="background:#fef9c3">R-0004</td><td style="background:#fef9c3">2024-03-02</td><td>87 μmol/L</td><td>780 mg/g</td></tr>
+              <tr><td>0005</td><td>男</td><td>1968</td><td style="background:#fef9c3">干预组</td><td style="background:#fef9c3">R-0005</td><td style="background:#fef9c3">2024-03-03</td><td>140 μmol/L</td><td>1680 mg/g</td></tr>
+              <tr class="muted"><td>…（共 120 行）</td><td></td><td></td><td style="background:#fef9c3"></td><td style="background:#fef9c3"></td><td style="background:#fef9c3"></td><td></td><td></td></tr>
             </tbody>
           </table>
-          <b>Step 3 — 每季度随访</b><br/>
-          发放随访链接 → 录入：日期 / 血压 / Scr / UPCR，与观察性研究完全相同。<br/><br/>
-          <b>Step 4 — 导出论文包</b><br/>
-          后台 → 一键生成论文包 → CSV 中 <code>treatment_arm</code> 列即为分组标识。<br/>
-          分析脚本按 <code>treatment_arm</code> 分组，自动计算：12 个月主要终点达标率、eGFR 变化均值、KM 曲线数据。<br/><br/>
-          <b>Methods 草稿参考写法：</b><br/>
-          <i>"Patients were randomized 1:1 to intervention or control using a computer-generated list (randomization_id). Primary endpoint was UPCR reduction ≥ 50% at 12 months. Data were collected using KidneySphere AI (Snapshot ID: xxxxx)."</i>
+          <div class="muted" style="margin:4px 0 10px">黄色列 = RCT 专属；白色列 = 和普通研究完全一样。</div>
+
+          <b>③ 每季度随访（录入方式与普通研究完全相同）</b><br/>
+          后台 → 患者列表 → 点击研究编号 → 复制随访链接发给患者/随访员 → 患者用链接填写：日期 / BP / Scr / UPCR。<br/><br/>
+
+          <b>④ 导出并分析</b><br/>
+          后台 → 一键生成论文包 → 解压 → 运行脚本。<br/>
+          导出的 <code>patients_baseline.csv</code> 中自动包含分组列：
+
+          <div class="codebox" style="margin-top:6px">
+            <div class="codebox-head">
+              <div><b>patients_baseline.csv（节选，关键列）</b></div>
+              <button class="copybtn" type="button" data-copy="patient_code,treatment_arm,randomization_id,randomization_date,baseline_scr,baseline_upcr&#10;0001,干预组,R-0001,2024-03-01,112,1200&#10;0002,对照组,R-0002,2024-03-01,98,950&#10;0003,干预组,R-0003,2024-03-02,125,1450&#10;0004,对照组,R-0004,2024-03-02,87,780&#10;0005,干预组,R-0005,2024-03-03,140,1680">复制</button>
+            </div>
+            <pre><code>patient_code,treatment_arm,randomization_id,randomization_date,baseline_scr,baseline_upcr
+0001,干预组,R-0001,2024-03-01,112,1200
+0002,对照组,R-0002,2024-03-01,98,950
+0003,干预组,R-0003,2024-03-02,125,1450
+0004,对照组,R-0004,2024-03-02,87,780
+0005,干预组,R-0005,2024-03-03,140,1680</code></pre>
+          </div>
+
+          <b>⑤ R 分析示例（按组比较基线特征）</b>
+          <div class="codebox" style="margin-top:6px">
+            <div class="codebox-head">
+              <div><b>按 treatment_arm 分组分析（R）</b></div>
+              <button class="copybtn" type="button" data-copy="df <- read.csv('patients_baseline.csv')&#10;&#10;# 查看各组人数&#10;table(df$treatment_arm)&#10;&#10;# 两组基线 UPCR 比较（均值 ± SD）&#10;by(df$baseline_upcr, df$treatment_arm, function(x) c(mean=mean(x,na.rm=T), sd=sd(x,na.rm=T)))&#10;&#10;# t 检验&#10;t.test(baseline_upcr ~ treatment_arm, data=df)">复制</button>
+            </div>
+            <pre><code>df &lt;- read.csv("patients_baseline.csv")
+
+# 查看各组人数（应接近 1:1）
+table(df$treatment_arm)
+#  对照组  干预组
+#    60      60
+
+# 两组基线 UPCR 比较（均值 ± SD）
+by(df$baseline_upcr, df$treatment_arm, function(x)
+   c(mean=mean(x,na.rm=T), sd=sd(x,na.rm=T)))
+
+# t 检验
+t.test(baseline_upcr ~ treatment_arm, data=df)</code></pre>
+          </div>
+
+          <b>⑥ Methods 部分参考写法（投稿用）</b><br/>
+          <div style="margin-top:4px;padding:8px 10px;background:#f8fafc;border-radius:6px;font-style:italic;line-height:1.7">
+            "Eligible patients were randomly assigned 1:1 to intervention or control using a computer-generated randomization list
+            (randomization_id recorded at enrollment). The primary endpoint was a ≥50% reduction in UPCR at 12 months.
+            All visit data were prospectively recorded in KidneySphere AI (data snapshot archived prior to analysis;
+            Snapshot ID: [填入快照编号])."
+          </div>
         </div>
       </details>
 
-      <div class="warnbox" style="margin-top:10px">
+      <div class="warnbox" style="margin-top:12px">
         <b>注意：</b>本系统适用于研究者发起课题（IIT）和真实世界干预性研究；不适合作为药厂注册临床试验（GCP 稽查路径）的主系统。<a href="#faq">见下方 FAQ</a>。
       </div>
 
