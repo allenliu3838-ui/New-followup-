@@ -121,6 +121,7 @@ Outputs go to `analysis/outputs/`.
 ## 6) Commercialization reference
 
 - Pricing and billing strategy (CN): `docs/BILLING_PLAN_CN.md`
+- Detailed user training manual (CN): `docs/USER_MANUAL_CN.md`
 
 
 ## 7) Snapshot / reproducibility workflow
