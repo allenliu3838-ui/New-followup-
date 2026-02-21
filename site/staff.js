@@ -34,6 +34,9 @@ const el = {
   mestS: qs("#mestS"),
   mestT: qs("#mestT"),
   mestC: qs("#mestC"),
+  rctArm: qs("#rctArm"),
+  rctRandomId: qs("#rctRandomId"),
+  rctDate: qs("#rctDate"),
   btnCreatePatient: qs("#btnCreatePatient"),
   patientsList: qs("#patientsList"),
 
@@ -552,7 +555,7 @@ function renderVariantsPreview(rows){
   el.variantsPreview.innerHTML = `
     <div class="muted small">最近 10 条：</div>
     <table class="table">
-      <thead><tr><th>patient</th><th>date</th><th>gene</th><th>variant</th><th>ACMG</th></tr></thead>
+      <thead><tr><th>研究编号</th><th>日期</th><th>基因</th><th>变异</th><th>ACMG分级</th></tr></thead>
       <tbody>${trs}</tbody>
     </table>
   `;
@@ -576,7 +579,7 @@ function renderLabsPreview(rows){
   el.labsPreview.innerHTML = `
     <div class="muted small">最近 10 条：</div>
     <table class="table">
-      <thead><tr><th>patient</th><th>date</th><th>name</th><th>value</th><th>unit</th></tr></thead>
+      <thead><tr><th>研究编号</th><th>日期</th><th>项目</th><th>数值</th><th>单位</th></tr></thead>
       <tbody>${trs}</tbody>
     </table>
   `;
@@ -600,7 +603,7 @@ function renderMedsPreview(rows){
   el.medsPreview.innerHTML = `
     <div class="muted small">最近 10 条：</div>
     <table class="table">
-      <thead><tr><th>patient</th><th>drug</th><th>dose</th><th>start</th><th>end</th></tr></thead>
+      <thead><tr><th>研究编号</th><th>药品</th><th>剂量</th><th>开始</th><th>结束</th></tr></thead>
       <tbody>${trs}</tbody>
     </table>
   `;
@@ -625,7 +628,7 @@ function renderEventsPreview(rows){
   el.eventsPreview.innerHTML = `
     <div class="muted small">最近 20 条：</div>
     <table class="table">
-      <thead><tr><th>patient</th><th>event_type</th><th>date</th><th>source</th><th>notes</th></tr></thead>
+      <thead><tr><th>研究编号</th><th>事件类型</th><th>日期</th><th>来源</th><th>备注</th></tr></thead>
       <tbody>${trs}</tbody>
     </table>
   `;
@@ -661,7 +664,7 @@ function renderPatients(){
   el.patientsList.innerHTML = `
     <table class="table">
       <thead><tr>
-        <th>patient_code</th><th>性别</th><th>出生年</th><th>基线日期</th><th>Scr</th><th>UPCR</th><th>IgAN MEST‑C</th><th></th>
+        <th>研究编号</th><th>性别</th><th>出生年</th><th>基线日期</th><th>Scr</th><th>UPCR</th><th>IgAN MEST‑C</th><th></th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
@@ -678,7 +681,7 @@ function renderPatients(){
         if (el.labPatientCode) el.labPatientCode.value = pcode;
         if (el.medPatientCode) el.medPatientCode.value = pcode;
         if (el.evtPatientCode) el.evtPatientCode.value = pcode;
-        toast("已填入 patient_code（token/基因/化验/用药/事件）");
+        toast("已填入研究编号（链接/基因/化验/用药/事件各栏）");
         el.tokenOut.style.display = "none";
       }
     });
@@ -710,7 +713,10 @@ async function createPatientBaseline(){
     birth_year,
     baseline_date: el.patBaselineDate.value || null,
     baseline_scr: el.patBaselineScr.value ? Number(el.patBaselineScr.value) : null,
-    baseline_upcr: el.patBaselineUpcr.value ? Number(el.patBaselineUpcr.value) : null
+    baseline_upcr: el.patBaselineUpcr.value ? Number(el.patBaselineUpcr.value) : null,
+    treatment_arm: el.rctArm?.value || null,
+    randomization_id: el.rctRandomId?.value.trim() || null,
+    randomization_date: el.rctDate?.value || null,
   };
 
   // IgAN MEST-C
@@ -953,6 +959,7 @@ async function exportTable(kind){
     columns = [
       "center_code","module","patient_code","sex","birth_year","baseline_date","baseline_scr","baseline_upcr",
       "biopsy_date","oxford_m","oxford_e","oxford_s","oxford_t","oxford_c",
+      "treatment_arm","randomization_id","randomization_date",
       "created_at"
     ];
     filename = `patients_baseline_${center_code}_${fmtDate(new Date())}.csv`;
@@ -1104,7 +1111,7 @@ async function loadSnapshots(){
       ${r.status !== 'locked' ? `<button class='btn small danger' data-act='lock' data-row='${escapeHtml(r.id)}'>锁定</button>` : ""}
     </td>
   </tr>`).join("");
-  el.snapshotsList.innerHTML = `<table class='table'><thead><tr><th>snapshot_id</th><th>created_at</th><th>status</th><th>n_patients</th><th>n_visits</th><th>missing_rate</th><th>actions</th></tr></thead><tbody>${trs}</tbody></table>`;
+  el.snapshotsList.innerHTML = `<table class='table'><thead><tr><th>快照编号</th><th>创建时间</th><th>状态</th><th>患者数</th><th>随访次数</th><th>缺失率</th><th>操作</th></tr></thead><tbody>${trs}</tbody></table>`;
   qsa("button[data-act='copy']", el.snapshotsList).forEach(b=>b.addEventListener("click", async ()=>{
     const txt = citationText(b.dataset.id, b.dataset.at);
     await navigator.clipboard.writeText(txt);
@@ -1153,7 +1160,7 @@ async function generatePaperPack({ withSnapshot = false } = {}){
     };
 
     // columns fixed
-    const csvBaseline = toCsv(bRows, ["center_code","module","patient_code","sex","birth_year","baseline_date","baseline_scr","baseline_upcr","biopsy_date","oxford_m","oxford_e","oxford_s","oxford_t","oxford_c","created_at"]);
+    const csvBaseline = toCsv(bRows, ["center_code","module","patient_code","sex","birth_year","baseline_date","baseline_scr","baseline_upcr","biopsy_date","oxford_m","oxford_e","oxford_s","oxford_t","oxford_c","treatment_arm","randomization_id","randomization_date","created_at"]);
     const csvVisits = toCsv(vRows, ["center_code","module","patient_code","visit_date","sbp","dbp","scr_umol_l","upcr","egfr","notes","created_at"]);
     const csvLabs = toCsv(lRows, ["center_code","module","patient_code","lab_date","lab_name","lab_value","lab_unit","created_at"]);
     const csvMeds = toCsv(mRows, ["center_code","module","patient_code","drug_name","drug_class","dose","start_date","end_date","created_at"]);
@@ -1227,7 +1234,7 @@ async function generatePaperPack({ withSnapshot = false } = {}){
       }, null, 2));
     }
 
-    const table1 = toCsv(bRows, ["center_code","module","patient_code","sex","birth_year","baseline_date","baseline_scr","baseline_upcr"]);
+    const table1 = toCsv(bRows, ["center_code","module","patient_code","sex","birth_year","baseline_date","baseline_scr","baseline_upcr","treatment_arm","randomization_id"]);
     dataFolder.file("table1_baseline.csv", BOM + table1);
     analysisFolder.folder("outputs").file("trend_egfr_placeholder.txt", "Run analysis/run_analysis.py for rendered trajectory plots.");
     analysisFolder.folder("outputs").file("trend_proteinuria_placeholder.txt", "Run analysis/run_analysis.py for rendered trajectory plots.");
