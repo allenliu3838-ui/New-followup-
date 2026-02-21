@@ -33,11 +33,11 @@
       </div>
 
       <div class="btnbar" style="margin-top:12px">
-        <a class="btn" href="/guide" target="_blank">使用说明 /guide</a>
+        <a class="btn" href="/guide" target="_blank">使用说明</a>
         <a class="btn" href="/" target="_blank">返回首页</a>
-        <a class="btn" href="/pricing" target="_blank">价格 /pricing</a>
-        <a class="btn" href="/security" target="_blank">安全合规 /security</a>
-        <a class="btn" href="/deployment" target="_blank">部署方式 /deployment</a>
+        <a class="btn" href="/pricing" target="_blank">价格方案</a>
+        <a class="btn" href="/security" target="_blank">安全合规</a>
+        <a class="btn" href="/deployment" target="_blank">部署方式</a>
       </div>
     </div>
 
@@ -57,21 +57,21 @@
       <div class="row">
         <div class="col">
           <h2 style="margin:0 0 6px 0">项目</h2>
-          <div class="muted small">每个中心建议先创建一个项目（填写 center_code），用于多中心合并与质量控制。</div>
+          <div class="muted small">每个中心建议先创建一个项目（需填写中心代码），便于多中心数据合并与质量控制。</div>
 
           <div class="hr"></div>
 
           <h3 style="margin:0 0 8px 0;font-size:15px">新建项目</h3>
           <label>项目名称</label>
           <input id="projName" placeholder="例如：IgA肾病随访（BJ01）"/>
-          <label>中心代码 center_code（必填）</label>
+          <label>中心代码（必填）</label>
           <input id="projCenter" placeholder="例如：BJ01 / SH02"/>
-          <label>病种模块 module</label>
+          <label>病种模块</label>
           <select id="projModule">
-            <option value="IGAN">IGAN（IgA 肾病）</option>
+            <option value="IGAN">IgAN（IgA 肾病）</option>
             <option value="LN">LN（狼疮性肾炎）</option>
             <option value="MN">MN（膜性肾病）</option>
-            <option value="GENERAL">GENERAL（通用/混合）</option>
+            <option value="GENERAL">通用（混合/其他）</option>
             <option value="KTX">KTx（肾移植术后）</option>
           </select>
           <label>描述（可选）</label>
@@ -89,14 +89,14 @@
 
         <div class="col">
           <h2 style="margin:0 0 6px 0">患者（去标识化）</h2>
-          <div class="muted small">仅录入研究编号 patient_code；请勿录入姓名/MRN 等。</div>
+          <div class="muted small">仅录入研究编号；请勿录入姓名/病案号等可识别信息。</div>
 
           <div class="hr"></div>
 
           <h3 style="margin:0 0 8px 0;font-size:15px">创建患者基线</h3>
           <div class="row">
             <div class="col">
-              <label>patient_code（研究编号）</label>
+              <label>研究编号</label>
               <input id="patCode" placeholder="例如：0001 / A023"/>
             </div>
             <div class="col">
@@ -159,6 +159,30 @@
             </div>
           </div>
 
+          <div class="infobox" style="margin-top:10px">
+            <b>RCT 随机化信息（如适用）</b>
+            <div class="muted small" style="margin-top:4px">仅随机对照试验需填写；观察性队列研究可全部留空。</div>
+            <div class="row" style="margin-top:6px">
+              <div class="col">
+                <label>干预组别</label>
+                <select id="rctArm">
+                  <option value="">未填（观察性）</option>
+                  <option value="intervention">干预组</option>
+                  <option value="control">对照组</option>
+                  <option value="placebo">安慰剂组</option>
+                </select>
+              </div>
+              <div class="col">
+                <label>随机号</label>
+                <input id="rctRandomId" placeholder="如：R-0042"/>
+              </div>
+              <div class="col">
+                <label>随机化日期</label>
+                <input id="rctDate" type="date"/>
+              </div>
+            </div>
+          </div>
+
           <div class="btnbar">
             <button class="btn primary" id="btnCreatePatient">保存基线</button>
           </div>
@@ -166,20 +190,20 @@
           <div class="hr"></div>
 
           <h3 style="margin:0 0 6px 0;font-size:15px">患者列表</h3>
-          <div class="muted small">点击患者可生成随访链接（token）。</div>
+          <div class="muted small">点击患者行右侧按钮可生成对应随访链接。</div>
           <div id="patientsList"></div>
 
           <div class="hr"></div>
 
-          <h3 style="margin:0 0 6px 0;font-size:15px">随访链接（token）</h3>
-          <div class="muted small">患者端/随访人员无需登录，用链接填写随访。token 仅用于对应患者。</div>
+          <h3 style="margin:0 0 6px 0;font-size:15px">随访链接</h3>
+          <div class="muted small">患者端/随访人员无需登录，用链接直接填写随访，每条链接仅对应特定患者。</div>
           <div class="row" style="align-items:flex-end">
             <div class="col">
-              <label>patient_code</label>
+              <label>研究编号</label>
               <input id="tokenPatientCode" placeholder="从上方患者列表点击会自动填入"/>
             </div>
             <div class="col">
-              <label>token 有效期（天）</label>
+              <label>链接有效期（天）</label>
               <input id="tokenDays" type="number" value="365"/>
             </div>
           </div>
@@ -197,12 +221,12 @@
           <h2 style="margin:0 0 6px 0">导出（科研长表）</h2>
           <div class="muted small">导出 CSV 默认带 UTF‑8 BOM，Excel 直接打开一般不乱码。</div>
           <div class="btnbar">
-            <button class="btn" id="btnExportBaseline">导出 baseline</button>
-            <button class="btn" id="btnExportVisits">导出 visits</button>
-            <button class="btn" id="btnExportLabs">导出 labs</button>
-            <button class="btn" id="btnExportMeds">导出 meds</button>
-            <button class="btn" id="btnExportVariants">导出 variants</button>
-            <button class="btn" id="btnExportEvents">导出 events</button>
+            <button class="btn" id="btnExportBaseline">导出基线数据</button>
+            <button class="btn" id="btnExportVisits">导出随访记录</button>
+            <button class="btn" id="btnExportLabs">导出化验记录</button>
+            <button class="btn" id="btnExportMeds">导出用药记录</button>
+            <button class="btn" id="btnExportVariants">导出基因变异</button>
+            <button class="btn" id="btnExportEvents">导出终点事件</button>
           </div>
         </div>
 
@@ -221,12 +245,12 @@
 
           <div class="hr"></div>
 
-          <h3 style="margin:0 0 6px 0;font-size:15px">🧷 快照 / Snapshots（可复现版本）</h3>
-          <div class="muted small">生成快照后会得到 Snapshot ID，可用于论文 Methods 引用；可锁定用于投稿。</div>
+          <h3 style="margin:0 0 6px 0;font-size:15px">🧷 数据快照（可复现版本）</h3>
+          <div class="muted small">生成快照后会得到快照编号，可用于论文方法学部分引用；可锁定用于投稿。</div>
           <div class="btnbar" style="margin-top:8px">
-            <button class="btn" id="btnCreateSnapshot">生成数据快照（Snapshot）</button>
-            <button class="btn primary" id="btnPaperPackWithSnapshot">生成论文包（含 Snapshot）</button>
-            <button class="btn" id="btnRefreshSnapshots">刷新 Snapshots</button>
+            <button class="btn" id="btnCreateSnapshot">生成数据快照</button>
+            <button class="btn primary" id="btnPaperPackWithSnapshot">生成论文包（含快照）</button>
+            <button class="btn" id="btnRefreshSnapshots">刷新快照列表</button>
           </div>
           <div id="snapshotOut" class="infobox" style="margin-top:10px;display:none"></div>
           <div id="snapshotsList" style="margin-top:10px"></div>
@@ -237,26 +261,26 @@
 
       <div class="row" style="margin-top:10px">
         <div class="col">
-          <h3 style="margin:0 0 8px 0;font-size:15px">🧬 基因变异（variants_long）</h3>
-          <label>patient_code</label>
+          <h3 style="margin:0 0 8px 0;font-size:15px">🧬 基因变异</h3>
+          <label>研究编号</label>
           <input id="varPatientCode" placeholder="例如：0001"/>
           <div class="row">
             <div class="col">
-              <label>test_date</label>
+              <label>检测日期</label>
               <input id="varTestDate" type="date"/>
             </div>
             <div class="col">
-              <label>test_name（如 WES/Panel）</label>
+              <label>检测名称（如 WES/Panel）</label>
               <input id="varTestName" placeholder="例如：WES"/>
             </div>
           </div>
           <div class="row">
             <div class="col">
-              <label>gene</label>
+              <label>基因名</label>
               <input id="varGene" placeholder="例如：COL4A5"/>
             </div>
             <div class="col">
-              <label>variant（简述）</label>
+              <label>变异简述</label>
               <input id="varVariant" placeholder="例如：c.1234A&gt;G"/>
             </div>
           </div>
@@ -272,11 +296,11 @@
           </div>
           <div class="row">
             <div class="col">
-              <label>Zygosity（het/hom/hem）</label>
+              <label>合子型（het/hom/hem）</label>
               <input id="varZygosity" placeholder="het"/>
             </div>
             <div class="col">
-              <label>ACMG（P/LP/VUS/LB/B）</label>
+              <label>ACMG 分级（P/LP/VUS/LB/B）</label>
               <input id="varClass" placeholder="VUS"/>
             </div>
           </div>
@@ -291,26 +315,26 @@
         </div>
 
         <div class="col">
-          <h3 style="margin:0 0 8px 0;font-size:15px">🧪 化验（labs_long）</h3>
-          <label>patient_code</label>
+          <h3 style="margin:0 0 8px 0;font-size:15px">🧪 化验记录</h3>
+          <label>研究编号</label>
           <input id="labPatientCode" placeholder="例如：0001"/>
           <div class="row">
             <div class="col">
-              <label>lab_date</label>
+              <label>化验日期</label>
               <input id="labDate" type="date"/>
             </div>
             <div class="col">
-              <label>lab_name</label>
-              <input id="labName" placeholder="例如：Albumin / Hb / C3"/>
+              <label>化验项目</label>
+              <input id="labName" placeholder="例如：白蛋白 / 血红蛋白 / C3"/>
             </div>
           </div>
           <div class="row">
             <div class="col">
-              <label>lab_value</label>
+              <label>化验数值</label>
               <input id="labValue" type="number" step="0.01"/>
             </div>
             <div class="col">
-              <label>lab_unit</label>
+              <label>单位</label>
               <input id="labUnit" placeholder="g/L"/>
             </div>
           </div>
@@ -321,22 +345,22 @@
         </div>
 
         <div class="col">
-          <h3 style="margin:0 0 8px 0;font-size:15px">💊 用药（meds_long）</h3>
-          <label>patient_code</label>
+          <h3 style="margin:0 0 8px 0;font-size:15px">💊 用药记录</h3>
+          <label>研究编号</label>
           <input id="medPatientCode" placeholder="例如：0001"/>
-          <label>drug_name</label>
-          <input id="medName" placeholder="例如：Prednisone / MMF / ACEI"/>
-          <label>drug_class（可选）</label>
-          <input id="medClass" placeholder="例如：Glucocorticoid"/>
-          <label>dose（可选）</label>
+          <label>药品名称</label>
+          <input id="medName" placeholder="例如：泼尼松 / 吗替麦考酚酯 / ACEI"/>
+          <label>药物类别（可选）</label>
+          <input id="medClass" placeholder="例如：糖皮质激素"/>
+          <label>剂量（可选）</label>
           <input id="medDose" placeholder="例如：10 mg qd"/>
           <div class="row">
             <div class="col">
-              <label>start_date（可选）</label>
+              <label>开始日期（可选）</label>
               <input id="medStart" type="date"/>
             </div>
             <div class="col">
-              <label>end_date（可选）</label>
+              <label>结束日期（可选）</label>
               <input id="medEnd" type="date"/>
             </div>
           </div>
@@ -349,11 +373,11 @@
 
       <div class="hr" style="margin-top:14px"></div>
 
-      <h3 style="margin:0 0 8px 0;font-size:15px">🏁 临床终点事件（events_long）</h3>
+      <h3 style="margin:0 0 8px 0;font-size:15px">🏁 临床终点事件</h3>
       <div class="muted small" style="margin-bottom:10px">手动录入终点事件（ESRD/死亡/缓解等）；eGFR 下降终点在论文包中自动计算并合并。</div>
       <div class="row">
         <div class="col">
-          <label>patient_code</label>
+          <label>研究编号</label>
           <input id="evtPatientCode" placeholder="例如：0001"/>
           <div class="row">
             <div class="col">

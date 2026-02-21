@@ -170,12 +170,12 @@ async function loadContext(){
     }
   }
 
-  el.ctxSub.textContent = `${ctx.project_name} · center_code=${ctx.center_code} · module=${ctx.module}`;
+  el.ctxSub.textContent = `${ctx.project_name} · 中心=${ctx.center_code} · 模块=${ctx.module}`;
   el.ctxBox.innerHTML = `
     <div>项目</div><div><b>${escapeHtml(ctx.project_name)}</b></div>
     <div>中心</div><div><code>${escapeHtml(ctx.center_code)}</code></div>
     <div>模块</div><div><code>${escapeHtml(ctx.module)}</code></div>
-    <div>patient_code</div><div><b>${escapeHtml(ctx.patient_code)}</b></div>
+    <div>研究编号</div><div><b>${escapeHtml(ctx.patient_code)}</b></div>
     <div>试用状态</div><div>${trialBadge} <span class="muted small">${escapeHtml(trialTxt)}</span></div>
   `;
 
