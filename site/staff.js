@@ -99,10 +99,17 @@ const el = {
   btnRefreshSnapshots: qs("#btnRefreshSnapshots"),
   snapshotOut: qs("#snapshotOut"),
   snapshotsList: qs("#snapshotsList"),
+
+  // Admin panel
+  adminCard: qs("#adminCard"),
+  adminSearchEmail: qs("#adminSearchEmail"),
+  btnAdminSearch: qs("#btnAdminSearch"),
+  adminResults: qs("#adminResults"),
 };
 
 let session = null;
 let user = null;
+let isPlatformAdmin = false;
 
 let projects = [];
 let selectedProject = null;
@@ -150,15 +157,21 @@ function renderTrialBadge(p){
   let txt = "试用未配置";
   if (el.upgradeBtn) el.upgradeBtn.style.display = "none";
 
-  // ── 状态 1：付费订阅有效 ─────────────────────────────────────────────────
+  // ── 状态 1：付费订阅 / 合作伙伴有效 ──────────────────────────────────────
   if (subPlan !== "trial") {
     const paidActive = !subUntil || new Date(subUntil) > new Date();
     if (paidActive) {
-      const planLabel = subPlan === "institution" ? "机构版" : "Pro";
+      const planLabel = subPlan === "institution" ? "机构版"
+                      : subPlan === "partner"      ? "合作伙伴"
+                      : "Pro";
+      const isPermanent = subPlan === "partner" && subUntil &&
+                          new Date(subUntil).getFullYear() >= 2099;
       cls = "badge ok";
-      txt = subUntil
-        ? `${planLabel} 已订阅（到期 ${fmtDate(subUntil)}）`
-        : `${planLabel} 已订阅`;
+      txt = isPermanent
+        ? `${planLabel}（长期免费）`
+        : subUntil
+          ? `${planLabel} 已订阅（到期 ${fmtDate(subUntil)}）`
+          : `${planLabel} 已订阅`;
       el.trialBadge.className = cls;
       el.trialBadge.textContent = txt;
       el.trialBadge.style.display = "inline-flex";
@@ -246,6 +259,9 @@ async function init(){
   el.btnPaperPackWithSnapshot?.addEventListener("click", ()=>generatePaperPack({withSnapshot:true}));
   el.btnRefreshSnapshots?.addEventListener("click", loadSnapshots);
 
+  el.btnAdminSearch?.addEventListener("click", adminSearch);
+  el.adminSearchEmail?.addEventListener("keydown", e=>{ if(e.key==="Enter") adminSearch(); });
+
   renderAuthState();
 }
 
@@ -253,7 +269,9 @@ function renderAuthState(){
   if (!user){
     el.loginCard.style.display = "block";
     el.appCard.style.display = "none";
+    if (el.adminCard) el.adminCard.style.display = "none";
     el.btnSignOut.style.display = "none";
+    isPlatformAdmin = false;
     setLoginHint("提示：若收不到邮件，请检查垃圾箱或企业邮箱拦截。");
     return;
   }
@@ -262,6 +280,13 @@ function renderAuthState(){
   el.btnSignOut.style.display = "inline-flex";
   setLoginHint(`已登录：${user.email}`);
   loadAll();
+  checkPlatformAdmin();
+}
+
+async function checkPlatformAdmin(){
+  const { data, error } = await sb.rpc("is_platform_admin");
+  isPlatformAdmin = !error && data === true;
+  if (el.adminCard) el.adminCard.style.display = isPlatformAdmin ? "block" : "none";
 }
 
 async function sendMagicLink(){
@@ -1269,5 +1294,97 @@ async function generatePaperPack({ withSnapshot = false } = {}){
     setBusy(btn,false);
   }
 }
+
+// ═══════════════════════════════════════════════════════════
+// 平台管理员功能
+// ═══════════════════════════════════════════════════════════
+
+async function adminSearch(){
+  if (!isPlatformAdmin){ toast("无管理员权限"); return; }
+  const email = el.adminSearchEmail.value.trim();
+  if (!email){ toast("请输入邮箱关键词"); return; }
+  const btn = el.btnAdminSearch;
+  setBusy(btn, true);
+  try {
+    const { data, error } = await sb.rpc("admin_list_projects", { p_email: email });
+    if (error) throw error;
+    renderAdminResults(data || []);
+  } catch(e) {
+    toast("搜索失败：" + (e?.message || e));
+  } finally {
+    setBusy(btn, false);
+  }
+}
+
+function renderAdminResults(rows){
+  const c = el.adminResults;
+  if (!rows.length){
+    c.innerHTML = `<div class="muted small">未找到项目。请检查邮箱是否正确。</div>`;
+    return;
+  }
+  const thead = `<thead><tr>
+    <th>项目名称</th><th>中心</th><th>模块</th><th>所有者邮箱</th>
+    <th>当前计划</th><th>试用到期</th><th>宽限到期</th><th>操作</th>
+  </tr></thead>`;
+  const rows_html = rows.map(r => {
+    const plan = r.subscription_plan || "trial";
+    const planBadge = plan === "partner"      ? `<span class="badge ok" style="font-size:11px">合作伙伴</span>`
+                    : plan === "pro"           ? `<span class="badge ok" style="font-size:11px">Pro</span>`
+                    : plan === "institution"   ? `<span class="badge ok" style="font-size:11px">机构版</span>`
+                    :                           `<span class="badge" style="font-size:11px">试用</span>`;
+    const trialExp   = r.trial_expires_at  ? fmtDate(r.trial_expires_at)  : "—";
+    const graceExp   = r.trial_grace_until ? fmtDate(r.trial_grace_until) : "—";
+    const pid = escapeHtml(r.project_id);
+    return `<tr>
+      <td>${escapeHtml(r.project_name)}</td>
+      <td>${escapeHtml(r.center_code||"—")}</td>
+      <td>${escapeHtml(r.module||"—")}</td>
+      <td style="font-size:12px">${escapeHtml(r.owner_email)}</td>
+      <td>${planBadge}</td>
+      <td style="font-size:12px">${trialExp}</td>
+      <td style="font-size:12px">${graceExp}</td>
+      <td>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn small" onclick="adminExtend('${pid}',30)">+30天</button>
+          <button class="btn small" onclick="adminExtend('${pid}',90)">+90天</button>
+          <button class="btn small primary" onclick="adminPartner('${pid}')">合作伙伴</button>
+          <button class="btn small" style="color:#c0392b" onclick="adminReset('${pid}')">撤回</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+  c.innerHTML = `<table class="table" style="font-size:13px">${thead}<tbody>${rows_html}</tbody></table>`;
+}
+
+async function adminExtend(projectId, days){
+  if (!confirm(`延长试用 ${days} 天？`)) return;
+  const { error } = await sb.rpc("admin_adjust_trial", {
+    p_project_id: projectId, p_extra_days: days
+  });
+  if (error){ toast("操作失败：" + error.message); return; }
+  toast(`已延长 ${days} 天`);
+  adminSearch();
+}
+
+async function adminPartner(projectId){
+  if (!confirm("设为合作伙伴（长期免费）？")) return;
+  const { error } = await sb.rpc("admin_set_partner", { p_project_id: projectId });
+  if (error){ toast("操作失败：" + error.message); return; }
+  toast("已设为合作伙伴");
+  adminSearch();
+}
+
+async function adminReset(projectId){
+  if (!confirm("撤回为普通试用（30天，从今天计算）？")) return;
+  const { error } = await sb.rpc("admin_reset_to_trial", { p_project_id: projectId });
+  if (error){ toast("操作失败：" + error.message); return; }
+  toast("已重置为普通试用");
+  adminSearch();
+}
+
+// 挂载到 window，供 table inline onclick 调用
+window.adminExtend  = adminExtend;
+window.adminPartner = adminPartner;
+window.adminReset   = adminReset;
 
 init();

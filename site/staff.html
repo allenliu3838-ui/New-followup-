@@ -417,6 +417,27 @@
     </div>
   </div>
 
+  <!-- ===== 平台管理员面板（仅平台管理员可见） ===== -->
+  <div class="card" id="adminCard" style="display:none">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <h2 style="margin:0">🔑 平台管理员</h2>
+      <span class="badge ok" style="font-size:11px">仅你可见</span>
+    </div>
+    <div class="muted small">通过邮箱搜索用户及其项目，管理试用期与权益。</div>
+
+    <div class="hr"></div>
+
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px">
+        <label>用户邮箱（支持模糊搜索）</label>
+        <input id="adminSearchEmail" type="text" placeholder="例如：researcher@hospital.com"/>
+      </div>
+      <button class="btn primary" id="btnAdminSearch" style="margin-top:4px">搜索</button>
+    </div>
+
+    <div id="adminResults" style="margin-top:14px"></div>
+  </div>
+
   <script src="/config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script type="module" src="/staff.js"></script>
