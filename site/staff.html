@@ -54,6 +54,81 @@
       <div id="loginHint" class="muted small" style="margin-top:8px"></div>
     </div>
 
+    <!-- ===== 研究者资料（登录后填写） ===== -->
+    <div class="card" id="profileCard" style="display:none">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <h2 style="margin:0">研究者资料</h2>
+        <span id="profileStatus" class="badge" style="font-size:11px;display:none"></span>
+      </div>
+      <div class="muted small">帮助平台了解您的使用场景；资料不对外公开，仅平台管理员可查看。</div>
+
+      <div class="hr"></div>
+
+      <div class="row">
+        <div class="col">
+          <label>姓名</label>
+          <input id="profName" placeholder="例如：张三"/>
+        </div>
+        <div class="col">
+          <label>医院 / 单位</label>
+          <input id="profHospital" placeholder="例如：北京协和医院"/>
+        </div>
+        <div class="col">
+          <label>科室</label>
+          <input id="profDept" placeholder="例如：肾内科"/>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <label>意向套餐（仅供参考）</label>
+          <select id="profPlan">
+            <option value="">暂未决定</option>
+            <option value="trial">先试用</option>
+            <option value="pro">Pro（个人/团队）</option>
+            <option value="institution">机构版（多中心）</option>
+            <option value="partner">合作/联合申请</option>
+          </select>
+        </div>
+        <div class="col">
+          <label>联系方式（微信 / 手机，可选）</label>
+          <input id="profContact" placeholder="可选，方便平台联系"/>
+        </div>
+        <div class="col">
+          <label>备注（研究方向等，可选）</label>
+          <input id="profNotes" placeholder="例如：IgAN 队列，5 个中心"/>
+        </div>
+      </div>
+      <div class="btnbar">
+        <button class="btn primary" id="btnSaveProfile">保存资料</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <h3 style="margin:0 0 6px 0;font-size:15px">申请合作伙伴权益</h3>
+      <div class="muted small">如贵单位希望以合作/友好价格长期使用，可在此提交申请，平台审核后联系您确认价格与付款方式。</div>
+
+      <div id="contractStatus" style="margin-top:10px"></div>
+
+      <div id="contractApplyForm" style="display:none;margin-top:10px">
+        <div class="row">
+          <div class="col">
+            <label>申请套餐</label>
+            <select id="contractPlan">
+              <option value="institution">机构版（推荐，支持多中心合并）</option>
+              <option value="pro">Pro（个人/小团队）</option>
+            </select>
+          </div>
+          <div class="col">
+            <label>申请说明（研究方向、中心数等）</label>
+            <input id="contractNote" placeholder="例如：IgAN 多中心队列，5 个中心，拟发 JASN"/>
+          </div>
+        </div>
+        <div class="btnbar">
+          <button class="btn primary" id="btnApplyContract">提交申请</button>
+        </div>
+      </div>
+    </div>
+
     <div class="card" id="appCard" style="display:none">
       <div class="row">
         <div class="col">
@@ -428,6 +503,18 @@
 
     <div class="hr"></div>
 
+    <!-- 合同管理：待审批 -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <h3 style="margin:0;font-size:15px">合作申请</h3>
+      <span id="adminContractsBadge" class="badge warn" style="display:none;font-size:11px"></span>
+      <button class="btn small" id="btnAdminLoadContracts" style="margin-left:auto">刷新</button>
+    </div>
+    <div id="adminContracts" class="muted small">加载中…</div>
+
+    <div class="hr"></div>
+
+    <!-- 用户搜索 -->
+    <h3 style="margin:0 0 8px 0;font-size:15px">用户 & 项目搜索</h3>
     <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
       <div style="flex:1;min-width:220px">
         <label>用户邮箱（支持模糊搜索）</label>
