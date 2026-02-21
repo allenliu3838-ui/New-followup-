@@ -1594,7 +1594,7 @@ async function applyContract(){
 
 async function adminLoadContracts(){
   if (!isPlatformAdmin) return;
-  const { data, error } = await sb.rpc("admin_list_contracts", { p_status: null });
+  const { data, error } = await sb.rpc("admin_list_contracts");
   if (error){
     if(el.adminContracts) el.adminContracts.innerHTML =
       `<span class="muted small" style="color:#c0392b">加载失败：${escapeHtml(error.message)}</span>`;
