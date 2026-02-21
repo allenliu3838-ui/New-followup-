@@ -111,8 +111,18 @@ const el = {
   profNotes: qs("#profNotes"),
   btnSaveProfile: qs("#btnSaveProfile"),
 
+  // Contract apply (user side)
+  contractStatus: qs("#contractStatus"),
+  contractApplyForm: qs("#contractApplyForm"),
+  contractPlan: qs("#contractPlan"),
+  contractNote: qs("#contractNote"),
+  btnApplyContract: qs("#btnApplyContract"),
+
   // Admin panel
   adminCard: qs("#adminCard"),
+  adminContractsBadge: qs("#adminContractsBadge"),
+  adminContracts: qs("#adminContracts"),
+  btnAdminLoadContracts: qs("#btnAdminLoadContracts"),
   adminSearchEmail: qs("#adminSearchEmail"),
   btnAdminSearch: qs("#btnAdminSearch"),
   adminResults: qs("#adminResults"),
@@ -271,7 +281,9 @@ async function init(){
   el.btnRefreshSnapshots?.addEventListener("click", loadSnapshots);
 
   el.btnSaveProfile?.addEventListener("click", saveProfile);
+  el.btnApplyContract?.addEventListener("click", applyContract);
 
+  el.btnAdminLoadContracts?.addEventListener("click", adminLoadContracts);
   el.btnAdminSearch?.addEventListener("click", adminSearch);
   el.adminSearchEmail?.addEventListener("keydown", e=>{ if(e.key==="Enter") adminSearch(); });
 
@@ -296,6 +308,7 @@ function renderAuthState(){
   setLoginHint(`已登录：${user.email}`);
   loadAll();
   loadProfile();
+  loadMyContract();
   checkPlatformAdmin();
 }
 
@@ -303,6 +316,7 @@ async function checkPlatformAdmin(){
   const { data, error } = await sb.rpc("is_platform_admin");
   isPlatformAdmin = !error && data === true;
   if (el.adminCard) el.adminCard.style.display = isPlatformAdmin ? "block" : "none";
+  if (isPlatformAdmin) adminLoadContracts();
 }
 
 async function sendMagicLink(){
@@ -1492,9 +1506,240 @@ async function adminReset(projectId){
   adminSearch();
 }
 
+// ═══════════════════════════════════════════════════════════
+// 合作申请（用户侧）
+// ═══════════════════════════════════════════════════════════
+
+const CONTRACT_STATUS_LABEL = {
+  pending:  { text:"审批中",   cls:"badge warn" },
+  approved: { text:"已批准",   cls:"badge ok"   },
+  rejected: { text:"未通过",   cls:"badge bad"  },
+  cancelled:{ text:"已取消",   cls:"badge"      },
+};
+
+async function loadMyContract(){
+  const { data } = await sb.rpc("get_my_contract");
+  const c = el.contractStatus;
+  const form = el.contractApplyForm;
+  if (!c || !form) return;
+
+  if (!data) {
+    // 没有申请记录 → 显示申请表单
+    c.innerHTML = `<div class="muted small">暂无申请记录。如需优惠合作，请填写后提交。</div>`;
+    form.style.display = "block";
+    return;
+  }
+
+  const s = CONTRACT_STATUS_LABEL[data.status] || { text: data.status, cls:"badge" };
+  form.style.display = "none";
+
+  let extra = "";
+  if (data.status === "approved" && data.payment_status === "unpaid"){
+    extra = `<div class="infobox" style="margin-top:8px">
+      <b>审批已通过！</b> 平台将与您联系确认付款方式。付款完成后权益自动开通。<br/>
+      套餐：<b>${data.plan || data.apply_plan}</b>
+      ${data.annual_price_cny ? `· 协议价：<b>¥${data.annual_price_cny}/年</b>` : ""}
+      ${data.admin_note ? `<br/>备注：${escapeHtml(data.admin_note)}` : ""}
+    </div>`;
+  } else if (data.status === "approved" && data.payment_status === "paid"){
+    extra = `<div class="infobox" style="margin-top:8px">
+      权益已激活，到期：<b>${data.expires_at ? fmtDate(data.expires_at) : "—"}</b>
+    </div>`;
+  } else if (data.status === "rejected"){
+    extra = `<div class="warnbox" style="margin-top:8px">
+      申请未通过。${data.admin_note ? `原因：${escapeHtml(data.admin_note)}` : ""}
+      <br/><a href="#" onclick="resetContractForm(event)" style="color:inherit">重新申请</a>
+    </div>`;
+  }
+
+  c.innerHTML = `<div style="display:flex;align-items:center;gap:8px">
+    <span class="${s.cls}">${s.text}</span>
+    <span class="muted small">申请套餐：${data.apply_plan}
+      · 提交于 ${fmtDate(data.applied_at)}</span>
+  </div>${extra}`;
+}
+
+function resetContractForm(e){
+  e.preventDefault();
+  if (el.contractStatus) el.contractStatus.innerHTML = "";
+  if (el.contractApplyForm) el.contractApplyForm.style.display = "block";
+}
+
+async function applyContract(){
+  const plan = el.contractPlan?.value;
+  const note = el.contractNote?.value.trim() || null;
+  const btn  = el.btnApplyContract;
+  btn.dataset.label = "提交申请";
+  setBusy(btn, true);
+  try {
+    const { error } = await sb.rpc("apply_partner_contract", {
+      p_plan: plan, p_note: note
+    });
+    if (error) throw error;
+    toast("申请已提交，平台将在 1–2 个工作日内联系您");
+    await loadMyContract();
+  } catch(e) {
+    toast("提交失败：" + (e?.message || e));
+  } finally {
+    setBusy(btn, false);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// 合同管理（管理员侧）
+// ═══════════════════════════════════════════════════════════
+
+async function adminLoadContracts(){
+  if (!isPlatformAdmin) return;
+  const { data, error } = await sb.rpc("admin_list_contracts", { p_status: null });
+  if (error){ if(el.adminContracts) el.adminContracts.innerHTML = `<span class="muted small">加载失败</span>`; return; }
+  renderAdminContracts(data || []);
+}
+
+function renderAdminContracts(rows){
+  const c = el.adminContracts;
+  if (!c) return;
+
+  const pending = rows.filter(r => r.status === "pending");
+  const approved = rows.filter(r => r.status === "approved");
+
+  if (el.adminContractsBadge){
+    if (pending.length){
+      el.adminContractsBadge.textContent = `${pending.length} 待审批`;
+      el.adminContractsBadge.style.display = "inline-flex";
+    } else {
+      el.adminContractsBadge.style.display = "none";
+    }
+  }
+
+  if (!rows.length){
+    c.innerHTML = `<div class="muted small">暂无申请记录。</div>`;
+    return;
+  }
+
+  const cardHtml = rows.map(r => {
+    const na = v => escapeHtml(v || "—");
+    const s  = CONTRACT_STATUS_LABEL[r.status] || { text: r.status, cls:"badge" };
+    const cid = escapeHtml(r.contract_id);
+
+    // 待审批：显示审批表单
+    const reviewForm = r.status === "pending" ? `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0">
+        <div>
+          <label style="font-size:12px">折扣（%优惠）</label>
+          <input id="disc_${cid}" type="number" min="1" max="99" placeholder="如 40 = 6折"
+                 style="width:90px" value="${r.discount_pct || ""}"/>
+        </div>
+        <div>
+          <label style="font-size:12px">授予套餐</label>
+          <select id="plan_${cid}" style="width:110px">
+            <option value="institution" ${r.apply_plan==="institution"?"selected":""}>机构版</option>
+            <option value="pro"         ${r.apply_plan==="pro"?"selected":""}>Pro</option>
+            <option value="partner">合作伙伴</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px">协议年费（元）</label>
+          <input id="price_${cid}" type="number" step="100" placeholder="如 6000"
+                 style="width:100px" value="${r.annual_price_cny || ""}"/>
+        </div>
+        <div style="flex:1;min-width:120px">
+          <label style="font-size:12px">备注</label>
+          <input id="note_${cid}" placeholder="可选" value="${escapeHtml(r.admin_note||"")}"/>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn small primary" onclick="adminApproveContract('${cid}')">✅ 批准</button>
+          <button class="btn small" style="color:#c0392b" onclick="adminRejectContractPrompt('${cid}')">❌ 拒绝</button>
+        </div>
+      </div>` : "";
+
+    // 已批准待付款：显示激活按钮
+    const activateForm = (r.status === "approved" && r.payment_status === "unpaid") ? `
+      <div style="display:flex;gap:8px;align-items:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0;flex-wrap:wrap">
+        <div>
+          <label style="font-size:12px">权益到期日</label>
+          <input id="exp_${cid}" type="date" value="${
+            r.expires_at ? r.expires_at.slice(0,10) :
+            new Date(Date.now()+365*864e5).toISOString().slice(0,10)
+          }" style="width:140px"/>
+        </div>
+        <button class="btn small primary" onclick="adminActivateContract('${cid}')">💳 确认收款并激活</button>
+      </div>` : "";
+
+    // 已激活
+    const activeInfo = (r.status === "approved" && r.payment_status === "paid") ? `
+      <div class="muted small" style="margin-top:6px">
+        已激活 · 到期：${r.expires_at ? fmtDate(r.expires_at) : "—"}
+        · 付款：${r.paid_at ? fmtDate(r.paid_at) : "—"}
+      </div>` : "";
+
+    return `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <span class="${s.cls}" style="font-size:11px">${s.text}</span>
+        <b style="font-size:13px">${na(r.real_name)}</b>
+        <span class="muted small">${na(r.owner_email)}</span>
+        <span class="muted small">·</span>
+        <span class="muted small">${na(r.hospital)} ${na(r.department)}</span>
+        ${r.contact ? `<span class="muted small">· 📞 ${escapeHtml(r.contact)}</span>` : ""}
+        <span class="muted small" style="margin-left:auto">${fmtDate(r.applied_at)}</span>
+      </div>
+      <div class="muted small">
+        申请套餐：<b>${r.apply_plan}</b>
+        ${r.discount_pct ? ` · 折扣：${100-r.discount_pct}折（优惠${r.discount_pct}%）` : ""}
+        ${r.annual_price_cny ? ` · 协议价：¥${r.annual_price_cny}/年` : ""}
+        ${r.apply_note ? `<br/>申请说明：${escapeHtml(r.apply_note)}` : ""}
+      </div>
+      ${activeInfo}${reviewForm}${activateForm}
+    </div>`;
+  }).join("");
+
+  c.innerHTML = cardHtml;
+}
+
+async function adminApproveContract(cid){
+  const disc  = parseInt(qs(`#disc_${cid}`)?.value)  || null;
+  const plan  = qs(`#plan_${cid}`)?.value             || null;
+  const price = parseFloat(qs(`#price_${cid}`)?.value)|| null;
+  const note  = qs(`#note_${cid}`)?.value.trim()      || null;
+  const { error } = await sb.rpc("admin_review_contract", {
+    p_contract_id: cid, p_discount_pct: disc,
+    p_plan: plan, p_annual_price: price, p_admin_note: note
+  });
+  if (error){ toast("操作失败：" + error.message); return; }
+  toast("已批准，等待用户付款");
+  adminLoadContracts();
+}
+
+async function adminRejectContractPrompt(cid){
+  const note = prompt("拒绝原因（可选，用户可见）：") ?? null;
+  if (note === null) return; // cancelled
+  const { error } = await sb.rpc("admin_reject_contract", {
+    p_contract_id: cid, p_admin_note: note || null
+  });
+  if (error){ toast("操作失败：" + error.message); return; }
+  toast("已拒绝申请");
+  adminLoadContracts();
+}
+
+async function adminActivateContract(cid){
+  const expInput = qs(`#exp_${cid}`)?.value;
+  const expires  = expInput ? new Date(expInput).toISOString() : null;
+  if (!confirm(`确认收款并激活？权益将开通至 ${expInput || "一年后"}，该用户所有项目自动升级。`)) return;
+  const { error } = await sb.rpc("admin_activate_contract", {
+    p_contract_id: cid, p_expires_at: expires
+  });
+  if (error){ toast("操作失败：" + error.message); return; }
+  toast("✅ 已激活，权益已开通");
+  adminLoadContracts();
+}
+
 // 挂载到 window，供 table inline onclick 调用
 window.adminExtend  = adminExtend;
 window.adminPartner = adminPartner;
 window.adminReset   = adminReset;
+window.adminApproveContract        = adminApproveContract;
+window.adminRejectContractPrompt   = adminRejectContractPrompt;
+window.adminActivateContract       = adminActivateContract;
+window.resetContractForm           = resetContractForm;
 
 init();
