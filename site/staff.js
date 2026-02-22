@@ -10,6 +10,7 @@ const el = {
   password: qs("#password"),
   btnSendLink: qs("#btnSendLink"),
   btnRegister: qs("#btnRegister"),
+  btnResetPwd: qs("#btnResetPwd"),
   btnSignOut: qs("#btnSignOut"),
   loginHint: qs("#loginHint"),
 
@@ -256,6 +257,7 @@ async function init(){
 
   el.btnSendLink.addEventListener("click", sendMagicLink);
   el.btnRegister.addEventListener("click", registerAccount);
+  el.btnResetPwd.addEventListener("click", resetPassword);
   el.btnSignOut.addEventListener("click", async ()=>{
     await sb.auth.signOut();
     toast("已退出登录");
@@ -345,7 +347,7 @@ async function registerAccount(){
   const email = el.email.value.trim();
   const password = el.password?.value || "";
   if (!email){ toast("请输入邮箱"); return; }
-  if (!password || password.length < 6){ toast("密码至少需要6位"); return; }
+  if (!password || password.length < 8){ toast("密码至少需要8位"); return; }
   const btn = el.btnRegister;
   setBusy(btn, true);
   try{
@@ -355,6 +357,26 @@ async function registerAccount(){
   }catch(e){
     console.error(e);
     toast("注册失败：" + (e?.message || e));
+  }finally{
+    setBusy(btn, false);
+  }
+}
+
+async function resetPassword(){
+  const email = el.email.value.trim();
+  if (!email){ toast("请先输入邮箱"); return; }
+  const btn = el.btnResetPwd;
+  setBusy(btn, true);
+  try{
+    const { error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: `${location.origin}/staff`
+    });
+    if (error) throw error;
+    toast("重置链接已发送，请查收邮件");
+    setLoginHint("已发送密码重置邮件，点击邮件中的链接后即可设置新密码。");
+  }catch(e){
+    console.error(e);
+    toast("发送失败：" + (e?.message || e));
   }finally{
     setBusy(btn, false);
   }
