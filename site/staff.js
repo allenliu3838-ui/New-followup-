@@ -143,8 +143,13 @@ function setLoginHint(msg){ el.loginHint.textContent = msg || ""; }
 
 function setBusy(btn, busy){
   if (!btn) return;
+  if (!btn.dataset.label) btn.dataset.label = btn.textContent;
   btn.disabled = !!busy;
-  btn.textContent = busy ? "处理中…" : btn.dataset.label || btn.textContent;
+  btn.textContent = busy ? "处理中…" : btn.dataset.label;
+}
+
+function getInputEmail(){
+  return (el.email?.value || "").trim().toLowerCase();
 }
 
 function renderTrialBadge(p){
@@ -325,7 +330,7 @@ async function checkPlatformAdmin(){
 }
 
 async function sendMagicLink(){
-  const email = el.email.value.trim();
+  const email = getInputEmail();
   const password = el.password?.value || "";
   if (!email){ toast("请输入邮箱"); return; }
   if (!password){ toast("请输入密码"); return; }
@@ -344,16 +349,25 @@ async function sendMagicLink(){
 }
 
 async function registerAccount(){
-  const email = el.email.value.trim();
+  const email = getInputEmail();
   const password = el.password?.value || "";
   if (!email){ toast("请输入邮箱"); return; }
   if (!password || password.length < 8){ toast("密码至少需要8位"); return; }
   const btn = el.btnRegister;
   setBusy(btn, true);
   try{
-    const { error } = await sb.auth.signUp({ email, password });
+    const { data, error } = await sb.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: `${location.origin}/staff` }
+    });
     if (error) throw error;
-    toast("注册成功，已自动登录");
+    if (data?.session) {
+      toast("注册成功，已自动登录");
+    } else {
+      toast("注册成功，请先查收验证邮件并完成激活");
+      setLoginHint("我们已发送验证邮件，激活账号后再回来登录。");
+    }
   }catch(e){
     console.error(e);
     toast("注册失败：" + (e?.message || e));
@@ -363,7 +377,7 @@ async function registerAccount(){
 }
 
 async function resetPassword(){
-  const email = el.email.value.trim();
+  const email = getInputEmail();
   if (!email){ toast("请先输入邮箱"); return; }
   const btn = el.btnResetPwd;
   setBusy(btn, true);
@@ -376,7 +390,13 @@ async function resetPassword(){
     setLoginHint("已发送密码重置邮件，点击邮件中的链接后即可设置新密码。");
   }catch(e){
     console.error(e);
-    toast("发送失败：" + (e?.message || e));
+    const msg = (e?.message || e || "").toString();
+    if (/recovery email/i.test(msg)) {
+      toast("发送失败：邮件服务暂时不可用，请稍后重试或联系管理员");
+      setLoginHint("若持续失败，请检查 Supabase 邮件服务（SMTP）配置。");
+      return;
+    }
+    toast("发送失败：" + msg);
   }finally{
     setBusy(btn, false);
   }
