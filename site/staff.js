@@ -7,7 +7,9 @@ const el = {
   loginCard: qs("#loginCard"),
   appCard: qs("#appCard"),
   email: qs("#email"),
+  password: qs("#password"),
   btnSendLink: qs("#btnSendLink"),
+  btnRegister: qs("#btnRegister"),
   btnSignOut: qs("#btnSignOut"),
   loginHint: qs("#loginHint"),
 
@@ -253,6 +255,7 @@ async function init(){
   });
 
   el.btnSendLink.addEventListener("click", sendMagicLink);
+  el.btnRegister.addEventListener("click", registerAccount);
   el.btnSignOut.addEventListener("click", async ()=>{
     await sb.auth.signOut();
     toast("已退出登录");
@@ -298,7 +301,7 @@ function renderAuthState(){
     if (el.adminCard) el.adminCard.style.display = "none";
     el.btnSignOut.style.display = "none";
     isPlatformAdmin = false;
-    setLoginHint("提示：若收不到邮件，请检查垃圾箱或企业邮箱拦截。");
+    setLoginHint("提示：首次使用请先点击「注册账号」创建账号，之后再登录。");
     return;
   }
   el.loginCard.style.display = "block";
@@ -321,21 +324,37 @@ async function checkPlatformAdmin(){
 
 async function sendMagicLink(){
   const email = el.email.value.trim();
+  const password = el.password?.value || "";
   if (!email){ toast("请输入邮箱"); return; }
+  if (!password){ toast("请输入密码"); return; }
   const btn = el.btnSendLink;
-  btn.dataset.label = "发送登录链接";
   setBusy(btn, true);
   try{
-    const { error } = await sb.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${location.origin}/staff` }
-    });
+    const { error } = await sb.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    toast("已发送登录链接，请查收邮件");
-    setLoginHint("请打开邮箱点击登录链接（如在手机上打开也可）。");
+    toast("登录成功");
   }catch(e){
     console.error(e);
-    toast("发送失败：" + (e?.message || e));
+    toast("登录失败：" + (e?.message || e));
+  }finally{
+    setBusy(btn, false);
+  }
+}
+
+async function registerAccount(){
+  const email = el.email.value.trim();
+  const password = el.password?.value || "";
+  if (!email){ toast("请输入邮箱"); return; }
+  if (!password || password.length < 6){ toast("密码至少需要6位"); return; }
+  const btn = el.btnRegister;
+  setBusy(btn, true);
+  try{
+    const { error } = await sb.auth.signUp({ email, password });
+    if (error) throw error;
+    toast("注册成功，已自动登录");
+  }catch(e){
+    console.error(e);
+    toast("注册失败：" + (e?.message || e));
   }finally{
     setBusy(btn, false);
   }
@@ -1594,7 +1613,7 @@ async function applyContract(){
 
 async function adminLoadContracts(){
   if (!isPlatformAdmin) return;
-  const { data, error } = await sb.rpc("admin_list_contracts", { p_status: null });
+  const { data, error } = await sb.rpc("admin_list_contracts");
   if (error){
     if(el.adminContracts) el.adminContracts.innerHTML =
       `<span class="muted small" style="color:#c0392b">加载失败：${escapeHtml(error.message)}</span>`;
