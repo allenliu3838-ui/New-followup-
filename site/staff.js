@@ -347,7 +347,7 @@ async function registerAccount(){
   const email = el.email.value.trim();
   const password = el.password?.value || "";
   if (!email){ toast("请输入邮箱"); return; }
-  if (!password || password.length < 6){ toast("密码至少需要6位"); return; }
+  if (!password || password.length < 8){ toast("密码至少需要8位"); return; }
   const btn = el.btnRegister;
   setBusy(btn, true);
   try{
