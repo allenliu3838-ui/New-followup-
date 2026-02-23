@@ -363,23 +363,8 @@ async function registerAccount(){
 }
 
 async function resetPassword(){
-  const email = el.email.value.trim();
-  if (!email){ toast("请先输入邮箱"); return; }
-  const btn = el.btnResetPwd;
-  setBusy(btn, true);
-  try{
-    const { error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo: `${location.origin}/staff`
-    });
-    if (error) throw error;
-    toast("重置链接已发送，请查收邮件");
-    setLoginHint("已发送密码重置邮件，点击邮件中的链接后即可设置新密码。");
-  }catch(e){
-    console.error(e);
-    toast("发送失败：" + (e?.message || e));
-  }finally{
-    setBusy(btn, false);
-  }
+  setLoginHint("如需重置密码，请发邮件至 allenliu3838@gmail.com，注明您的注册邮箱，管理员将在1个工作日内处理。");
+  toast("请联系管理员重置密码");
 }
 
 async function loadAll(){
