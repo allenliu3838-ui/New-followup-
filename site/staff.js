@@ -251,6 +251,17 @@ function showIganPathBox(){
 }
 
 async function init(){
+  // Show friendly message for Supabase auth errors forwarded from index.html
+  const hashParams = new URLSearchParams(location.hash.slice(1));
+  if (hashParams.get("error")) {
+    const code = hashParams.get("error_code") || hashParams.get("error");
+    const msg = code === "otp_expired"
+      ? "重置链接已过期，请重新点击「忘记密码」发送新的链接。"
+      : (hashParams.get("error_description") || "认证失败，请重试。").replace(/\+/g, " ");
+    setLoginHint(msg);
+    history.replaceState(null, "", location.pathname);
+  }
+
   // handle auth redirect URL
   const { data: { session: s } } = await sb.auth.getSession();
   session = s;
