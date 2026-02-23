@@ -377,29 +377,8 @@ async function registerAccount(){
 }
 
 async function resetPassword(){
-  const email = getInputEmail();
-  if (!email){ toast("请先输入邮箱"); return; }
-  const btn = el.btnResetPwd;
-  setBusy(btn, true);
-  try{
-    const { error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo: `${location.origin}/staff`
-    });
-    if (error) throw error;
-    toast("重置链接已发送，请查收邮件");
-    setLoginHint("已发送密码重置邮件，点击邮件中的链接后即可设置新密码。");
-  }catch(e){
-    console.error(e);
-    const msg = (e?.message || e || "").toString();
-    if (/recovery email/i.test(msg)) {
-      toast("发送失败：邮件服务暂时不可用，请稍后重试或联系管理员");
-      setLoginHint("若持续失败，请检查 Supabase 邮件服务（SMTP）配置。");
-      return;
-    }
-    toast("发送失败：" + msg);
-  }finally{
-    setBusy(btn, false);
-  }
+  setLoginHint("如需重置密码，请发邮件至 allenliu3838@gmail.com，注明您的注册邮箱，管理员将在1个工作日内处理。");
+  toast("请联系管理员重置密码");
 }
 
 async function loadAll(){
