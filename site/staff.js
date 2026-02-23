@@ -8,6 +8,8 @@ const el = {
   appCard: qs("#appCard"),
   email: qs("#email"),
   password: qs("#password"),
+  confirmPwdLabel: qs("#confirmPwdLabel"),
+  confirmPwd: qs("#confirmPwd"),
   btnSendLink: qs("#btnSendLink"),
   btnRegister: qs("#btnRegister"),
   emailLabel: qs("#emailLabel"),
@@ -419,16 +421,21 @@ function showNewPasswordMode(){
   el.email.style.display = "none";
   el.password.placeholder = "输入新密码（至少8位）";
   el.password.value = "";
+  el.confirmPwdLabel.style.display = "";
+  el.confirmPwd.style.display = "";
+  el.confirmPwd.value = "";
   el.btnSendLink.style.display = "none";
   el.btnRegister.style.display = "none";
   el.btnResetPwd.style.display = "none";
   if (el.btnSetNewPwd) el.btnSetNewPwd.style.display = "inline-flex";
-  setLoginHint("请输入新密码，然后点击「确认修改密码」。");
+  setLoginHint("请输入新密码并确认，然后点击「确认修改密码」。");
 }
 
 async function setNewPassword(){
   const newPwd = el.password?.value || "";
+  const confirmPwd = el.confirmPwd?.value || "";
   if (!newPwd || newPwd.length < 8){ toast("密码至少需要8位"); return; }
+  if (newPwd !== confirmPwd){ toast("两次输入的密码不一致，请重新输入"); el.confirmPwd.value = ""; el.confirmPwd.focus(); return; }
   const btn = el.btnSetNewPwd;
   setBusy(btn, true);
   try{
@@ -440,6 +447,9 @@ async function setNewPassword(){
     el.email.style.display = "";
     el.password.placeholder = "请输入密码";
     el.password.value = "";
+    el.confirmPwdLabel.style.display = "none";
+    el.confirmPwd.style.display = "none";
+    el.confirmPwd.value = "";
     el.btnSendLink.style.display = "";
     el.btnRegister.style.display = "";
     el.btnResetPwd.style.display = "";
