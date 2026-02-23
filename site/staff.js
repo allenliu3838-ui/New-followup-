@@ -264,20 +264,27 @@ async function init(){
     history.replaceState(null, "", location.pathname);
   }
 
-  // handle auth redirect URL
-  const { data: { session: s } } = await sb.auth.getSession();
-  session = s;
-  user = s?.user || null;
-
+  // Register BEFORE getSession so PASSWORD_RECOVERY event is never missed
+  let stateHandled = false;
   sb.auth.onAuthStateChange((_event, s2)=>{
     session = s2;
     user = s2?.user || null;
+    stateHandled = true;
     if (_event === "PASSWORD_RECOVERY"){
       showNewPasswordMode();
       return;
     }
     renderAuthState();
   });
+
+  // getSession triggers PKCE code exchange; the listener above handles the result
+  const { data: { session: s } } = await sb.auth.getSession();
+  if (!stateHandled){
+    // onAuthStateChange hasn't fired yet — render with whatever getSession returned
+    session = s;
+    user = s?.user || null;
+    renderAuthState();
+  }
 
   el.btnSendLink.addEventListener("click", sendMagicLink);
   el.btnRegister.addEventListener("click", registerAccount);
