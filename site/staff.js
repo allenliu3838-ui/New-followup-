@@ -10,7 +10,9 @@ const el = {
   password: qs("#password"),
   btnSendLink: qs("#btnSendLink"),
   btnRegister: qs("#btnRegister"),
+  emailLabel: qs("#emailLabel"),
   btnResetPwd: qs("#btnResetPwd"),
+  btnSetNewPwd: qs("#btnSetNewPwd"),
   btnSignOut: qs("#btnSignOut"),
   loginHint: qs("#loginHint"),
 
@@ -257,12 +259,17 @@ async function init(){
   sb.auth.onAuthStateChange((_event, s2)=>{
     session = s2;
     user = s2?.user || null;
+    if (_event === "PASSWORD_RECOVERY"){
+      showNewPasswordMode();
+      return;
+    }
     renderAuthState();
   });
 
   el.btnSendLink.addEventListener("click", sendMagicLink);
   el.btnRegister.addEventListener("click", registerAccount);
   el.btnResetPwd.addEventListener("click", resetPassword);
+  el.btnSetNewPwd?.addEventListener("click", setNewPassword);
   el.btnSignOut.addEventListener("click", async ()=>{
     await sb.auth.signOut();
     toast("已退出登录");
@@ -377,8 +384,62 @@ async function registerAccount(){
 }
 
 async function resetPassword(){
-  setLoginHint("如需重置密码，请发邮件至 allenliu3838@gmail.com，注明您的注册邮箱，管理员将在1个工作日内处理。");
-  toast("请联系管理员重置密码");
+  const email = getInputEmail();
+  if (!email){ toast("请先输入您的注册邮箱"); return; }
+  const btn = el.btnResetPwd;
+  setBusy(btn, true);
+  try{
+    const { error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: `${location.origin}/staff`
+    });
+    if (error) throw error;
+    toast("重置邮件已发送，请查收邮件");
+    setLoginHint("已发送密码重置邮件，请点击邮件中的链接完成重置。");
+  }catch(e){
+    console.error(e);
+    toast("发送失败：" + (e?.message || e));
+  }finally{
+    setBusy(btn, false);
+  }
+}
+
+function showNewPasswordMode(){
+  el.emailLabel.style.display = "none";
+  el.email.style.display = "none";
+  el.password.placeholder = "输入新密码（至少8位）";
+  el.password.value = "";
+  el.btnSendLink.style.display = "none";
+  el.btnRegister.style.display = "none";
+  el.btnResetPwd.style.display = "none";
+  if (el.btnSetNewPwd) el.btnSetNewPwd.style.display = "inline-flex";
+  setLoginHint("请输入新密码，然后点击「确认修改密码」。");
+}
+
+async function setNewPassword(){
+  const newPwd = el.password?.value || "";
+  if (!newPwd || newPwd.length < 8){ toast("密码至少需要8位"); return; }
+  const btn = el.btnSetNewPwd;
+  setBusy(btn, true);
+  try{
+    const { error } = await sb.auth.updateUser({ password: newPwd });
+    if (error) throw error;
+    toast("密码修改成功，已自动登录");
+    // Restore normal login UI
+    el.emailLabel.style.display = "";
+    el.email.style.display = "";
+    el.password.placeholder = "请输入密码";
+    el.password.value = "";
+    el.btnSendLink.style.display = "";
+    el.btnRegister.style.display = "";
+    el.btnResetPwd.style.display = "";
+    if (el.btnSetNewPwd) el.btnSetNewPwd.style.display = "none";
+    renderAuthState();
+  }catch(e){
+    console.error(e);
+    toast("修改失败：" + (e?.message || e));
+  }finally{
+    setBusy(btn, false);
+  }
 }
 
 async function loadAll(){
