@@ -49,8 +49,13 @@ const el = {
 
   tokenPatientCode: qs("#tokenPatientCode"),
   tokenDays: qs("#tokenDays"),
+  tokenSingleUse: qs("#tokenSingleUse"),
   btnGenToken: qs("#btnGenToken"),
   tokenOut: qs("#tokenOut"),
+  issuePanel: qs("#issuePanel"),
+  issueSummary: qs("#issueSummary"),
+  issueList: qs("#issueList"),
+  btnLoadIssues: qs("#btnLoadIssues"),
 
 
   // Optional extra data entry
@@ -70,9 +75,14 @@ const el = {
 
   labPatientCode: qs("#labPatientCode"),
   labDate: qs("#labDate"),
+  labTestCode: qs("#labTestCode"),
   labName: qs("#labName"),
   labValue: qs("#labValue"),
   labUnit: qs("#labUnit"),
+  labStdValue: qs("#labStdValue"),
+  labQcReasonCol: qs("#labQcReasonCol"),
+  labQcReason: qs("#labQcReason"),
+  labHint: qs("#labHint"),
   btnAddLab: qs("#btnAddLab"),
   labsPreview: qs("#labsPreview"),
 
@@ -142,6 +152,30 @@ let isPlatformAdmin = false;
 let projects = [];
 let selectedProject = null;
 let patients = [];
+let labCatalog = [];   // [{code, name_cn, module, is_core, standard_unit, display_note}]
+let unitMap = {};      // { code: [{unit_symbol, is_standard, multiplier}] }
+
+// ── PII 检测（前端层，与后端 _contains_pii 逻辑保持同步） ────────────────────
+function containsPII(text) {
+  if (!text) return false;
+  return (
+    /1[3-9][0-9]{9}/.test(text)                             // 手机号
+    || /[1-9][0-9]{5}(19|20)[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[0-9]{3}[0-9Xx]/.test(text) // 身份证
+    || /(住院号|病案号|门诊号|病历号|床号|mrn|admiss)[^a-z0-9]{0,3}[0-9]{3,}/i.test(text)
+    || /(姓名|患者姓名|病人|name\s*[:：])\s*[\u4e00-\u9fa5]{2,4}/.test(text)
+    || /[0-9]{8,}/.test(text)
+    || /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(text)
+  );
+}
+
+function assertNoPII(text, fieldLabel) {
+  if (containsPII(text)) {
+    throw new Error(
+      `「${fieldLabel}」中检测到疑似个人身份信息（手机号/身份证/住院号等）。\n`
+      + `请删除后重新保存。系统禁止录入任何可识别个人信息（PII）。`
+    );
+  }
+}
 
 function setLoginHint(msg){ el.loginHint.textContent = msg || ""; }
 
@@ -324,6 +358,31 @@ async function init(){
   el.btnAdminSearch?.addEventListener("click", adminSearch);
   el.adminSearchEmail?.addEventListener("keydown", e=>{ if(e.key==="Enter") adminSearch(); });
 
+  // Lab catalog wiring
+  el.labTestCode?.addEventListener("change", updateLabUnits);
+  el.labValue?.addEventListener("input", updateLabStdValue);
+  el.labUnit?.addEventListener("change", updateLabStdValue);
+
+  // Issue panel
+  el.btnLoadIssues?.addEventListener("click", loadIssues);
+
+  // PII real-time detection on notes fields
+  [
+    { el: el.evtNotes,  label: "事件备注" },
+    { el: el.varNotes,  label: "基因备注" },
+    { el: el.labQcReason, label: "留痕原因" },
+  ].forEach(({ el: inp, label }) => {
+    inp?.addEventListener("input", () => {
+      if (containsPII(inp.value)) {
+        inp.style.borderColor = "#dc2626";
+        inp.title = `⚠ 检测到疑似PII，请删除个人信息（手机号/身份证/住院号/姓名等）`;
+      } else {
+        inp.style.borderColor = "";
+        inp.title = "";
+      }
+    });
+  });
+
   renderAuthState();
 }
 
@@ -341,8 +400,10 @@ function renderAuthState(){
   el.loginCard.style.display = "block";
   el.appCard.style.display = "block";
   if (el.profileCard) el.profileCard.style.display = "block";
+  if (el.issuePanel) el.issuePanel.style.display = "block";
   el.btnSignOut.style.display = "inline-flex";
   setLoginHint(`已登录：${user.email}`);
+  loadLabCatalog();
   loadAll();
   loadProfile();
   loadMyContract();
@@ -470,6 +531,80 @@ async function setNewPassword(){
   }
 }
 
+async function loadLabCatalog(){
+  const { data, error } = await sb.from("lab_test_catalog")
+    .select("code,name_cn,module,is_core,standard_unit,display_note")
+    .order("module").order("name_cn");
+  if (error || !data) return;
+  labCatalog = data;
+
+  // Build unit map: { code: [{unit_symbol, is_standard, multiplier}] }
+  const { data: mapRows } = await sb.from("lab_test_unit_map")
+    .select("lab_test_code,unit_symbol,is_standard,multiplier");
+  unitMap = {};
+  (mapRows || []).forEach(r => {
+    if (!unitMap[r.lab_test_code]) unitMap[r.lab_test_code] = [];
+    unitMap[r.lab_test_code].push(r);
+  });
+
+  // Populate lab test dropdown
+  if (!el.labTestCode) return;
+  const grouped = {};
+  labCatalog.forEach(c => {
+    if (!grouped[c.module]) grouped[c.module] = [];
+    grouped[c.module].push(c);
+  });
+  el.labTestCode.innerHTML = '<option value="">-- 选择化验项目 --</option>';
+  Object.entries(grouped).forEach(([mod, items]) => {
+    const grp = document.createElement("optgroup");
+    grp.label = mod;
+    items.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.code;
+      opt.textContent = `${c.name_cn}（${c.code}）`;
+      grp.appendChild(opt);
+    });
+    el.labTestCode.appendChild(grp);
+  });
+}
+
+function updateLabUnits(){
+  const code = el.labTestCode?.value;
+  if (!el.labUnit) return;
+  if (!code){
+    el.labUnit.innerHTML = '<option value="">-- 先选化验项目 --</option>';
+    if (el.labStdValue) el.labStdValue.value = "";
+    if (el.labHint) el.labHint.textContent = "";
+    return;
+  }
+  const units = unitMap[code] || [];
+  el.labUnit.innerHTML = units.map(u =>
+    `<option value="${u.unit_symbol}" ${u.is_standard ? "selected" : ""}>${u.unit_symbol}${u.is_standard ? "（标准单位）" : ""}</option>`
+  ).join("");
+
+  // Show catalog display note as hint
+  const cat = labCatalog.find(c => c.code === code);
+  if (el.labHint && cat?.display_note) el.labHint.textContent = cat.display_note;
+  if (el.labName) el.labName.value = code;
+  updateLabStdValue();
+}
+
+function updateLabStdValue(){
+  const code = el.labTestCode?.value;
+  const rawVal = parseFloat(el.labValue?.value);
+  const unit = el.labUnit?.value;
+  if (!el.labStdValue) return;
+  if (!code || isNaN(rawVal) || !unit){
+    el.labStdValue.value = "";
+    return;
+  }
+  const unitRow = (unitMap[code] || []).find(u => u.unit_symbol === unit);
+  if (!unitRow){ el.labStdValue.value = "单位不支持"; return; }
+  const cat = labCatalog.find(c => c.code === code);
+  const std = (rawVal * unitRow.multiplier).toFixed(4);
+  el.labStdValue.value = `${std} ${cat?.standard_unit || ""}`;
+}
+
 async function loadAll(){
   await loadProjects();
   // auto select first project
@@ -546,6 +681,7 @@ async function selectProject(projectId){
   await loadPatients();
   await loadExtras();
   await loadSnapshots();
+  loadIssueSummary();
 }
 
 async function createProject(){
@@ -930,16 +1066,28 @@ async function createPatientBaseline(){
   }
 }
 
+// Token 状态标签渲染
+// 四种状态：有效（绿）/ 已使用（蓝）/ 已撤销（红）/ 已过期（灰）
+function tokenStatusBadge(t){
+  const now = new Date();
+  if (t.revoked_at) return `<span class="issue-badge issue-critical">已撤销</span>`;
+  if (t.expires_at && new Date(t.expires_at) < now) return `<span class="issue-badge" style="background:#e2e8f0;color:#475569">已过期</span>`;
+  if (t.single_use && t.used_at) return `<span class="issue-badge issue-info">已使用</span>`;
+  return `<span class="issue-badge issue-resolved">有效</span>`;
+}
+
 async function genToken(){
   if (!selectedProject) return toast("请先选择项目");
   const pcode = el.tokenPatientCode.value.trim();
-  if (!pcode) return toast("请输入 patient_code");
+  if (!pcode) return toast("请输入患者研究编号");
   const days = el.tokenDays.value ? Number(el.tokenDays.value) : 365;
+  const singleUse = el.tokenSingleUse?.checked || false;
 
   const btn = el.btnGenToken;
-  btn.dataset.label = "生成链接";
-  setBusy(btn,true);
+  btn.dataset.label = "生成随访链接";
+  setBusy(btn, true);
   try{
+    // Step 1: create token (existing RPC)
     const { data, error } = await sb.rpc("create_patient_token", {
       p_project_id: selectedProject.id,
       p_patient_code: pcode,
@@ -947,38 +1095,62 @@ async function genToken(){
     });
     if (error) throw error;
     const token = data;
+
+    // Step 2: if single_use, set the flag on the record
+    if (singleUse){
+      await sb.from("patient_tokens")
+        .update({ single_use: true })
+        .eq("token", token);
+    }
+
     const link = `${location.origin}/p/${token}`;
+    const expiryStr = days >= 3650 ? "长期有效" : `${days}天后过期`;
+    const suStr = singleUse ? "（单次使用）" : "（可多次使用）";
+
     el.tokenOut.style.display = "block";
     el.tokenOut.innerHTML = `
-      <div><b>随访链接已生成</b></div>
-      <div class="small" style="margin-top:6px"><code>${escapeHtml(link)}</code></div>
-      <div class="btnbar" style="margin-top:8px">
-        <button class="btn small" id="btnCopyLink">复制链接</button>
-        <a class="btn small" href="${escapeHtml(link)}" target="_blank">打开随访页</a>
-        <button class="btn small danger" id="btnRevokeToken">一键失效该 token</button>
+      <div><b>随访链接已生成</b> ${tokenStatusBadge({revoked_at:null,expires_at:null,single_use:singleUse,used_at:null})}</div>
+      <div class="small muted" style="margin-top:4px">
+        有效期：${expiryStr} · ${suStr}<br>
+        <b>Token</b>（令牌）是这串随机码的简称，患者或护士用下面的链接填随访，<b>无需登录账号</b>。
       </div>
-      <div class="muted small" style="margin-top:6px">提示：泄露可立即失效 token；系统不保存任何 PII。</div>
+      <div style="margin-top:8px;background:#f1f5f9;padding:8px;border-radius:6px;word-break:break-all;font-size:13px">
+        <code>${escapeHtml(link)}</code>
+      </div>
+      <div class="btnbar" style="margin-top:8px">
+        <button class="btn small primary" id="btnCopyLink">复制链接</button>
+        <a class="btn small" href="${escapeHtml(link)}" target="_blank">打开随访页预览</a>
+        <button class="btn small" style="border-color:#dc2626;color:#dc2626" id="btnRevokeToken">立即撤销此 token</button>
+      </div>
+      <div class="muted small" style="margin-top:6px">
+        提示：链接泄露或发错患者时可点「立即撤销」，已提交的数据不受影响。
+      </div>
     `;
     qs("#btnCopyLink", el.tokenOut).addEventListener("click", async ()=>{
       await navigator.clipboard.writeText(link);
       toast("已复制随访链接");
     });
     qs("#btnRevokeToken", el.tokenOut).addEventListener("click", async ()=>{
-      const ok = window.confirm("确认立即使该 token 失效？失效后链接将不可用。");
-      if (!ok) return;
-      const { error: revokeError } = await sb.rpc("revoke_patient_token", { p_token: token });
-      if (revokeError) {
-        console.error(revokeError);
-        toast("失效失败：" + (revokeError?.message || revokeError));
-        return;
-      }
-      toast("已使 token 失效");
+      const reason = window.prompt("请填写撤销原因（必填，如：发错患者，重新生成）：");
+      if (reason === null) return;  // 取消
+      if (!reason.trim()) return toast("撤销原因不能为空");
+      const { error: re } = await sb.rpc("revoke_patient_token", {
+        p_token: token,
+        p_revoke_reason: reason.trim()
+      });
+      if (re){ toast("撤销失败：" + re.message); return; }
+      toast("已撤销此 token，链接立即失效");
+      el.tokenOut.querySelector("div > b").nextSibling?.replaceWith?.("");
+      el.tokenOut.querySelector(".issue-resolved, .issue-info")?.outerHTML;
+      // re-render badge
+      const badge = el.tokenOut.querySelector("[class*='issue-badge']");
+      if (badge) badge.outerHTML = `<span class="issue-badge issue-critical">已撤销</span>`;
     });
   }catch(e){
     console.error(e);
     toast("生成失败：" + (e?.message || e));
   }finally{
-    setBusy(btn,false);
+    setBusy(btn, false);
   }
 }
 
@@ -1027,34 +1199,61 @@ async function addVariant(){
 async function addLab(){
   if (!selectedProject) return toast("请先选择项目");
   const patient_code = el.labPatientCode?.value.trim();
-  if (!patient_code) return toast("请填写化验记录的 patient_code");
-  const lab_name = el.labName?.value.trim();
-  if (!lab_name) return toast("请填写 lab_name");
-  const payload = {
-    project_id: selectedProject.id,
-    patient_code,
-    lab_date: el.labDate?.value || null,
-    lab_name,
-    lab_value: el.labValue?.value !== "" ? Number(el.labValue.value) : null,
-    lab_unit: el.labUnit?.value.trim() || null
-  };
+  if (!patient_code) return toast("请填写患者研究编号");
+  const lab_test_code = el.labTestCode?.value;
+  if (!lab_test_code) return toast("请从下拉列表选择化验项目");
+  const rawVal = el.labValue?.value !== "" ? Number(el.labValue?.value) : null;
+  if (rawVal === null || isNaN(rawVal)) return toast("请填写化验数值");
+  const unit = el.labUnit?.value;
+  if (!unit) return toast("请选择单位");
+
+  // 前端 PII 检测
+  try { assertNoPII(el.labQcReason?.value || "", "留痕原因"); } catch(e){ return toast(e.message); }
+
   const btn = el.btnAddLab;
   btn.dataset.label = "添加化验记录";
-  setBusy(btn,true);
+  setBusy(btn, true);
   try{
-    const { error } = await sb.from("labs_long").insert(payload);
+    const { data, error } = await sb.rpc("upsert_lab_record", {
+      p_project_id:    selectedProject.id,
+      p_patient_code:  patient_code,
+      p_lab_date:      el.labDate?.value || null,
+      p_lab_test_code: lab_test_code,
+      p_value_raw:     rawVal,
+      p_unit_symbol:   unit,
+      p_measured_at:   null,
+      p_lab_id:        null
+    });
     if (error) throw error;
-    toast("已添加化验记录");
-    if (el.labName) el.labName.value = "";
-    if (el.labValue) el.labValue.value = "";
-    if (el.labUnit) el.labUnit.value = "";
+
+    // If qc_reason was filled, update it on the record
+    const reason = el.labQcReason?.value.trim();
+    if (reason && data) {
+      await sb.from("labs_long").update({ qc_reason: reason }).eq("id", data);
+    }
+
+    const cat = labCatalog.find(c => c.code === lab_test_code);
+    toast(`已添加化验记录：${cat?.name_cn || lab_test_code} ${rawVal} ${unit}`);
+    el.labTestCode.value = "";
+    el.labValue.value = "";
+    el.labUnit.innerHTML = '<option value="">-- 先选化验项目 --</option>';
+    if (el.labStdValue) el.labStdValue.value = "";
+    if (el.labQcReason) el.labQcReason.value = "";
+    if (el.labQcReasonCol) el.labQcReasonCol.style.display = "none";
+    if (el.labHint) el.labHint.textContent = "";
     await loadExtras();
-  await loadSnapshots();
+    await loadSnapshots();
+    loadIssueSummary();
   }catch(e){
     console.error(e);
-    toast("添加失败：" + (e?.message || e));
+    const hint = e?.message || String(e);
+    // If duplicate warning from DB, show qc_reason field
+    if (hint.includes("duplicate") || hint.includes("重复") || hint.includes("unit_not_allowed") || hint.includes("单位")) {
+      if (el.labQcReasonCol) el.labQcReasonCol.style.display = "";
+    }
+    toast("添加失败：" + hint);
   }finally{
-    setBusy(btn,false);
+    setBusy(btn, false);
   }
 }
 
@@ -1304,6 +1503,69 @@ async function loadSnapshots(){
   qsa("button[data-act='lock']", el.snapshotsList).forEach(b=>b.addEventListener("click", ()=>lockSnapshot(b.dataset.row)));
 }
 
+// Issue 严重度中文标签
+const SEVERITY_LABEL = { critical:"严重", warning:"警告", info:"提示" };
+const SEVERITY_CSS   = { critical:"issue-critical", warning:"issue-warning", info:"issue-info" };
+
+async function loadIssueSummary(){
+  if (!selectedProject || !el.issueSummary) return;
+  const { data, error } = await sb.rpc("get_issue_summary", { p_project_id: selectedProject.id });
+  if (error || !data){ el.issueSummary.textContent = "暂无质控数据"; return; }
+  const total = (data.total_open || 0) + (data.total_in_prog || 0);
+  const by = data.by_severity || {};
+  el.issueSummary.innerHTML =
+    total === 0
+      ? `<span class="issue-badge issue-resolved">✓ 无未解决 Issue</span>　关闭率 ${data.close_rate_pct ?? 0}%`
+      : `未解决：
+         ${by.critical ? `<span class='issue-badge issue-critical'>${by.critical} 严重</span> ` : ""}
+         ${by.warning  ? `<span class='issue-badge issue-warning'>${by.warning} 警告</span> ` : ""}
+         ${by.info     ? `<span class='issue-badge issue-info'>${by.info} 提示</span>` : ""}
+         　已关闭 ${data.total_resolved + data.total_wontfix || 0} 条，关闭率 ${data.close_rate_pct ?? 0}%`;
+}
+
+async function loadIssues(){
+  if (!selectedProject || !el.issueList) return;
+  const { data, error } = await sb.from("data_issues")
+    .select("id,patient_code,record_type,rule_code,severity,status,message,created_at")
+    .eq("project_id", selectedProject.id)
+    .not("status", "in", '("RESOLVED","WONT_FIX")')
+    .order("severity")
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error){ el.issueList.innerHTML = `<div class='muted small'>加载失败：${escapeHtml(error.message)}</div>`; return; }
+  const rows = data || [];
+  if (!rows.length){ el.issueList.innerHTML = "<div class='muted small'>太好了！暂无未解决的质控 Issue。</div>"; return; }
+  el.issueList.innerHTML = `
+    <table class='table' style='font-size:13px'>
+      <thead><tr><th>严重度</th><th>患者编号</th><th>记录类型</th><th>规则</th><th>说明</th><th>操作</th></tr></thead>
+      <tbody>
+      ${rows.map(r => `<tr>
+        <td><span class='issue-badge ${SEVERITY_CSS[r.severity]}'>${SEVERITY_LABEL[r.severity]}</span></td>
+        <td>${escapeHtml(r.patient_code)}</td>
+        <td>${escapeHtml(r.record_type)}</td>
+        <td><code>${escapeHtml(r.rule_code)}</code></td>
+        <td>${escapeHtml(r.message.slice(0,60))}${r.message.length > 60 ? "…" : ""}</td>
+        <td>
+          <button class='btn small' data-issue-id='${r.id}' data-act='wontfix'>标记不修复</button>
+        </td>
+      </tr>`).join("")}
+      </tbody>
+    </table>`;
+  qsa("button[data-act='wontfix']", el.issueList).forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const reason = window.prompt("请说明为何不修复此 Issue（必填）：");
+      if (!reason?.trim()) return toast("原因不能为空");
+      const { error: e2 } = await sb.rpc("close_issue_wont_fix", {
+        p_issue_id: btn.dataset.issueId, p_resolution: reason.trim()
+      });
+      if (e2){ toast("操作失败：" + e2.message); return; }
+      toast("已标记为不修复");
+      loadIssues();
+      loadIssueSummary();
+    });
+  });
+}
+
 async function generatePaperPack({ withSnapshot = false } = {}){
   if (!selectedProject) return toast("请先选择项目");
   if (typeof JSZip === "undefined") return toast("JSZip 未加载，无法打包");
@@ -1325,7 +1587,7 @@ async function generatePaperPack({ withSnapshot = false } = {}){
 
     const today = new Date().toISOString().slice(0,10);
     const meta = {
-      export_version: "core_v1",
+      export_version: "core_v2",
       exported_at: new Date().toISOString(),
       project_id: pid,
       project_name,
@@ -1345,8 +1607,8 @@ async function generatePaperPack({ withSnapshot = false } = {}){
 
     // columns fixed
     const csvBaseline = toCsv(bRows, ["center_code","module","patient_code","sex","birth_year","baseline_date","baseline_scr","baseline_upcr","biopsy_date","oxford_m","oxford_e","oxford_s","oxford_t","oxford_c","treatment_arm","randomization_id","randomization_date","created_at"]);
-    const csvVisits = toCsv(vRows, ["center_code","module","patient_code","visit_date","sbp","dbp","scr_umol_l","upcr","egfr","notes","created_at"]);
-    const csvLabs = toCsv(lRows, ["center_code","module","patient_code","lab_date","lab_name","lab_value","lab_unit","created_at"]);
+    const csvVisits = toCsv(vRows, ["center_code","module","patient_code","visit_date","sbp","dbp","scr_umol_l","upcr","egfr","egfr_formula_version","notes","created_at"]);
+    const csvLabs = toCsv(lRows, ["center_code","module","patient_code","lab_date","lab_test_code","lab_name","value_raw","unit_symbol","value_standard","standard_unit","lab_value","lab_unit","created_at"]);
     const csvMeds = toCsv(mRows, ["center_code","module","patient_code","drug_name","drug_class","dose","start_date","end_date","created_at"]);
     const csvVars = toCsv(gRows, ["center_code","module","patient_code","test_date","test_name","gene","variant","hgvs_c","hgvs_p","transcript","zygosity","classification","lab_name","notes","created_at"]);
     const csvEvents = toCsv(eRows, ["center_code","module","patient_code","event_type","event_date","confirmed","source","notes","created_at"]);
@@ -1393,18 +1655,109 @@ async function generatePaperPack({ withSnapshot = false } = {}){
     ms.file("METHODS_AUTO_EN.md", methods);
     ms.file("README.md", readme);
 
-    zip.file("snapshot_readme.txt", [
-      `snapshot_id: ${snapshotId}`,
-      `exported_at: ${new Date().toISOString()}`,
-      `project_id: ${pid}`,
-      `project_name: ${project_name}`,
-      `center_code: ${center_code}`,
-      `module: ${module}`,
-      `n_patients: ${bRows.length}`,
-      `n_visits: ${vRows.length}`,
-      `filter_summary: center_code=${center_code},module=${module}`,
-      `schema_version: core_v2`
-    ].join("\n"));
+    // ── PR-9 顶刊必备三件套 ─────────────────────────────────────────────────
+
+    // 1. data_dictionary.json — 字段定义、单位、换算规则、eGFR 公式版本
+    const dataDictionary = {
+      schema_version: "core_v2",
+      generated_at: new Date().toISOString(),
+      egfr_formula: "CKD-EPI-2021-Cr",
+      egfr_reference: "Inker et al., NEJM 2021;385:1737-1749",
+      missing_value_convention: "empty cell = not measured (not zero)",
+      merge_key: "center_code + patient_code",
+      pii_policy: "No PII stored. All records use center-assigned research codes only.",
+      tables: {
+        patients_baseline: {
+          patient_code: "Center-assigned research ID (NOT name/MRN). Format: centerId-year-seq, e.g. BJ01-2024-001",
+          sex: "M=Male, F=Female",
+          birth_year: "Year of birth (integer)",
+          baseline_scr: "Serum creatinine at baseline, unit: μmol/L",
+          baseline_upcr: "Urine PCR at baseline, unit: mg/g",
+          oxford_m: "Oxford-MEST M score: 0 or 1",
+          oxford_e: "Oxford-MEST E score: 0 or 1",
+          oxford_s: "Oxford-MEST S score: 0 or 1",
+          oxford_t: "Oxford-MEST T score: 0, 1 or 2",
+          oxford_c: "Oxford-MEST C score: 0, 1 or 2"
+        },
+        visits_long: {
+          visit_date: "Date of this follow-up visit (YYYY-MM-DD)",
+          sbp: "Systolic BP (mmHg)",
+          dbp: "Diastolic BP (mmHg)",
+          scr_umol_l: "Serum creatinine (μmol/L). Multiply by 0.01131 to convert to mg/dL",
+          upcr: "Urine PCR (mg/g). Divide by 1000 to convert to g/g",
+          egfr: "eGFR (mL/min/1.73m²), see egfr_formula_version for calculation method",
+          egfr_formula_version: "CKD-EPI-2021-Cr = computed by system; manual = user-entered; missing_inputs = sex/age missing"
+        },
+        labs_long: {
+          lab_test_code: "Standardized test code from lab_test_catalog (e.g. CREAT, UPCR, HGB)",
+          value_raw: "Original value as entered by the user",
+          unit_symbol: "Unit as entered",
+          value_standard: "Value converted to standard unit (see standard_unit column)",
+          standard_unit: "Standard unit for this test; all centers use this for merged analysis"
+        }
+      },
+      lab_catalog_summary: labCatalog.map(c => ({
+        code: c.code, name_cn: c.name_cn, standard_unit: c.standard_unit,
+        is_core: c.is_core, module: c.module
+      })),
+      unit_conversion_examples: [
+        { from: "CREAT 88.4 μmol/L", to: "1.00 mg/dL", formula: "÷88.4" },
+        { from: "UPCR 2000 mg/g",    to: "2.00 g/g",   formula: "÷1000" },
+        { from: "HGB 120 g/L",       to: "12.0 g/dL",  formula: "÷10"   }
+      ]
+    };
+    zip.file("data_dictionary.json", JSON.stringify(dataDictionary, null, 2));
+
+    // 2. qc_report.csv — 核心字段缺失率 + Issue 统计（按中心）
+    const { data: issueRows } = await sb
+      .from("data_issues")
+      .select("severity,status")
+      .eq("project_id", pid);
+    const openIssues = (issueRows || []).filter(i => !["RESOLVED","WONT_FIX"].includes(i.status));
+    const closedIssues = (issueRows || []).filter(i => ["RESOLVED","WONT_FIX"].includes(i.status));
+    const qcReportRows = [{
+      center_code,
+      n_patients: bRows.length,
+      n_visits: vRows.length,
+      missing_sbp_pct: qcSummary.missing?.sbp > 0 ? ((qcSummary.missing.sbp / vRows.length * 100).toFixed(1) + "%") : "0%",
+      missing_scr_pct: qcSummary.missing?.scr_umol_l > 0 ? ((qcSummary.missing.scr_umol_l / vRows.length * 100).toFixed(1) + "%") : "0%",
+      missing_upcr_pct: qcSummary.missing?.upcr > 0 ? ((qcSummary.missing.upcr / vRows.length * 100).toFixed(1) + "%") : "0%",
+      open_issues_critical: openIssues.filter(i=>i.severity==="critical").length,
+      open_issues_warning: openIssues.filter(i=>i.severity==="warning").length,
+      open_issues_info: openIssues.filter(i=>i.severity==="info").length,
+      issue_close_rate: issueRows?.length > 0
+        ? (closedIssues.length / issueRows.length * 100).toFixed(1) + "%" : "N/A",
+      generated_at: new Date().toISOString()
+    }];
+    zip.file("qc_report.csv", "\ufeff" + toCsv(qcReportRows, Object.keys(qcReportRows[0])));
+
+    // 3. snapshot_manifest.json — 快照宣言（可复现性关键文件）
+    const snapshotManifest = {
+      snapshot_id: snapshotId,
+      generated_at: new Date().toISOString(),
+      schema_version: "core_v2",
+      egfr_formula: "CKD-EPI-2021-Cr",
+      project_id: pid,
+      project_name,
+      center_code,
+      module,
+      row_counts: {
+        patients: bRows.length,
+        visits: vRows.length,
+        labs: lRows.length,
+        medications: mRows.length,
+        genetics: gRows.length,
+        events: eRows.length
+      },
+      qc_summary: {
+        open_issues: openIssues.length,
+        closed_issues: closedIssues.length,
+        missing_rate_pct: qcSummary.missing_rate_pct
+      },
+      usage_note: "Cite this snapshot_id in your Methods section to ensure reproducibility. Share with co-authors to verify identical dataset version."
+    };
+    zip.file("snapshot_manifest.json", JSON.stringify(snapshotManifest, null, 2));
+
     zip.file("qc_summary.json", JSON.stringify(qcSummary, null, 2));
 
     if ((module || "").toUpperCase() === "KTX"){

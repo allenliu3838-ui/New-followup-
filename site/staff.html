@@ -6,6 +6,29 @@
   <title>肾域AI KidneySphere AI · 后台（科研优先）</title>
   <link rel="stylesheet" href="/app.css"/>
   <link rel="icon" href="/assets/kidneysphere-ai.png"/>
+  <style>
+    /* 字段提示气泡 */
+    .tooltip-icon {
+      display:inline-flex;align-items:center;justify-content:center;
+      width:15px;height:15px;border-radius:50%;background:#e2e8f0;
+      color:#475569;font-size:10px;font-weight:700;cursor:help;
+      position:relative;vertical-align:middle;margin-left:3px;
+    }
+    .tooltip-icon:hover::after {
+      content: attr(title);
+      position:absolute;left:20px;top:-4px;z-index:100;
+      background:#1e293b;color:#fff;border-radius:6px;
+      padding:6px 10px;font-size:12px;font-weight:400;
+      white-space:normal;width:260px;line-height:1.5;
+      box-shadow:0 4px 12px rgba(0,0,0,.25);
+    }
+    /* Issue 面板 */
+    .issue-badge { display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700; }
+    .issue-critical { background:#fee2e2;color:#b91c1c; }
+    .issue-warning  { background:#fef3c7;color:#b45309; }
+    .issue-info     { background:#dbeafe;color:#1d4ed8; }
+    .issue-resolved { background:#d1fae5;color:#065f46; }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -283,22 +306,54 @@
 
           <div class="hr"></div>
 
-          <h3 style="margin:0 0 6px 0;font-size:15px">随访链接</h3>
-          <div class="muted small">患者端/随访人员无需登录，用链接直接填写随访，每条链接仅对应特定患者。</div>
-          <div class="row" style="align-items:flex-end">
+          <h3 style="margin:0 0 6px 0;font-size:15px">随访链接（Token）
+            <span class="tooltip-icon" title="Token（令牌）= 一串随机字母数字组成的"钥匙"，患者或随访护士用这个链接填随访数据，不需要登录账号。每条链接只绑定一个患者。Token 泄露也没关系，随时可以撤销。">?</span>
+          </h3>
+          <div class="muted small">
+            患者端/随访人员<b>无需登录</b>，用链接直接填写随访，每条链接仅对应特定患者。<br>
+            <b>Token 是什么？</b> 一串随机码（如 <code>a3f8…</code>），是访问患者随访页的"一次性钥匙"，不含任何个人信息，泄露可随时撤销。
+          </div>
+          <div class="row" style="align-items:flex-end;margin-top:8px">
             <div class="col">
-              <label>研究编号</label>
+              <label>研究编号
+                <span class="tooltip-icon" title="填入要生成链接的患者研究编号，或在上方患者列表点击「生成链接」自动填入。">?</span>
+              </label>
               <input id="tokenPatientCode" placeholder="从上方患者列表点击会自动填入"/>
             </div>
             <div class="col">
-              <label>链接有效期（天）</label>
+              <label>链接有效期（天）
+                <span class="tooltip-icon" title="链接过期后自动失效，患者无法再提交。建议长期随访用 365 天，单次填写用 7 天。">?</span>
+              </label>
               <input id="tokenDays" type="number" value="365"/>
             </div>
           </div>
-          <div class="btnbar">
-            <button class="btn primary" id="btnGenToken">生成链接</button>
+          <div class="row" style="margin-top:6px">
+            <div class="col">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                <input type="checkbox" id="tokenSingleUse" style="width:auto;margin:0"/>
+                单次使用（提交一次后自动失效）
+                <span class="tooltip-icon" title="勾选后：患者提交一次随访数据，链接立刻失效，再次点击会提示已使用。适合一次性调查或防止重复提交。不勾选：链接可反复使用，适合长期随访。">?</span>
+              </label>
+            </div>
+          </div>
+          <div class="btnbar" style="margin-top:8px">
+            <button class="btn primary" id="btnGenToken">生成随访链接</button>
           </div>
           <div id="tokenOut" class="infobox" style="margin-top:10px;display:none"></div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <!-- ===== 质控 Issue 面板 ===== -->
+      <div id="issuePanel" style="display:none">
+        <h2 style="margin:0 0 6px 0">质控 Issue
+          <span class="tooltip-icon" title="系统自动检测数据问题（如日期冲突、超范围、单位不对），每个问题生成一个Issue。修正数据后Issue自动关闭；无法修正时可标记为「不修复」并说明原因。">?</span>
+        </h2>
+        <div id="issueSummary" class="muted small">加载中…</div>
+        <div id="issueList" style="margin-top:8px"></div>
+        <div class="btnbar" style="margin-top:8px">
+          <button class="btn" id="btnLoadIssues">查看所有 Issue</button>
         </div>
       </div>
 
@@ -412,23 +467,47 @@
               <input id="labDate" type="date"/>
             </div>
             <div class="col">
-              <label>化验项目</label>
-              <input id="labName" placeholder="例如：白蛋白 / 血红蛋白 / C3"/>
+              <label>化验项目
+                <span class="tooltip-icon" title="从列表选择，系统会自动匹配允许单位并换算标准值。">?</span>
+              </label>
+              <select id="labTestCode">
+                <option value="">-- 选择化验项目 --</option>
+              </select>
+              <input id="labName" type="hidden"/>
             </div>
           </div>
           <div class="row">
             <div class="col">
-              <label>化验数值</label>
-              <input id="labValue" type="number" step="0.01"/>
+              <label>化验数值（录入值）</label>
+              <input id="labValue" type="number" step="0.01" placeholder="填写原始数值"/>
             </div>
             <div class="col">
-              <label>单位</label>
-              <input id="labUnit" placeholder="g/L"/>
+              <label>单位
+                <span class="tooltip-icon" title="选择化验项目后自动显示允许的单位，只能选允许值。">?</span>
+              </label>
+              <select id="labUnit">
+                <option value="">-- 先选化验项目 --</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <label>标准值（自动换算，只读）
+                <span class="tooltip-icon" title="系统自动换算到标准单位用于多中心合并。例：88.4 μmol/L → 1.00 mg/dL。">?</span>
+              </label>
+              <input id="labStdValue" readonly placeholder="输入数值后自动显示" style="background:#f8fafc;color:#555"/>
+            </div>
+            <div class="col" id="labQcReasonCol" style="display:none">
+              <label style="color:#b45309">⚠ 留痕原因（必填）
+                <span class="tooltip-icon" title="检测到同日重复或异常值时必填。例：同日复查，第一次采血失败。">?</span>
+              </label>
+              <input id="labQcReason" placeholder="请说明原因"/>
             </div>
           </div>
           <div class="btnbar">
             <button class="btn" id="btnAddLab">添加化验记录</button>
           </div>
+          <div id="labHint" class="muted small" style="margin-top:4px"></div>
           <div id="labsPreview" class="muted small" style="margin-top:8px"></div>
         </div>
 
