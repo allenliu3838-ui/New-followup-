@@ -290,6 +290,7 @@ INSERT INTO unit_catalog(symbol, description) VALUES
   ('umol/L',       '微摩尔每升（ASCII写法）'),
   ('g/g',          '克每克（尿蛋白/肌酐比）'),
   ('mg/g',         '毫克每克（尿蛋白/肌酐比）'),
+  ('mg/mmol',      '毫克每毫摩尔（尿蛋白/肌酐比，欧洲常用）'),
   ('g/L',          '克每升'),
   ('g/dL',         '克每分升'),
   ('mmol/L',       '毫摩尔每升'),
