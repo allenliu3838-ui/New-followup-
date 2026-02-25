@@ -45,13 +45,13 @@ COMMENT ON TABLE unit_catalog IS
 
 -- ─── 3. 项目-单位对应表：lab_test_unit_map ──────────────────────────────────
 -- 每个化验项目只允许特定几个单位，并记录如何换算到标准单位
--- 换算公式：value_standard = value_raw * multiplier + offset
--- 举例：血肌酐 μmol/L → mg/dL：multiplier=1/88.4≈0.01131，offset=0
+-- 换算公式：value_standard = value_raw * multiplier + offset_val
+-- 举例：血肌酐 μmol/L → mg/dL：multiplier=1/88.4≈0.01131，offset_val=0
 CREATE TABLE IF NOT EXISTS lab_test_unit_map (
   lab_test_code  text NOT NULL REFERENCES lab_test_catalog(code),
   unit_symbol    text NOT NULL REFERENCES unit_catalog(symbol),
   multiplier     numeric NOT NULL DEFAULT 1,   -- 换算系数
-  offset         numeric NOT NULL DEFAULT 0,   -- 换算偏移（温度转换用，肾病一般为0）
+  offset_val     numeric NOT NULL DEFAULT 0,   -- 换算偏移（温度转换用，肾病一般为0）
   is_standard    boolean NOT NULL DEFAULT false, -- 是否就是标准单位（换算系数=1）
   PRIMARY KEY (lab_test_code, unit_symbol)
 );
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS lab_test_unit_map (
 COMMENT ON TABLE lab_test_unit_map IS
   '每个化验项目允许哪些单位输入，以及如何换算到标准单位';
 COMMENT ON COLUMN lab_test_unit_map.multiplier IS
-  '换算系数：value_standard = value_raw × multiplier + offset。
+  '换算系数：value_standard = value_raw × multiplier + offset_val。
   例：μmol/L→mg/dL，multiplier=0.01131（即1/88.4）';
 
 -- ─── 4. labs_long 扩展列（向后兼容，原有列保留） ────────────────────────────
@@ -97,7 +97,7 @@ DECLARE
   v_multi numeric;
   v_off   numeric;
 BEGIN
-  SELECT multiplier, offset
+  SELECT multiplier, offset_val
     INTO v_multi, v_off
   FROM lab_test_unit_map
   WHERE lab_test_code = p_code
@@ -304,7 +304,7 @@ ON CONFLICT (symbol) DO NOTHING;
 
 -- 项目-单位对应（换算表）
 -- 格式说明：value_standard = value_raw × multiplier
-INSERT INTO lab_test_unit_map(lab_test_code, unit_symbol, multiplier, offset, is_standard)
+INSERT INTO lab_test_unit_map(lab_test_code, unit_symbol, multiplier, offset_val, is_standard)
 VALUES
   -- 血肌酐
   ('CREAT', 'mg/dL',  1,          0, true ),  -- 标准单位，直接用
