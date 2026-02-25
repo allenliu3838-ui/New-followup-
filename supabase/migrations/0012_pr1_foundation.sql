@@ -206,9 +206,12 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION patient_submit_visit_v2 TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION patient_submit_visit_v2(text, date, numeric, numeric, numeric, numeric, numeric, text) TO anon, authenticated;
 
 -- ─── 4. 更新 revoke_patient_token：支持填写撤销原因 ────────────────────────
+-- 先删除旧的单参数版本（0004 中创建），避免重名冲突
+DROP FUNCTION IF EXISTS revoke_patient_token(text);
+
 CREATE OR REPLACE FUNCTION revoke_patient_token(
   p_token        text,
   p_revoke_reason text DEFAULT NULL
@@ -236,4 +239,4 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION revoke_patient_token TO authenticated;
+GRANT EXECUTE ON FUNCTION revoke_patient_token(text, text) TO authenticated;

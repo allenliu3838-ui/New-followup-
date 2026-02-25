@@ -293,7 +293,10 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION validate_visit_record TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION validate_visit_record    TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION validate_date_chain      TO authenticated;
+GRANT EXECUTE ON FUNCTION check_duplicate_lab      TO authenticated;
+GRANT EXECUTE ON FUNCTION check_jump_spike         TO authenticated;
 
 COMMENT ON FUNCTION validate_visit_record IS
   '随访记录综合校验。返回 {errors:[...], warnings:[...]}。
@@ -413,3 +416,5 @@ CREATE TRIGGER trg_auto_egfr
 
 COMMENT ON TRIGGER trg_auto_egfr ON visits_long IS
   '每次录入/更新血肌酐时，自动用 CKD-EPI 2021 公式计算 eGFR 并记录公式版本';
+
+GRANT EXECUTE ON FUNCTION ckd_epi_2021 TO authenticated;
