@@ -91,7 +91,7 @@ CREATE OR REPLACE FUNCTION normalize_lab_value(
   p_unit    text
 )
 RETURNS numeric
-LANGUAGE plpgsql IMMUTABLE
+LANGUAGE plpgsql STABLE
 AS $$
 DECLARE
   v_multi numeric;
