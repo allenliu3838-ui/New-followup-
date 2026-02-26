@@ -47,6 +47,7 @@ COMMENT ON COLUMN field_audit_log.change_reason IS
 ALTER TABLE field_audit_log ENABLE ROW LEVEL SECURITY;
 
 -- 项目成员可以查看自己项目的审计记录
+DROP POLICY IF EXISTS "field_audit_select" ON field_audit_log;
 CREATE POLICY "field_audit_select"
   ON field_audit_log FOR SELECT TO authenticated
   USING (

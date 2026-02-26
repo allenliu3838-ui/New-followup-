@@ -48,6 +48,7 @@ create table if not exists public.partner_contracts (
 alter table public.partner_contracts enable row level security;
 
 -- 用户只能读自己的合同
+DROP POLICY IF EXISTS "user_own_contracts_select" ON partner_contracts;
 create policy "user_own_contracts_select" on public.partner_contracts
   for select using (auth.uid() = user_id);
 

@@ -381,6 +381,9 @@ ALTER TABLE lab_test_catalog ENABLE ROW LEVEL SECURITY;
 ALTER TABLE unit_catalog      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lab_test_unit_map ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "catalog_select" ON lab_test_catalog;
 CREATE POLICY "catalog_select" ON lab_test_catalog FOR SELECT TO authenticated, anon USING (true);
+DROP POLICY IF EXISTS "unit_select" ON unit_catalog;
 CREATE POLICY "unit_select"    ON unit_catalog      FOR SELECT TO authenticated, anon USING (true);
+DROP POLICY IF EXISTS "map_select" ON lab_test_unit_map;
 CREATE POLICY "map_select"     ON lab_test_unit_map FOR SELECT TO authenticated, anon USING (true);
