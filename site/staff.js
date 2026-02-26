@@ -308,6 +308,10 @@ async function init(){
       showNewPasswordMode();
       return;
     }
+    // Token refresh just updates the session in memory — no need to reload all data
+    if (_event === "TOKEN_REFRESHED") return;
+    // Clear selection state on sign out
+    if (_event === "SIGNED_OUT"){ selectedProject = null; patients = []; }
     renderAuthState();
   });
 
@@ -821,7 +825,7 @@ async function loadPatients(){
     .select("*")
     .eq("project_id", selectedProject.id)
     .order("created_at", {ascending:false});
-  if (error){ toast("读取患者失败：" + error.message); return; }
+  if (error){ toast("读取患者失败：" + error.message); patients = []; renderPatients(); return; }
   patients = data || [];
   renderPatients();
 }

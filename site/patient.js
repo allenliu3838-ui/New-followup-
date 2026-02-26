@@ -142,15 +142,16 @@ async function loadContext(){
   el.ctxSub.textContent = "加载中…";
   const { data, error } = await sb.rpc("patient_get_context", { p_token: token });
   if (error){
-    console.error(error);
-    el.ctxSub.textContent = "链接无效或已过期";
-    el.ctxBox.innerHTML = "<div class='muted small'>请联系中心研究人员获取新的随访链接。</div>";
+    console.error("patient_get_context error:", error);
+    el.ctxSub.textContent = "链接验证失败";
+    el.ctxBox.innerHTML = `<div class='muted small' style='color:#dc2626'>错误：${escapeHtml(error.message || JSON.stringify(error))}。<br>请联系中心研究人员重新生成随访链接。</div>`;
     el.btnSubmit.disabled = true;
     return;
   }
   ctx = data?.[0] || null;
   if (!ctx){
     el.ctxSub.textContent = "链接无效或已过期";
+    el.ctxBox.innerHTML = "<div class='muted small'>该链接已失效（可能已被撤销或过期）。请联系中心研究人员获取新的随访链接。</div>";
     el.btnSubmit.disabled = true;
     return;
   }
