@@ -1103,7 +1103,7 @@ async function genToken(){
         .eq("token", token);
     }
 
-    const link = `${location.origin}/p/${token}`;
+    const link = `${location.origin}/patient.html?token=${token}`;
     const expiryStr = days >= 3650 ? "长期有效" : `${days}天后过期`;
     const suStr = singleUse ? "（单次使用）" : "（可多次使用）";
 
