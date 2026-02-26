@@ -87,6 +87,7 @@ ALTER TABLE data_issues         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE data_issue_comments ENABLE ROW LEVEL SECURITY;
 
 -- 项目成员可以查看/操作自己项目的 Issue
+DROP POLICY IF EXISTS "issues_project_owner" ON data_issues;
 CREATE POLICY "issues_project_owner"
   ON data_issues FOR ALL TO authenticated
   USING (EXISTS (
@@ -95,6 +96,7 @@ CREATE POLICY "issues_project_owner"
       AND p.created_by = auth.uid()
   ));
 
+DROP POLICY IF EXISTS "comments_issue_owner" ON data_issue_comments;
 CREATE POLICY "comments_issue_owner"
   ON data_issue_comments FOR ALL TO authenticated
   USING (EXISTS (

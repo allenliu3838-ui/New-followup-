@@ -17,12 +17,15 @@ create table if not exists demo_requests (
 -- Allow anonymous inserts (public form submission)
 alter table demo_requests enable row level security;
 
+DROP POLICY IF EXISTS "allow_public_insert" ON demo_requests;
 create policy "allow_public_insert" on demo_requests
   for insert to anon with check (true);
 
 -- Only authenticated (staff) can read / update
+DROP POLICY IF EXISTS "allow_auth_select" ON demo_requests;
 create policy "allow_auth_select" on demo_requests
   for select to authenticated using (true);
 
+DROP POLICY IF EXISTS "allow_auth_update" ON demo_requests;
 create policy "allow_auth_update" on demo_requests
   for update to authenticated using (true);

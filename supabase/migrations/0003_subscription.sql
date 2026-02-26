@@ -51,6 +51,8 @@ ALTER TABLE public.projects
   ADD COLUMN IF NOT EXISTS subscription_active_until timestamptz;
 
 ALTER TABLE public.projects
+  DROP CONSTRAINT IF EXISTS subscription_plan_check;
+ALTER TABLE public.projects
   ADD CONSTRAINT subscription_plan_check
     CHECK (subscription_plan IN ('trial', 'pro', 'institution'));
 

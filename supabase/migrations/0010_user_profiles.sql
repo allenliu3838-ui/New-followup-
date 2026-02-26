@@ -27,12 +27,15 @@ create table if not exists public.user_profiles (
 alter table public.user_profiles enable row level security;
 
 -- 用户只能读写自己的资料
+DROP POLICY IF EXISTS "user_own_profile_select" ON user_profiles;
 create policy "user_own_profile_select" on public.user_profiles
   for select using (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "user_own_profile_insert" ON user_profiles;
 create policy "user_own_profile_insert" on public.user_profiles
   for insert with check (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "user_own_profile_update" ON user_profiles;
 create policy "user_own_profile_update" on public.user_profiles
   for update using (auth.uid() = user_id);
 

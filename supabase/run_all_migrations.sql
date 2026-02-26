@@ -667,8 +667,16 @@ grant execute on function public.patient_submit_visit(text, date, numeric, numer
 -- ======================================================
 -- Migration 0002: Add CHECK constraints for clinical value ranges
 -- Prevents obviously erroneous data from being stored.
+-- DROP first to make this idempotent on re-runs.
 
 -- visits_long: blood pressure and renal function ranges
+alter table public.visits_long
+  drop constraint if exists visits_sbp_range,
+  drop constraint if exists visits_dbp_range,
+  drop constraint if exists visits_scr_range,
+  drop constraint if exists visits_egfr_range,
+  drop constraint if exists visits_upcr_range;
+
 alter table public.visits_long
   add constraint visits_sbp_range  check (sbp  is null or (sbp  between 40  and 300)),
   add constraint visits_dbp_range  check (dbp  is null or (dbp  between 20  and 200)),
@@ -677,6 +685,11 @@ alter table public.visits_long
   add constraint visits_upcr_range check (upcr is null or upcr >= 0);
 
 -- patients_baseline: birth_year and baseline lab ranges
+alter table public.patients_baseline
+  drop constraint if exists baseline_birth_year_range,
+  drop constraint if exists baseline_scr_range,
+  drop constraint if exists baseline_upcr_range;
+
 alter table public.patients_baseline
   add constraint baseline_birth_year_range check (birth_year is null or (birth_year between 1900 and 2100)),
   add constraint baseline_scr_range  check (baseline_scr  is null or (baseline_scr  between 10 and 5000)),
@@ -849,6 +862,8 @@ ALTER TABLE public.projects
   ADD COLUMN IF NOT EXISTS subscription_plan text NOT NULL DEFAULT 'trial',
   ADD COLUMN IF NOT EXISTS subscription_active_until timestamptz;
 
+ALTER TABLE public.projects
+  DROP CONSTRAINT IF EXISTS subscription_plan_check;
 ALTER TABLE public.projects
   ADD CONSTRAINT subscription_plan_check
     CHECK (subscription_plan IN ('trial', 'pro', 'institution'));
@@ -1768,13 +1783,16 @@ create table if not exists demo_requests (
 -- Allow anonymous inserts (public form submission)
 alter table demo_requests enable row level security;
 
+DROP POLICY IF EXISTS "allow_public_insert" ON demo_requests;
 create policy "allow_public_insert" on demo_requests
   for insert to anon with check (true);
 
 -- Only authenticated (staff) can read / update
+DROP POLICY IF EXISTS "allow_auth_select" ON demo_requests;
 create policy "allow_auth_select" on demo_requests
   for select to authenticated using (true);
 
+DROP POLICY IF EXISTS "allow_auth_update" ON demo_requests;
 create policy "allow_auth_update" on demo_requests
   for update to authenticated using (true);
 
@@ -2149,12 +2167,15 @@ create table if not exists public.user_profiles (
 alter table public.user_profiles enable row level security;
 
 -- 用户只能读写自己的资料
+DROP POLICY IF EXISTS "user_own_profile_select" ON user_profiles;
 create policy "user_own_profile_select" on public.user_profiles
   for select using (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "user_own_profile_insert" ON user_profiles;
 create policy "user_own_profile_insert" on public.user_profiles
   for insert with check (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "user_own_profile_update" ON user_profiles;
 create policy "user_own_profile_update" on public.user_profiles
   for update using (auth.uid() = user_id);
 
@@ -2315,6 +2336,7 @@ create table if not exists public.partner_contracts (
 alter table public.partner_contracts enable row level security;
 
 -- 用户只能读自己的合同
+DROP POLICY IF EXISTS "user_own_contracts_select" ON partner_contracts;
 create policy "user_own_contracts_select" on public.partner_contracts
   for select using (auth.uid() = user_id);
 
@@ -3225,8 +3247,11 @@ ALTER TABLE lab_test_catalog ENABLE ROW LEVEL SECURITY;
 ALTER TABLE unit_catalog      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lab_test_unit_map ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "catalog_select" ON lab_test_catalog;
 CREATE POLICY "catalog_select" ON lab_test_catalog FOR SELECT TO authenticated, anon USING (true);
+DROP POLICY IF EXISTS "unit_select" ON unit_catalog;
 CREATE POLICY "unit_select"    ON unit_catalog      FOR SELECT TO authenticated, anon USING (true);
+DROP POLICY IF EXISTS "map_select" ON lab_test_unit_map;
 CREATE POLICY "map_select"     ON lab_test_unit_map FOR SELECT TO authenticated, anon USING (true);
 
 -- ======================================================
@@ -3876,6 +3901,7 @@ ALTER TABLE data_issues         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE data_issue_comments ENABLE ROW LEVEL SECURITY;
 
 -- 项目成员可以查看/操作自己项目的 Issue
+DROP POLICY IF EXISTS "issues_project_owner" ON data_issues;
 CREATE POLICY "issues_project_owner"
   ON data_issues FOR ALL TO authenticated
   USING (EXISTS (
@@ -3884,6 +3910,7 @@ CREATE POLICY "issues_project_owner"
       AND p.created_by = auth.uid()
   ));
 
+DROP POLICY IF EXISTS "comments_issue_owner" ON data_issue_comments;
 CREATE POLICY "comments_issue_owner"
   ON data_issue_comments FOR ALL TO authenticated
   USING (EXISTS (
@@ -4199,6 +4226,7 @@ COMMENT ON COLUMN field_audit_log.change_reason IS
 ALTER TABLE field_audit_log ENABLE ROW LEVEL SECURITY;
 
 -- 项目成员可以查看自己项目的审计记录
+DROP POLICY IF EXISTS "field_audit_select" ON field_audit_log;
 CREATE POLICY "field_audit_select"
   ON field_audit_log FOR SELECT TO authenticated
   USING (
