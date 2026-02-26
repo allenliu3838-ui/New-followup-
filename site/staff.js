@@ -1076,6 +1076,13 @@ function tokenStatusBadge(t){
   return `<span class="issue-badge issue-resolved">有效</span>`;
 }
 
+function buildFollowupLink(token){
+  // Use current page as base so links still work when the app is mounted under a sub-path.
+  const url = new URL("patient.html", window.location.href);
+  url.searchParams.set("token", token);
+  return url.toString();
+}
+
 async function genToken(){
   if (!selectedProject) return toast("请先选择项目");
   const pcode = el.tokenPatientCode.value.trim();
@@ -1103,7 +1110,7 @@ async function genToken(){
         .eq("token", token);
     }
 
-    const link = `${location.origin}/patient.html?token=${token}`;
+    const link = buildFollowupLink(token);
     const expiryStr = days >= 3650 ? "长期有效" : `${days}天后过期`;
     const suStr = singleUse ? "（单次使用）" : "（可多次使用）";
 
