@@ -535,6 +535,8 @@ $$;
 
 grant execute on function public.create_patient_token(uuid, text, int) to authenticated;
 
+-- DROP first: CREATE OR REPLACE cannot change OUT parameter set
+drop function if exists public.patient_get_context(text);
 create or replace function public.patient_get_context(p_token text)
 returns table (
   project_id uuid,
@@ -573,6 +575,7 @@ $$;
 
 grant execute on function public.patient_get_context(text) to anon, authenticated;
 
+drop function if exists public.patient_list_visits(text, int);
 create or replace function public.patient_list_visits(
   p_token text,
   p_limit int default 30

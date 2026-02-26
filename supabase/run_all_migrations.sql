@@ -538,6 +538,8 @@ $$;
 
 grant execute on function public.create_patient_token(uuid, text, int) to authenticated;
 
+-- DROP first: CREATE OR REPLACE cannot change OUT parameter set
+drop function if exists public.patient_get_context(text);
 create or replace function public.patient_get_context(p_token text)
 returns table (
   project_id uuid,
@@ -576,6 +578,7 @@ $$;
 
 grant execute on function public.patient_get_context(text) to anon, authenticated;
 
+drop function if exists public.patient_list_visits(text, int);
 create or replace function public.patient_list_visits(
   p_token text,
   p_limit int default 30
@@ -1200,6 +1203,7 @@ create table if not exists public.visit_receipts (
   created_at timestamptz not null default now()
 );
 
+drop function if exists public.patient_submit_visit_v2(text, date, numeric, numeric, numeric, numeric, numeric, text);
 create or replace function public.patient_submit_visit_v2(
   p_token text,
   p_visit_date date,
@@ -1347,6 +1351,7 @@ $$;
 grant execute on function public.patient_submit_visit_v2(text, date, numeric, numeric, numeric, numeric, numeric, text) to anon, authenticated;
 
 -- Admin read history helper
+drop function if exists public.admin_get_visit_history(uuid, text, int);
 create or replace function public.admin_get_visit_history(
   p_project_id uuid,
   p_patient_code text default null,
@@ -1495,6 +1500,7 @@ begin
 end;
 $$;
 
+drop function if exists public.create_project_snapshot(uuid, text, jsonb, text);
 create or replace function public.create_project_snapshot(
   p_project_id uuid,
   p_kind text default 'snapshot',
@@ -1947,6 +1953,7 @@ grant execute on function public.is_platform_admin() to authenticated;
 -- 5. admin_list_projects(p_email)
 --    按邮箱搜索该用户名下所有项目（模糊匹配，ILIKE）
 -- ──────────────────────────────────────────────────────────
+drop function if exists public.admin_list_projects(text);
 create or replace function public.admin_list_projects(p_email text)
 returns table (
   project_id             uuid,
@@ -2353,6 +2360,7 @@ grant execute on function public.apply_partner_contract(text, text) to authentic
 -- ──────────────────────────────────────────────────────────
 -- 3. get_my_contract() — 用户查看自己最新合同状态
 -- ──────────────────────────────────────────────────────────
+drop function if exists public.get_my_contract();
 create or replace function public.get_my_contract()
 returns table (
   id               uuid,
@@ -2389,6 +2397,7 @@ grant execute on function public.get_my_contract() to authenticated;
 -- 4. admin_list_contracts() — 管理员查看所有合同
 --    可按 status 过滤（null = 全部）
 -- ──────────────────────────────────────────────────────────
+drop function if exists public.admin_list_contracts(text);
 create or replace function public.admin_list_contracts(
   p_status text default null   -- 'pending' / 'approved' / null(全部)
 )
@@ -2634,6 +2643,7 @@ COMMENT ON COLUMN patient_tokens.revoke_reason IS
   '撤销原因，例：患者填错信息，重新生成';
 
 -- ─── 3. 更新 patient_submit_visit_v2：支持 single_use 逻辑 ──────────────────
+DROP FUNCTION IF EXISTS patient_submit_visit_v2(text, date, numeric, numeric, numeric, numeric, numeric, text);
 CREATE OR REPLACE FUNCTION patient_submit_visit_v2(
   p_token       text,
   p_visit_date  date,
@@ -4322,6 +4332,7 @@ CREATE TRIGGER trg_audit_baseline_fields
   FOR EACH ROW EXECUTE FUNCTION _audit_baseline_fields();
 
 -- ─── 6. 查询某记录审计历史的 RPC ────────────────────────────────────────────
+DROP FUNCTION IF EXISTS get_field_audit(text, uuid);
 CREATE OR REPLACE FUNCTION get_field_audit(
   p_table_name text,
   p_record_id  uuid

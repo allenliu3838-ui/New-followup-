@@ -93,6 +93,7 @@ grant execute on function public.apply_partner_contract(text, text) to authentic
 -- ──────────────────────────────────────────────────────────
 -- 3. get_my_contract() — 用户查看自己最新合同状态
 -- ──────────────────────────────────────────────────────────
+drop function if exists public.get_my_contract();
 create or replace function public.get_my_contract()
 returns table (
   id               uuid,
@@ -129,6 +130,7 @@ grant execute on function public.get_my_contract() to authenticated;
 -- 4. admin_list_contracts() — 管理员查看所有合同
 --    可按 status 过滤（null = 全部）
 -- ──────────────────────────────────────────────────────────
+drop function if exists public.admin_list_contracts(text);
 create or replace function public.admin_list_contracts(
   p_status text default null   -- 'pending' / 'approved' / null(全部)
 )
