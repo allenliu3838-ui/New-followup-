@@ -46,6 +46,7 @@ COMMENT ON COLUMN patient_tokens.revoke_reason IS
   '撤销原因，例：患者填错信息，重新生成';
 
 -- ─── 3. 更新 patient_submit_visit_v2：支持 single_use 逻辑 ──────────────────
+DROP FUNCTION IF EXISTS patient_submit_visit_v2(text, date, numeric, numeric, numeric, numeric, numeric, text);
 CREATE OR REPLACE FUNCTION patient_submit_visit_v2(
   p_token       text,
   p_visit_date  date,

@@ -172,6 +172,7 @@ create table if not exists public.visit_receipts (
   created_at timestamptz not null default now()
 );
 
+drop function if exists public.patient_submit_visit_v2(text, date, numeric, numeric, numeric, numeric, numeric, text);
 create or replace function public.patient_submit_visit_v2(
   p_token text,
   p_visit_date date,
@@ -319,6 +320,7 @@ $$;
 grant execute on function public.patient_submit_visit_v2(text, date, numeric, numeric, numeric, numeric, numeric, text) to anon, authenticated;
 
 -- Admin read history helper
+drop function if exists public.admin_get_visit_history(uuid, text, int);
 create or replace function public.admin_get_visit_history(
   p_project_id uuid,
   p_patient_code text default null,

@@ -58,6 +58,7 @@ begin
 end;
 $$;
 
+drop function if exists public.create_project_snapshot(uuid, text, jsonb, text);
 create or replace function public.create_project_snapshot(
   p_project_id uuid,
   p_kind text default 'snapshot',

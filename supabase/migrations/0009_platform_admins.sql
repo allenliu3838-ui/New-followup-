@@ -106,6 +106,7 @@ grant execute on function public.is_platform_admin() to authenticated;
 -- 5. admin_list_projects(p_email)
 --    按邮箱搜索该用户名下所有项目（模糊匹配，ILIKE）
 -- ──────────────────────────────────────────────────────────
+drop function if exists public.admin_list_projects(text);
 create or replace function public.admin_list_projects(p_email text)
 returns table (
   project_id             uuid,

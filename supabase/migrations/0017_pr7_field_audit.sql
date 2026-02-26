@@ -180,6 +180,7 @@ CREATE TRIGGER trg_audit_baseline_fields
   FOR EACH ROW EXECUTE FUNCTION _audit_baseline_fields();
 
 -- ─── 6. 查询某记录审计历史的 RPC ────────────────────────────────────────────
+DROP FUNCTION IF EXISTS get_field_audit(text, uuid);
 CREATE OR REPLACE FUNCTION get_field_audit(
   p_table_name text,
   p_record_id  uuid
