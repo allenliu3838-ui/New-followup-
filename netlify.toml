@@ -2,6 +2,36 @@
   publish = "site"
   command = "echo 'no build'"
 
+[[redirects]]
+  from = "/staff"
+  to   = "/staff.html"
+  status = 200
+
+[[redirects]]
+  from = "/staff/*"
+  to   = "/staff.html"
+  status = 200
+
+[[redirects]]
+  from = "/guide"
+  to   = "/guide.html"
+  status = 200
+
+[[redirects]]
+  from = "/guide/*"
+  to   = "/guide.html"
+  status = 200
+
+[[redirects]]
+  from = "/p/*"
+  to   = "/patient.html"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to   = "/index.html"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]
