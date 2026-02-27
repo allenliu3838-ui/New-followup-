@@ -1107,8 +1107,8 @@ function buildFollowupLinks(token){
   return {
     // rewrite-friendly short path (requires host rewrites to be configured)
     shortLink: `${origin}${base}/p/${encoded}`,
-    // direct page fallback (works even when rewrites are not in place)
-    directLink: `${origin}${base}/patient.html?token=${encoded}`,
+    // direct page fallback — uses ?pt= to avoid Supabase auth detection on patient page
+    directLink: `${origin}${base}/patient.html?pt=${encoded}`,
   };
 }
 
