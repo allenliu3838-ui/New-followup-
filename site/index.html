@@ -7,11 +7,16 @@
   <link rel="stylesheet" href="/app.css"/>
   <link rel="icon" href="/assets/kidneysphere-ai.png"/>
   <script>
-    // If Netlify routing fails and /p/<token> lands here, redirect to patient page.
+    // Fallback: if Netlify rewrite fails and a patient link lands on index.html.
     var _p = location.pathname;
+    // /p/<token> path — redirect via hash to avoid Supabase auth detection on ?token=
     if (_p.indexOf('/p/') === 0) {
       var _tok = _p.replace(/^\/p\//, '').replace(/\/$/, '');
-      if (_tok) { location.replace('/patient.html?token=' + encodeURIComponent(_tok)); }
+      if (_tok) { location.replace('/followup#' + encodeURIComponent(_tok)); }
+    }
+    // /followup#token — Netlify routing failed; serve patient.html directly, preserving hash
+    if (_p === '/followup' && location.hash && location.hash.length > 1) {
+      location.replace('/patient.html' + location.hash);
     }
     // Supabase auth callbacks (password reset, magic link, errors) land here
     // because Site URL is the root. Forward them straight to /staff.
