@@ -28,8 +28,11 @@ let ctx = null;
 
 function getToken(){
   const path = window.location.pathname || "";
-  const m = path.match(/\/p\/([^\/]+)$/);
-  if (m && m[1]) return m[1];
+  const m = path.match(/\/p\/([^\/?#]+)\/?$/);
+  if (m && m[1]) {
+    try { return decodeURIComponent(m[1]); }
+    catch { return m[1]; }
+  }
   const q = new URLSearchParams(window.location.search);
   return q.get("token");
 }
