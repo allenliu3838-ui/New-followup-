@@ -265,6 +265,62 @@
             </div>
           </div>
 
+          <div id="lnPathBox" class="infobox" style="margin-top:10px;display:none">
+            <b>LN 病理（ISN/RPS 2003/2018 分型）</b>
+            <div class="muted small" style="margin-top:4px">未做肾穿或无报告可留空。分型参照 ISN/RPS 2003 标准（2018修订）。</div>
+            <div class="row" style="margin-top:6px">
+              <div class="col">
+                <label>肾穿日期（可选）</label>
+                <input id="lnBiopsyDate" type="date"/>
+              </div>
+              <div class="col">
+                <label>ISN/RPS 分型
+                  <span class="tooltip-icon" title="I=系膜轻微病变型；II=系膜增生型；III=局灶型；IV=弥漫型；V=膜型；VI=终末硬化型。S=节段，G=球性，A=活动，C=慢性。">?</span>
+                </label>
+                <select id="lnClass">
+                  <option value="">未填</option>
+                  <option value="I">I（系膜轻微病变型）</option>
+                  <option value="II">II（系膜增生型）</option>
+                  <option value="III-A">III-A（局灶活动型）</option>
+                  <option value="III-A/C">III-A/C（局灶活动+慢性）</option>
+                  <option value="III-C">III-C（局灶慢性型）</option>
+                  <option value="IV-S(A)">IV-S(A)（弥漫节段活动型）</option>
+                  <option value="IV-G(A)">IV-G(A)（弥漫球性活动型）</option>
+                  <option value="IV-S(A/C)">IV-S(A/C)（弥漫节段活动+慢性）</option>
+                  <option value="IV-G(A/C)">IV-G(A/C)（弥漫球性活动+慢性）</option>
+                  <option value="IV-S(C)">IV-S(C)（弥漫节段慢性型）</option>
+                  <option value="IV-G(C)">IV-G(C)（弥漫球性慢性型）</option>
+                  <option value="V">V（膜型）</option>
+                  <option value="VI">VI（终末硬化型，≥90%硬化）</option>
+                </select>
+              </div>
+            </div>
+            <div class="row" style="margin-top:6px">
+              <div class="col">
+                <label>NIH 活动指数 AI（0–24）
+                  <span class="tooltip-icon" title="NIH Activity Index，0-24分。评估肾小球/间质活动性病变程度。">?</span>
+                </label>
+                <input id="lnAI" type="number" min="0" max="24" step="1" placeholder="0–24"/>
+              </div>
+              <div class="col">
+                <label>NIH 慢性化指数 CI（0–12）
+                  <span class="tooltip-icon" title="NIH Chronicity Index，0-12分。评估肾小球/间质慢性化程度（纤维化/硬化）。">?</span>
+                </label>
+                <input id="lnCI" type="number" min="0" max="12" step="1" placeholder="0–12"/>
+              </div>
+              <div class="col">
+                <label>足细胞病变（2018修订）
+                  <span class="tooltip-icon" title="2018年ISN/RPS修订版新增。合并足细胞病变提示预后更差。">?</span>
+                </label>
+                <select id="lnPodocytopathy">
+                  <option value="">未填</option>
+                  <option value="true">是（合并足细胞病变）</option>
+                  <option value="false">否</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
           <div class="infobox" style="margin-top:10px">
             <b>RCT 随机化信息（如适用）</b>
             <div class="muted small" style="margin-top:4px">仅随机对照试验需填写；观察性队列研究可全部留空。</div>
