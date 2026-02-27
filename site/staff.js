@@ -1086,9 +1086,10 @@ function tokenStatusBadge(t){
 }
 
 function resolveAppBasePath(){
-  const p = window.location.pathname || "/";
+  const raw = window.location.pathname || "/";
+  const p = raw.length > 1 ? raw.replace(/\/$/, "") : raw;
   // keep links stable when mounted under sub-paths like /c/, /app/, etc.
-  const knownEntry = ["/staff", "/staff.html", "/patient.html", "/guide", "/guide.html"];
+  const knownEntry = ["/index.html", "/staff", "/staff.html", "/patient.html", "/guide", "/guide.html"];
   for (const entry of knownEntry){
     if (p === entry || p.endsWith(entry)){
       const base = p.slice(0, -entry.length);

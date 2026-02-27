@@ -1,22 +1,37 @@
 (function(){
   var path = window.location.pathname || '/';
 
-  // If /p/<token> lands on index fallback, forward to patient page with token.
-  // Keep this in an external script so it still works under strict CSP (no inline JS).
-  var pm = path.match(/^\/p\/([^\/?#]+)\/?$/);
-  if (pm && pm[1]){
+  function resolveBasePath(p){
+    var known = ['/index.html', '/staff', '/staff.html', '/patient.html', '/guide', '/guide.html'];
+    for (var i = 0; i < known.length; i++) {
+      var entry = known[i];
+      if (p === entry || p.endsWith(entry)) {
+        var base = p.slice(0, -entry.length);
+        return base || '';
+      }
+    }
+    var idx = p.lastIndexOf('/');
+    return idx > 0 ? p.slice(0, idx) : '';
+  }
+
+  // Match token path with optional mount prefix: /p/<token> or /app/p/<token>
+  var pm = path.match(/^(.*)\/p\/([^\/?#]+)\/?$/);
+  if (pm && pm[2]){
+    var prefix = pm[1] || '';
     var tok = '';
-    try { tok = decodeURIComponent(pm[1]); } catch (_) { tok = pm[1]; }
+    try { tok = decodeURIComponent(pm[2]); } catch (_) { tok = pm[2]; }
     if (tok) {
-      window.location.replace('/patient.html?token=' + encodeURIComponent(tok));
+      window.location.replace(prefix + '/patient.html?token=' + encodeURIComponent(tok));
       return;
     }
   }
 
-  // Supabase auth callbacks (password reset, magic link, errors) land on root.
+  var base = resolveBasePath(path);
+
+  // Supabase auth callbacks (password reset, magic link, errors) land on root/sub-path.
   // Forward them straight to /staff while preserving hash payload.
   var h = window.location.hash || '';
   if (h && (h.indexOf('access_token=') >= 0 || h.indexOf('type=recovery') >= 0 || h.indexOf('error=') >= 0)) {
-    window.location.replace('/staff' + h);
+    window.location.replace(base + '/staff' + h);
   }
 })();
