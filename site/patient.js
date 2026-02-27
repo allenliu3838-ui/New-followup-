@@ -1,7 +1,10 @@
 import { supabase } from "/lib/supabase-client.js";
 import { qs, toast, fmtDate, daysLeft, escapeHtml } from "/lib/utils.js";
 
-const sb = supabase();
+// Patient page never needs Supabase auth session detection —
+// disabling it prevents Supabase from misreading ?pt= as an auth token
+// and redirecting to the site root.
+const sb = supabase({ detectSessionInUrl: false, persistSession: false, autoRefreshToken: false });
 
 const el = {
   ctxSub: qs("#ctxSub"),
@@ -31,7 +34,8 @@ function getToken(){
   const m = path.match(/\/p\/([^\/]+)$/);
   if (m && m[1]) return m[1];
   const q = new URLSearchParams(window.location.search);
-  return q.get("token");
+  // Support both ?pt= (new) and ?token= (legacy) parameter names
+  return q.get("pt") || q.get("token");
 }
 
 function ckdepi2021(scr_mg_dl, age, sex){
