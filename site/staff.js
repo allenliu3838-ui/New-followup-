@@ -1107,8 +1107,9 @@ function buildFollowupLinks(token){
   return {
     // rewrite-friendly short path (requires host rewrites to be configured)
     shortLink: `${origin}${base}/p/${encoded}`,
-    // direct page fallback — uses ?pt= to avoid Supabase auth detection on patient page
-    directLink: `${origin}${base}/patient.html?pt=${encoded}`,
+    // hash-based link: token is in the URL fragment (#), never sent to server,
+    // invisible to Netlify routing and Supabase auth detection
+    directLink: `${origin}${base}/followup#${encoded}`,
   };
 }
 
