@@ -821,10 +821,13 @@ async function seedDemoData(){
 
 async function loadPatients(){
   if (!selectedProject){ patients = []; renderPatients(); return; }
+  const projectId = selectedProject.id; // capture before async
   const { data, error } = await sb.from("patients_baseline")
     .select("*")
-    .eq("project_id", selectedProject.id)
+    .eq("project_id", projectId)
     .order("created_at", {ascending:false});
+  // Discard if user switched project while this was loading
+  if (selectedProject?.id !== projectId) return;
   if (error){ toast("读取患者失败：" + error.message); patients = []; renderPatients(); return; }
   patients = data || [];
   renderPatients();
@@ -850,6 +853,8 @@ async function loadExtras(){
     if (varsRes.error) throw varsRes.error;
     if (labsRes.error) throw labsRes.error;
     if (medsRes.error) throw medsRes.error;
+    // Discard if user switched project while loading
+    if (selectedProject?.id !== pid) return;
     // events_long may not exist yet — ignore error gracefully
     renderVariantsPreview(varsRes.data || []);
     renderLabsPreview(labsRes.data || []);
