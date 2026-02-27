@@ -41,6 +41,12 @@ const el = {
   mestS: qs("#mestS"),
   mestT: qs("#mestT"),
   mestC: qs("#mestC"),
+  lnPathBox: qs("#lnPathBox"),
+  lnBiopsyDate: qs("#lnBiopsyDate"),
+  lnClass: qs("#lnClass"),
+  lnAI: qs("#lnAI"),
+  lnCI: qs("#lnCI"),
+  lnPodocytopathy: qs("#lnPodocytopathy"),
   rctArm: qs("#rctArm"),
   rctRandomId: qs("#rctRandomId"),
   rctDate: qs("#rctDate"),
@@ -284,6 +290,7 @@ function renderTrialBadge(p){
 function showIganPathBox(){
   const mod = (selectedProject?.module || "").toUpperCase();
   el.iganPathBox.style.display = (mod === "IGAN") ? "block" : "none";
+  el.lnPathBox.style.display   = (mod === "LN")   ? "block" : "none";
 }
 
 async function init(){
@@ -976,6 +983,10 @@ function renderPatients(){
     const mest = (selectedProject.module==="IGAN" && (p.oxford_m!==null || p.oxford_e!==null || p.oxford_s!==null || p.oxford_t!==null || p.oxford_c!==null))
       ? `M${v(p.oxford_m)} E${v(p.oxford_e)} S${v(p.oxford_s)} T${v(p.oxford_t)} C${v(p.oxford_c)}`
       : "";
+    const lnSummary = (selectedProject.module==="LN" && p.ln_class)
+      ? `${p.ln_class}${p.ln_activity_index!=null ? ` AI:${p.ln_activity_index}` : ""}${p.ln_chronicity_index!=null ? ` CI:${p.ln_chronicity_index}` : ""}`
+      : "";
+    const pathSummary = mest || lnSummary;
     return `
       <tr data-pcode="${escapeHtml(p.patient_code)}">
         <td><b>${escapeHtml(p.patient_code)}</b></td>
@@ -984,7 +995,7 @@ function renderPatients(){
         <td>${escapeHtml(p.baseline_date||"")}</td>
         <td>${escapeHtml(p.baseline_scr||"")}</td>
         <td>${escapeHtml(p.baseline_upcr||"")}</td>
-        <td class="muted small">${escapeHtml(mest)}</td>
+        <td class="muted small">${escapeHtml(pathSummary)}</td>
         <td><button class="btn small" data-act="token">生成随访链接</button></td>
       </tr>
     `;
@@ -1056,6 +1067,16 @@ async function createPatientBaseline(){
     payload.oxford_s = el.mestS.value !== "" ? Number(el.mestS.value) : null;
     payload.oxford_t = el.mestT.value !== "" ? Number(el.mestT.value) : null;
     payload.oxford_c = el.mestC.value !== "" ? Number(el.mestC.value) : null;
+  }
+
+  // LN ISN/RPS 分型
+  if ((selectedProject.module || "").toUpperCase() === "LN"){
+    payload.ln_biopsy_date      = el.lnBiopsyDate.value || null;
+    payload.ln_class            = el.lnClass.value || null;
+    payload.ln_activity_index   = el.lnAI.value !== "" ? Number(el.lnAI.value) : null;
+    payload.ln_chronicity_index = el.lnCI.value !== "" ? Number(el.lnCI.value) : null;
+    payload.ln_podocytopathy    = el.lnPodocytopathy.value === "true" ? true
+                                : el.lnPodocytopathy.value === "false" ? false : null;
   }
 
   const btn = el.btnCreatePatient;
@@ -1386,6 +1407,7 @@ async function exportTable(kind){
     columns = [
       "center_code","module","patient_code","sex","birth_year","baseline_date","baseline_scr","baseline_upcr",
       "biopsy_date","oxford_m","oxford_e","oxford_s","oxford_t","oxford_c",
+      "ln_biopsy_date","ln_class","ln_activity_index","ln_chronicity_index","ln_podocytopathy",
       "treatment_arm","randomization_id","randomization_date",
       "created_at"
     ];
@@ -1650,7 +1672,7 @@ async function generatePaperPack({ withSnapshot = false } = {}){
     };
 
     // columns fixed
-    const csvBaseline = toCsv(bRows, ["center_code","module","patient_code","sex","birth_year","baseline_date","baseline_scr","baseline_upcr","biopsy_date","oxford_m","oxford_e","oxford_s","oxford_t","oxford_c","treatment_arm","randomization_id","randomization_date","created_at"]);
+    const csvBaseline = toCsv(bRows, ["center_code","module","patient_code","sex","birth_year","baseline_date","baseline_scr","baseline_upcr","biopsy_date","oxford_m","oxford_e","oxford_s","oxford_t","oxford_c","ln_biopsy_date","ln_class","ln_activity_index","ln_chronicity_index","ln_podocytopathy","treatment_arm","randomization_id","randomization_date","created_at"]);
     const csvVisits = toCsv(vRows, ["center_code","module","patient_code","visit_date","sbp","dbp","scr_umol_l","upcr","egfr","egfr_formula_version","notes","created_at"]);
     const csvLabs = toCsv(lRows, ["center_code","module","patient_code","lab_date","lab_test_code","lab_name","value_raw","unit_symbol","value_standard","standard_unit","lab_value","lab_unit","created_at"]);
     const csvMeds = toCsv(mRows, ["center_code","module","patient_code","drug_name","drug_class","dose","start_date","end_date","created_at"]);
@@ -1721,7 +1743,12 @@ async function generatePaperPack({ withSnapshot = false } = {}){
           oxford_e: "Oxford-MEST E score: 0 or 1",
           oxford_s: "Oxford-MEST S score: 0 or 1",
           oxford_t: "Oxford-MEST T score: 0, 1 or 2",
-          oxford_c: "Oxford-MEST C score: 0, 1 or 2"
+          oxford_c: "Oxford-MEST C score: 0, 1 or 2",
+          ln_biopsy_date: "Date of kidney biopsy for lupus nephritis (YYYY-MM-DD)",
+          ln_class: "ISN/RPS 2003/2018 lupus nephritis class: I II III-A III-A/C III-C IV-S(A) IV-G(A) IV-S(A/C) IV-G(A/C) IV-S(C) IV-G(C) V VI",
+          ln_activity_index: "NIH Activity Index (AI), range 0–24",
+          ln_chronicity_index: "NIH Chronicity Index (CI), range 0–12",
+          ln_podocytopathy: "Podocytopathy (2018 ISN/RPS revision): true / false / null (not assessed)"
         },
         visits_long: {
           visit_date: "Date of this follow-up visit (YYYY-MM-DD)",
@@ -1804,6 +1831,20 @@ async function generatePaperPack({ withSnapshot = false } = {}){
 
     zip.file("qc_summary.json", JSON.stringify(qcSummary, null, 2));
 
+    if ((module || "").toUpperCase() === "LN"){
+      zip.file("LN_FIELD_DICTIONARY.md", [
+        "LN Biopsy (ISN/RPS 2003/2018 Classification):",
+        "  ln_class: I | II | III-A | III-A/C | III-C | IV-S(A) | IV-G(A) | IV-S(A/C) | IV-G(A/C) | IV-S(C) | IV-G(C) | V | VI",
+        "  ln_activity_index: NIH Activity Index, 0–24",
+        "  ln_chronicity_index: NIH Chronicity Index, 0–12",
+        "  ln_podocytopathy: true/false/null (2018 ISN/RPS revision)",
+        "",
+        "References:",
+        "  Weening JJ et al. J Am Soc Nephrol 2004;15:241-250 (ISN/RPS 2003)",
+        "  Bajema IM et al. Kidney Int 2018;93:789-796 (2018 revision)"
+      ].join("\n"));
+    }
+
     if ((module || "").toUpperCase() === "KTX"){
       zip.file("KTX_FIELD_DICTIONARY.md", [
         "KTx Baseline: transplant_date, donor_type, induction_therapy, maintenance_immuno, HLA_mismatch_count, PRA/DSA, baseline_creatinine, baseline_eGFR",
@@ -1815,7 +1856,7 @@ async function generatePaperPack({ withSnapshot = false } = {}){
       }, null, 2));
     }
 
-    const table1 = toCsv(bRows, ["center_code","module","patient_code","sex","birth_year","baseline_date","baseline_scr","baseline_upcr","treatment_arm","randomization_id"]);
+    const table1 = toCsv(bRows, ["center_code","module","patient_code","sex","birth_year","baseline_date","baseline_scr","baseline_upcr","ln_class","ln_activity_index","ln_chronicity_index","ln_podocytopathy","treatment_arm","randomization_id"]);
     dataFolder.file("table1_baseline.csv", BOM + table1);
     analysisFolder.folder("outputs").file("trend_egfr_placeholder.txt", "Run analysis/run_analysis.py for rendered trajectory plots.");
     analysisFolder.folder("outputs").file("trend_proteinuria_placeholder.txt", "Run analysis/run_analysis.py for rendered trajectory plots.");
