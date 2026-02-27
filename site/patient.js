@@ -30,11 +30,18 @@ let token = null;
 let ctx = null;
 
 function getToken(){
+  // Hash-based: /followup#TOKEN — token never touches server or Supabase auth
+  const h = window.location.hash;
+  if (h && h.length > 1) {
+    const tok = decodeURIComponent(h.slice(1));
+    if (tok) return tok;
+  }
+  // Path-based fallback: /p/TOKEN
   const path = window.location.pathname || "";
   const m = path.match(/\/p\/([^\/]+)$/);
   if (m && m[1]) return m[1];
+  // Query param fallbacks (?pt= new, ?token= legacy)
   const q = new URLSearchParams(window.location.search);
-  // Support both ?pt= (new) and ?token= (legacy) parameter names
   return q.get("pt") || q.get("token");
 }
 
