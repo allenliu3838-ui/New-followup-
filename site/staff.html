@@ -455,6 +455,40 @@
           <div id="snapshotsList" style="margin-top:10px"></div>
 
       <div class="hr"></div>
+
+      <!-- ===== 批量导入 ===== -->
+      <h2 style="margin:0 0 6px 0">📥 批量导入（CSV）</h2>
+      <div class="muted small">把您已有的 Excel / SPSS 数据整理成 CSV 后上传，系统自动解析并写入当前项目，无需逐条手录。</div>
+      <div class="warnbox" style="margin-top:8px">
+        <b>使用前请注意：</b>①先选好目标项目；②先下载模板、按列名填写（多余列会被忽略）；③基线数据重复导入会<b>覆盖</b>同编号患者；随访记录<b>不去重</b>，请勿重复上传同一份文件。
+      </div>
+      <div class="row" style="margin-top:10px;align-items:flex-end;flex-wrap:wrap;gap:8px">
+        <div class="col" style="min-width:180px">
+          <label>导入类型</label>
+          <select id="importType">
+            <option value="baseline">患者基线（patients_baseline）</option>
+            <option value="visits">随访记录（visits_long）</option>
+          </select>
+        </div>
+        <div class="col" style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
+          <button class="btn" id="btnDownloadTemplate">下载模板 CSV</button>
+          <label class="btn" style="cursor:pointer;margin:0">
+            选择 CSV 文件
+            <input id="importFile" type="file" accept=".csv,text/csv" style="display:none"/>
+          </label>
+        </div>
+      </div>
+      <div id="importPreview" style="margin-top:12px;display:none">
+        <div id="importSummary" class="muted small" style="margin-bottom:6px"></div>
+        <div id="importTable" style="overflow-x:auto;max-height:260px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px"></div>
+        <div class="btnbar" style="margin-top:8px">
+          <button class="btn primary" id="btnConfirmImport">确认导入</button>
+          <button class="btn" id="btnCancelImport">取消</button>
+        </div>
+      </div>
+      <div id="importProgress" class="muted small" style="margin-top:8px;display:none"></div>
+
+      <div class="hr"></div>
       <h2 style="margin:0 0 6px 0">附加数据（可选）：基因 / 化验 / 用药</h2>
       <div class="muted small">如果研究需要并且数据可获得，可在此补录。建议仍坚持去标识化（只用 patient_code）。</div>
 
