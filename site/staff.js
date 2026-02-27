@@ -1085,6 +1085,33 @@ function tokenStatusBadge(t){
   return `<span class="issue-badge issue-resolved">有效</span>`;
 }
 
+function resolveAppBasePath(){
+  const p = window.location.pathname || "/";
+  // keep links stable when mounted under sub-paths like /c/, /app/, etc.
+  const knownEntry = ["/staff", "/staff.html", "/patient.html", "/guide", "/guide.html"];
+  for (const entry of knownEntry){
+    if (p === entry || p.endsWith(entry)){
+      const base = p.slice(0, -entry.length);
+      return base || "";
+    }
+  }
+  // default: directory of current page
+  const idx = p.lastIndexOf("/");
+  return idx > 0 ? p.slice(0, idx) : "";
+}
+
+function buildFollowupLinks(token){
+  const origin = window.location.origin;
+  const base = resolveAppBasePath();
+  const encoded = encodeURIComponent(token);
+  return {
+    // rewrite-friendly short path (requires host rewrites to be configured)
+    shortLink: `${origin}${base}/p/${encoded}`,
+    // direct page fallback — uses ?pt= to avoid Supabase auth detection on patient page
+    directLink: `${origin}${base}/patient.html?pt=${encoded}`,
+  };
+}
+
 async function genToken(){
   if (!selectedProject) return toast("请先选择项目");
   const pcode = el.tokenPatientCode.value.trim();
@@ -1112,7 +1139,7 @@ async function genToken(){
         .eq("token", token);
     }
 
-    const link = `${location.origin}/patient.html?pt=${token}`;
+    const { shortLink, directLink } = buildFollowupLinks(token);
     const expiryStr = days >= 3650 ? "长期有效" : `${days}天后过期`;
     const suStr = singleUse ? "（单次使用）" : "（可多次使用）";
 
@@ -1124,11 +1151,14 @@ async function genToken(){
         <b>Token</b>（令牌）是这串随机码的简称，患者或护士用下面的链接填随访，<b>无需登录账号</b>。
       </div>
       <div style="margin-top:8px;background:#f1f5f9;padding:8px;border-radius:6px;word-break:break-all;font-size:13px">
-        <code>${escapeHtml(link)}</code>
+        <code>${escapeHtml(directLink)}</code>
+      </div>
+      <div class="small muted" style="margin-top:6px;word-break:break-all">
+        短链接（需服务器支持重写）：<code>${escapeHtml(shortLink)}</code>
       </div>
       <div class="btnbar" style="margin-top:8px">
         <button class="btn small primary" id="btnCopyLink">复制链接</button>
-        <a class="btn small" href="${escapeHtml(link)}" target="_blank">打开随访页预览</a>
+        <button class="btn small" id="btnOpenPreview">打开随访页预览</button>
         <button class="btn small" style="border-color:#dc2626;color:#dc2626" id="btnRevokeToken">立即撤销此 token</button>
       </div>
       <div class="muted small" style="margin-top:6px">
@@ -1136,8 +1166,12 @@ async function genToken(){
       </div>
     `;
     qs("#btnCopyLink", el.tokenOut).addEventListener("click", async ()=>{
-      await navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(directLink);
       toast("已复制随访链接");
+    });
+    qs("#btnOpenPreview", el.tokenOut).addEventListener("click", ()=>{
+      const win = window.open(directLink, "_blank", "noopener,noreferrer");
+      if (!win) window.location.href = directLink;
     });
     qs("#btnRevokeToken", el.tokenOut).addEventListener("click", async ()=>{
       const reason = window.prompt("请填写撤销原因（必填，如：发错患者，重新生成）：");
