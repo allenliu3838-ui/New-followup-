@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>合作项目 · KidneySphere AI</title>
+  <meta name="description" content="KidneySphere AI 研究合作页面：加入现有项目、发起新项目、多中心项目合作与机构合作咨询。"/>
+  <meta property="og:title" content="合作项目 · KidneySphere AI"/>
+  <meta property="og:description" content="从使用到产出：先选项目，补齐关键字段，一键导出首版 Table 1 / QC / 图表 / 可复现数据包。"/>
+  <link rel="stylesheet" href="/app.css"/>
+  <link rel="icon" href="/assets/kidneysphere-ai.png"/>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="brand">
+        <img src="/assets/kidneysphere-ai.png" alt="KidneySphere AI"/>
+        <div>
+          <h1 class="brand-title">合作项目 · KidneySphere AI</h1>
+          <div class="brand-sub">研究合作 · 多中心项目合作 · 可复现导出 · 数据质量与统计简报</div>
+        </div>
+      </div>
+
+      <div class="btnbar" style="margin-top:12px">
+        <a class="btn" href="/">首页</a>
+        <a class="btn" href="/pricing">价格方案</a>
+        <a class="btn" href="/security">安全合规</a>
+        <a class="btn" href="/deployment">部署方式</a>
+        <a class="btn" href="/slides">系统介绍PPT</a>
+        <a class="btn primary" href="/demo">预约演示</a>
+      </div>
+
+      <div class="warnbox" style="margin-top:12px">
+        <b>科研用途优先：</b>用于研究登记与协作，不提供诊断/处方建议；<b>禁止录入 PII</b>（姓名/电话/病案号/身份证等）。
+      </div>
+
+      <div class="hero-lite" style="margin-top:12px">
+        <h2 style="margin:0 0 8px">加入一个可执行的研究项目，比单独试一个系统更容易起步</h2>
+        <div class="small">选择项目 → 检查字段完整率 → 补齐关键数据 → 一键导出首版 Table 1 / QC / 图表 / 可复现数据包。</div>
+        <div class="btnbar" style="margin-top:12px">
+          <a class="btn primary" href="/demo">加入现有项目</a>
+          <a class="btn" href="/demo">发起新项目</a>
+          <a class="btn" href="/demo">预约演示</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin:0 0 8px">三种合作路径</h2>
+      <div id="pathsGrid" class="pricing-grid"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin:0 0 8px">合作项目目录（示例）</h2>
+      <div class="small muted">以下为示例方向，用于帮助团队快速明确“加入 / 牵头”路径，不代表已完成课题成果。</div>
+      <div id="projectsGrid" class="pricing-grid" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin:0 0 8px">如何加入或发起项目</h2>
+      <div class="value-grid">
+        <div class="value-card"><div class="price-title">1) 选择项目或提交意向</div><div class="small">明确咨询类型：加入现有项目 / 发起新项目 / 机构合作咨询。</div></div>
+        <div class="value-card"><div class="price-title">2) 确认字段准备度与缺口</div><div class="small">系统与团队一起检查关键字段完整率，给出可执行补齐清单。</div></div>
+        <div class="value-card"><div class="price-title">3) 达标后启动首轮产出</div><div class="small">录入 → QC → 导出首版结果，形成可复现导出与阶段汇报材料。</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin:0 0 10px">参与价值 / 牵头价值</h2>
+      <div class="row">
+        <div class="col">
+          <div class="infobox">
+            <b>参与单位获得什么</b>
+            <ul class="small" style="margin:8px 0 0;padding-left:18px;line-height:1.8">
+              <li>更低启动成本，更快进入研究流程</li>
+              <li>补齐关键字段后快速拿到首版图表/表格</li>
+              <li>形成数据质量提升闭环</li>
+            </ul>
+          </div>
+        </div>
+        <div class="col">
+          <div class="okbox">
+            <b>牵头单位获得什么</b>
+            <ul class="small" style="margin:8px 0 0;padding-left:18px;line-height:1.8">
+              <li>多中心项目合作路径更清晰</li>
+              <li>方法学/统计支持与导出规范更一致</li>
+              <li>科室与管理侧汇报材料更容易形成</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin:0 0 8px">合作案例（脱敏示例）</h2>
+      <div id="casesGrid" class="value-grid"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin:0 0 8px">合规与院内评估支持</h2>
+      <div class="kv">
+        <div>去标识化</div><div>默认以 patient_code + center_code 工作流，禁止录入 PII。</div>
+        <div>权限与审计</div><div>RLS 权限隔离 + 关键动作审计日志，支持研究过程追溯。</div>
+        <div>备份与恢复</div><div>按部署模式执行备份与恢复策略，可配合院内要求。</div>
+        <div>私有化部署</div><div>支持院内私有化部署评估与边界说明。</div>
+        <div>评估材料</div><div>可提供伦理/信息科评估材料模板（不承诺伦理通过）。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin:0 0 8px">FAQ</h2>
+      <div id="faqList"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin:0 0 8px">准备开始研究合作？</h2>
+      <div class="btnbar">
+        <a class="btn primary" href="/demo">加入现有项目</a>
+        <a class="btn" href="/demo">发起新项目</a>
+        <a class="btn" href="/demo">预约演示</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="/collaboration-data.js"></script>
+  <script src="/collaboration-components.js"></script>
+  <script>
+    const data = window.CollabData;
+    const c = window.CollabComponents;
+    c.renderPaths(document.getElementById('pathsGrid'), data.collaborationPaths);
+    c.renderProjects(document.getElementById('projectsGrid'), data.projectCards);
+    c.renderCases(document.getElementById('casesGrid'), data.caseCards);
+    c.renderFaq(document.getElementById('faqList'), data.faqList);
+  </script>
+  <footer class="site-footer">© 2025 上海胤域医学科技有限公司 · KidneySphere AI · <a href="/security">安全合规</a></footer>
+</body>
+</html>

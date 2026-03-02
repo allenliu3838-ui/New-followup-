@@ -48,6 +48,7 @@
         <a class="btn" href="/user-manual-cn">详细手册</a>
         <a class="btn" href="/slides">系统介绍PPT</a>
         <a class="btn" href="/demo">预约演示</a>
+        <a class="btn" href="/collaboration">合作项目</a>
         <a class="btn" href="/pricing">价格方案</a>
         <a class="btn" href="/security">安全合规</a>
         <a class="btn" href="/deployment">部署方式</a>
@@ -84,6 +85,34 @@
         想要最简操作路径：直接看 <a href="/guide#research">/guide#research</a>（研究流程）和 <a href="/guide#entry-qc">/guide#entry-qc</a>（数据质量清单）。
       </div>
 
+
+      <div class="hr"></div>
+
+      <h2 style="margin:0 0 8px">先选项目，再用系统</h2>
+      <div class="small muted">不是先买一个系统，再想做什么研究；而是先选一个项目，系统告诉你还缺哪些数据。</div>
+      <div class="value-grid" style="margin-top:10px">
+        <div class="value-card"><div class="price-title">选择项目</div><div class="small">从合作项目目录中选方向，明确加入或牵头。</div></div>
+        <div class="value-card"><div class="price-title">检查字段完整率</div><div class="small">优先看日期 / BP / Scr / UPCR，先补关键缺口。</div></div>
+        <div class="value-card"><div class="price-title">补齐后导出首版结果</div><div class="small">一键导出 Table 1 / QC / 趋势图 / 可复现数据包。</div></div>
+      </div>
+
+      <h2 style="margin:14px 0 8px">三种合作路径（简版）</h2>
+      <div id="indexPaths" class="pricing-grid"></div>
+
+      <h2 style="margin:14px 0 8px">从使用到产出</h2>
+      <div class="value-grid">
+        <div class="value-card"><div class="price-title">1) 参与项目</div><div class="small">按项目目标启动录入与字段对齐。</div></div>
+        <div class="value-card"><div class="price-title">2) 快速拿到首版结果</div><div class="small">先形成可汇报版本，再持续补强。</div></div>
+        <div class="value-card"><div class="price-title">3) 提升数据质量</div><div class="small">围绕 QC 清单做补录与复跑。</div></div>
+        <div class="value-card"><div class="price-title">4) 支撑下一轮项目</div><div class="small">可扩展到多中心项目合作与阶段统计简报。</div></div>
+      </div>
+
+      <div class="btnbar" style="margin-top:12px">
+        <a class="btn primary" href="/collaboration">查看合作项目</a>
+        <a class="btn" href="/demo">预约演示</a>
+        <a class="btn" href="/demo">发起新项目</a>
+      </div>
+
       <div class="hr"></div>
 
       <h2 style="margin:0 0 8px">定价与试用</h2>
@@ -118,6 +147,17 @@
 
     </div>
   </div>
+  
+  <script src="/collaboration-data.js"></script>
+  <script src="/collaboration-components.js"></script>
+  <script>
+    const idxData = window.CollabData;
+    window.CollabComponents.renderPaths(
+      document.getElementById('indexPaths'),
+      idxData.collaborationPaths.map(p => ({...p, ctaHref:`/collaboration#path-${p.id}`})),
+      true
+    );
+  </script>
   <footer class="site-footer">© 2025 上海胤域医学科技有限公司 · KidneySphere AI · <a href="/security">安全合规</a></footer>
 </body>
 </html>
