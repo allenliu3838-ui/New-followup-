@@ -12,6 +12,8 @@ A **static** (no-build) research registry for nephrology follow-up:
   - IgAN pathology: **Oxford MEST‑C**
   - genetics: `variants_long` long-table
   - trial write lock (post-expiry read-only)
+  - CN-friendly concept layer: `concept_dictionary` + `abbreviation_dictionary`
+  - CN/EN export mapping: `v_concept_export_mapping`
 
 > **Research-first only**. No clinical decision support. **Do NOT enter PII** (name/phone/MRN/ID).
 
@@ -26,11 +28,15 @@ A **static** (no-build) research registry for nephrology follow-up:
    - Copy **anon public key** (Project Settings → API)
 
 ### B. Run database SQL (IMPORTANT)
-Open Supabase → **SQL Editor** → paste and run:
+Open Supabase → **SQL Editor** → run migrations in order (`supabase/run_all_migrations.sql`),
+or at minimum run:
 
 - `supabase/migrations/0001_core.sql`
+- `supabase/migrations/0013_pr2_lab_catalog.sql`
+- `supabase/migrations/0019_cn_friendly_layer.sql`
 
-This will create all tables, RLS policies, and RPC functions (token follow-up).
+This creates core tables/RLS/RPC plus CN-first metadata, abbreviation dictionary,
+and CN alias search function (`search_concepts_cn`).
 
 ### C. Configure Auth redirect URLs (IMPORTANT)
 Supabase → Authentication → URL Configuration:
@@ -146,3 +152,13 @@ The migration adds:
 - `ktx_visits_ext`
 
 These are optional extension tables for structured transplant fields.
+
+## 9) 中文优先（面向中国医生）
+
+`0019_cn_friendly_layer.sql` adds:
+
+- `concept_dictionary`: 中文显示名、短名、帮助文案、填写时机、示例值、单位等字段。
+- `abbreviation_dictionary`: 缩写首次出现的中文解释（如 KDPI/KDRI/dnDSA/dd-cfDNA）。
+- `concept_alias_dictionary`: 中文别名检索（如“肌酐”“尿蛋白”“排斥”“BK病毒”）。
+- `search_concepts_cn(keyword, domain)`: 统一中文搜索入口（支持 code/中文名/中文别名）。
+- `v_concept_export_mapping`: 中文列名导出与英文编码映射视图。
