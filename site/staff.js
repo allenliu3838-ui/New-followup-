@@ -381,7 +381,7 @@ async function init(){
     el.importPreview.style.display = "none";
     el.importFile.value = "";
     el.importProgress.style.display = "none";
-    window._importParsed = null;
+    _importParsed = null;
   });
 
   el.btnSaveProfile?.addEventListener("click", saveProfile);
@@ -2342,6 +2342,20 @@ window.resetContractForm           = resetContractForm;
 // 批量导入（CSV）
 // ============================================================
 
+// 模块级常量：避免在每次函数调用时重复分配
+const IMPORT_CURRENT_YEAR = new Date().getFullYear();
+const LN_CLASSES = Object.freeze(["I","II","III-A","III-A/C","III-C","IV-S(A)","IV-G(A)","IV-S(A/C)","IV-G(A/C)","IV-S(C)","IV-G(C)","V","VI"]);
+const CSV_SEX_MAP = {"男":"M","女":"F","M":"M","F":"F"};
+
+// 模块级字段转换工具（避免在每次 rowToBaseline/rowToVisit 调用时重复定义）
+const _csvNum  = v => (v === "" || v === undefined) ? null : Number(v);
+const _csvStr  = v => (v === "" || v === undefined) ? null : v;
+const _csvDt   = v => (v === "" || v === undefined || isNaN(Date.parse(v))) ? null : v;
+const _csvBool = v => (v === "true" || v === "是") ? true : (v === "false" || v === "否") ? false : null;
+
+// 解析结果缓存（模块级，不挂到 window）
+let _importParsed = null;
+
 /** 健壮的 CSV 解析器：支持 UTF-8 BOM、引号字段、CRLF/LF */
 function parseCsv(text){
   if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); // strip BOM
@@ -2350,23 +2364,21 @@ function parseCsv(text){
   const len = text.length;
 
   function parseField(){
+    const chars = []; // 用数组收集再 join，避免大文件下字符串拼接的二次分配
     if (text[pos] === '"'){
       pos++;
-      let val = "";
       while (pos < len){
         if (text[pos] === '"'){
-          if (text[pos+1] === '"'){ val += '"'; pos += 2; }
+          if (text[pos+1] === '"'){ chars.push('"'); pos += 2; }
           else { pos++; break; }
-        } else { val += text[pos++]; }
+        } else { chars.push(text[pos++]); }
       }
-      return val;
     } else {
-      let val = "";
       while (pos < len && text[pos] !== ',' && text[pos] !== '\n' && text[pos] !== '\r'){
-        val += text[pos++];
+        chars.push(text[pos++]);
       }
-      return val;
     }
+    return chars.join("");
   }
 
   while (pos < len){
@@ -2379,7 +2391,6 @@ function parseCsv(text){
     if (text[pos] === '\n') pos++;
     rows.push(row);
   }
-  // 去掉末尾全空行
   while (rows.length && rows[rows.length-1].every(v=>v==="")){rows.pop();}
 
   if (rows.length < 2) return { headers:[], data:[] };
@@ -2393,13 +2404,13 @@ function parseCsv(text){
 }
 
 /** 验证单行基线数据，返回 { ok, errors:[] } */
-function validateBaselineRow(r, idx){
+function validateBaselineRow(r){
   const errors = [];
   if (!r.patient_code) errors.push("patient_code 不能为空");
   if (r.sex && !["M","F","男","女"].includes(r.sex)) errors.push(`sex 无效（应为 M/F/男/女）`);
   if (r.birth_year){
     const y = Number(r.birth_year);
-    if (!Number.isInteger(y) || y < 1900 || y > new Date().getFullYear()) errors.push(`birth_year 无效（${r.birth_year}）`);
+    if (!Number.isInteger(y) || y < 1900 || y > IMPORT_CURRENT_YEAR) errors.push(`birth_year 无效（${r.birth_year}）`);
   }
   if (r.baseline_date && isNaN(Date.parse(r.baseline_date))) errors.push(`baseline_date 格式错误（${r.baseline_date}）`);
   if (r.baseline_scr && isNaN(Number(r.baseline_scr))) errors.push(`baseline_scr 应为数字`);
@@ -2410,19 +2421,20 @@ function validateBaselineRow(r, idx){
   for (const f of ["oxford_t","oxford_c"]){
     if (r[f] !== "" && r[f] !== undefined && !["0","1","2"].includes(r[f])) errors.push(`${f} 应为 0、1 或 2`);
   }
-  const LN_CLASSES = ["I","II","III-A","III-A/C","III-C","IV-S(A)","IV-G(A)","IV-S(A/C)","IV-G(A/C)","IV-S(C)","IV-G(C)","V","VI"];
   if (r.ln_class && !LN_CLASSES.includes(r.ln_class)) errors.push(`ln_class 无效（${r.ln_class}）`);
-  if (r.ln_activity_index && (isNaN(Number(r.ln_activity_index)) || Number(r.ln_activity_index)<0 || Number(r.ln_activity_index)>24)){
-    errors.push(`ln_activity_index 应在 0–24`);
+  if (r.ln_activity_index){
+    const ai = Number(r.ln_activity_index);
+    if (isNaN(ai) || ai < 0 || ai > 24) errors.push(`ln_activity_index 应在 0–24`);
   }
-  if (r.ln_chronicity_index && (isNaN(Number(r.ln_chronicity_index)) || Number(r.ln_chronicity_index)<0 || Number(r.ln_chronicity_index)>12)){
-    errors.push(`ln_chronicity_index 应在 0–12`);
+  if (r.ln_chronicity_index){
+    const ci = Number(r.ln_chronicity_index);
+    if (isNaN(ci) || ci < 0 || ci > 12) errors.push(`ln_chronicity_index 应在 0–12`);
   }
   return { ok: errors.length === 0, errors };
 }
 
 /** 验证单行随访数据 */
-function validateVisitRow(r, idx){
+function validateVisitRow(r){
   const errors = [];
   if (!r.patient_code) errors.push("patient_code 不能为空");
   if (!r.visit_date) errors.push("visit_date 不能为空");
@@ -2435,50 +2447,42 @@ function validateVisitRow(r, idx){
 
 /** 把 CSV 行转为 baseline 插入对象 */
 function rowToBaseline(r, project_id){
-  const num = v => (v === "" || v === undefined) ? null : Number(v);
-  const str = v => (v === "" || v === undefined) ? null : v;
-  const dt  = v => (v === "" || v === undefined || isNaN(Date.parse(v))) ? null : v;
-  const bool = v => v === "true" || v === "是" ? true : v === "false" || v === "否" ? false : null;
-  // 中文性别映射
-  const sexMap = {"男":"M","女":"F","M":"M","F":"F"};
   return {
     project_id,
     patient_code:         r.patient_code,
-    sex:                  sexMap[r.sex] ?? null,
-    birth_year:           num(r.birth_year),
-    baseline_date:        dt(r.baseline_date),
-    baseline_scr:         num(r.baseline_scr),
-    baseline_upcr:        num(r.baseline_upcr),
-    biopsy_date:          dt(r.biopsy_date),
-    oxford_m:             num(r.oxford_m),
-    oxford_e:             num(r.oxford_e),
-    oxford_s:             num(r.oxford_s),
-    oxford_t:             num(r.oxford_t),
-    oxford_c:             num(r.oxford_c),
-    ln_biopsy_date:       dt(r.ln_biopsy_date),
-    ln_class:             str(r.ln_class),
-    ln_activity_index:    num(r.ln_activity_index),
-    ln_chronicity_index:  num(r.ln_chronicity_index),
-    ln_podocytopathy:     bool(r.ln_podocytopathy),
-    treatment_arm:        str(r.treatment_arm),
-    randomization_id:     str(r.randomization_id),
-    randomization_date:   dt(r.randomization_date),
+    sex:                  CSV_SEX_MAP[r.sex] ?? null,
+    birth_year:           _csvNum(r.birth_year),
+    baseline_date:        _csvDt(r.baseline_date),
+    baseline_scr:         _csvNum(r.baseline_scr),
+    baseline_upcr:        _csvNum(r.baseline_upcr),
+    biopsy_date:          _csvDt(r.biopsy_date),
+    oxford_m:             _csvNum(r.oxford_m),
+    oxford_e:             _csvNum(r.oxford_e),
+    oxford_s:             _csvNum(r.oxford_s),
+    oxford_t:             _csvNum(r.oxford_t),
+    oxford_c:             _csvNum(r.oxford_c),
+    ln_biopsy_date:       _csvDt(r.ln_biopsy_date),
+    ln_class:             _csvStr(r.ln_class),
+    ln_activity_index:    _csvNum(r.ln_activity_index),
+    ln_chronicity_index:  _csvNum(r.ln_chronicity_index),
+    ln_podocytopathy:     _csvBool(r.ln_podocytopathy),
+    treatment_arm:        _csvStr(r.treatment_arm),
+    randomization_id:     _csvStr(r.randomization_id),
+    randomization_date:   _csvDt(r.randomization_date),
   };
 }
 
 /** 把 CSV 行转为 visit 插入对象 */
 function rowToVisit(r, project_id){
-  const num = v => (v === "" || v === undefined) ? null : Number(v);
-  const dt  = v => (v === "" || v === undefined || isNaN(Date.parse(v))) ? null : v;
   return {
     project_id,
     patient_code:  r.patient_code,
     visit_date:    r.visit_date,
-    sbp:           num(r.sbp),
-    dbp:           num(r.dbp),
-    scr_umol_l:    num(r.scr_umol_l),
-    upcr:          num(r.upcr),
-    egfr:          num(r.egfr),
+    sbp:           _csvNum(r.sbp),
+    dbp:           _csvNum(r.dbp),
+    scr_umol_l:    _csvNum(r.scr_umol_l),
+    upcr:          _csvNum(r.upcr),
+    egfr:          _csvNum(r.egfr),
     notes:         r.notes || null,
   };
 }
@@ -2537,11 +2541,11 @@ function handleImportFile(evt){
     }
 
     const validate = type === "baseline" ? validateBaselineRow : validateVisitRow;
-    const results = data.map((r,i)=>({ row:i+2, data:r, ...validate(r,i) }));
+    const results = data.map((r,i)=>({ row:i+2, data:r, ...validate(r) }));
     const errorCount = results.filter(r=>!r.ok).length;
     const validCount = results.length - errorCount;
 
-    window._importParsed = { type, results };
+    _importParsed = { type, results };
 
     // 摘要
     el.importSummary.innerHTML =
@@ -2552,7 +2556,7 @@ function handleImportFile(evt){
 
     // 预览表格
     const previewRows = results.slice(0, 10);
-    const cols = Object.keys(previewRows[0].data).slice(0, 8); // 最多显示8列避免过宽
+    const cols = previewRows[0]?.data ? Object.keys(previewRows[0].data).slice(0, 8) : [];
     const ths = ["状态","行号",...cols].map(c=>`<th style="padding:4px 8px;white-space:nowrap">${escapeHtml(c)}</th>`).join("");
     const trs = previewRows.map(r=>{
       const status = r.ok
@@ -2572,21 +2576,21 @@ function handleImportFile(evt){
 
 async function confirmImport(){
   if (!selectedProject) return toast("请先选择项目");
-  const parsed = window._importParsed;
-  if (!parsed) return;
+  if (!_importParsed) return;
 
-  const validRows = parsed.results.filter(r=>r.ok).map(r=>r.data);
+  const validRows = _importParsed.results.filter(r=>r.ok).map(r=>r.data);
   if (!validRows.length) return toast("没有可导入的有效行");
 
   const BATCH = 50;
   const pid = selectedProject.id;
-  const type = parsed.type;
+  const type = _importParsed.type;
   const btn = el.btnConfirmImport;
   setBusy(btn, true);
   el.importProgress.style.display = "block";
 
   let inserted = 0;
   let failed = 0;
+  const batchErrors = [];
   try{
     for (let i = 0; i < validRows.length; i += BATCH){
       const chunk = validRows.slice(i, i + BATCH);
@@ -2595,7 +2599,6 @@ async function confirmImport(){
       let err;
       if (type === "baseline"){
         const payload = chunk.map(r=>rowToBaseline(r, pid));
-        // upsert：同 patient_code 覆盖
         const res = await sb.from("patients_baseline").upsert(payload, { onConflict: "project_id,patient_code" });
         err = res.error;
       } else {
@@ -2604,11 +2607,12 @@ async function confirmImport(){
         err = res.error;
       }
 
-      if (err){ failed += chunk.length; console.error(err); }
+      if (err){ failed += chunk.length; batchErrors.push(err.message || String(err)); console.error(err); }
       else { inserted += chunk.length; }
     }
 
-    const msg = `导入完成：成功 ${inserted} 行${failed > 0 ? `，失败 ${failed} 行` : ""}。`;
+    let msg = `导入完成：成功 ${inserted} 行`;
+    if (failed > 0) msg += `，失败 ${failed} 行（${batchErrors[0]}）`;
     el.importProgress.textContent = msg;
     toast(msg);
 
@@ -2617,11 +2621,12 @@ async function confirmImport(){
     // 重置
     el.importFile.value = "";
     el.importPreview.style.display = "none";
-    window._importParsed = null;
+    _importParsed = null;
   }catch(e){
     console.error(e);
-    toast("导入出错：" + (e?.message || e));
-    el.importProgress.textContent = "导入出错，请查看控制台。";
+    const detail = e?.message || e;
+    toast("导入出错：" + detail);
+    el.importProgress.textContent = "导入出错：" + detail;
   }finally{
     setBusy(btn, false);
   }
