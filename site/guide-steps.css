@@ -1,7 +1,7 @@
 .stepper{display:grid;grid-template-columns:260px 1fr;gap:12px;margin-top:10px;}
 @media (max-width: 900px){ .stepper{grid-template-columns:1fr;} }
 
-.step-nav{border:1px solid rgba(15,23,42,.10);border-radius:16px;padding:12px;background:#fff;position:sticky;top:12px;height:fit-content;}
+.step-nav{border:1px solid rgba(15,23,42,.10);border-radius:16px;padding:12px;background:#fff;position:sticky;top:52px;height:fit-content;}
 @media (max-width: 900px){ .step-nav{position:relative;top:auto;} }
 .step-nav-title{font-weight:800;margin-bottom:10px;color:#0f172a;}
 .step-item{width:100%;text-align:left;display:flex;align-items:center;gap:10px;padding:10px 10px;border-radius:14px;border:1px solid rgba(15,23,42,.10);background:#fff;cursor:pointer;margin-bottom:8px;font-size:13px;}

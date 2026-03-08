@@ -4,11 +4,11 @@
   --text:#0f172a;
   --muted:#64748b;
   --border:rgba(15,23,42,.10);
-  --brand:#2563eb;
-  --brand2:#0ea5e9;
-  --ok:#16a34a;
-  --warn:#d97706;
-  --bad:#dc2626;
+  --brand:#2f6feb;
+  --brand2:#1d4ed8;
+  --ok:#22c55e;
+  --warn:#f59e0b;
+  --bad:#ef4444;
   --shadow:0 10px 30px rgba(2,8,23,.06);
   --radius:18px;
 }
@@ -71,7 +71,9 @@ code{background:rgba(2,6,23,.06);padding:2px 6px;border-radius:8px;font-size:12p
 /* marketing + pricing sections */
 .pricing-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
 @media (max-width: 980px){.pricing-grid{grid-template-columns:1fr;}}
-.price-card{border:1px solid rgba(15,23,42,.10);border-radius:14px;padding:12px;background:#fff;}
+.price-card{border:1px solid rgba(15,23,42,.10);border-radius:14px;padding:12px;background:#fff;position:relative;}
+.price-card.recommended{border:2px solid #2f6feb;}
+.price-card.recommended::before{content:'推荐';position:absolute;top:-12px;right:20px;background:#2f6feb;color:#fff;padding:2px 12px;border-radius:999px;font-size:12px;font-weight:600;}
 .price-title{font-weight:800;margin-bottom:6px;}
 .price-main{font-size:22px;font-weight:900;margin-bottom:4px;}
 
@@ -84,7 +86,8 @@ code{background:rgba(2,6,23,.06);padding:2px 6px;border-radius:8px;font-size:12p
 
 .value-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
 @media (max-width: 980px){.value-grid{grid-template-columns:1fr;}}
-.value-card{border:1px solid rgba(15,23,42,.10);border-radius:14px;padding:12px;background:rgba(37,99,235,.03);}
+.value-card{border:1px solid rgba(15,23,42,.10);border-radius:14px;padding:12px;background:rgba(47,111,235,.03);transition:transform .2s,box-shadow .2s;}
+.value-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.08);}
 
 
 details.faq{border:1px solid rgba(15,23,42,.10);border-radius:12px;padding:10px 12px;background:#fff;margin-top:8px;}
