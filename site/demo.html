@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>预约演示 · KidneySphere AI</title>
+  <title>研究合作咨询 · KidneySphere AI</title>
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
   <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
@@ -25,8 +25,8 @@
       <div class="brand">
         <img src="/assets/kidneysphere-ai.png" alt="KidneySphere AI"/>
         <div>
-          <h1 class="brand-title">预约演示 · KidneySphere AI</h1>
-          <div class="brand-sub">填写后我们将在 1 个工作日内通过邮件或微信联系您，安排在线演示。</div>
+          <h1 class="brand-title">研究合作咨询 · KidneySphere AI</h1>
+          <div class="brand-sub">填写后我们将在 1 个工作日内联系您：可按“预约演示 / 加入现有项目 / 发起新项目 / 机构合作咨询”对接。</div>
         </div>
       </div>
 
@@ -35,6 +35,7 @@
         <a class="btn" href="/guide">使用说明</a>
         <a class="btn" href="/slides">系统介绍PPT</a>
         <a class="btn" href="/pricing">价格方案</a>
+        <a class="btn" href="/collaboration">合作项目</a>
       </div>
 
       <div class="hr"></div>
@@ -63,6 +64,33 @@
           </div>
         </div>
 
+        
+        <div class="row">
+          <div class="col">
+            <label>咨询类型 <span style="color:#dc2626">*</span></label>
+            <select id="f_inquiry_type" required>
+              <option value="">请选择</option>
+              <option value="预约演示">预约演示</option>
+              <option value="加入现有项目">加入现有项目</option>
+              <option value="发起新项目">发起新项目</option>
+              <option value="机构合作咨询">机构合作咨询</option>
+            </select>
+          </div>
+          <div class="col">
+            <label>您的角色</label>
+            <select id="f_role">
+              <option value="">请选择（选填）</option>
+              <option>PI / 科研负责人</option>
+              <option>研究生 / 住院医</option>
+              <option>协调员 / 护士</option>
+              <option>数据管理员 / 统计人员</option>
+              <option>医院信息科</option>
+              <option>医院伦理 / 科研管理</option>
+              <option>采购 / 行政</option>
+            </select>
+          </div>
+        </div>
+
         <div class="row">
           <div class="col">
             <label>微信号 / 手机（选填，方便约时间）</label>
@@ -81,6 +109,27 @@
           <span class="tag" data-val="GENERAL">通用 / 其他肾病</span>
           <span class="tag" data-val="MULTICENTER">多中心合并</span>
           <span class="tag" data-val="PILOT">科室数据库建设</span>
+          <span class="tag" data-val="COLLAB">合作项目咨询</span>
+        </div>
+
+        <div class="row">
+          <div class="col">
+            <label>预计样本量（选填）</label>
+            <input id="f_est_sample" type="text" placeholder="例如：120"/>
+          </div>
+          <div class="col">
+            <label>预计中心数（选填）</label>
+            <input id="f_est_centers" type="text" placeholder="例如：3"/>
+          </div>
+          <div class="col">
+            <label>希望角色（选填）</label>
+            <select id="f_participation_role">
+              <option value="">请选择</option>
+              <option>牵头</option>
+              <option>参与</option>
+              <option>暂不确定</option>
+            </select>
+          </div>
         </div>
 
         <label style="margin-top:14px;display:block;font-size:12px;color:#64748b">补充说明 / 您最想了解的功能</label>
@@ -89,15 +138,15 @@
         <div id="formErr" class="warnbox" style="display:none;margin-top:10px"></div>
 
         <div class="btnbar" style="margin-top:14px">
-          <button class="btn primary" type="submit" id="btnSubmit">提交预约申请</button>
+          <button class="btn primary" type="submit" id="btnSubmit">提交申请</button>
         </div>
       </form>
 
       <!-- Success state -->
       <div class="demo-success" id="demoSuccess">
         <div class="icon">✅</div>
-        <h2>预约成功！</h2>
-        <p class="small">我们已收到您的申请，将在 <b>1 个工作日内</b>通过邮件或微信联系您安排演示。<br/>如需加急，请直接发邮件至 <a href="mailto:bd@kidneysphere.ai">bd@kidneysphere.ai</a>。</p>
+        <h2>申请已提交！</h2>
+        <p class="small">我们已收到您的申请，将在 <b>1 个工作日内</b>按您的咨询类型（演示 / 加入项目 / 发起项目 / 机构合作）与您联系。<br/>如需加急，请直接发邮件至 <a href="mailto:155120014@qq.com">155120014@qq.com</a>。</p>
         <div class="btnbar" style="justify-content:center;margin-top:16px">
           <a class="btn primary" href="/guide">先看使用说明</a>
           <a class="btn" href="/slides">看系统介绍PPT</a>
@@ -115,7 +164,7 @@
       </div>
 
       <div class="infobox" style="margin-top:12px">
-        也可以直接发邮件：<a href="mailto:bd@kidneysphere.ai">bd@kidneysphere.ai</a>，注明"预约演示"。
+        也可以直接发邮件：<a href="mailto:155120014@qq.com">155120014@qq.com</a>，注明"预约演示"。
       </div>
     </div>
   </div>
@@ -150,7 +199,13 @@
       try {
         sbClient = createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
       } catch {
-        showErr('Supabase 未配置，请联系管理员或直接发邮件至 bd@kidneysphere.ai');
+        showErr('Supabase 未配置，请联系管理员或直接发邮件至 155120014@qq.com');
+        reset();
+        return;
+      }
+
+      if (!document.getElementById('f_inquiry_type').value) {
+        showErr('请选择咨询类型。');
         reset();
         return;
       }
@@ -162,13 +217,20 @@
         email:       document.getElementById('f_email').value.trim(),
         contact:     document.getElementById('f_contact').value.trim() || null,
         use_case:    selectedTags() || null,
-        message:     document.getElementById('f_message').value.trim() || null,
+        message:     [
+          `咨询类型：${document.getElementById('f_inquiry_type').value}`,
+          document.getElementById('f_role').value ? `角色：${document.getElementById('f_role').value}` : '',
+          document.getElementById('f_est_sample').value.trim() ? `预计样本量：${document.getElementById('f_est_sample').value.trim()}` : '',
+          document.getElementById('f_est_centers').value.trim() ? `预计中心数：${document.getElementById('f_est_centers').value.trim()}` : '',
+          document.getElementById('f_participation_role').value ? `希望角色：${document.getElementById('f_participation_role').value}` : '',
+          document.getElementById('f_message').value.trim() || ''
+        ].filter(Boolean).join(' | ') || null,
       };
 
       const { error } = await sbClient.from('demo_requests').insert(payload);
 
       if (error) {
-        showErr('提交失败：' + error.message + '。请直接发邮件至 bd@kidneysphere.ai');
+        showErr('提交失败：' + error.message + '。请直接发邮件至 155120014@qq.com');
         reset();
       } else {
         form.style.display = 'none';
@@ -182,7 +244,7 @@
     }
     function reset() {
       btnSubmit.disabled = false;
-      btnSubmit.textContent = '提交预约申请';
+      btnSubmit.textContent = '提交申请';
     }
   </script>
   <footer class="site-footer">© 2025 上海胤域医学科技有限公司 · KidneySphere AI · <a href="/security">安全合规</a></footer>
