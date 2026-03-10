@@ -1,0 +1,9 @@
+User-agent: *
+# 随访填报入口（token 链接），禁止爬虫收录，防止 token 路径被索引
+Disallow: /p/
+Disallow: /followup
+# 登录后台，无需收录
+Disallow: /staff
+Disallow: /staff/
+
+Sitemap: https://kidneysphereregistry.cn/sitemap.xml
