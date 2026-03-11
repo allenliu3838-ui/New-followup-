@@ -20,18 +20,23 @@
   }
 
   function ProjectCard(item){
+    function val(s){ return s ? s.replace(/^[^：]+：/, '') : s; }
     return `
       <article class="price-card project-card">
         <div class="price-title">${escapeHtml(item.name)}</div>
-        <div class="small">${escapeHtml(item.question)}</div>
-        <div class="pills" style="margin-top:8px"><span class="pill active">模块：${escapeHtml(item.module)}</span></div>
-        <ul class="small" style="margin:10px 0 0;padding-left:18px;line-height:1.8">
-          <li>${escapeHtml(item.required)}</li>
-          <li>${escapeHtml(item.sample)}</li>
-          <li>${escapeHtml(item.followup)}</li>
-          <li>${escapeHtml(item.deliverables)}</li>
-          <li>${escapeHtml(item.participation)}</li>
-        </ul>
+        <div class="pills" style="margin:6px 0 8px">
+          <span class="pill active">模块：${escapeHtml(item.module)}</span>
+        </div>
+        <div class="infobox" style="padding:8px 10px;font-size:12px;line-height:1.5;margin-bottom:8px">
+          ${escapeHtml(val(item.question))}
+        </div>
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:5px 10px;font-size:12px;align-items:baseline">
+          <span style="color:var(--muted);white-space:nowrap">必填字段</span><span>${escapeHtml(val(item.required))}</span>
+          <span style="color:var(--muted);white-space:nowrap">样本量</span><span>${escapeHtml(val(item.sample))}</span>
+          <span style="color:var(--muted);white-space:nowrap">随访周期</span><span>${escapeHtml(val(item.followup))}</span>
+          <span style="color:var(--muted);white-space:nowrap">目标期刊</span><span>${escapeHtml(val(item.deliverables))}</span>
+          <span style="color:var(--muted);white-space:nowrap">参与方式</span><span>${escapeHtml(val(item.participation))}</span>
+        </div>
         <div class="btnbar" style="margin-top:10px">
           <a class="btn small primary" href="mailto:china@kidneysphere.com">联系加入</a>
           <a class="btn small" href="/demo">预约演示</a>
