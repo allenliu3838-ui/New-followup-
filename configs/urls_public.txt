@@ -1,0 +1,22 @@
+# kidneysphereregistry.cn 公开页面巡检清单
+# 用于 scripts/audit/crawl_public_pages.py 与 scripts/security/check_headers.sh
+# 格式：每行一个 URL，# 开头为注释
+
+# 用户指定（必须首先覆盖）
+https://kidneysphereregistry.cn/
+https://kidneysphereregistry.cn/security
+https://kidneysphereregistry.cn/deployment
+https://kidneysphereregistry.cn/pricing
+https://kidneysphereregistry.cn/guide
+https://kidneysphereregistry.cn/staff
+https://kidneysphereregistry.cn/collaboration
+
+# 补充页面
+https://kidneysphereregistry.cn/user-manual-cn
+https://kidneysphereregistry.cn/demo
+https://kidneysphereregistry.cn/slides
+
+# 运维检查项（应返回标准格式，非 HTML）
+https://kidneysphereregistry.cn/robots.txt
+https://kidneysphereregistry.cn/sitemap.xml
+https://kidneysphereregistry.cn/.well-known/security.txt
