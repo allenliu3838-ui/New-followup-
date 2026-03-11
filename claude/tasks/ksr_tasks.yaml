@@ -321,3 +321,53 @@ tasks:
       - "PR 必须通过门禁；产物可追溯到 commit；发布具备回滚脚本入口"
     estimate_person_days: "5-12"
     owner_role: "DevOps/平台工程"
+
+  # ── 国际标准对接（LOINC / HGVS / 病理） ─────────────────
+  - id: KSR-LOINC-NULLABLE-COL
+    status: pending
+    priority: P2
+    group: needs-db
+    goal: "为化验表中已有项目补充 loinc_code 可空列；内置常用映射（SCr=2160-0, UPCR=13705-9, eGFR=62238-1, 24h尿蛋白=2888-6, HGB=718-7）"
+    prerequisites:
+      - "需 DB DDL 权限（需凭证/人工批准）"
+    outputs:
+      - db/migrations/xxxx_loinc_code_col.sql
+    acceptance:
+      - "loinc_code 列存在且可为空（不强制填写）"
+      - "内置映射在导出数据中正确体现"
+    estimate_person_days: "1-2"
+    owner_role: "DBA/后端"
+
+  - id: KSR-HGVS-VALIDATION
+    status: pending
+    priority: P2
+    group: needs-db
+    goal: "对 HGVS c./p. 字段添加后端格式校验（正则 + variantvalidator.org API 可选）；前端 tooltip 已上线"
+    prerequisites:
+      - "需后端代码权限（未指定）"
+    outputs:
+      - src/validators/hgvs.js
+      - tests/hgvs_validation.test.js
+    acceptance:
+      - "格式错误时给出明确提示而不是静默通过"
+      - "合法格式（NM_xxx.x:c.xxxX>Y）通过验证"
+    estimate_person_days: "2-3"
+    owner_role: "后端"
+
+  - id: KSR-PATHOLOGY-SCHEMA
+    status: pending
+    priority: P2
+    group: needs-db
+    goal: "为病理评分建立结构化字段：IgAN Oxford MEST-C 2016；狼疮肾炎 ISN/RPS 2018；移植肾 Banff 2022"
+    prerequisites:
+      - "需 DB DDL 权限（需凭证/人工批准）"
+      - "当前过渡方案：使用病理备注字段录入字符串，可 Python/R 解析"
+    outputs:
+      - db/migrations/xxxx_pathology_scores.sql
+      - site/staff.html (新增结构化病理录入 UI)
+    acceptance:
+      - "MEST-C M/E/S/T/C 各子项可独立查询和统计"
+      - "ISN-RPS 分型 (Class I-VI) 以枚举存储"
+      - "Banff 各评分项（g/i/t/v/ci/ct）以独立数值列存储"
+    estimate_person_days: "5-10"
+    owner_role: "后端/产品"
