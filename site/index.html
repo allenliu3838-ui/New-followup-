@@ -51,7 +51,7 @@
         <a class="btn" href="/user-manual-cn">详细手册</a>
         <a class="btn" href="/slides">系统介绍PPT</a>
         <a class="btn" href="/demo">预约演示</a>
-        <a class="btn" href="/collaboration">合作项目</a>
+        <a class="btn primary" href="/collaboration">合作项目（招募中）</a>
         <a class="btn" href="/pricing">价格方案</a>
         <a class="btn" href="/security">安全合规</a>
         <a class="btn" href="/deployment">部署方式</a>
@@ -102,6 +102,18 @@
       <h2 style="margin:14px 0 8px">三种合作路径（简版）</h2>
       <div id="indexPaths" class="pricing-grid"></div>
 
+      <div class="okbox" style="margin-top:16px">
+        <b>正在招募合作中心 · 7 个研究项目开放加入</b>——IgAN / MN / C3G / MGRS / HD / CKD 康复，均为真实启动或招募阶段研究。
+        <div class="btnbar" style="margin-top:8px">
+          <a class="btn primary" href="/collaboration">查看全部项目</a>
+          <a class="btn" href="mailto:china@kidneysphere.com">直接联系加入</a>
+        </div>
+      </div>
+
+      <h2 style="margin:16px 0 8px">正在招募合作中心的研究项目</h2>
+      <div class="small muted">以下均为正在启动或招募阶段的真实研究，欢迎符合条件的中心联系加入。</div>
+      <div id="indexProjects" class="pricing-grid" style="margin-top:10px"></div>
+
       <h2 style="margin:14px 0 8px">从使用到产出</h2>
       <div class="value-grid">
         <div class="value-card"><div class="price-title">1) 参与项目</div><div class="small">按项目目标启动录入与字段对齐。</div></div>
@@ -112,6 +124,7 @@
 
       <div class="btnbar" style="margin-top:12px">
         <a class="btn primary" href="/collaboration">查看合作项目</a>
+        <a class="btn primary" href="mailto:china@kidneysphere.com">联系加入项目</a>
         <a class="btn" href="/demo">预约演示</a>
         <a class="btn" href="/demo">发起新项目</a>
       </div>
@@ -159,6 +172,10 @@
       document.getElementById('indexPaths'),
       idxData.collaborationPaths.map(p => ({...p, ctaHref:`/collaboration#path-${p.id}`})),
       true
+    );
+    window.CollabComponents.renderProjects(
+      document.getElementById('indexProjects'),
+      idxData.projectCards
     );
   </script>
   <footer class="site-footer">© 2025 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a></footer>

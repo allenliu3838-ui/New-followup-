@@ -140,7 +140,7 @@
         <p style="margin-top:14px;font-size:11px;color:#94a3b8;line-height:1.6">
           提交即表示您同意我们收集上述信息（姓名、机构、邮箱及您填写的选填项）用于安排演示或咨询跟进，
           保存期限不超过 12 个月。您可随时发邮件至
-          <a href="mailto:155120014@qq.com" style="color:#94a3b8">155120014@qq.com</a>
+          <a href="mailto:china@kidneysphere.com" style="color:#94a3b8">china@kidneysphere.com</a>
           申请查阅或删除您的信息。
         </p>
 
@@ -153,7 +153,7 @@
       <div class="demo-success" id="demoSuccess">
         <div class="icon">✅</div>
         <h2>申请已提交！</h2>
-        <p class="small">我们已收到您的申请，将在 <b>1 个工作日内</b>按您的咨询类型（演示 / 加入项目 / 发起项目 / 机构合作）与您联系。<br/>如需加急，请直接发邮件至 <a href="mailto:155120014@qq.com">155120014@qq.com</a>。</p>
+        <p class="small">我们已收到您的申请，将在 <b>1 个工作日内</b>按您的咨询类型（演示 / 加入项目 / 发起项目 / 机构合作）与您联系。<br/>如需加急，请直接发邮件至 <a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a>。</p>
         <div class="btnbar" style="justify-content:center;margin-top:16px">
           <a class="btn primary" href="/guide">先看使用说明</a>
           <a class="btn" href="/slides">看系统介绍PPT</a>
@@ -171,7 +171,7 @@
       </div>
 
       <div class="infobox" style="margin-top:12px">
-        也可以直接发邮件：<a href="mailto:155120014@qq.com">155120014@qq.com</a>，注明"预约演示"。
+        也可以直接发邮件：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a>，注明"预约演示"。
       </div>
     </div>
   </div>
@@ -206,7 +206,7 @@
       try {
         sbClient = createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
       } catch {
-        showErr('Supabase 未配置，请联系管理员或直接发邮件至 155120014@qq.com');
+        showErr('Supabase 未配置，请联系管理员或直接发邮件至 china@kidneysphere.com');
         reset();
         return;
       }
@@ -237,7 +237,7 @@
       const { error } = await sbClient.from('demo_requests').insert(payload);
 
       if (error) {
-        showErr('提交失败：' + error.message + '。请直接发邮件至 155120014@qq.com');
+        showErr('提交失败：' + error.message + '。请直接发邮件至 china@kidneysphere.com');
         reset();
       } else {
         form.style.display = 'none';
