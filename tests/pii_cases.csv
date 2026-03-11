@@ -1,0 +1,29 @@
+case_id,field,value,should_block,category,note
+PII-001,notes,13800138000,true,phone,手机号 13x
+PII-002,notes,+8613800138000,true,phone,手机号含国际区号
+PII-003,notes,138-0013-8000,true,phone,手机号含分隔符
+PII-004,notes,400-820-0000,true,phone,400 号码
+PII-005,notes,110101199001011234,true,id_card,18位居民身份证
+PII-006,notes,11010119900101123X,true,id_card,18位身份证（X结尾）
+PII-007,notes,440301199001011234,true,id_card,广东身份证
+PII-008,notes,patient@example.com,true,email,邮箱地址
+PII-009,notes,user.name+tag@hospital.org,true,email,含+的邮箱
+PII-010,notes,MRN12345678,true,mrn,MRN 前缀医院编号
+PII-011,notes,住院号：HN2024001234,true,mrn,含"住院号"关键字
+PII-012,notes,病案号88888888,true,mrn,含"病案号"关键字
+PII-013,notes,张三,true,name,中文姓名（2字）
+PII-014,notes,李小明,true,name,中文姓名（3字）
+PII-015,notes,王大力医生,true,name,含职称的姓名
+PII-016,notes,12345678901234567,true,long_digit,17位连续数字（疑似身份信息）
+PII-017,notes,1234567890123456789,true,long_digit,19位连续数字
+PII-018,notes,微信号：wxid_abc123456,true,wechat,含"微信号"关键字
+PII-019,notes,weixin:user123,true,wechat,含 weixin 前缀
+# 以下为合法临床描述（不应拦截）
+OK-001,notes,Scr 1.2 mg/dL,false,clinical,肌酐值
+OK-002,notes,IgA肾病 MEST-C M1E0S0T0C0,false,clinical,病理评分
+OK-003,notes,eGFR 45 mL/min/1.73m2,false,clinical,肾功能指标
+OK-004,notes,随访第3次，无特殊不适,false,clinical,随访记录
+OK-005,notes,中心代码 BJ01,false,clinical,合并键字段
+OK-006,notes,研究编号 P0042,false,clinical,患者编号（去标识化）
+OK-007,notes,血压 130/80 mmHg，心率 72次/分,false,clinical,生命体征
+OK-008,notes,24h尿蛋白定量 3.5g，尿肌酐 8.2mmol/L,false,clinical,尿检结果

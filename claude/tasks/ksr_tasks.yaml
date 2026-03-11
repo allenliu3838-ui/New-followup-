@@ -1,0 +1,373 @@
+version: 1
+project: kidneysphereregistry.cn
+last_updated: "2026-03-11"
+
+# ─────────────────────────────────────────────────────────────
+# 分组说明
+# group: no-credentials  — 无需生产权限，立即可执行
+# group: needs-db        — 需 DB 只读或 DDL 权限
+# group: needs-deploy    — 需仓库/发布/CI 权限
+# group: needs-approval  — 需管理层或法务批准
+# ─────────────────────────────────────────────────────────────
+
+tasks:
+
+  # ── 已完成 ───────────────────────────────────────────────
+  - id: KSR-ROBOTS-SITEMAP-FIX
+    status: done
+    done_date: "2026-03-11"
+    priority: P1          # 原 P2，升级（防 token 路径被索引）
+    group: no-credentials
+    goal: "修复 robots.txt 与 sitemap.xml 返回首页 HTML 的问题；Disallow /p/ 防止 token 被爬虫收录"
+    outputs:
+      - site/robots.txt
+      - site/sitemap.xml
+
+  - id: KSR-SEC-HEADERS
+    status: done
+    done_date: "2026-03-11"
+    priority: P0
+    group: no-credentials
+    goal: "补齐安全响应头：X-Frame-Options/HSTS/Permissions-Policy"
+    outputs:
+      - netlify.toml（headers 节）
+
+  - id: KSR-VULN-DISCLOSURE
+    status: done
+    done_date: "2026-03-11"
+    priority: P1
+    group: no-credentials
+    goal: "建立 security.txt（RFC 9116）漏洞披露入口"
+    outputs:
+      - site/.well-known/security.txt
+
+  - id: KSR-DEMO-PRIVACY-NOTICE
+    status: done
+    done_date: "2026-03-11"
+    priority: P0
+    group: no-credentials
+    goal: "demo 表单提交前补充 PIPL 最小告知（收集项/用途/保存期限/权利通道）"
+    outputs:
+      - site/demo.html
+
+  - id: KSR-CONTENT-LOGIN-CONSISTENCY
+    status: done
+    done_date: "2026-03-11"
+    priority: P1
+    group: no-credentials
+    goal: "统一登录方式描述：user-manual-cn.html「魔法链接」→「邮箱+密码」，与 staff.html 实现一致"
+    notes: "实际实现为邮箱+密码（staff.html:73）；手册旧版写了魔法链接属于文档漂移"
+    outputs:
+      - site/user-manual-cn.html
+
+  # ── 第一批：无需生产权限，立即可执行 ─────────────────────
+  - id: KSR-PAGES-AUDIT
+    status: pending
+    priority: P0
+    group: no-credentials
+    goal: "固化站点公开页面清单与声明提取，形成可审计基线"
+    prerequisites:
+      - "可联网执行环境（无需登录）"
+    inputs:
+      - configs/urls_public.txt
+    outputs:
+      - artifacts/pages_inventory.json
+      - artifacts/pages_claims.md
+    steps:
+      - "python3 scripts/audit/crawl_public_pages.py --urls configs/urls_public.txt --out-json artifacts/pages_inventory.json --out-md artifacts/pages_claims.md"
+    rollback:
+      - "无（只读审计）"
+    acceptance:
+      - "覆盖 7 个指定页面 + user-manual-cn/demo"
+      - "输出中包含 PII 禁录入声明、合并键、只读宽限、Token/快照/导出等关键能力摘要"
+    estimate_person_days: "2-4"
+    owner_role: "SRE/架构师"
+
+  - id: KSR-SEC-HEADERS-CHECK
+    status: pending
+    priority: P0
+    group: no-credentials
+    goal: "持续验证安全头基线，输出可纳入 CI 的检查脚本与报告"
+    prerequisites:
+      - "可联网执行环境（无需登录）"
+    inputs:
+      - configs/urls_public.txt
+    outputs:
+      - artifacts/security_headers_report.md
+    steps:
+      - "bash scripts/security/check_headers.sh configs/urls_public.txt > artifacts/security_headers_report.md"
+    rollback:
+      - "无（只读检查）"
+    acceptance:
+      - "报告覆盖核心页面，能识别缺失项"
+    estimate_person_days: "0.5"
+    owner_role: "安全/SRE"
+
+  # ── 第二批：需申请 DB 权限后推进 ─────────────────────────
+  - id: KSR-RLS-COVERAGE-AUDIT
+    status: pending
+    priority: P0
+    group: needs-db
+    goal: "输出 RLS 覆盖率审计：未启用 RLS 的表/视图/函数清单+策略列表+高风险对象"
+    prerequisites:
+      - "需 DB 只读账号（需凭证/人工批准）"
+      - "⚠️ 注意：真正的高风险是未启用 RLS 的 public 表，而不是 anon key 本身。Supabase 明确说明 anon key 可以公开，前提是 RLS 正确配置。"
+    inputs:
+      - "DB 连接串（$DB_READONLY_URL）"
+    outputs:
+      - artifacts/rls_audit.md
+      - artifacts/rls_audit.sql.out
+    steps:
+      - "psql $DB_READONLY_URL -f scripts/db/rls_audit.sql > artifacts/rls_audit.sql.out"
+    rollback:
+      - "无（只读审计）"
+    acceptance:
+      - "报告明确列出 public schema 中未启用 RLS 对象（如存在）与对应风险"
+    estimate_person_days: "2-4"
+    owner_role: "DBA"
+
+  - id: KSR-RLS-REMEDIATE
+    status: pending
+    priority: P0
+    group: needs-db
+    goal: "修复高风险对象：启用 RLS 并补齐最小策略；建立回归测试用例"
+    prerequisites:
+      - "需 DB DDL 权限（需凭证/人工批准）"
+      - "需 staging 环境（未指定）"
+      - "依赖 KSR-RLS-COVERAGE-AUDIT 完成"
+    inputs:
+      - artifacts/rls_audit.md
+    outputs:
+      - db/migrations/xxxx_rls_fix.sql
+      - tests/rls_regression.yml
+    rollback:
+      - "psql $DB_ADMIN_URL -f db/migrations/xxxx_rls_fix_rollback.sql"
+    acceptance:
+      - "跨中心/跨项目越权读写为 0；合法用例通过"
+    estimate_person_days: "5-12"
+    owner_role: "DBA/后端"
+
+  - id: KSR-TOKEN-GUARDRAILS
+    status: pending
+    priority: P0
+    group: needs-db
+    goal: "对 /p/<token> 免登录入口实施风控：有效期/单次/撤销/限流/异常告警/审计字段"
+    prerequisites:
+      - "需后端与 DB 权限（需凭证/人工批准）"
+    notes: >
+      Token 存储建议仅存 hash（sha256），但核心风险是 RLS 策略缺失而非 anon key 暴露；
+      撤销查询需按 hash 建索引，避免全表扫描。
+    inputs:
+      - "db/migrations/（路径未指定）"
+    outputs:
+      - db/migrations/xxxx_token_hardening.sql
+      - artifacts/token_abuse_test_report.json
+    rollback:
+      - "psql $DB_ADMIN_URL -f db/migrations/xxxx_token_hardening_rollback.sql"
+      - "临时放宽限流阈值（应急）"
+    acceptance:
+      - "单次 token 提交后再次提交被拒绝；撤销立即生效"
+      - "异常提交峰值触发告警并能定位到 token/项目"
+    estimate_person_days: "4-8"
+    owner_role: "后端/安全"
+
+  - id: KSR-PII-BLOCK-REGRESSION
+    status: pending
+    priority: P0
+    group: needs-db
+    goal: "把 PII 双重拦截变成自动化回归（含 CSV 导入路径）"
+    prerequisites:
+      - "需测试环境写入凭证（需人工批准）"
+    inputs:
+      - tests/pii_cases.csv
+    outputs:
+      - artifacts/pii_regression_report.json
+    steps:
+      - "python3 scripts/tests/pii_injection_test.py --base-url $BASE --auth $TEST_AUTH --cases tests/pii_cases.csv --out artifacts/pii_regression_report.json"
+    rollback:
+      - "无（测试）"
+    acceptance:
+      - "所有 PII 样例写入失败且错误可解释；非 PII 临床描述写入成功"
+    estimate_person_days: "3-6"
+    owner_role: "QA/后端"
+
+  - id: KSR-AUDIT-LOG-PIPELINE
+    status: pending
+    priority: P0
+    group: needs-db
+    goal: "导出/快照/锁定/token 失效等关键动作审计日志接入可查询与告警（留存≥6个月）"
+    prerequisites:
+      - "需日志平台与后端权限（未指定）"
+    outputs:
+      - artifacts/audit_log_schemas.md
+      - configs/alerts_audit.yml
+    rollback:
+      - "撤销告警规则发布"
+    acceptance:
+      - "能按项目/用户/时间检索审计事件"
+      - "日志留存满足≥6个月（网安法基线）"
+    estimate_person_days: "4-10"
+    owner_role: "SRE/安全"
+
+  - id: KSR-BACKUP-AUTOMATION
+    status: pending
+    priority: P0
+    group: needs-db
+    goal: "自动备份（dump/归档）+加密+异地副本；季度恢复演练并留存证据"
+    prerequisites:
+      - "需 DB 备份账号、对象存储、加密密钥（需凭证/人工批准）"
+    inputs:
+      - configs/backup.yml
+    outputs:
+      - scripts/backup/pg_dump_encrypt_upload.sh
+      - scripts/backup/restore_smoketest.sh
+      - artifacts/restore_smoketest.log
+    rollback:
+      - "停用定时任务；回退脚本版本"
+    acceptance:
+      - "备份成功率≥99%；至少一次恢复验证成功并留存日志"
+    estimate_person_days: "4-8"
+    owner_role: "DBA/SRE"
+
+  # ── 第三批：需管理层/法务批准 ────────────────────────────
+  - id: KSR-PRIVACY-POLICY
+    status: pending
+    priority: P0
+    group: needs-approval
+    goal: "补齐完整隐私政策页面与个人信息处理规则（含保存期限/权利通道）"
+    prerequisites:
+      - "⚠️ 法务审核应在第 1 周启动，不依赖技术完成，否则会成为 M4 卡点"
+      - "需法务/合规审核（需人工批准）"
+      - "需网站发布权限（未指定）"
+    notes: "demo 表单已补充最小告知；此任务是完整政策页面，需法务审定"
+    outputs:
+      - site/privacy.html
+      - docs/pi_catalogue.md
+    acceptance:
+      - "隐私政策可从 /demo 与 /staff 入口显著到达"
+      - "明确保存期限并与实际流程一致"
+    estimate_person_days: "4-8"
+    owner_role: "合规/产品"
+
+  - id: KSR-PIPIA-REGISTER
+    status: pending
+    priority: P0
+    group: needs-approval
+    goal: "建立 PIPIA 台账与记录留存（≥3年）"
+    prerequisites:
+      - "需合规负责人牵头（需人工批准）"
+      - "依赖 KSR-PAGES-AUDIT 完成（数据流图）"
+    outputs:
+      - compliance/pipia_register.csv
+      - compliance/pipia_records/
+    acceptance:
+      - "覆盖：研究者个人信息、token 入口、导出/快照、对外共享/委托处理"
+      - "评估记录可追溯且留存≥3年"
+    estimate_person_days: "3-6"
+    owner_role: "合规/安全"
+
+  # ── 第四批：需 CI/CD 权限 ─────────────────────────────────
+  - id: KSR-OBS-OTEL
+    status: pending
+    priority: P1
+    group: needs-deploy
+    goal: "引入 OpenTelemetry：关键链路 trace_id 贯通（/p 提交、导出、快照）"
+    prerequisites:
+      - "需代码与发布权限（未指定）"
+      - "需观测后端（Prometheus/Grafana/商用 APM，未指定）"
+    outputs:
+      - configs/otel_collector.yml
+      - dashboards/core_golden_signals.json
+    rollback:
+      - "移除 OTel 注入或关闭 exporter；回退到基础日志"
+    acceptance:
+      - "一次 /p 提交可在追踪中定位端到端耗时"
+    estimate_person_days: "4-12"
+    owner_role: "后端/SRE"
+
+  - id: KSR-SLO-ALERTING
+    status: pending
+    priority: P1
+    group: needs-deploy
+    goal: "建立 SLI/SLO 与错误预算告警；配置 Alertmanager 分组/抑制/静默"
+    prerequisites:
+      - "需 Prometheus/Alertmanager 权限（未指定）"
+      - "⚠️ 先建立基线（观测 1 个月），再用错误预算驱动收敛 SLO 数值"
+    outputs:
+      - configs/alerts_slo.yml
+      - configs/alertmanager.yml
+      - runbooks/template.md
+    rollback:
+      - "撤销告警发布；alertmanager 静默（应急）"
+    acceptance:
+      - "P0 告警 5 分钟内到达值班；告警风暴可被分组/抑制"
+    estimate_person_days: "4-8"
+    owner_role: "SRE"
+
+  - id: KSR-CICD-GATES
+    status: pending
+    priority: P1
+    group: needs-deploy
+    goal: "建立 CI/CD 门禁：单测/构建/安全扫描 + RLS 审计 + PII 回归 + 安全头检查"
+    prerequisites:
+      - "需仓库与 CI 平台权限（未指定）"
+      - "需 secrets（DB 只读/测试 token 等，需凭证）"
+    outputs:
+      - .github/workflows/ci.yml
+      - artifacts/ci_reports/
+    rollback:
+      - "回退工作流文件版本"
+    acceptance:
+      - "PR 必须通过门禁；产物可追溯到 commit；发布具备回滚脚本入口"
+    estimate_person_days: "5-12"
+    owner_role: "DevOps/平台工程"
+
+  # ── 国际标准对接（LOINC / HGVS / 病理） ─────────────────
+  - id: KSR-LOINC-NULLABLE-COL
+    status: pending
+    priority: P2
+    group: needs-db
+    goal: "为化验表中已有项目补充 loinc_code 可空列；内置常用映射（SCr=2160-0, UPCR=13705-9, eGFR=62238-1, 24h尿蛋白=2888-6, HGB=718-7）"
+    prerequisites:
+      - "需 DB DDL 权限（需凭证/人工批准）"
+    outputs:
+      - db/migrations/xxxx_loinc_code_col.sql
+    acceptance:
+      - "loinc_code 列存在且可为空（不强制填写）"
+      - "内置映射在导出数据中正确体现"
+    estimate_person_days: "1-2"
+    owner_role: "DBA/后端"
+
+  - id: KSR-HGVS-VALIDATION
+    status: pending
+    priority: P2
+    group: needs-db
+    goal: "对 HGVS c./p. 字段添加后端格式校验（正则 + variantvalidator.org API 可选）；前端 tooltip 已上线"
+    prerequisites:
+      - "需后端代码权限（未指定）"
+    outputs:
+      - src/validators/hgvs.js
+      - tests/hgvs_validation.test.js
+    acceptance:
+      - "格式错误时给出明确提示而不是静默通过"
+      - "合法格式（NM_xxx.x:c.xxxX>Y）通过验证"
+    estimate_person_days: "2-3"
+    owner_role: "后端"
+
+  - id: KSR-PATHOLOGY-SCHEMA
+    status: pending
+    priority: P2
+    group: needs-db
+    goal: "为病理评分建立结构化字段：IgAN Oxford MEST-C 2016；狼疮肾炎 ISN/RPS 2018；移植肾 Banff 2022"
+    prerequisites:
+      - "需 DB DDL 权限（需凭证/人工批准）"
+      - "当前过渡方案：使用病理备注字段录入字符串，可 Python/R 解析"
+    outputs:
+      - db/migrations/xxxx_pathology_scores.sql
+      - site/staff.html (新增结构化病理录入 UI)
+    acceptance:
+      - "MEST-C M/E/S/T/C 各子项可独立查询和统计"
+      - "ISN-RPS 分型 (Class I-VI) 以枚举存储"
+      - "Banff 各评分项（g/i/t/v/ci/ct）以独立数值列存储"
+    estimate_person_days: "5-10"
+    owner_role: "后端/产品"

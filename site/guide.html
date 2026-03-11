@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>使用说明 · KidneySphere AI（科研优先）</title>
+  <title>使用说明 · 肾域·科研 — KidneySphere Research</title>
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
   <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
@@ -16,10 +16,10 @@
   <div class="container guide">
     <div class="card">
       <div class="brand">
-        <img src="/assets/kidneysphere-ai.png" alt="肾域AI KidneySphere AI"/>
+        <img src="/assets/kidneysphere-ai.png" alt="KidneySphere"/>
         <div>
           <h1 class="brand-title">使用说明（试用必读 · 面向所有人）</h1>
-          <div class="brand-sub">世界级极简 · 科研小白 10 分钟闭环 · 多中心合并 · IgAN MEST‑C · 基因变异长表</div>
+          <div class="brand-sub">零门槛上手 · 10 分钟科研闭环 · 多中心合并 · IgAN MEST‑C · 基因变异长表</div>
         </div>
       </div>
 
@@ -45,6 +45,7 @@
           <a class="linkbtn" href="/collaboration">合作项目</a>
           <a class="linkbtn" href="/demo">预约演示</a>
           <a class="linkbtn" href="/user-manual-cn">详细培训手册</a>
+          <a class="linkbtn" href="#advanced">国际标准对接</a>
         </div>
         <div class="muted small" style="margin-top:10px">
           提示：系统导出 CSV 默认带 UTF‑8 BOM，Excel 直接打开一般不乱码；若出现 <code>######</code> 多为列宽不足（双击列边界自动适配）。
@@ -593,6 +594,137 @@ pip --version</code></pre>
 
       <div class="hr"></div>
 
+      <!-- ===== 国际标准对接（进阶，面向 PI 和统计者） ===== -->
+      <h2 id="advanced">🔬 进阶：国际标准对接（想发顶刊、想跨国合作的 PI 看这里）</h2>
+      <div class="muted small" style="margin-bottom:10px">
+        普通用户<b>不需要了解这些</b>，日常录入完全不受影响。PI 和统计者如果想让数据"在国际上通用"，可以用这三个功能。
+      </div>
+
+      <!-- 1. LOINC -->
+      <details class="faq" open>
+        <summary><b>① 化验项的 LOINC 编码是什么？为什么需要它？</b></summary>
+        <div class="small" style="padding-top:8px">
+          <b>一句话解释：</b>LOINC 是给每个化验项发一个"国际条形码"，让全世界的系统都能认出它是同一个指标。<br/><br/>
+
+          <b>举个例子：</b><br/>
+          血肌酐，在北京协和的检验单上叫"肌酐"，在梅奥诊所叫"Creatinine"，在数据库里叫"CREAT"。
+          电脑怎么知道这三个是同一个东西？靠 LOINC 编码 <code>2160-0</code>——无论叫什么名字，编码都一样，全世界通用。<br/><br/>
+
+          <b>本系统目前已支持的常用 LOINC 编码：</b>
+          <table class="table" style="margin-top:6px">
+            <thead><tr><th>化验项目</th><th>中文名</th><th>LOINC 编码</th><th>标准单位</th></tr></thead>
+            <tbody>
+              <tr><td>CREAT</td><td>血肌酐</td><td><code>2160-0</code></td><td>mg/dL</td></tr>
+              <tr><td>UPCR</td><td>尿蛋白/肌酐比</td><td><code>13705-9</code></td><td>g/g</td></tr>
+              <tr><td>eGFR（CKD-EPI 2021）</td><td>估算肾小球滤过率</td><td><code>62238-1</code></td><td>mL/min/1.73m²</td></tr>
+              <tr><td>HGB</td><td>血红蛋白</td><td><code>718-7</code></td><td>g/dL</td></tr>
+              <tr><td>ALB</td><td>血清白蛋白</td><td><code>1751-7</code></td><td>g/dL</td></tr>
+              <tr><td>TCHOL</td><td>总胆固醇</td><td><code>2093-3</code></td><td>mmol/L</td></tr>
+            </tbody>
+          </table>
+
+          <div class="okbox" style="margin-top:8px">
+            <b>对科研的实际意义：</b>
+            未来与国际合作者共享数据时，对方系统可以自动识别你的指标，无需人工对照翻译。
+            梅奥诊所、NIH 的公开数据集都使用 LOINC——你的数据可以直接与他们合并分析。
+          </div>
+
+          <div class="muted" style="margin-top:6px">
+            <b>录入者不需要操心 LOINC：</b>录入界面只需选化验项目名称，LOINC 编码由系统在后台自动关联，不增加任何操作步骤。
+          </div>
+        </div>
+      </details>
+
+      <!-- 2. HGVS -->
+      <details class="faq" style="margin-top:8px" open>
+        <summary><b>② 基因变异的 HGVS 格式是什么？填错了会怎样？</b></summary>
+        <div class="small" style="padding-top:8px">
+          <b>一句话解释：</b>HGVS 是基因变异的"国际标准写法"，就像快递单地址要写省市区门牌号一样——写法必须规范，才能让全世界的数据库都认识这个变异。<br/><br/>
+
+          <b>举个例子：</b><br/>
+          同一个 COL4A5 基因上的变异，不同医院的报告单可能写成：<br/>
+          &nbsp;&nbsp;· <code>c.1234A>G</code>（缺参考序列，不够精确）<br/>
+          &nbsp;&nbsp;· <code>1234 A to G</code>（非标准写法）<br/>
+          &nbsp;&nbsp;· <code>NM_000495.5:c.1234A>G</code> ✅（标准 HGVS 格式，含参考序列）<br/><br/>
+
+          <b>HGVS 两个字段的含义：</b>
+          <table class="table" style="margin-top:6px">
+            <thead><tr><th>字段</th><th>含义</th><th>填写示例</th><th>什么时候填</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>HGVS c.</code></td>
+                <td>DNA 层面的变异位置<br/><span class="muted">（参考序列编号 + 碱基变化）</span></td>
+                <td><code>NM_000495.5:c.1234A&gt;G</code></td>
+                <td>基因检测报告上有就填，没有可留空</td>
+              </tr>
+              <tr>
+                <td><code>HGVS p.</code></td>
+                <td>蛋白质层面的影响<br/><span class="muted">（氨基酸变化，如有）</span></td>
+                <td><code>p.(Tyr412Cys)</code></td>
+                <td>报告上有就填，同义突变可留空</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="okbox" style="margin-top:8px">
+            <b>为什么要规范填写 HGVS？</b><br/>
+            &nbsp;&nbsp;· 可以直接在国际变异数据库（ClinVar、LOVD）中检索匹配<br/>
+            &nbsp;&nbsp;· 多中心合并时同一个变异不会被当成两个不同变异<br/>
+            &nbsp;&nbsp;· 精准医疗研究、药物基因组学分析的基础数据要求
+          </div>
+
+          <details class="faq" style="margin-top:8px">
+            <summary>不知道参考序列编号（NM_...）怎么查？</summary>
+            <div>
+              1. 打开 <a href="https://www.ncbi.nlm.nih.gov/gene" target="_blank" rel="noopener">NCBI Gene</a>，搜索基因名（如 COL4A5）<br/>
+              2. 找到 RefSeq 转录本编号（如 NM_000495.5）<br/>
+              3. 把它加在 c. 变异描述前面：<code>NM_000495.5:c.XXXX</code><br/>
+              4. 也可以直接从基因检测报告单上复制，正规报告都会注明
+            </div>
+          </details>
+        </div>
+      </details>
+
+      <!-- 3. 病理结构化 -->
+      <details class="faq" style="margin-top:8px">
+        <summary><b>③ 除了 MEST-C，其他病种的病理结果怎么录入？</b></summary>
+        <div class="small" style="padding-top:8px">
+          <b>目前已支持的结构化病理评分：</b>
+          <table class="table" style="margin-top:6px">
+            <thead><tr><th>病种</th><th>病理评分系统</th><th>字段示例</th><th>国际认可度</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>IgA 肾病</td>
+                <td>Oxford MEST-C<br/><span class="muted">（2009/2016 修订版）</span></td>
+                <td><code>M1 E0 S1 T0 C1</code></td>
+                <td>⭐⭐⭐⭐⭐ JASN/KI/AJKD 均要求</td>
+              </tr>
+              <tr>
+                <td>狼疮性肾炎</td>
+                <td>ISN/RPS 2018 分类</td>
+                <td>I / II / III / IV-G(A) / V 型</td>
+                <td>⭐⭐⭐⭐⭐ ARD/KI 均要求</td>
+              </tr>
+              <tr>
+                <td>肾移植</td>
+                <td>Banff 分类<br/><span class="muted">（最新 2022 版）</span></td>
+                <td>排斥类型 + 评分</td>
+                <td>⭐⭐⭐⭐⭐ 移植领域通用标准</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="okbox" style="margin-top:8px">
+            <b>近期路线图：</b><br/>
+            LN 和 KTX 模块的结构化病理字段（ISN/RPS、Banff）正在开发中，上线后与现有模块无缝衔接。
+            <b>当前过渡方案：</b>可在化验记录的备注字段中用标准描述方式录入，例如：<br/>
+            <code>LN 病理：ISN/RPS IV-G(A)型，NIH活动指数12分，慢性化指数3分</code>
+          </div>
+        </div>
+      </details>
+
+      <div class="hr"></div>
+
       <h2 id="faq">常见问题（FAQ）</h2>
       <div class="faq-tools">
         <input id="faqSearch" placeholder="搜索：乱码 / ###### / ModuleNotFoundError / token / MEST / 基因 …"/>
@@ -655,12 +787,12 @@ pip --version</code></pre>
       <div class="hr"></div>
 
       <div class="muted small">
-        最后更新：2026-02-21。可直接分享链接作为中心培训：<code>/guide#trial</code> 或 <code>/guide#research</code>。
+        最后更新：2026-03-11。可直接分享链接作为中心培训：<code>/guide#trial</code>（试用必读）、<code>/guide#research</code>（统计教程）、<code>/guide#advanced</code>（LOINC/HGVS/病理进阶）。
       </div>
     </div>
   </div>
 
   <script type="module" src="/guide.js"></script>
-  <footer class="site-footer">© 2025 上海胤域医学科技有限公司 · KidneySphere AI · <a href="/security">安全合规</a></footer>
+  <footer class="site-footer">© 2025 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a></footer>
 </body>
 </html>
