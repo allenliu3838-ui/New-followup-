@@ -33,8 +33,8 @@
           <li>${escapeHtml(item.participation)}</li>
         </ul>
         <div class="btnbar" style="margin-top:10px">
-          <a class="btn small" href="/demo">加入现有项目</a>
-          <a class="btn small" href="/demo">发起新项目</a>
+          <a class="btn small primary" href="mailto:china@kidneysphere.com">联系加入</a>
+          <a class="btn small" href="/demo">预约演示</a>
         </div>
       </article>`;
   }
