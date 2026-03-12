@@ -6,6 +6,6 @@ window.CONFIG = {
   // 付费升级入口（可任选其一或两者都填）
   // UPGRADE_URL  → Stripe / 微信支付等支付页链接；点击"立即升级"直接跳转
   // UPGRADE_EMAIL → 联系邮箱；未填 UPGRADE_URL 时显示"发送邮件咨询"
-  UPGRADE_URL:   "",   // e.g. "https://buy.stripe.com/your_link"
-  UPGRADE_EMAIL: "",   // e.g. "support@kidneysphere.ai"
+  UPGRADE_URL:   "/demo",              // 点击升级 → 预约演示/咨询
+  UPGRADE_EMAIL: "china@kidneysphere.com",
 };
