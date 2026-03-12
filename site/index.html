@@ -153,32 +153,35 @@
 
     <div class="card">
       <div class="okbox" style="margin-bottom:12px">
-        <b>正在招募合作中心 · 7 个研究项目开放加入</b>——IgAN / MN / C3G / MGRS / HD / CKD 康复，均为真实启动或招募阶段研究。
+        <b>正在招募合作中心 · <span id="projectCount"></span> 个研究项目开放加入</b>——IgAN / MN / C3G / MGRS / DKD / HD / CKD 康复，均为真实启动或招募阶段研究。
         <div class="btnbar" style="margin-top:8px">
           <a class="btn primary" href="mailto:china@kidneysphere.com">直接联系加入</a>
-          <a class="btn" href="/collaboration">查看合作项目页</a>
+          <a class="btn" href="/collaboration">查看全部项目</a>
         </div>
       </div>
       <h2 style="margin:0 0 4px">正在招募合作中心的研究项目</h2>
       <div class="small muted">以下均为正在启动或招募阶段的真实研究，欢迎符合条件的中心联系加入。</div>
-      <div id="indexProjects" class="pricing-grid" style="margin-top:10px"></div>
+      <div id="indexProjects" class="projects-grid" style="margin-top:10px"></div>
     </div>
   </div>
 
   <script src="/collaboration-data.js"></script>
   <script src="/collaboration-components.js"></script>
   <script>
-    const idxData = window.CollabData;
-    window.CollabComponents.renderPaths(
+    var idxData = window.CollabData;
+    var idxC = window.CollabComponents;
+    idxC.renderPaths(
       document.getElementById('indexPaths'),
-      idxData.collaborationPaths.map(p => ({...p, ctaHref:`/collaboration#path-${p.id}`})),
+      idxData.collaborationPaths.map(function(p){ return Object.assign({}, p, {ctaHref: '/collaboration#path-' + p.id}); }),
       true
     );
-    window.CollabComponents.renderProjects(
+    idxC.renderProjects(
       document.getElementById('indexProjects'),
       idxData.projectCards
     );
+    var countEl = document.getElementById('projectCount');
+    if (countEl) countEl.textContent = idxData.projectCards.length;
   </script>
-  <footer class="site-footer">© 2025 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a></footer>
+  <footer class="site-footer">© 2025 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></footer>
 </body>
 </html>
