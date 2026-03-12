@@ -165,12 +165,85 @@ window.CollabData = {
     }
   ],
 
+    {
+      slug: 'ktr-care-china',
+      name: 'KTR-CARE China · 肾移植受者多中心真实世界长期随访队列',
+      shortTitle: 'KTR-CARE China',
+      status: '招募中',
+      statusClass: 'ok',
+      category: '肾移植',
+      summary: '建立低门槛、标准化、可扩展的中国肾移植长期管理数据库，识别移植物功能下降、严重感染与住院的关键可干预因素，并构建门诊可用的动态风险分层工具。同一母队列支持 7 个预设子课题连续产出。',
+      suitableFor: [
+        '有肾移植患者长期随访基础的肾移植内科 / 肾内科',
+        '协作随访中心（不要求本中心开展移植手术）',
+        '无需具备 DSA、dd-cfDNA、protocol biopsy 等高端检测能力'
+      ],
+      keyFields: [
+        'Scr / eGFR、蛋白尿（每次随访）',
+        '免疫抑制方案：Tac/CsA/belatacept/mTORi；MPA/AZA；激素',
+        'Tac / CsA trough 水平',
+        '病史：排斥、BK、CMV、糖尿病、高血压、CVD',
+        '门诊血压、感染、住院、是否 biopsy-proven 排斥'
+      ],
+      support: [
+        '统一 CRF 与数据字典，最低变量集对应常规门诊记录',
+        '7 个预设子课题方向（移植物下降模型、蛋白尿、Tac 变异性、感染、代谢等）',
+        '方法学与统计支持（Cox / 竞争风险 / 时间依赖分析）',
+        '子课题 concept sheet 机制，青年医生可申请牵头',
+        '建议每 3–6 个月门诊节奏更新，回顾+前瞻结合'
+      ],
+      detailHighlights: [
+        '不统一免疫方案，不要求 protocol biopsy，协作随访中心均可加入',
+        '预设子课题：移植物功能下降风险模型、蛋白尿与结局、Tac trough 变异性、感染负担、代谢并发症、中心管理差异、低资源场景风险分层',
+        '目标期刊：AJT / CJASN / KI；支持 AST/ATC 相关会议摘要'
+      ],
+      emailSubject: '加入项目：KTR-CARE China 肾移植受者多中心长期随访队列'
+    },
+    {
+      slug: 'pd-open-china',
+      name: 'PD-OPEN China · 中国腹膜透析开放协作平台研究',
+      shortTitle: 'PD-OPEN China',
+      status: '牵头招募',
+      statusClass: 'lead',
+      category: '腹膜透析',
+      summary: '构建全国多中心、低门槛、可扩展的腹透平台队列，研究中心实践差异与患者结局（12 个月永久转 HD）的关系，并持续孵化感染 benchmark、增量腹透、急诊起始等嵌套子研究。',
+      suitableFor: [
+        'A 类（核心队列）：有稳定 PD 门诊或住院管理团队，能判断主要结局',
+        'B 类（中心年度调查）：每年完成 1 次 10–15 分钟的中心实践调查',
+        'C 类（增强模块）：可提供 PROM、PET/RKF、容量管理、远程管理数据的中心'
+      ],
+      keyFields: [
+        'PD 起始日期、planned vs urgent 起始、既往 HD 暴露',
+        '处方类型：CAPD / APD；增量 vs 标准 PD',
+        'Hb、白蛋白、钾、磷、Scr；24 小时尿量或无尿状态',
+        '腹膜炎事件（日期、病原、是否拔管）、出口/隧道感染',
+        '转 HD 日期与原因、住院、死亡、移植'
+      ],
+      support: [
+        '分层准入 eCRF 与统一数据字典（支持 Excel / REDCap / 本地系统导出映射）',
+        '每季度反馈各中心缺失率、逻辑冲突与事件定义核查清单',
+        '8 篇预设论文矩阵（NDT / KI / CKJ / KI Reports / PDI 等）',
+        '子课题 concept sheet 机制，青年医生优先申请牵头',
+        '建议核心变量完整率 ≥85%，主要终点缺失率 <5%'
+      ],
+      detailHighlights: [
+        '主终点：12 个月永久转 HD（连续转 HD >90 天），记录原因',
+        '腹膜炎与出口感染 benchmark 对标 ISPD 2022/2023 标准（≤0.40 次/人年）',
+        '支持增量起始 vs 标准起始、急诊起始、低钾、残余肾功能等嵌套子研究',
+        '目标期刊：NDT / KI 主论文；子论文可至 CKJ / KI Reports / PDI / Kidney Medicine'
+      ],
+      emailSubject: '加入项目：PD-OPEN China 腹膜透析开放协作平台研究'
+    }
+  ],
+
   filterTabs: [
     { id: 'all', label: '全部' },
     { id: '肾小球疾病', label: '肾小球疾病' },
     { id: '糖尿病/代谢肾病', label: '糖尿病 / 代谢肾病' },
     { id: '罕见病/高壁垒', label: '罕见病 / 高壁垒' },
-    { id: '透析/康复', label: '透析 / 康复' }
+    { id: '透析/康复', label: '透析 / 康复' },
+    { id: '肾移植', label: '肾移植' },
+    { id: '腹膜透析', label: '腹膜透析' }
   ],
 
   caseCards: [
