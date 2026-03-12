@@ -8,16 +8,31 @@
       .replaceAll('>', '&gt;');
   }
 
+  function showToast(msg) {
+    var t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed;right:16px;bottom:20px;background:#0b1220;color:#fff;padding:9px 16px;border-radius:12px;font-size:13px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.35);transition:opacity .3s';
+    document.body.appendChild(t);
+    setTimeout(function(){ t.style.opacity = '0'; setTimeout(function(){ t.remove(); }, 350); }, 2000);
+  }
+
   function copyEmail(email) {
-    navigator.clipboard.writeText(email).then(function() {
-      var t = document.createElement('div');
-      t.textContent = '已复制：' + email;
-      t.style.cssText = 'position:fixed;right:16px;bottom:16px;background:#0b1220;color:#fff;padding:9px 14px;border-radius:12px;font-size:13px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3)';
-      document.body.appendChild(t);
-      setTimeout(function(){ t.remove(); }, 2200);
-    }).catch(function(){
-      prompt('请复制邮箱地址：', email);
-    });
+    function done(){ showToast('已复制：' + email); }
+    function fallback(){
+      var ta = document.createElement('textarea');
+      ta.value = email;
+      ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      try { document.execCommand('copy'); done(); }
+      catch(e){ prompt('请复制邮箱地址：', email); }
+      ta.remove();
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(email).then(done).catch(fallback);
+    } else {
+      fallback();
+    }
   }
   window._copyEmail = copyEmail;
 
