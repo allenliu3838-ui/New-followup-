@@ -83,6 +83,8 @@ const el = {
   labDate: qs("#labDate"),
   labTestCode: qs("#labTestCode"),
   labName: qs("#labName"),
+  labCustomName: qs("#labCustomName"),
+  labCustomUnit: qs("#labCustomUnit"),
   labValue: qs("#labValue"),
   labUnit: qs("#labUnit"),
   labStdValue: qs("#labStdValue"),
@@ -599,15 +601,32 @@ async function loadLabCatalog(){
     });
     el.labTestCode.appendChild(grp);
   });
+  // Custom entry option — always last
+  const customOpt = document.createElement("option");
+  customOpt.value = "CUSTOM";
+  customOpt.textContent = "＋ 自定义化验（不在列表中）";
+  el.labTestCode.appendChild(customOpt);
 }
 
 function updateLabUnits(){
   const code = el.labTestCode?.value;
   if (!el.labUnit) return;
+
+  // Toggle custom inputs
+  const isCustom = code === "CUSTOM";
+  if (el.labCustomName) el.labCustomName.style.display = isCustom ? "" : "none";
+  if (el.labCustomUnit) el.labCustomUnit.style.display = isCustom ? "" : "none";
+  if (el.labUnit) el.labUnit.style.display = isCustom ? "none" : "";
+  if (el.labStdValue) el.labStdValue.closest(".col").style.display = isCustom ? "none" : "";
+
   if (!code){
     el.labUnit.innerHTML = '<option value="">-- 先选化验项目 --</option>';
     if (el.labStdValue) el.labStdValue.value = "";
     if (el.labHint) el.labHint.textContent = "";
+    return;
+  }
+  if (isCustom){
+    if (el.labHint) el.labHint.textContent = "自定义化验：直接输入名称和单位，原值存储，不自动换算。";
     return;
   }
   const units = unitMap[code] || [];
@@ -895,6 +914,16 @@ async function loadExtras(){
   }
 }
 
+// ── 通用删除函数（化验 / 用药 / 基因 / 事件）────────────────────────────────
+async function deleteRecord(table, id){
+  if (!confirm("确认删除这条记录？操作不可撤销。")) return;
+  const { error } = await sb.from(table).delete().eq("id", id);
+  if (error){ toast("删除失败：" + error.message); return; }
+  toast("已删除");
+  await loadExtras();
+}
+window._deleteRecord = deleteRecord;
+
 function renderVariantsPreview(rows){
   if (!el.variantsPreview) return;
   if (!rows.length){
@@ -908,12 +937,13 @@ function renderVariantsPreview(rows){
       <td>${escapeHtml(r.gene||"")}</td>
       <td class="muted small">${escapeHtml((r.variant||r.hgvs_c||"").slice(0,28))}</td>
       <td>${escapeHtml(r.classification||"")}</td>
+      <td><button class="btn small" style="color:#b91c1c" onclick="window._deleteRecord('variants_long','${escapeHtml(r.id||"")}')">删除</button></td>
     </tr>
   `).join("");
   el.variantsPreview.innerHTML = `
     <div class="muted small">最近 10 条：</div>
     <table class="table">
-      <thead><tr><th>研究编号</th><th>日期</th><th>基因</th><th>变异</th><th>ACMG分级</th></tr></thead>
+      <thead><tr><th>研究编号</th><th>日期</th><th>基因</th><th>变异</th><th>ACMG分级</th><th></th></tr></thead>
       <tbody>${trs}</tbody>
     </table>
   `;
@@ -929,15 +959,16 @@ function renderLabsPreview(rows){
     <tr>
       <td><b>${escapeHtml(r.patient_code||"")}</b></td>
       <td>${escapeHtml(r.lab_date||"")}</td>
-      <td>${escapeHtml(r.lab_name||"")}</td>
-      <td>${escapeHtml(r.lab_value||"")}</td>
-      <td>${escapeHtml(r.lab_unit||"")}</td>
+      <td>${escapeHtml(r.lab_name||r.lab_test_code||"")}</td>
+      <td>${escapeHtml(r.lab_value!=null ? String(r.lab_value) : (r.value_raw!=null ? String(r.value_raw) : ""))}</td>
+      <td>${escapeHtml(r.lab_unit||r.unit_symbol||"")}</td>
+      <td><button class="btn small" style="color:#b91c1c" onclick="window._deleteRecord('labs_long','${escapeHtml(r.id||"")}')">删除</button></td>
     </tr>
   `).join("");
   el.labsPreview.innerHTML = `
     <div class="muted small">最近 10 条：</div>
     <table class="table">
-      <thead><tr><th>研究编号</th><th>日期</th><th>项目</th><th>数值</th><th>单位</th></tr></thead>
+      <thead><tr><th>研究编号</th><th>日期</th><th>项目</th><th>数值</th><th>单位</th><th></th></tr></thead>
       <tbody>${trs}</tbody>
     </table>
   `;
@@ -956,12 +987,13 @@ function renderMedsPreview(rows){
       <td class="muted small">${escapeHtml((r.dose||"").slice(0,18))}</td>
       <td>${escapeHtml(r.start_date||"")}</td>
       <td>${escapeHtml(r.end_date||"")}</td>
+      <td><button class="btn small" style="color:#b91c1c" onclick="window._deleteRecord('meds_long','${escapeHtml(r.id||"")}')">删除</button></td>
     </tr>
   `).join("");
   el.medsPreview.innerHTML = `
     <div class="muted small">最近 10 条：</div>
     <table class="table">
-      <thead><tr><th>研究编号</th><th>药品</th><th>剂量</th><th>开始</th><th>结束</th></tr></thead>
+      <thead><tr><th>研究编号</th><th>药品</th><th>剂量</th><th>开始</th><th>结束</th><th></th></tr></thead>
       <tbody>${trs}</tbody>
     </table>
   `;
@@ -981,12 +1013,13 @@ function renderEventsPreview(rows){
       <td>${escapeHtml(r.event_date||"")}</td>
       <td>${escapeHtml(r.source||"manual")}</td>
       <td class="muted small">${escapeHtml((r.notes||"").slice(0,30))}</td>
+      <td><button class="btn small" style="color:#b91c1c" onclick="window._deleteRecord('events_long','${escapeHtml(r.id||"")}')">删除</button></td>
     </tr>
   `).join("");
   el.eventsPreview.innerHTML = `
     <div class="muted small">最近 20 条：</div>
     <table class="table">
-      <thead><tr><th>研究编号</th><th>事件类型</th><th>日期</th><th>来源</th><th>备注</th></tr></thead>
+      <thead><tr><th>研究编号</th><th>事件类型</th><th>日期</th><th>来源</th><th>备注</th><th></th></tr></thead>
       <tbody>${trs}</tbody>
     </table>
   `;
@@ -1291,8 +1324,15 @@ async function addLab(){
   if (!lab_test_code) return toast("请从下拉列表选择化验项目");
   const rawVal = el.labValue?.value !== "" ? Number(el.labValue?.value) : null;
   if (rawVal === null || isNaN(rawVal)) return toast("请填写化验数值");
-  const unit = el.labUnit?.value;
-  if (!unit) return toast("请选择单位");
+
+  const isCustom = lab_test_code === "CUSTOM";
+  const customName = el.labCustomName?.value.trim();
+  const customUnit = el.labCustomUnit?.value.trim();
+  if (isCustom && !customName) return toast("请填写化验名称");
+  if (isCustom && !customUnit) return toast("请填写化验单位");
+
+  const unit = isCustom ? customUnit : el.labUnit?.value;
+  if (!isCustom && !unit) return toast("请选择单位");
 
   // 前端 PII 检测
   try { assertNoPII(el.labQcReason?.value || "", "留痕原因"); } catch(e){ return toast(e.message); }
@@ -1301,26 +1341,43 @@ async function addLab(){
   btn.dataset.label = "添加化验记录";
   setBusy(btn, true);
   try{
-    const { data, error } = await sb.rpc("upsert_lab_record", {
-      p_project_id:    selectedProject.id,
-      p_patient_code:  patient_code,
-      p_lab_date:      el.labDate?.value || null,
-      p_lab_test_code: lab_test_code,
-      p_value_raw:     rawVal,
-      p_unit_symbol:   unit,
-      p_measured_at:   null,
-      p_lab_id:        null
-    });
-    if (error) throw error;
+    if (isCustom){
+      // Custom lab: direct insert bypassing catalog
+      const { error } = await sb.from("labs_long").insert({
+        project_id:   selectedProject.id,
+        patient_code: patient_code,
+        lab_date:     el.labDate?.value || null,
+        lab_name:     customName,
+        lab_value:    String(rawVal),
+        lab_unit:     customUnit
+      });
+      if (error) throw error;
+      toast(`已添加自定义化验：${customName} ${rawVal} ${customUnit}`);
+      if (el.labCustomName) el.labCustomName.value = "";
+      if (el.labCustomUnit) el.labCustomUnit.value = "";
+    } else {
+      const { data, error } = await sb.rpc("upsert_lab_record", {
+        p_project_id:    selectedProject.id,
+        p_patient_code:  patient_code,
+        p_lab_date:      el.labDate?.value || null,
+        p_lab_test_code: lab_test_code,
+        p_value_raw:     rawVal,
+        p_unit_symbol:   unit,
+        p_measured_at:   null,
+        p_lab_id:        null
+      });
+      if (error) throw error;
 
-    // If qc_reason was filled, update it on the record
-    const reason = el.labQcReason?.value.trim();
-    if (reason && data) {
-      await sb.from("labs_long").update({ qc_reason: reason }).eq("id", data);
+      // If qc_reason was filled, update it on the record
+      const reason = el.labQcReason?.value.trim();
+      if (reason && data) {
+        await sb.from("labs_long").update({ qc_reason: reason }).eq("id", data);
+      }
+
+      const cat = labCatalog.find(c => c.code === lab_test_code);
+      toast(`已添加化验记录：${cat?.name_cn || lab_test_code} ${rawVal} ${unit}`);
     }
 
-    const cat = labCatalog.find(c => c.code === lab_test_code);
-    toast(`已添加化验记录：${cat?.name_cn || lab_test_code} ${rawVal} ${unit}`);
     el.labTestCode.value = "";
     el.labValue.value = "";
     el.labUnit.innerHTML = '<option value="">-- 先选化验项目 --</option>';
@@ -1328,6 +1385,7 @@ async function addLab(){
     if (el.labQcReason) el.labQcReason.value = "";
     if (el.labQcReasonCol) el.labQcReasonCol.style.display = "none";
     if (el.labHint) el.labHint.textContent = "";
+    updateLabUnits(); // reset custom field visibility
     await loadExtras();
     await loadSnapshots();
     loadIssueSummary();
@@ -1335,7 +1393,7 @@ async function addLab(){
     console.error(e);
     const hint = e?.message || String(e);
     // If duplicate warning from DB, show qc_reason field
-    if (hint.includes("duplicate") || hint.includes("重复") || hint.includes("unit_not_allowed") || hint.includes("单位")) {
+    if (!isCustom && (hint.includes("duplicate") || hint.includes("重复") || hint.includes("unit_not_allowed") || hint.includes("单位"))) {
       if (el.labQcReasonCol) el.labQcReasonCol.style.display = "";
     }
     toast("添加失败：" + hint);
