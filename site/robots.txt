@@ -3,6 +3,8 @@ User-agent: *
 Disallow: /p/
 Disallow: /followup
 # 登录后台，无需收录
+# 患者随访页（私有 token 访问），禁止爬虫
+Disallow: /patient.html
 Disallow: /staff
 Disallow: /staff/
 
