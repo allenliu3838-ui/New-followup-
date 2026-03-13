@@ -3,25 +3,34 @@
  *
  * Usage: KSTrack.track('event_name', { key: 'value' })
  *
- * To connect to a provider, replace the stubs below:
- *   GA4:      uncomment gtag() call and add GA4 script tag
- *   Plausible: uncomment plausible() call and add Plausible script tag
+ * Provider: Plausible Analytics (kidneysphereregistry.cn)
+ * To switch to GA4: uncomment gtag() block and add GA4 Measurement ID.
  */
 (function () {
   var ENABLED = true; // set false to silence all tracking
+
+  // Load Plausible script dynamically (production only)
+  if (ENABLED && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+    var s = document.createElement('script');
+    s.defer = true;
+    s.setAttribute('data-domain', 'kidneysphereregistry.cn');
+    s.src = 'https://plausible.io/js/script.tagged-events.js';
+    document.head.appendChild(s);
+  }
 
   function track(eventName, props) {
     if (!ENABLED) return;
     var data = Object.assign({ path: location.pathname, ts: Date.now() }, props || {});
 
-    // --- Provider stubs (uncomment to activate) ---
-    // GA4
+    // Plausible custom events
+    if (typeof window.plausible === 'function') {
+      window.plausible(eventName, { props: data });
+    }
+
+    // GA4 (optional — add GA4 Measurement ID and uncomment)
     // if (typeof gtag === 'function') { gtag('event', eventName, data); }
 
-    // Plausible
-    // if (typeof plausible === 'function') { plausible(eventName, { props: data }); }
-
-    // Console fallback (always on in development)
+    // Console fallback (development only)
     if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
       console.log('[KSTrack]', eventName, data);
     }
