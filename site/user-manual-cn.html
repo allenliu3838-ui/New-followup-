@@ -34,15 +34,21 @@
         </div>
       </div>
 
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <a class="btn small" href="/">← 首页</a>
+        <a class="btn small" href="/guide">快速说明</a>
+        <a class="btn small primary" href="/staff" target="_blank">打开后台</a>
+      </div>
+
       <div class="warnbox" style="margin-top:12px">
         本系统用于科研随访登记，不用于诊疗决策；请勿录入姓名、电话、身份证、住院号等 PII。
       </div>
 
       <div class="warnbox" style="margin-top:8px;background:#eff6ff;border-color:#bfdbfe">
         <b>🎯 不知道从哪里开始？</b>&ensp;
-        <a href="#sop">我是录入员/护士 → 看第4节标准流程</a> &ensp;|&ensp;
-        <a href="#labs">我要录化验 → 看第7节</a> &ensp;|&ensp;
-        <a href="#export">我要导出论文包 → 看第9节</a> &ensp;|&ensp;
+        <a href="#sop">我是录入员/护士 → 看第5节标准流程</a> &ensp;|&ensp;
+        <a href="#labs">我要录化验 → 看第8节</a> &ensp;|&ensp;
+        <a href="#export">我要导出论文包 → 看第10节</a> &ensp;|&ensp;
         <a href="#advanced">LOINC/HGVS是什么 → 看第11节</a>
       </div>
 
@@ -59,7 +65,8 @@
         <a href="#issues">9. 质控Issue</a>
         <a href="#export">10. 导出论文包</a>
         <a href="#advanced">11. 国际标准（LOINC/HGVS）</a>
-        <a href="#faq">12. FAQ</a>
+        <a href="#setup-faq">12. 管理员FAQ</a>
+        <a href="#faq">13. 常见问题</a>
       </div>
 
       <h2 id="concepts">1）核心概念（培训先讲这 3 点）</h2>
@@ -154,7 +161,7 @@
       </div>
       <ol>
         <li>创建 Supabase 项目并记录 <code>Project URL</code> 与 <code>anon key</code>。</li>
-        <li>在 SQL Editor 运行 <code>supabase/migrations/0001_core.sql</code>。</li>
+        <li>在 Supabase SQL Editor 运行仓库中的 <code>supabase/run_all_migrations.sql</code>（包含所有迁移，可安全重跑）。</li>
         <li>Auth 配置 Redirect URLs（至少包含 <code>/staff</code> 与 <code>/p/*</code>）。</li>
         <li>在 <code>site/config.js</code> 填写 <code>SUPABASE_URL</code> 和 <code>SUPABASE_ANON_KEY</code>。</li>
         <li>部署静态站点（Publish directory: <code>site</code>）。</li>
@@ -220,16 +227,27 @@
       <p><b>Q：</b>如何保证论文复现？<br/><b>A：</b>先生成 Snapshot，再基于 Snapshot 导出论文包并引用 snapshot ID。</p>
 
       <!-- ════ 化验录入 ════ -->
-      <h2 id="labs">8）化验数据录入（v2 字典化版）</h2>
-      <p>v2 版不再是自由文本，而是从字典选择，系统自动换算标准值，彻底解决多中心单位不一致问题。</p>
+      <h2 id="labs">8）化验数据录入</h2>
+      <p>化验录入支持两种路径：<b>字典化录入</b>（自动单位换算，跨中心一致）和<b>自定义录入</b>（任意化验均可添加，自动保存到项目目录）。</p>
 
-      <h3>操作步骤</h3>
+      <h3>路径一：字典化录入（有标准换算）</h3>
       <ol>
-        <li>选择化验项目（下拉，按模块分组）</li>
-        <li>选择单位（自动根据项目过滤允许的单位）</li>
+        <li>下拉选择化验项目（按模块分组，如 GENERAL / MN / KTX）</li>
+        <li>选择单位（根据项目自动过滤允许的单位）</li>
         <li>填写数值 → 标准值框<b>自动实时显示换算结果</b></li>
         <li>点「添加化验记录」</li>
       </ol>
+
+      <h3>路径二：自定义化验录入（列表外的指标）</h3>
+      <ol>
+        <li>下拉选择"<b>＋ 新增自定义化验（保存到本项目目录）</b>"</li>
+        <li>输入化验名称（如：补体因子H）和单位（如：mg/L）</li>
+        <li>填写数值 → 点「添加化验记录」</li>
+        <li>系统自动将该化验<b>保存到本项目目录</b>，同项目所有患者后续可在"本项目自定义"分组中直接选用</li>
+      </ol>
+      <div class="example small">
+        管理本项目自定义目录：化验记录区下方"本项目自定义化验目录"面板，可查看所有自定义化验并按需删除（历史记录不受影响）。
+      </div>
 
       <h3>常用换算示例</h3>
       <table class="table" style="font-size:13px">
@@ -240,6 +258,10 @@
           <tr><td>尿蛋白/肌酐比（UPCR）</td><td>2000</td><td>mg/g</td><td><b>2.0000</b></td><td>g/g</td></tr>
           <tr><td>血红蛋白（HGB）</td><td>120</td><td>g/L</td><td><b>12.0000</b></td><td>g/dL</td></tr>
           <tr><td>总胆固醇（TCHOL）</td><td>200</td><td>mg/dL</td><td><b>5.1720</b></td><td>mmol/L</td></tr>
+          <tr><td>抗PLA2R抗体（PLA2R）</td><td>28</td><td>RU/mL</td><td><b>28.0000</b></td><td>RU/mL（MN专项）</td></tr>
+          <tr><td>BK病毒载量（BKV）</td><td>5000</td><td>copies/mL</td><td><b>5000.0000</b></td><td>copies/mL（KTX专项）</td></tr>
+          <tr><td>糖化血红蛋白（HBA1C）</td><td>53</td><td>mmol/mol</td><td><b>7.0000</b></td><td>%（NGSP，自动换算）</td></tr>
+          <tr><td>尿白蛋白/肌酐比（UACR）</td><td>35</td><td>mg/mmol</td><td><b>309.5000</b></td><td>mg/g（欧洲单位自动换算）</td></tr>
         </tbody>
       </table>
 
@@ -382,7 +404,7 @@
       ❌ 错误：<code>患者张三，13812345678，住院号20240001</code></p>
 
       <p><b>Q：unit_not_allowed — 单位不允许怎么办？</b><br/>
-      A：从单位下拉列表选择，不要手动输入，系统只接受字典里的单位。</p>
+      A：对于字典化化验项目，从单位下拉列表选择即可。如果是标准列表中没有的化验项目，请在下拉中选"＋ 新增自定义化验"，自由填写名称和单位，不受列表限制。</p>
 
       <p><b>Q：血肌酐跳变警告，需要填留痕原因怎么办？</b><br/>
       A：如果值是真实的（如 AKI），在「留痕原因」框填写说明，例如：<br/>
@@ -407,7 +429,7 @@
       </div>
     </div>
   </div>
-  <footer class="site-footer">© 2025 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/guide">使用说明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></footer>
+  <footer class="site-footer">© 2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/guide">使用说明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></footer>
   <script src="/analytics.js"></script>
 </body>
 </html>

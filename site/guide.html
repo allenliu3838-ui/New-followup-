@@ -134,7 +134,7 @@
           <div class="small">
             <b>研究目的：</b>分析基线 PLA2R 抗体滴度与 24 个月自发缓解率的关系。<br/>
             <b>参与方：</b>单中心，80 例。<br/>
-            <b>做法：</b>基线录入 PLA2R 滴度（lab_long 表）+ 每 3 月随访 UPCR；系统自动判断缓解（UPCR < 0.5）并输出缓解时间分布。<br/>
+            <b>做法：</b>基线录入 PLA2R 滴度（labs_long 表）+ 每 3 月随访 UPCR；系统自动判断缓解（UPCR < 0.5）并输出缓解时间分布。<br/>
             <b>投稿方向：</b>JASN / KI
           </div>
         </div>
@@ -211,9 +211,11 @@
             <tbody>
               <tr><td>IgAN</td><td>IgA肾病研究</td><td>Oxford MEST-C 病理积分</td></tr>
               <tr><td>LN</td><td>狼疮性肾炎</td><td>补体/dsDNA</td></tr>
-              <tr><td>MN</td><td>膜性肾病</td><td>PLA2R/THSD7A抗体</td></tr>
-              <tr><td>KTX</td><td>肾移植随访</td><td>供体/手术/排斥信息</td></tr>
-              <tr><td><b>GENERAL</b></td><td><b>任意/混合病种</b></td><td><b>无特有字段，全部通用</b></td></tr>
+              <tr><td>MN</td><td>膜性肾病</td><td>PLA2R/CD19抗体与B细胞监测</td></tr>
+              <tr><td>KTX</td><td>肾移植随访</td><td>供体/手术/排斥信息；BKV/CMV病毒载量</td></tr>
+              <tr><td>C3G</td><td>C3肾小球肾病</td><td>补体通路检测（GENERAL模块兜底）</td></tr>
+              <tr><td>DKD</td><td>糖尿病肾病</td><td>HBA1C、UACR（GENERAL模块兜底）</td></tr>
+              <tr><td><b>GENERAL</b></td><td><b>任意/混合病种</b></td><td><b>无特有字段，全部通用；支持自定义化验</b></td></tr>
             </tbody>
           </table>
         </div>
@@ -619,14 +621,20 @@ pip --version</code></pre>
 
           <b>本系统目前已支持的常用 LOINC 编码：</b>
           <table class="table" style="margin-top:6px">
-            <thead><tr><th>化验项目</th><th>中文名</th><th>LOINC 编码</th><th>标准单位</th></tr></thead>
+            <thead><tr><th>化验项目</th><th>中文名</th><th>LOINC 编码</th><th>标准单位</th><th>模块</th></tr></thead>
             <tbody>
-              <tr><td>CREAT</td><td>血肌酐</td><td><code>2160-0</code></td><td>mg/dL</td></tr>
-              <tr><td>UPCR</td><td>尿蛋白/肌酐比</td><td><code>13705-9</code></td><td>g/g</td></tr>
-              <tr><td>eGFR（CKD-EPI 2021）</td><td>估算肾小球滤过率</td><td><code>62238-1</code></td><td>mL/min/1.73m²</td></tr>
-              <tr><td>HGB</td><td>血红蛋白</td><td><code>718-7</code></td><td>g/dL</td></tr>
-              <tr><td>ALB</td><td>血清白蛋白</td><td><code>1751-7</code></td><td>g/dL</td></tr>
-              <tr><td>TCHOL</td><td>总胆固醇</td><td><code>2093-3</code></td><td>mmol/L</td></tr>
+              <tr><td>CREAT</td><td>血肌酐</td><td><code>2160-0</code></td><td>mg/dL</td><td>全部</td></tr>
+              <tr><td>UPCR</td><td>尿蛋白/肌酐比</td><td><code>13705-9</code></td><td>g/g</td><td>全部</td></tr>
+              <tr><td>eGFR（CKD-EPI 2021）</td><td>估算肾小球滤过率</td><td><code>62238-1</code></td><td>mL/min/1.73m²</td><td>全部（自动计算）</td></tr>
+              <tr><td>HGB</td><td>血红蛋白</td><td><code>718-7</code></td><td>g/dL</td><td>全部</td></tr>
+              <tr><td>ALB</td><td>血清白蛋白</td><td><code>1751-7</code></td><td>g/dL</td><td>全部</td></tr>
+              <tr><td>TCHOL</td><td>总胆固醇</td><td><code>2093-3</code></td><td>mmol/L</td><td>全部</td></tr>
+              <tr><td>PLA2R</td><td>抗PLA2R抗体</td><td><code>56741-0</code></td><td>RU/mL</td><td>MN</td></tr>
+              <tr><td>CD19</td><td>CD19+ B细胞计数</td><td><code>8122-7</code></td><td>cells/μL</td><td>MN</td></tr>
+              <tr><td>BKV</td><td>BK病毒载量</td><td><code>72495-5</code></td><td>copies/mL</td><td>KTX</td></tr>
+              <tr><td>CMV</td><td>巨细胞病毒载量</td><td><code>72493-0</code></td><td>IU/mL</td><td>KTX</td></tr>
+              <tr><td>HBA1C</td><td>糖化血红蛋白</td><td><code>4548-4</code></td><td>%（NGSP）</td><td>GENERAL/DKD</td></tr>
+              <tr><td>UACR</td><td>尿白蛋白/肌酐比</td><td><code>9318-7</code></td><td>mg/g</td><td>GENERAL/DKD</td></tr>
             </tbody>
           </table>
 
@@ -784,6 +792,19 @@ pip --version</code></pre>
       </details>
 
       <details class="faq" data-faq>
+        <summary>化验列表里没有我需要的指标，怎么办？</summary>
+        <div class="small">
+          <b>两种方式可以录入列表外的化验：</b><br/><br/>
+          <b>① 项目自定义化验（推荐）</b><br/>
+          后台 → 化验记录 → 下拉选"＋ 新增自定义化验（保存到本项目目录）"→ 填写化验名称和单位 → 点添加。<br/>
+          系统会自动将该化验<b>保存到本项目目录</b>，后续同项目所有患者录入时均可从"本项目自定义"分组中直接选用，确保名称/单位一致。<br/><br/>
+          <b>② 下拉中选已保存的项目化验</b><br/>
+          首次保存后，下拉列表会出现"本项目自定义"分组，直接选用即可，无需重复输入名称和单位。<br/><br/>
+          <b>管理自定义化验目录：</b>化验记录区下方"本项目自定义化验目录"面板可查看并删除目录条目（已录入的历史记录不受影响）。
+        </div>
+      </details>
+
+      <details class="faq" data-faq>
         <summary>这套系统可以直接用于药厂 1/2/3 期注册临床试验吗？</summary>
         <div class="small">
           <b>不建议直接作为注册试验主系统（eCRF/EDC）</b>。当前系统定位是科研随访与论文产出加速工具，适合观察性研究、真实世界研究（RWS）或研究者发起课题（IIT）的数据整理与分析。<br/>
@@ -794,13 +815,13 @@ pip --version</code></pre>
       <div class="hr"></div>
 
       <div class="muted small">
-        最后更新：2026-03-11。可直接分享链接作为中心培训：<code>/guide#trial</code>（试用必读）、<code>/guide#research</code>（统计教程）、<code>/guide#advanced</code>（LOINC/HGVS/病理进阶）。
+        最后更新：2026-03-13。可直接分享链接作为中心培训：<code>/guide#trial</code>（试用必读）、<code>/guide#research</code>（统计教程）、<code>/guide#advanced</code>（LOINC/HGVS/病理进阶）。
       </div>
     </div>
   </div>
 
   <script type="module" src="/guide.js"></script>
-  <footer class="site-footer">© 2025 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></footer>
+  <footer class="site-footer">© 2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></footer>
   <script src="/analytics.js"></script>
 </body>
 </html>
