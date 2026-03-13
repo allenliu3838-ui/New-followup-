@@ -162,9 +162,7 @@ window.CollabData = {
         '支持后续 target trial emulation、表型分层与风险模型嵌套子研究'
       ],
       emailSubject: '加入项目：DKD-ACCESS 糖尿病合并 CKD 平台队列'
-    }
-  ],
-
+    },
     {
       slug: 'ktr-care-china',
       name: 'KTR-CARE China · 肾移植受者多中心真实世界长期随访队列',
