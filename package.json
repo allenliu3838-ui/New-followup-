@@ -1,0 +1,26 @@
+{
+  "name": "new-followup-",
+  "version": "1.0.0",
+  "description": "A **static** (no-build) research registry for nephrology follow-up: - `/staff` admin portal (magic-link login) - `/p/<token>` follow-up entry page (no login) - `/guide` world-class training + FAQ (for all trial users) - `/pricing` progressive pricing details + FAQ - `/security` security/compliance overview - `/deployment` SaaS/private deployment options - Supabase Postgres schema includes:   - multicenter merge key: **center_code + patient_code**   - IgAN pathology: **Oxford MEST‑C**   - genetics: `variants_long` long-table   - trial write lock (post-expiry read-only)   - CN-friendly concept layer: `concept_dictionary` + `abbreviation_dictionary`   - CN/EN export mapping: `v_concept_export_mapping`",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "npx playwright test",
+    "test:e2e": "npx playwright test",
+    "smoke": "bash scripts/smoke-test.sh",
+    "lighthouse": "bash scripts/lighthouse-ci.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://local_proxy@127.0.0.1:41761/git/allenliu3838-ui/New-followup-"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  }
+}

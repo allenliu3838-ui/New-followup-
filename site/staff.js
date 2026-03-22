@@ -138,6 +138,10 @@ const el = {
   btnCancelImport: qs("#btnCancelImport"),
   importProgress: qs("#importProgress"),
 
+  // Header auth controls
+  headerUserEmail: qs("#headerUserEmail"),
+  btnHeaderSignOut: qs("#btnHeaderSignOut"),
+
   // Profile
   profileCard: qs("#profileCard"),
   profileStatus: qs("#profileStatus"),
@@ -368,6 +372,10 @@ async function init(){
     await sb.auth.signOut();
     toast("已退出登录");
   });
+  el.btnHeaderSignOut?.addEventListener("click", async ()=>{
+    await sb.auth.signOut();
+    toast("已退出登录");
+  });
 
   el.btnCreateProject.addEventListener("click", createProject);
   el.btnCreatePatient.addEventListener("click", createPatientBaseline);
@@ -439,21 +447,40 @@ async function init(){
 }
 
 function renderAuthState(){
+  const container = document.querySelector(".container");
+
   if (!user){
-    el.loginCard.style.display = "block";
-    el.appCard.style.display = "none";
-    if (el.profileCard) el.profileCard.style.display = "none";
-    if (el.adminCard) el.adminCard.style.display = "none";
+    // Anonymous: only show login card, hide everything else
+    container.classList.add("auth-resolved");
+    el.loginCard.classList.remove("auth-hide");
+    el.appCard.classList.remove("auth-show");
+    if (el.profileCard) el.profileCard.classList.remove("auth-show");
+    if (el.adminCard) el.adminCard.classList.remove("auth-show");
+    if (el.issuePanel) el.issuePanel.classList.remove("auth-show");
     el.btnSignOut.style.display = "none";
+    if (el.btnHeaderSignOut) el.btnHeaderSignOut.style.display = "none";
+    if (el.headerUserEmail) el.headerUserEmail.style.display = "none";
+    el.btnSendLink.style.display = "";
+    el.btnRegister.style.display = "";
+    el.btnResetPwd.style.display = "";
     isPlatformAdmin = false;
     setLoginHint("提示：首次使用请先点击「注册账号」创建账号，之后再登录。");
     return;
   }
-  el.loginCard.style.display = "block";
-  el.appCard.style.display = "block";
-  if (el.profileCard) el.profileCard.style.display = "block";
-  if (el.issuePanel) el.issuePanel.style.display = "block";
+  // Logged in: hide login form, show workspace
+  container.classList.add("auth-resolved");
+  el.loginCard.classList.add("auth-hide");
+  el.appCard.classList.add("auth-show");
+  if (el.profileCard) el.profileCard.classList.add("auth-show");
+  if (el.issuePanel) el.issuePanel.classList.add("auth-show");
+  // Admin card stays hidden until checkPlatformAdmin confirms via server RPC
+  if (el.adminCard) el.adminCard.classList.remove("auth-show");
   el.btnSignOut.style.display = "inline-flex";
+  if (el.btnHeaderSignOut) el.btnHeaderSignOut.style.display = "inline-flex";
+  if (el.headerUserEmail) {
+    el.headerUserEmail.textContent = user.email;
+    el.headerUserEmail.style.display = "inline";
+  }
   setLoginHint(`已登录：${user.email}`);
   loadLabCatalog();
   loadAll();
@@ -465,7 +492,14 @@ function renderAuthState(){
 async function checkPlatformAdmin(){
   const { data, error } = await sb.rpc("is_platform_admin");
   isPlatformAdmin = !error && data === true;
-  if (el.adminCard) el.adminCard.style.display = isPlatformAdmin ? "block" : "none";
+  // Only show admin panel after server confirms admin status
+  if (el.adminCard) {
+    if (isPlatformAdmin) {
+      el.adminCard.classList.add("auth-show");
+    } else {
+      el.adminCard.classList.remove("auth-show");
+    }
+  }
   if (isPlatformAdmin) {
     adminLoadContracts();
     adminLoadOrders();
@@ -487,6 +521,7 @@ async function sendMagicLink(){
     toast("登录成功");
   }catch(e){
     console.error(e);
+    if (window.ErrorLogger) ErrorLogger.log("staff.login", e);
     toast("登录失败：" + (e?.message || e));
   }finally{
     setBusy(btn, false);

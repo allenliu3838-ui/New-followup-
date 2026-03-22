@@ -207,8 +207,8 @@
         </div>
         <div class="price-card recommended">
           <div class="price-title">个人科研版（Pro）</div>
-          <div class="price-main">¥499<span class="small muted"> / 月（含 3 个项目）</span></div>
-          <div class="small muted">年付 ¥4,790 · 支持微信 / 支付宝 / 对公转账</div>
+          <div class="price-main" data-testid="index-pro-price"><span data-pricing="proMonthlyBase">¥499</span><span class="small muted"> / 月（含 <span data-pricing="proBaseProjects">3</span> 个项目）</span></div>
+          <div class="small muted">年付 <span data-pricing="proYearlyBase">¥4,790</span> · 支持微信 / 支付宝 / 对公转账</div>
           <div class="btnbar" style="margin-top:10px">
             <a class="btn small primary" href="/checkout"
                data-track="click_upgrade" data-track-source="pricing">立即升级</a>
@@ -230,7 +230,7 @@
 
     <!-- ===== PROJECTS ===== -->
     <div class="card">
-      <h2 style="margin:0 0 4px">正在招募合作中心 · <span id="projectCount"></span> 个研究项目</h2>
+      <h2 style="margin:0 0 4px" id="projectHeading" data-testid="project-heading">正在招募合作中心 · <span id="projectCount" data-testid="project-count">—</span> 个研究项目</h2>
       <div class="small muted">IgAN / MN / C3G / MGRS / DKD / HD / CKD 康复 / 肾移植 / 腹膜透析，均为真实启动或招募阶段研究，欢迎符合条件的中心联系加入。</div>
       <div id="indexProjects" class="projects-grid" style="margin-top:10px"></div>
       <div class="btnbar" style="margin-top:12px">
@@ -243,18 +243,36 @@
 
   </div>
 
+  <script src="/lib/error-logger.js"></script>
+  <script src="/config.js"></script>
+  <script src="/pricing-config.js"></script>
   <script src="/analytics.js"></script>
   <script src="/collaboration-data.js"></script>
   <script src="/collaboration-components.js"></script>
   <script>
-    var idxData = window.CollabData;
-    var idxC = window.CollabComponents;
-    idxC.renderProjects(
-      document.getElementById('indexProjects'),
-      idxData.projectCards
-    );
-    var countEl = document.getElementById('projectCount');
-    if (countEl) countEl.textContent = idxData.projectCards.length;
+    (function(){
+      try {
+        var idxData = window.CollabData;
+        var idxC = window.CollabComponents;
+        var countEl = document.getElementById('projectCount');
+        var headingEl = document.getElementById('projectHeading');
+        if (!idxData || !idxData.projectCards || !idxData.projectCards.length) {
+          // Hide the entire heading if no data available
+          if (headingEl) headingEl.textContent = '正在招募合作中心';
+          return;
+        }
+        idxC.renderProjects(
+          document.getElementById('indexProjects'),
+          idxData.projectCards
+        );
+        if (countEl) countEl.textContent = idxData.projectCards.length;
+      } catch(e) {
+        // Graceful degradation: hide count on error
+        var h = document.getElementById('projectHeading');
+        if (h) h.textContent = '正在招募合作中心';
+        console.error('[index] project render error:', e);
+      }
+    })();
   </script>
   <footer class="site-footer">
     <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
