@@ -32,13 +32,8 @@
     .issue-warning  { background:#fef3c7;color:#b45309; }
     .issue-info     { background:#dbeafe;color:#1d4ed8; }
     .issue-resolved { background:#d1fae5;color:#065f46; }
-    /* Hide auth-gated content before JS resolves auth state */
-    #profileCard, #appCard, #adminCard, #issuePanel { display:none !important; }
-    #profileCard.auth-show,
-    #appCard.auth-show,
-    #adminCard.auth-show,
-    #issuePanel.auth-show { display:block !important; }
-    #loginCard.auth-hide { display:none !important; }
+    /* Auth-gated content hidden by default; JS controls via inline style */
+    #profileCard, #appCard, #adminCard, #issuePanel { display:none; }
   </style>
 </head>
 <body>
