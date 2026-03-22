@@ -217,9 +217,8 @@ function renderTrialBadge(p){
     el.trialBadge.style.display = "none";
     if (el.upgradeBtn) el.upgradeBtn.style.display = "none";
   };
-  if (!p){ hide(); return; }
 
-  // ── 管理员永久使用 ──────────────────────────────────────────────
+  // ── 管理员永久使用（优先于项目检查）──────────────────────────────
   if (isPlatformAdmin) {
     el.trialBadge.className = "badge ok";
     el.trialBadge.textContent = "管理员（永久）";
@@ -227,6 +226,8 @@ function renderTrialBadge(p){
     if (el.upgradeBtn) el.upgradeBtn.style.display = "none";
     return;
   }
+
+  if (!p){ hide(); return; }
 
   const exp          = p.trial_expires_at;
   const grace        = p.trial_grace_until;
