@@ -81,16 +81,17 @@
         <div class="hero-ctas">
           <a class="btn primary" href="/staff"
              data-track="click_start_trial" data-track-source="hero">开始 30 天试用</a>
-          <a class="btn" href="/demo"
-             data-track="click_book_demo" data-track-source="hero">预约演示</a>
-          <a class="btn" href="/collaboration"
-             data-track="click_view_projects" data-track-source="hero">加入合作项目</a>
+          <a class="btn" href="/staff"
+             style="border-color:var(--brand);color:var(--brand)"
+             data-track="click_login" data-track-source="hero">登录后台</a>
         </div>
         <div class="small muted">试用无需信用卡 · 到期后 7 天只读宽限 · 随时导出数据</div>
       </div>
 
       <!-- Secondary nav -->
       <nav class="sec-nav" aria-label="次级导航">
+        <a href="/demo" data-track="click_book_demo" data-track-source="sec_nav">预约演示</a>
+        <a href="/collaboration" data-track="click_view_projects" data-track-source="sec_nav">合作项目</a>
         <a href="/guide">使用说明</a>
         <a href="/user-manual-cn">详细手册</a>
         <a href="/slides">介绍PPT</a>
@@ -206,9 +207,11 @@
         </div>
         <div class="price-card recommended">
           <div class="price-title">个人科研版（Pro）</div>
-          <div class="price-main">¥499<span class="small muted"> / 月起</span></div>
-          <div class="small muted">含 1 席，每增 1 席 +¥99，年付 ¥4,790</div>
+          <div class="price-main" data-testid="index-pro-price"><span data-pricing="proMonthlyBase">¥499</span><span class="small muted"> / 月（含 <span data-pricing="proBaseProjects">3</span> 个项目）</span></div>
+          <div class="small muted">年付 <span data-pricing="proYearlyBase">¥4,790</span> · 支持微信 / 支付宝 / 对公转账</div>
           <div class="btnbar" style="margin-top:10px">
+            <a class="btn small primary" href="/checkout"
+               data-track="click_upgrade" data-track-source="pricing">立即升级</a>
             <a class="btn small" href="/pricing"
                data-track="click_view_pricing" data-track-source="pricing">查看详情</a>
           </div>
@@ -227,35 +230,53 @@
 
     <!-- ===== PROJECTS ===== -->
     <div class="card">
-      <div class="okbox" style="margin-bottom:12px">
-        <b>正在招募合作中心 · <span id="projectCount"></span> 个研究项目开放加入</b>——IgAN / MN / C3G / MGRS / DKD / HD / CKD 康复 / 肾移植 / 腹膜透析，均为真实启动或招募阶段研究。
-        <div class="btnbar" style="margin-top:8px">
-          <a class="btn primary" href="mailto:china@kidneysphere.com"
-             data-track="click_join_project" data-track-source="index_projects">直接联系加入</a>
-          <a class="btn" href="/collaboration"
-             data-track="click_view_projects" data-track-source="index_projects">查看全部项目</a>
-        </div>
-      </div>
-      <h2 style="margin:0 0 4px">正在招募合作中心的研究项目</h2>
-      <div class="small muted">以下均为正在启动或招募阶段的真实研究，欢迎符合条件的中心联系加入。</div>
+      <h2 style="margin:0 0 4px" id="projectHeading" data-testid="project-heading">正在招募合作中心 · <span id="projectCount" data-testid="project-count">—</span> 个研究项目</h2>
+      <div class="small muted">IgAN / MN / C3G / MGRS / DKD / HD / CKD 康复 / 肾移植 / 腹膜透析，均为真实启动或招募阶段研究，欢迎符合条件的中心联系加入。</div>
       <div id="indexProjects" class="projects-grid" style="margin-top:10px"></div>
+      <div class="btnbar" style="margin-top:12px">
+        <a class="btn primary" href="mailto:china@kidneysphere.com"
+           data-track="click_join_project" data-track-source="index_projects">联系加入</a>
+        <a class="btn" href="/collaboration"
+           data-track="click_view_projects" data-track-source="index_projects">查看全部项目</a>
+      </div>
     </div>
 
   </div>
 
+  <script src="/lib/error-logger.js"></script>
+  <script src="/config.js"></script>
+  <script src="/pricing-config.js"></script>
   <script src="/analytics.js"></script>
   <script src="/collaboration-data.js"></script>
   <script src="/collaboration-components.js"></script>
   <script>
-    var idxData = window.CollabData;
-    var idxC = window.CollabComponents;
-    idxC.renderProjects(
-      document.getElementById('indexProjects'),
-      idxData.projectCards
-    );
-    var countEl = document.getElementById('projectCount');
-    if (countEl) countEl.textContent = idxData.projectCards.length;
+    (function(){
+      try {
+        var idxData = window.CollabData;
+        var idxC = window.CollabComponents;
+        var countEl = document.getElementById('projectCount');
+        var headingEl = document.getElementById('projectHeading');
+        if (!idxData || !idxData.projectCards || !idxData.projectCards.length) {
+          // Hide the entire heading if no data available
+          if (headingEl) headingEl.textContent = '正在招募合作中心';
+          return;
+        }
+        idxC.renderProjects(
+          document.getElementById('indexProjects'),
+          idxData.projectCards
+        );
+        if (countEl) countEl.textContent = idxData.projectCards.length;
+      } catch(e) {
+        // Graceful degradation: hide count on error
+        var h = document.getElementById('projectHeading');
+        if (h) h.textContent = '正在招募合作中心';
+        console.error('[index] project render error:', e);
+      }
+    })();
   </script>
-  <footer class="site-footer">© 2025 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></footer>
+  <footer class="site-footer">
+    <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
+    <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></div>
+  </footer>
 </body>
 </html>

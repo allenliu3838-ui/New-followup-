@@ -4,3 +4,6 @@
 node_modules
 *.log
 analysis/outputs
+test-results/
+playwright-report/
+lighthouse-reports/
