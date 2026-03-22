@@ -23,6 +23,16 @@
   status = 200
 
 [[redirects]]
+  from = "/checkout"
+  to   = "/checkout.html"
+  status = 200
+
+[[redirects]]
+  from = "/checkout/*"
+  to   = "/checkout.html"
+  status = 200
+
+[[redirects]]
   from = "/followup"
   to   = "/patient.html"
   status = 200

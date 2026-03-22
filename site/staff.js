@@ -161,6 +161,9 @@ const el = {
   adminContractsBadge: qs("#adminContractsBadge"),
   adminContracts: qs("#adminContracts"),
   btnAdminLoadContracts: qs("#btnAdminLoadContracts"),
+  adminOrdersBadge: qs("#adminOrdersBadge"),
+  adminOrders: qs("#adminOrders"),
+  btnAdminLoadOrders: qs("#btnAdminLoadOrders"),
   adminSearchEmail: qs("#adminSearchEmail"),
   btnAdminSearch: qs("#btnAdminSearch"),
   adminResults: qs("#adminResults"),
@@ -403,6 +406,7 @@ async function init(){
   el.btnApplyContract?.addEventListener("click", applyContract);
 
   el.btnAdminLoadContracts?.addEventListener("click", adminLoadContracts);
+  el.btnAdminLoadOrders?.addEventListener("click", adminLoadOrders);
   el.btnAdminSearch?.addEventListener("click", adminSearch);
   el.adminSearchEmail?.addEventListener("keydown", e=>{ if(e.key==="Enter") adminSearch(); });
 
@@ -464,6 +468,7 @@ async function checkPlatformAdmin(){
   if (el.adminCard) el.adminCard.style.display = isPlatformAdmin ? "block" : "none";
   if (isPlatformAdmin) {
     adminLoadContracts();
+    adminLoadOrders();
     // Re-render trial badge now that admin status is confirmed
     renderTrialBadge(selectedProject);
   }
@@ -2594,6 +2599,171 @@ async function adminSetExpiry(projectId){
   adminSearch();
 }
 
+// ═══════════════════════════════════════════════════════════
+// 订单管理（管理员侧）
+// ═══════════════════════════════════════════════════════════
+
+const ORDER_STATUS_LABEL = {
+  unpaid:               { text:"待付款",   cls:"badge" },
+  pending_verification: { text:"待核验",   cls:"badge warn" },
+  paid:                 { text:"已到账",   cls:"badge ok" },
+  activated:            { text:"已开通",   cls:"badge ok" },
+  rejected:             { text:"已驳回",   cls:"badge bad" },
+  cancelled:            { text:"已取消",   cls:"badge" },
+  expired:              { text:"已过期",   cls:"badge" },
+  refund_pending:       { text:"退款中",   cls:"badge warn" },
+  refunded:             { text:"已退款",   cls:"badge" },
+};
+
+async function adminLoadOrders(){
+  if (!isPlatformAdmin) return;
+  const { data, error } = await sb.rpc("admin_list_orders");
+  if (error){
+    if(el.adminOrders) el.adminOrders.innerHTML =
+      `<span class="muted small" style="color:#c0392b">加载失败：${escapeHtml(error.message)}</span>`;
+    return;
+  }
+  renderAdminOrders(data || []);
+}
+
+function renderAdminOrders(rows){
+  const c = el.adminOrders;
+  if (!c) return;
+
+  const pending = rows.filter(r => r.status === "pending_verification");
+  if (el.adminOrdersBadge){
+    if (pending.length){
+      el.adminOrdersBadge.textContent = `${pending.length} 待核验`;
+      el.adminOrdersBadge.style.display = "inline-flex";
+    } else {
+      el.adminOrdersBadge.style.display = "none";
+    }
+  }
+
+  if (!rows.length){
+    c.innerHTML = `<div class="muted small">暂无订单。</div>`;
+    return;
+  }
+
+  const planMap = { pro:"Pro", institutional:"机构版" };
+  const cycleMap = { monthly:"月付", yearly:"年付" };
+  const methodMap = { wechat_qr:"微信", alipay_qr:"支付宝", bank_transfer:"转账" };
+
+  const html = rows.map(r => {
+    const na = v => escapeHtml(v || "—");
+    const s = ORDER_STATUS_LABEL[r.status] || { text: r.status, cls:"badge" };
+    const oid = escapeHtml(r.id);
+
+    const actionHtml = r.status === "pending_verification" ? `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0">
+        <div>
+          <label style="font-size:12px">生效日</label>
+          <input id="ostart_${oid}" type="date" value="${new Date().toISOString().slice(0,10)}" style="width:130px;font-size:12px"/>
+        </div>
+        <div>
+          <label style="font-size:12px">到期日</label>
+          <input id="oend_${oid}" type="date" value="${
+            r.billing_cycle === "yearly"
+              ? new Date(Date.now()+365*864e5).toISOString().slice(0,10)
+              : new Date(Date.now()+30*864e5).toISOString().slice(0,10)
+          }" style="width:130px;font-size:12px"/>
+        </div>
+        <div style="flex:1;min-width:100px">
+          <label style="font-size:12px">管理员备注</label>
+          <input id="onote_${oid}" placeholder="可选" style="font-size:12px"/>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn small primary" onclick="adminVerifyOrder('${oid}')">确认到账并开通</button>
+          <button class="btn small" style="color:#c0392b" onclick="adminRejectOrder('${oid}')">驳回</button>
+          ${r.proof_count > 0 ? `<button class="btn small" onclick="adminViewProofs('${oid}')">查看凭证(${r.proof_count})</button>` : ""}
+        </div>
+      </div>` : "";
+
+    const activatedInfo = r.status === "activated" ? `
+      <div class="muted small" style="margin-top:6px">
+        已开通 · ${r.start_at ? fmtDate(r.start_at) : "—"} 至 ${r.end_at ? fmtDate(r.end_at) : "—"}
+        · 配额 ${r.project_quota} 个项目
+      </div>` : "";
+
+    return `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+        <span class="${s.cls}" style="font-size:11px">${s.text}</span>
+        <code style="font-size:12px">${na(r.order_no)}</code>
+        <span class="muted small">${na(r.owner_email)}</span>
+        ${r.real_name ? `<b style="font-size:13px">${na(r.real_name)}</b>` : ""}
+        ${r.hospital ? `<span class="muted small">${na(r.hospital)}</span>` : ""}
+        <span class="muted small" style="margin-left:auto">${fmtDate(r.created_at)}</span>
+      </div>
+      <div class="small">
+        ${planMap[r.plan_code]||r.plan_code} · ${cycleMap[r.billing_cycle]||r.billing_cycle}
+        · ${r.project_quota} 个项目
+        · 应付 ¥${r.amount_due}
+        ${r.amount_paid ? ` · 实付 ¥${r.amount_paid}` : ""}
+        · ${methodMap[r.payment_method]||r.payment_method||"未选"}
+        ${r.invoice_needed ? " · 需要发票" : ""}
+        ${r.payer_name ? ` · 付款人：${na(r.payer_name)}` : ""}
+        ${r.notes ? `<br/>备注：${na(r.notes)}` : ""}
+      </div>
+      ${activatedInfo}${actionHtml}
+    </div>`;
+  }).join("");
+
+  c.innerHTML = html;
+}
+
+async function adminVerifyOrder(orderId){
+  const startEl = qs(`#ostart_${orderId}`);
+  const endEl   = qs(`#oend_${orderId}`);
+  const noteEl  = qs(`#onote_${orderId}`);
+
+  if (!confirm(`确认到账并开通？用户所有项目将升级至到期日 ${endEl?.value || "（默认）"}`)) return;
+
+  const params = { p_order_id: orderId };
+  if (startEl?.value) params.p_start_at = new Date(startEl.value).toISOString();
+  if (endEl?.value)   params.p_end_at   = new Date(endEl.value).toISOString();
+  if (noteEl?.value.trim()) params.p_admin_notes = noteEl.value.trim();
+
+  const { error } = await sb.rpc("admin_verify_order", params);
+  if (error){ toast("操作失败：" + error.message); return; }
+  toast("已确认到账并开通权益");
+  adminLoadOrders();
+}
+
+async function adminRejectOrder(orderId){
+  const reason = prompt("驳回原因（用户可见）：");
+  if (reason === null) return;
+  const { error } = await sb.rpc("admin_reject_order", {
+    p_order_id: orderId, p_reject_reason: reason || null
+  });
+  if (error){ toast("操作失败：" + error.message); return; }
+  toast("已驳回");
+  adminLoadOrders();
+}
+
+async function adminViewProofs(orderId){
+  const { data, error } = await sb.rpc("admin_get_order_proofs", { p_order_id: orderId });
+  if (error){ toast("加载失败：" + error.message); return; }
+  if (!data?.length){ toast("暂无凭证"); return; }
+
+  const html = data.map(p =>
+    `<div style="margin:6px 0">
+      <a href="${escapeHtml(p.file_url)}" target="_blank">${escapeHtml(p.file_name || "凭证文件")}</a>
+      <span class="muted small"> · ${fmtDate(p.created_at)}</span>
+    </div>`
+  ).join("");
+
+  // Simple modal
+  const overlay = document.createElement("div");
+  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:center;justify-content:center;";
+  overlay.innerHTML = `<div style="background:#fff;border-radius:14px;padding:20px;max-width:500px;width:90%;max-height:80vh;overflow:auto">
+    <h3 style="margin:0 0 10px">付款凭证</h3>
+    ${html}
+    <div class="btnbar"><button class="btn" onclick="this.closest('div[style]').parentElement.remove()">关闭</button></div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+}
+
 // 挂载到 window，供 table inline onclick 调用
 window.adminExtend  = adminExtend;
 window.adminPartner = adminPartner;
@@ -2605,6 +2775,9 @@ window.adminCancelContract         = adminCancelContract;
 window.adminUpdateContract         = adminUpdateContract;
 window.adminSetExpiry              = adminSetExpiry;
 window.resetContractForm           = resetContractForm;
+window.adminVerifyOrder            = adminVerifyOrder;
+window.adminRejectOrder            = adminRejectOrder;
+window.adminViewProofs             = adminViewProofs;
 
 // ============================================================
 // 批量导入（CSV）

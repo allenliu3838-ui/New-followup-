@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>支付中心 · 肾域·科研</title>
+  <meta name="robots" content="noindex,nofollow"/>
+  <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
+  <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
+  <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
+  <link rel="stylesheet" href="/app.css"/>
+  <link rel="icon" href="/assets/kidneysphere-ai.png"/>
+  <style>
+    .step { display:none; }
+    .step.active { display:block; }
+    .step-indicator { display:flex; gap:6px; margin-bottom:14px; }
+    .step-dot { width:28px; height:28px; border-radius:50%; border:2px solid var(--border);
+                display:flex; align-items:center; justify-content:center;
+                font-size:13px; font-weight:700; color:var(--muted); }
+    .step-dot.active { border-color:var(--brand); color:var(--brand); background:rgba(47,111,235,.08); }
+    .step-dot.done { border-color:var(--ok); color:#fff; background:var(--ok); }
+    .step-line { flex:1; height:2px; background:var(--border); align-self:center; }
+
+    .pay-tabs { display:flex; gap:0; margin:12px 0; border-radius:12px; overflow:hidden; border:1px solid var(--border); }
+    .pay-tab { flex:1; padding:10px; text-align:center; cursor:pointer; font-size:14px; font-weight:600;
+               background:#fff; border-right:1px solid var(--border); transition:background .15s; }
+    .pay-tab:last-child { border-right:none; }
+    .pay-tab:hover { background:rgba(47,111,235,.04); }
+    .pay-tab.active { background:rgba(47,111,235,.08); color:var(--brand); }
+    .pay-tab .tab-icon { font-size:20px; display:block; margin-bottom:2px; }
+
+    .pay-panel { display:none; }
+    .pay-panel.active { display:block; }
+
+    .qr-box { text-align:center; padding:16px; }
+    .qr-box img { max-width:260px; border-radius:14px; border:1px solid var(--border); }
+
+    .amount-big { font-size:28px; font-weight:900; color:var(--brand); margin:8px 0; }
+    .copy-btn { display:inline-flex; align-items:center; gap:4px; font-size:12px; cursor:pointer;
+                border:1px solid var(--border); border-radius:8px; padding:3px 8px; background:#fff; color:var(--muted); }
+    .copy-btn:hover { border-color:rgba(47,111,235,.35); color:var(--brand); }
+
+    .bank-info { background:rgba(37,99,235,.04); border:1px solid rgba(37,99,235,.15);
+                 border-radius:14px; padding:14px; }
+    .bank-info .kv { grid-template-columns:100px 1fr; gap:6px 12px; }
+
+    .price-calc { background:rgba(37,99,235,.04); border:1px solid rgba(37,99,235,.12);
+                  border-radius:14px; padding:14px; margin-top:10px; }
+
+    .order-status-card { background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px;
+                         padding:14px; margin-top:10px; }
+
+    .upload-zone { border:2px dashed var(--border); border-radius:14px; padding:20px;
+                   text-align:center; cursor:pointer; transition:border-color .2s; }
+    .upload-zone:hover { border-color:rgba(47,111,235,.4); }
+    .upload-zone.has-file { border-color:var(--ok); background:rgba(22,163,74,.04); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="card">
+      <div class="brand">
+        <img src="/assets/kidneysphere-ai.png" alt="肾域AI"/>
+        <div>
+          <h1 class="brand-title">支付中心</h1>
+          <div class="brand-sub">升级 Pro · 支持微信 / 支付宝 / 对公转账</div>
+        </div>
+      </div>
+      <div class="btnbar" style="margin-top:12px">
+        <a class="btn" href="/">返回首页</a>
+        <a class="btn" href="/pricing">价格方案</a>
+        <a class="btn" href="/staff">工作台</a>
+      </div>
+    </div>
+
+    <!-- 未登录提示 -->
+    <div class="card" id="loginPrompt" style="display:none">
+      <div class="warnbox">请先 <a href="/staff">登录</a> 后再进行升级购买。</div>
+    </div>
+
+    <!-- 主内容（登录后可见） -->
+    <div id="checkoutMain" style="display:none">
+
+      <!-- Step Indicator -->
+      <div class="card">
+        <div class="step-indicator">
+          <div class="step-dot active" id="dot1">1</div>
+          <div class="step-line"></div>
+          <div class="step-dot" id="dot2">2</div>
+          <div class="step-line"></div>
+          <div class="step-dot" id="dot3">3</div>
+          <div class="step-line"></div>
+          <div class="step-dot" id="dot4">4</div>
+        </div>
+        <div id="stepLabel" class="muted small">第 1 步：选择方案</div>
+      </div>
+
+      <!-- ===== Step 1: 选择方案 ===== -->
+      <div class="card step active" id="step1">
+        <h2 style="margin:0 0 8px">选择方案</h2>
+
+        <div class="row">
+          <div class="col">
+            <label>套餐</label>
+            <select id="planCode">
+              <option value="pro">Pro（个人/小团队）</option>
+              <option value="institutional" disabled>机构版（请联系报价）</option>
+            </select>
+          </div>
+          <div class="col">
+            <label>计费周期</label>
+            <select id="billingCycle">
+              <option value="monthly">月付</option>
+              <option value="yearly">年付（约 8 折）</option>
+            </select>
+          </div>
+          <div class="col">
+            <label>项目数量</label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="btn small" id="btnProjMinus" style="width:36px">−</button>
+              <input id="projectCount" type="number" min="3" max="30" value="3"
+                     style="width:70px;text-align:center"/>
+              <button class="btn small" id="btnProjPlus" style="width:36px">+</button>
+            </div>
+            <div class="muted small" style="margin-top:4px">基础含 3 个项目</div>
+          </div>
+        </div>
+
+        <div class="price-calc" id="priceCalc">
+          <div style="display:flex;align-items:baseline;gap:8px">
+            <span class="amount-big" id="totalPrice">¥499</span>
+            <span class="muted small" id="priceUnit">/ 月</span>
+          </div>
+          <div class="small" id="priceBreakdown">基础 ¥499 + 额外 0 个项目 × ¥99 = ¥499</div>
+        </div>
+
+        <div class="btnbar">
+          <button class="btn primary" id="btnToStep2">下一步：填写信息</button>
+        </div>
+      </div>
+
+      <!-- ===== Step 2: 填写订单信息 ===== -->
+      <div class="card step" id="step2">
+        <h2 style="margin:0 0 8px">订单信息</h2>
+        <div class="muted small" style="margin-bottom:10px">以下为选填，方便我们联系和开票。</div>
+
+        <div class="row">
+          <div class="col">
+            <label>购买人姓名（选填）</label>
+            <input id="payerName" placeholder="例如：张三"/>
+          </div>
+          <div class="col">
+            <label>邮箱</label>
+            <input id="payerEmail" type="email" readonly/>
+          </div>
+          <div class="col">
+            <label>单位 / 医院（选填）</label>
+            <input id="payerHospital" placeholder="例如：北京协和医院"/>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <label style="margin:0">需要发票吗？</label>
+          <select id="invoiceNeeded" style="width:100px">
+            <option value="no">不需要</option>
+            <option value="yes">需要</option>
+          </select>
+        </div>
+
+        <div id="invoiceFields" style="display:none">
+          <div class="row">
+            <div class="col">
+              <label>发票抬头</label>
+              <input id="invoiceTitle" placeholder="公司/单位全称"/>
+            </div>
+            <div class="col">
+              <label>税号</label>
+              <input id="invoiceTaxNo" placeholder="统一社会信用代码"/>
+            </div>
+            <div class="col">
+              <label>收票邮箱</label>
+              <input id="invoiceEmail" type="email" placeholder="接收电子发票的邮箱"/>
+            </div>
+          </div>
+        </div>
+
+        <label>备注（选填）</label>
+        <input id="orderNotes" placeholder="例如：课题编号、特殊需求等"/>
+
+        <div class="btnbar">
+          <button class="btn" id="btnBackTo1">上一步</button>
+          <button class="btn primary" id="btnToStep3">下一步：选择付款方式</button>
+        </div>
+      </div>
+
+      <!-- ===== Step 3: 选择付款方式 & 付款 ===== -->
+      <div class="card step" id="step3">
+        <h2 style="margin:0 0 4px">付款</h2>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
+          <span>订单号：</span>
+          <code id="orderNoDisplay">—</code>
+          <span class="copy-btn" id="copyOrderNo">复制</span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px">
+          <span>应付金额：</span>
+          <span class="amount-big" id="amountDisplay">¥499</span>
+          <span class="copy-btn" id="copyAmount">复制</span>
+        </div>
+
+        <!-- 付款方式 Tabs -->
+        <div class="pay-tabs">
+          <div class="pay-tab active" data-method="wechat_qr">
+            <span class="tab-icon">💚</span>微信支付
+          </div>
+          <div class="pay-tab" data-method="alipay_qr">
+            <span class="tab-icon">💙</span>支付宝
+          </div>
+          <div class="pay-tab" data-method="bank_transfer">
+            <span class="tab-icon">🏦</span>对公转账
+          </div>
+        </div>
+
+        <!-- 微信 -->
+        <div class="pay-panel active" id="panel_wechat_qr">
+          <div class="qr-box">
+            <img id="wechatQrImg" src="" alt="微信收款码"/>
+            <div class="muted small" id="wechatLabel" style="margin-top:6px"></div>
+          </div>
+          <div class="infobox small">
+            <b>付款说明：</b><br/>
+            1. 请打开微信扫一扫，扫描上方二维码<br/>
+            2. 付款金额请与页面显示金额一致<br/>
+            3. 付款备注请填写：<code id="wechatMemo"></code> <span class="copy-btn" id="copyWechatMemo">复制</span><br/>
+            4. 支付完成后点击下方"上传付款凭证"
+          </div>
+        </div>
+
+        <!-- 支付宝 -->
+        <div class="pay-panel" id="panel_alipay_qr">
+          <div class="qr-box">
+            <img id="alipayQrImg" src="" alt="支付宝收款码"/>
+            <div class="muted small" id="alipayLabel" style="margin-top:6px"></div>
+          </div>
+          <div class="infobox small">
+            <b>付款说明：</b><br/>
+            1. 请打开支付宝扫一扫，扫描上方二维码<br/>
+            2. 付款金额请与页面显示金额一致<br/>
+            3. 付款备注请填写：<code id="alipayMemo"></code> <span class="copy-btn" id="copyAlipayMemo">复制</span><br/>
+            4. 支付完成后点击下方"上传付款凭证"
+          </div>
+        </div>
+
+        <!-- 对公转账 -->
+        <div class="pay-panel" id="panel_bank_transfer">
+          <div class="bank-info">
+            <div class="kv">
+              <div class="muted small">公司名称</div><div id="bankName"></div>
+              <div class="muted small">开户行</div><div id="bankBranch"></div>
+              <div class="muted small">银行账号</div>
+              <div><code id="bankAccount"></code> <span class="copy-btn" id="copyBankAccount">复制</span></div>
+              <div class="muted small">转账金额</div><div id="bankAmount" style="font-weight:700;color:var(--brand)"></div>
+            </div>
+          </div>
+          <div class="infobox small" style="margin-top:10px">
+            <b>转账说明：</b><br/>
+            1. 转账备注请填写：<code id="bankMemo"></code> <span class="copy-btn" id="copyBankMemo">复制</span><br/>
+            2. 转账完成后请上传转账回单或凭证截图
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <!-- 上传凭证 -->
+        <h3 style="margin:0 0 8px;font-size:15px">上传付款凭证</h3>
+        <div class="upload-zone" id="uploadZone">
+          <div class="muted">点击选择文件，或拖拽文件到此处</div>
+          <div class="muted small">支持 PNG / JPG / PDF，最大 10MB</div>
+          <input type="file" id="proofFile" accept="image/*,.pdf" style="display:none"/>
+        </div>
+        <div id="uploadPreview" style="display:none;margin-top:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="uploadFileName" class="small"></span>
+            <button class="btn small" id="btnRemoveFile" style="color:#c0392b">移除</button>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <div class="col">
+            <label>实付金额（选填）</label>
+            <input id="proofAmount" type="number" step="0.01" placeholder="和应付一致则可不填"/>
+          </div>
+          <div class="col">
+            <label>付款人姓名 / 账号后四位（选填）</label>
+            <input id="proofPayerInfo" placeholder="方便核验"/>
+          </div>
+        </div>
+
+        <div class="btnbar">
+          <button class="btn" id="btnBackTo2">上一步</button>
+          <button class="btn primary" id="btnSubmitProof" disabled>提交付款凭证</button>
+        </div>
+      </div>
+
+      <!-- ===== Step 4: 等待开通 ===== -->
+      <div class="card step" id="step4">
+        <h2 style="margin:0 0 8px">凭证已提交，等待核验</h2>
+        <div class="order-status-card">
+          <div class="kv" style="grid-template-columns:100px 1fr">
+            <div class="muted small">订单号</div><div id="s4OrderNo"></div>
+            <div class="muted small">套餐</div><div id="s4Plan"></div>
+            <div class="muted small">项目配额</div><div id="s4Quota"></div>
+            <div class="muted small">应付金额</div><div id="s4Amount"></div>
+            <div class="muted small">付款方式</div><div id="s4Method"></div>
+            <div class="muted small">当前状态</div><div id="s4Status"></div>
+          </div>
+        </div>
+        <div class="infobox small" style="margin-top:10px">
+          平台将在 1–2 个工作日内核验您的付款凭证。核验通过后，权益将自动开通，届时会通过邮件通知您。<br/>
+          如有问题请联系：<span id="s4Contact"></span>
+        </div>
+        <div class="btnbar">
+          <a class="btn primary" href="/staff">返回工作台</a>
+          <a class="btn" href="/">返回首页</a>
+        </div>
+      </div>
+
+      <!-- ===== 我的订单 ===== -->
+      <div class="card" id="myOrdersCard">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <h2 style="margin:0">我的订单</h2>
+          <button class="btn small" id="btnRefreshOrders">刷新</button>
+        </div>
+        <div id="myOrdersList" class="muted small">加载中…</div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
+    <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></div>
+  </footer>
+
+  <script src="/config.js"></script>
+  <script type="module" src="/checkout.js"></script>
+  <script src="/analytics.js"></script>
+</body>
+</html>
