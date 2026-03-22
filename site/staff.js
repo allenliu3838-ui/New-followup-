@@ -219,6 +219,15 @@ function renderTrialBadge(p){
   };
   if (!p){ hide(); return; }
 
+  // ── 管理员永久使用 ──────────────────────────────────────────────
+  if (isPlatformAdmin) {
+    el.trialBadge.className = "badge ok";
+    el.trialBadge.textContent = "管理员（永久）";
+    el.trialBadge.style.display = "inline-flex";
+    if (el.upgradeBtn) el.upgradeBtn.style.display = "none";
+    return;
+  }
+
   const exp          = p.trial_expires_at;
   const grace        = p.trial_grace_until;
   const subPlan      = p.subscription_plan || "trial";
@@ -2193,20 +2202,39 @@ function renderAdminResults(rows){
   // ── 项目列表表格 ─────────────────────────────────────────────
   const thead = `<thead><tr>
     <th>项目名称</th><th>中心</th><th>模块</th>
-    <th>当前计划</th><th>试用到期</th><th>宽限到期</th><th>操作</th>
+    <th>当前计划</th><th>到期时间</th><th>设定到期</th><th>操作</th>
   </tr></thead>`;
 
   const rows_html = rows.map(r => {
-    const trialExp = r.trial_expires_at  ? fmtDate(r.trial_expires_at)  : "—";
-    const graceExp = r.trial_grace_until ? fmtDate(r.trial_grace_until) : "—";
     const pid = escapeHtml(r.project_id);
+    const plan = r.subscription_plan || "trial";
+    // 显示当前到期时间（付费用 subscription_active_until，试用用 trial_expires_at）
+    const currentExpiry = plan !== "trial" && r.subscription_active_until
+      ? fmtDate(r.subscription_active_until)
+      : r.trial_expires_at ? fmtDate(r.trial_expires_at) : "—";
+    // 日期选择器默认值
+    const expiryDefault = plan !== "trial" && r.subscription_active_until
+      ? r.subscription_active_until.slice(0,10)
+      : r.trial_expires_at ? r.trial_expires_at.slice(0,10) : "";
+
     return `<tr>
       <td>${escapeHtml(r.project_name)}</td>
       <td>${escapeHtml(r.center_code||"—")}</td>
       <td>${escapeHtml(r.module||"—")}</td>
-      <td>${planBadgeHtml(r.subscription_plan)}</td>
-      <td style="font-size:12px">${trialExp}</td>
-      <td style="font-size:12px">${graceExp}</td>
+      <td>${planBadgeHtml(plan)}</td>
+      <td style="font-size:12px">${currentExpiry}</td>
+      <td>
+        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+          <select id="pplan_${pid}" style="width:90px;font-size:12px">
+            <option value="trial"${plan==="trial"?" selected":""}>试用</option>
+            <option value="pro"${plan==="pro"?" selected":""}>Pro</option>
+            <option value="institution"${plan==="institution"?" selected":""}>机构版</option>
+            <option value="partner"${plan==="partner"?" selected":""}>合作伙伴</option>
+          </select>
+          <input id="pexp_${pid}" type="date" value="${expiryDefault}" style="width:130px;font-size:12px"/>
+          <button class="btn small" onclick="adminSetExpiry('${pid}')">设定</button>
+        </div>
+      </td>
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           <button class="btn small" onclick="adminExtend('${pid}',30)">+30天</button>
@@ -2400,28 +2428,55 @@ function renderAdminContracts(rows){
         <div style="display:flex;gap:6px">
           <button class="btn small primary" onclick="adminApproveContract('${cid}')">✅ 批准</button>
           <button class="btn small" style="color:#c0392b" onclick="adminRejectContractPrompt('${cid}')">❌ 拒绝</button>
+          <button class="btn small" style="color:#888" onclick="adminCancelContract('${cid}')">取消</button>
         </div>
       </div>` : "";
 
-    // 已批准待付款：显示激活按钮
-    const activateForm = (r.status === "approved" && r.payment_status === "unpaid") ? `
+    // 已批准：显示管理操作（付款状态、到期时间、取消）
+    const approvedForm = r.status === "approved" ? `
       <div style="display:flex;gap:8px;align-items:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0;flex-wrap:wrap">
         <div>
-          <label style="font-size:12px">权益到期日</label>
-          <input id="exp_${cid}" type="date" value="${
+          <label style="font-size:12px">付款状态</label>
+          <select id="pay_${cid}" style="width:100px;font-size:12px">
+            <option value="unpaid"${r.payment_status==="unpaid"?" selected":""}>未付款</option>
+            <option value="paid"${r.payment_status==="paid"?" selected":""}>已付款</option>
+            <option value="overdue"${r.payment_status==="overdue"?" selected":""}>逾期</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px">授予套餐</label>
+          <select id="cplan_${cid}" style="width:100px;font-size:12px">
+            <option value="pro"${(r.plan||r.apply_plan)==="pro"?" selected":""}>Pro</option>
+            <option value="institution"${(r.plan||r.apply_plan)==="institution"?" selected":""}>机构版</option>
+            <option value="partner"${(r.plan||r.apply_plan)==="partner"?" selected":""}>合作伙伴</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px">到期日</label>
+          <input id="cexp_${cid}" type="date" value="${
             r.expires_at ? r.expires_at.slice(0,10) :
             new Date(Date.now()+365*864e5).toISOString().slice(0,10)
-          }" style="width:140px"/>
+          }" style="width:130px;font-size:12px"/>
         </div>
-        <button class="btn small primary" onclick="adminActivateContract('${cid}')">💳 确认收款并激活</button>
-      </div>` : "";
-
-    // 已激活
-    const activeInfo = (r.status === "approved" && r.payment_status === "paid") ? `
-      <div class="muted small" style="margin-top:6px">
+        <div style="flex:1;min-width:100px">
+          <label style="font-size:12px">备注</label>
+          <input id="cnote_${cid}" placeholder="可选" value="${escapeHtml(r.admin_note||"")}" style="font-size:12px"/>
+        </div>
+        <div style="display:flex;gap:6px">
+          ${r.payment_status !== "paid" ?
+            `<button class="btn small primary" onclick="adminActivateContract('${cid}')">💳 确认收款</button>` : ""}
+          <button class="btn small" onclick="adminUpdateContract('${cid}')">保存修改</button>
+          <button class="btn small" style="color:#c0392b" onclick="adminCancelContract('${cid}')">取消合同</button>
+        </div>
+      </div>
+      ${r.payment_status === "paid" ? `<div class="muted small" style="margin-top:6px">
         已激活 · 到期：${r.expires_at ? fmtDate(r.expires_at) : "—"}
         · 付款：${r.paid_at ? fmtDate(r.paid_at) : "—"}
-      </div>` : "";
+      </div>` : ""}
+    ` : "";
+
+    const activateForm = "";
+    const activeInfo = "";
 
     return `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-bottom:10px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
@@ -2439,7 +2494,7 @@ function renderAdminContracts(rows){
         ${r.annual_price_cny ? ` · 协议价：¥${r.annual_price_cny}/年` : ""}
         ${r.apply_note ? `<br/>申请说明：${escapeHtml(r.apply_note)}` : ""}
       </div>
-      ${activeInfo}${reviewForm}${activateForm}
+      ${activeInfo}${reviewForm}${activateForm}${approvedForm}
     </div>`;
   }).join("");
 
@@ -2483,6 +2538,57 @@ async function adminActivateContract(cid){
   adminLoadContracts();
 }
 
+// ── 管理员：取消合同 ──────────────────────────────────────────
+async function adminCancelContract(cid){
+  const note = prompt("取消原因（可选，用户可见）：") ?? null;
+  if (note === null) return;
+  if (!confirm("确认取消该合同？如已激活将撤销用户权益。")) return;
+  const { error } = await sb.rpc("admin_cancel_contract", {
+    p_contract_id: cid, p_admin_note: note || null
+  });
+  if (error){ toast("操作失败：" + error.message); return; }
+  toast("已取消合同");
+  adminLoadContracts();
+}
+
+// ── 管理员：修改合同（付款状态、到期时间、套餐等）──────────
+async function adminUpdateContract(cid){
+  const paymentEl = qs(`#pay_${cid}`);
+  const expEl     = qs(`#cexp_${cid}`);
+  const planEl    = qs(`#cplan_${cid}`);
+  const noteEl    = qs(`#cnote_${cid}`);
+
+  const params = { p_contract_id: cid };
+  if (paymentEl) params.p_payment_status = paymentEl.value;
+  if (expEl && expEl.value) params.p_expires_at = new Date(expEl.value).toISOString();
+  if (planEl) params.p_plan = planEl.value;
+  if (noteEl && noteEl.value.trim()) params.p_admin_note = noteEl.value.trim();
+
+  const { error } = await sb.rpc("admin_update_contract", params);
+  if (error){ toast("操作失败：" + error.message); return; }
+  toast("合同已更新");
+  adminLoadContracts();
+}
+
+// ── 管理员：直接设定项目到期日期 ──────────────────────────────
+async function adminSetExpiry(projectId){
+  const expEl  = qs(`#pexp_${projectId}`);
+  const planEl = qs(`#pplan_${projectId}`);
+  if (!expEl || !expEl.value){ toast("请选择到期日期"); return; }
+  if (!confirm(`确认设定到期日期为 ${expEl.value}？`)) return;
+
+  const params = {
+    p_project_id: projectId,
+    p_expires_at: new Date(expEl.value).toISOString()
+  };
+  if (planEl) params.p_plan = planEl.value;
+
+  const { error } = await sb.rpc("admin_set_expiry", params);
+  if (error){ toast("操作失败：" + error.message); return; }
+  toast("到期时间已更新");
+  adminSearch();
+}
+
 // 挂载到 window，供 table inline onclick 调用
 window.adminExtend  = adminExtend;
 window.adminPartner = adminPartner;
@@ -2490,6 +2596,9 @@ window.adminReset   = adminReset;
 window.adminApproveContract        = adminApproveContract;
 window.adminRejectContractPrompt   = adminRejectContractPrompt;
 window.adminActivateContract       = adminActivateContract;
+window.adminCancelContract         = adminCancelContract;
+window.adminUpdateContract         = adminUpdateContract;
+window.adminSetExpiry              = adminSetExpiry;
 window.resetContractForm           = resetContractForm;
 
 // ============================================================
