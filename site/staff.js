@@ -451,12 +451,11 @@ function renderAuthState(){
 
   if (!user){
     // Anonymous: only show login card, hide everything else
-    container.classList.add("auth-resolved");
-    el.loginCard.classList.remove("auth-hide");
-    el.appCard.classList.remove("auth-show");
-    if (el.profileCard) el.profileCard.classList.remove("auth-show");
-    if (el.adminCard) el.adminCard.classList.remove("auth-show");
-    if (el.issuePanel) el.issuePanel.classList.remove("auth-show");
+    el.loginCard.style.display = "block";
+    el.appCard.style.display = "none";
+    if (el.profileCard) el.profileCard.style.display = "none";
+    if (el.adminCard) el.adminCard.style.display = "none";
+    if (el.issuePanel) el.issuePanel.style.display = "none";
     el.btnSignOut.style.display = "none";
     if (el.btnHeaderSignOut) el.btnHeaderSignOut.style.display = "none";
     if (el.headerUserEmail) el.headerUserEmail.style.display = "none";
@@ -468,13 +467,12 @@ function renderAuthState(){
     return;
   }
   // Logged in: hide login form, show workspace
-  container.classList.add("auth-resolved");
-  el.loginCard.classList.add("auth-hide");
-  el.appCard.classList.add("auth-show");
-  if (el.profileCard) el.profileCard.classList.add("auth-show");
-  if (el.issuePanel) el.issuePanel.classList.add("auth-show");
+  el.loginCard.style.display = "none";
+  el.appCard.style.display = "block";
+  if (el.profileCard) el.profileCard.style.display = "block";
+  if (el.issuePanel) el.issuePanel.style.display = "block";
   // Admin card stays hidden until checkPlatformAdmin confirms via server RPC
-  if (el.adminCard) el.adminCard.classList.remove("auth-show");
+  if (el.adminCard) el.adminCard.style.display = "none";
   el.btnSignOut.style.display = "inline-flex";
   if (el.btnHeaderSignOut) el.btnHeaderSignOut.style.display = "inline-flex";
   if (el.headerUserEmail) {
@@ -494,11 +492,7 @@ async function checkPlatformAdmin(){
   isPlatformAdmin = !error && data === true;
   // Only show admin panel after server confirms admin status
   if (el.adminCard) {
-    if (isPlatformAdmin) {
-      el.adminCard.classList.add("auth-show");
-    } else {
-      el.adminCard.classList.remove("auth-show");
-    }
+    el.adminCard.style.display = isPlatformAdmin ? "block" : "none";
   }
   if (isPlatformAdmin) {
     adminLoadContracts();
