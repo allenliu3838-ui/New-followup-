@@ -88,9 +88,9 @@
         <!-- 个人科研版 -->
         <div class="price-card">
           <div class="price-title">个人科研版（Pro）</div>
-          <div class="price-main">¥499<span class="small muted"> / 月起（含 1 席）</span></div>
-          <div class="small" style="margin-top:4px">每增加 1 席：+¥99 / 月</div>
-          <div class="small muted">年付：¥4,790 / 年</div>
+          <div class="price-main">¥499<span class="small muted"> / 月（含 3 个项目）</span></div>
+          <div class="small" style="margin-top:4px">额外项目：+¥99 / 个 / 月</div>
+          <div class="small muted">年付：¥4,790 / 年（含 3 个项目，额外 +¥950 / 个 / 年）</div>
           <div class="small" style="margin-top:8px">适用于单中心科研登记、课题数据管理与可复现导出。</div>
           <ul class="small" style="margin:8px 0 0 0;padding-left:18px;line-height:1.8">
             <li>标准化 CRF 数据录入与管理</li>
@@ -98,7 +98,9 @@
             <li>基础 QC 校验与问题提示</li>
             <li>统计分析代码模板 / 示例（不承诺发表）</li>
           </ul>
-          <div style="margin-top:12px">
+          <div class="muted small" style="margin-top:8px">支持微信、支付宝、公司对公转账</div>
+          <div class="btnbar" style="margin-top:8px">
+            <a class="btn primary small" href="/checkout">立即升级</a>
             <a class="btn small" href="/staff">申请试用</a>
           </div>
         </div>
@@ -161,18 +163,23 @@
       <h2 style="margin:0 0 8px">FAQ</h2>
 
       <details class="faq" open>
-        <summary>席位怎么计算？</summary>
-        <div class="small">席位按可登录后台并进行项目操作的成员数计算（通常包括 PI / 协调员 / 录入员 / 统计人员）。</div>
+        <summary>Pro 包含几个项目？</summary>
+        <div class="small">Pro 基础包含 3 个项目，覆盖大多数个人科研场景。如需更多项目，月付每个 +¥99，年付每个 +¥950。</div>
       </details>
 
       <details class="faq">
-        <summary>超出席位怎么收费？</summary>
-        <div class="small">按所选套餐的"超出席位单价"按月计费；建议在项目启动前预估高峰协作人数。</div>
+        <summary>支持哪些付款方式？</summary>
+        <div class="small">支持微信扫码、支付宝扫码和公司对公转账。个人/小团队建议扫码支付，医院/机构建议对公转账。</div>
       </details>
 
       <details class="faq">
         <summary>年付如何计算？</summary>
-        <div class="small">Pro 版标准年付 ¥4,790 / 年（等效月付 8 折）。机构版按合同条款执行。</div>
+        <div class="small">Pro 年付 ¥4,790 / 年（含 3 个项目，约月付 8 折）。机构版按合同条款执行。</div>
+      </details>
+
+      <details class="faq">
+        <summary>如何开票？</summary>
+        <div class="small">在升级页面下单时可填写开票信息，默认支持电子发票。</div>
       </details>
 
       <details class="faq">
@@ -186,8 +193,8 @@
       </details>
 
       <div class="btnbar" style="margin-top:12px">
-        <a class="btn primary" href="/demo" data-track="click_book_demo" data-track-source="pricing">预约演示</a>
-        <a class="btn" href="/collaboration">查看合作项目</a>
+        <a class="btn primary" href="/checkout" data-track="click_upgrade" data-track-source="pricing_faq">立即升级 Pro</a>
+        <a class="btn" href="/demo" data-track="click_book_demo" data-track-source="pricing_faq">预约演示</a>
         <a class="btn" href="/staff">开始试用</a>
       </div>
 
@@ -195,7 +202,10 @@
       <div class="muted small">本系统用于科研随访登记与研究汇总，不提供诊断 / 处方建议；请勿录入任何可识别个人信息（PII）。更多：<a href="/security">安全与合规</a> · <a href="/deployment">部署方式</a></div>
     </div>
   </div>
-  <footer class="site-footer">© 2025 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></footer>
+  <footer class="site-footer">
+    <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
+    <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></div>
+  </footer>
   <script src="/analytics.js"></script>
 </body>
 </html>

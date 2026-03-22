@@ -47,7 +47,7 @@
             </div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <div id="trialBadge" class="badge" style="display:none"></div>
-              <a id="upgradeBtn" class="btn small primary" href="#" target="_blank"
+              <a id="upgradeBtn" class="btn small primary" href="#"
                  style="display:none;text-decoration:none">立即升级</a>
             </div>
           </div>
@@ -699,6 +699,16 @@
 
     <div class="hr"></div>
 
+    <!-- 订单管理 -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <h3 style="margin:0;font-size:15px">支付订单</h3>
+      <span id="adminOrdersBadge" class="badge warn" style="display:none;font-size:11px"></span>
+      <button class="btn small" id="btnAdminLoadOrders" style="margin-left:auto">刷新</button>
+    </div>
+    <div id="adminOrders" class="muted small">加载中…</div>
+
+    <div class="hr"></div>
+
     <!-- 用户搜索 -->
     <h3 style="margin:0 0 8px 0;font-size:15px">用户 & 项目搜索</h3>
     <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
@@ -715,6 +725,9 @@
   <script src="/config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script type="module" src="/staff.js"></script>
-  <footer class="site-footer">© 2025 上海胤域医学科技有限公司 · 肾域·医生 · <a href="/security">安全合规</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></footer>
+  <footer class="site-footer">
+    <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
+    <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·医生 · <a href="/security">安全合规</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></div>
+  </footer>
 </body>
 </html>
