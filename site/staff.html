@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>肾域·科研 — 登录后台</title>
+  <title>科研工作台 · 肾域·科研</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
@@ -32,6 +32,13 @@
     .issue-warning  { background:#fef3c7;color:#b45309; }
     .issue-info     { background:#dbeafe;color:#1d4ed8; }
     .issue-resolved { background:#d1fae5;color:#065f46; }
+    /* Hide auth-gated content before JS resolves auth state */
+    #profileCard, #appCard, #adminCard, #issuePanel { display:none !important; }
+    .auth-resolved #profileCard.auth-show,
+    .auth-resolved #appCard.auth-show,
+    .auth-resolved #adminCard.auth-show,
+    .auth-resolved #issuePanel.auth-show { display:block !important; }
+    .auth-resolved #loginCard.auth-hide { display:none !important; }
   </style>
 </head>
 <body>
@@ -42,13 +49,15 @@
         <div style="flex:1">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
             <div>
-              <h1 class="brand-title">肾域·医生</h1>
-              <div class="brand-sub">医生工作台</div>
+              <h1 class="brand-title">肾域·科研</h1>
+              <div class="brand-sub">科研工作台</div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span id="headerUserEmail" class="muted small" data-testid="user-email" style="display:none"></span>
               <div id="trialBadge" class="badge" style="display:none"></div>
               <a id="upgradeBtn" class="btn small primary" href="#"
                  style="display:none;text-decoration:none">立即升级</a>
+              <button class="btn small" id="btnHeaderSignOut" data-testid="signout-btn" style="display:none">退出登录</button>
             </div>
           </div>
         </div>
@@ -69,7 +78,7 @@
       </div>
     </div>
 
-    <div class="card" id="loginCard">
+    <div class="card" id="loginCard" data-testid="login-card">
       <h2 style="margin:0 0 6px 0">登录</h2>
       <div class="muted small">使用邮箱和密码登录后台。首次使用请点击「注册账号」。</div>
       <label id="emailLabel">邮箱</label>
@@ -163,7 +172,7 @@
       </div>
     </div>
 
-    <div class="card" id="appCard" style="display:none">
+    <div class="card" id="appCard" data-testid="workspace-card" style="display:none">
       <div class="row">
         <div class="col">
           <h2 style="margin:0 0 6px 0">项目</h2>
@@ -680,7 +689,7 @@
   </div>
 
   <!-- ===== 平台管理员面板（仅平台管理员可见） ===== -->
-  <div class="card" id="adminCard" style="display:none">
+  <div class="card" id="adminCard" data-testid="admin-card" style="display:none">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
       <h2 style="margin:0">🔑 平台管理员</h2>
       <span class="badge ok" style="font-size:11px">仅你可见</span>
@@ -722,12 +731,13 @@
     <div id="adminResults" style="margin-top:14px"></div>
   </div>
 
+  <script src="/lib/error-logger.js"></script>
   <script src="/config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script type="module" src="/staff.js"></script>
   <footer class="site-footer">
     <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
-    <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·医生 · <a href="/security">安全合规</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></div>
+    <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></div>
   </footer>
 </body>
 </html>

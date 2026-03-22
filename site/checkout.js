@@ -225,6 +225,7 @@ async function createOrder() {
     fillPaymentInfo(data.order_no, data.amount_due);
     goToStep(3);
   } catch (e) {
+    if (window.ErrorLogger) ErrorLogger.log("checkout.createOrder", e);
     toast("下单失败：" + (e?.message || e));
   } finally {
     el.btnToStep3.disabled = false;
@@ -313,6 +314,7 @@ async function submitProof() {
     toast("凭证已提交，等待平台核验");
     loadMyOrders();
   } catch (e) {
+    if (window.ErrorLogger) ErrorLogger.log("checkout.submitProof", e);
     toast("提交失败：" + (e?.message || e));
   } finally {
     el.btnSubmitProof.disabled = false;
@@ -398,6 +400,9 @@ async function init() {
 
   el.loginPrompt.style.display = "none";
   el.checkoutMain.style.display = "block";
+
+  // Show loading state for orders now that we know user is logged in
+  el.myOrdersList.textContent = "加载中…";
 
   // Pre-fill email
   el.payerEmail.value = user.email || "";

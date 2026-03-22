@@ -61,7 +61,7 @@
     <!-- Header -->
     <div class="card">
       <div class="brand">
-        <img src="/assets/kidneysphere-ai.png" alt="肾域AI"/>
+        <img src="/assets/kidneysphere-ai.png" alt="肾域·科研"/>
         <div>
           <h1 class="brand-title">支付中心</h1>
           <div class="brand-sub">升级 Pro · 支持微信 / 支付宝 / 对公转账</div>
@@ -75,12 +75,15 @@
     </div>
 
     <!-- 未登录提示 -->
-    <div class="card" id="loginPrompt" style="display:none">
-      <div class="warnbox">请先 <a href="/staff">登录</a> 后再进行升级购买。</div>
+    <div class="card" id="loginPrompt" data-testid="checkout-login-prompt" style="display:none">
+      <div class="warnbox">
+        请先 <a href="/staff" data-testid="checkout-login-link">登录</a> 后再进行升级购买。
+        <div class="small muted" style="margin-top:6px">登录后将自动返回此页面。</div>
+      </div>
     </div>
 
     <!-- 主内容（登录后可见） -->
-    <div id="checkoutMain" style="display:none">
+    <div id="checkoutMain" data-testid="checkout-main" style="display:none">
 
       <!-- Step Indicator -->
       <div class="card">
@@ -201,7 +204,7 @@
         <h2 style="margin:0 0 4px">付款</h2>
         <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
           <span>订单号：</span>
-          <code id="orderNoDisplay">—</code>
+          <code id="orderNoDisplay" data-testid="order-no"></code>
           <span class="copy-btn" id="copyOrderNo">复制</span>
         </div>
         <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px">
@@ -333,7 +336,7 @@
           <h2 style="margin:0">我的订单</h2>
           <button class="btn small" id="btnRefreshOrders">刷新</button>
         </div>
-        <div id="myOrdersList" class="muted small">加载中…</div>
+        <div id="myOrdersList" data-testid="my-orders" class="muted small"></div>
       </div>
 
     </div>
@@ -344,6 +347,7 @@
     <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></div>
   </footer>
 
+  <script src="/lib/error-logger.js"></script>
   <script src="/config.js"></script>
   <script type="module" src="/checkout.js"></script>
   <script src="/analytics.js"></script>

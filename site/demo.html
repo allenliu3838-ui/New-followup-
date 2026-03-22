@@ -46,7 +46,7 @@
       <div class="hr"></div>
 
       <!-- Form -->
-      <form id="demoForm" autocomplete="on">
+      <form id="demoForm" data-testid="demo-form" autocomplete="on">
         <div class="row">
           <div class="col">
             <label>您的姓名 <span style="color:#dc2626">*</span></label>
@@ -140,7 +140,7 @@
         <label style="margin-top:14px;display:block;font-size:12px;color:#64748b">补充说明 / 您最想了解的功能</label>
         <textarea id="f_message" placeholder="例如：我们是 3 个中心的 IgAN 队列，约 200 例，想了解多中心合并与论文包功能..." rows="4"></textarea>
 
-        <div id="formErr" class="warnbox" style="display:none;margin-top:10px"></div>
+        <div id="formErr" class="warnbox" data-testid="demo-error" style="display:none;margin-top:10px"></div>
 
         <p style="margin-top:14px;font-size:11px;color:#94a3b8;line-height:1.6">
           提交即表示您同意我们收集上述信息（姓名、机构、邮箱及您填写的选填项）用于安排演示或咨询跟进，
@@ -150,12 +150,12 @@
         </p>
 
         <div class="btnbar" style="margin-top:10px">
-          <button class="btn primary" type="submit" id="btnSubmit">提交申请</button>
+          <button class="btn primary" type="submit" id="btnSubmit" data-testid="demo-submit">提交申请</button>
         </div>
       </form>
 
-      <!-- Success state -->
-      <div class="demo-success" id="demoSuccess">
+      <!-- Success state: hidden by default, shown only after confirmed server-side submit -->
+      <div class="demo-success" id="demoSuccess" data-testid="demo-success" aria-hidden="true">
         <div class="icon">✅</div>
         <h2>申请已提交！</h2>
         <p class="small">我们已收到您的申请，将在 <b>1 个工作日内</b>按您的咨询类型（演示 / 加入项目 / 发起项目 / 机构合作）与您联系。<br/>如需加急，请直接发邮件至 <a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a>。</p>
@@ -246,7 +246,9 @@
         reset();
       } else {
         form.style.display = 'none';
-        document.getElementById('demoSuccess').style.display = 'block';
+        var successEl = document.getElementById('demoSuccess');
+        successEl.style.display = 'block';
+        successEl.setAttribute('aria-hidden', 'false');
       }
     });
 

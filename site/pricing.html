@@ -19,7 +19,7 @@
   <div class="container">
     <div class="card">
       <div class="brand">
-        <img src="/assets/kidneysphere-ai.png" alt="肾域AI KidneySphere AI"/>
+        <img src="/assets/kidneysphere-ai.png" alt="肾域·科研"/>
         <div>
           <h1 class="brand-title">价格与方案</h1>
           <div class="brand-sub">科研优先 · 多中心合并 · IgAN MEST‑C · 数据标准化与质量治理</div>
@@ -88,9 +88,9 @@
         <!-- 个人科研版 -->
         <div class="price-card">
           <div class="price-title">个人科研版（Pro）</div>
-          <div class="price-main">¥499<span class="small muted"> / 月（含 3 个项目）</span></div>
-          <div class="small" style="margin-top:4px">额外项目：+¥99 / 个 / 月</div>
-          <div class="small muted">年付：¥4,790 / 年（含 3 个项目，额外 +¥950 / 个 / 年）</div>
+          <div class="price-main" data-testid="pricing-pro-price"><span data-pricing="proMonthlyBase">¥499</span><span class="small muted"> / 月（含 <span data-pricing="proBaseProjects">3</span> 个项目）</span></div>
+          <div class="small" style="margin-top:4px" data-pricing="proMonthlyExtraLabel">额外项目：+¥99 / 个 / 月</div>
+          <div class="small muted" data-pricing="proYearlyLabel">年付：¥4,790 / 年（含 3 个项目，额外 +¥950 / 个 / 年）</div>
           <div class="small" style="margin-top:8px">适用于单中心科研登记、课题数据管理与可复现导出。</div>
           <ul class="small" style="margin:8px 0 0 0;padding-left:18px;line-height:1.8">
             <li>标准化 CRF 数据录入与管理</li>
@@ -164,7 +164,7 @@
 
       <details class="faq" open>
         <summary>Pro 包含几个项目？</summary>
-        <div class="small">Pro 基础包含 3 个项目，覆盖大多数个人科研场景。如需更多项目，月付每个 +¥99，年付每个 +¥950。</div>
+        <div class="small">Pro 基础包含 <span data-pricing="proBaseProjects">3</span> 个项目，覆盖大多数个人科研场景。如需更多项目，月付每个 +<span data-pricing="proMonthlyExtra">¥99</span>，年付每个 +<span data-pricing="proYearlyExtra">¥950</span>。</div>
       </details>
 
       <details class="faq">
@@ -174,7 +174,7 @@
 
       <details class="faq">
         <summary>年付如何计算？</summary>
-        <div class="small">Pro 年付 ¥4,790 / 年（含 3 个项目，约月付 8 折）。机构版按合同条款执行。</div>
+        <div class="small">Pro 年付 <span data-pricing="proYearlyBase">¥4,790</span> / 年（含 <span data-pricing="proBaseProjects">3</span> 个项目，约月付 8 折）。机构版按合同条款执行。</div>
       </details>
 
       <details class="faq">
@@ -206,6 +206,8 @@
     <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
     <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></div>
   </footer>
+  <script src="/config.js"></script>
+  <script src="/pricing-config.js"></script>
   <script src="/analytics.js"></script>
 </body>
 </html>
