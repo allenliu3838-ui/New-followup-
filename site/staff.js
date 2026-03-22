@@ -461,7 +461,11 @@ async function checkPlatformAdmin(){
   const { data, error } = await sb.rpc("is_platform_admin");
   isPlatformAdmin = !error && data === true;
   if (el.adminCard) el.adminCard.style.display = isPlatformAdmin ? "block" : "none";
-  if (isPlatformAdmin) adminLoadContracts();
+  if (isPlatformAdmin) {
+    adminLoadContracts();
+    // Re-render trial badge now that admin status is confirmed
+    renderTrialBadge(selectedProject);
+  }
 }
 
 async function sendMagicLink(){
