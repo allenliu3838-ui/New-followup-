@@ -34,11 +34,11 @@
     .issue-resolved { background:#d1fae5;color:#065f46; }
     /* Hide auth-gated content before JS resolves auth state */
     #profileCard, #appCard, #adminCard, #issuePanel { display:none !important; }
-    .auth-resolved #profileCard.auth-show,
-    .auth-resolved #appCard.auth-show,
-    .auth-resolved #adminCard.auth-show,
-    .auth-resolved #issuePanel.auth-show { display:block !important; }
-    .auth-resolved #loginCard.auth-hide { display:none !important; }
+    #profileCard.auth-show,
+    #appCard.auth-show,
+    #adminCard.auth-show,
+    #issuePanel.auth-show { display:block !important; }
+    #loginCard.auth-hide { display:none !important; }
   </style>
 </head>
 <body>
