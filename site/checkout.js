@@ -193,6 +193,13 @@ async function createOrder() {
   const count = Math.max(3, parseInt(el.projectCount.value) || 3);
   const extra = count - (b.PRO_BASE_PROJECTS || 3);
 
+  // 发票必填校验
+  if (el.invoiceNeeded.value === "yes") {
+    if (!el.invoiceTitle?.value.trim()) { toast("请填写发票抬头"); return; }
+    if (!el.invoiceTaxNo?.value.trim()) { toast("请填写税号"); return; }
+    if (!el.invoiceEmail?.value.trim()) { toast("请填写收票邮箱"); return; }
+  }
+
   el.btnToStep3.disabled = true;
   el.btnToStep3.textContent = "提交中…";
 
@@ -248,6 +255,8 @@ function setupUpload() {
 
 function handleFile(file) {
   if (file.size > 10 * 1024 * 1024) { toast("文件超过 10MB"); return; }
+  const validTypes = ["image/png","image/jpeg","image/jpg","image/webp","application/pdf"];
+  if (!validTypes.includes(file.type)) { toast("只支持 PNG / JPG / PDF 格式"); return; }
   el.uploadZone.classList.add("has-file");
   el.uploadFileName.textContent = file.name;
   el.uploadPreview.style.display = "block";
