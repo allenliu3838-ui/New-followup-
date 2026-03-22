@@ -2711,33 +2711,53 @@ function renderAdminOrders(rows){
   c.innerHTML = html;
 }
 
+let _adminOrderBusy = false;
+
 async function adminVerifyOrder(orderId){
+  if (_adminOrderBusy) return;
   const startEl = qs(`#ostart_${orderId}`);
   const endEl   = qs(`#oend_${orderId}`);
   const noteEl  = qs(`#onote_${orderId}`);
 
+  // 日期校验
+  if (startEl?.value && isNaN(new Date(startEl.value).getTime())) { toast("生效日期无效"); return; }
+  if (endEl?.value && isNaN(new Date(endEl.value).getTime())) { toast("到期日期无效"); return; }
+
   if (!confirm(`确认到账并开通？用户所有项目将升级至到期日 ${endEl?.value || "（默认）"}`)) return;
 
-  const params = { p_order_id: orderId };
-  if (startEl?.value) params.p_start_at = new Date(startEl.value).toISOString();
-  if (endEl?.value)   params.p_end_at   = new Date(endEl.value).toISOString();
-  if (noteEl?.value.trim()) params.p_admin_notes = noteEl.value.trim();
+  _adminOrderBusy = true;
+  try {
+    const params = { p_order_id: orderId };
+    if (startEl?.value) params.p_start_at = new Date(startEl.value).toISOString();
+    if (endEl?.value)   params.p_end_at   = new Date(endEl.value).toISOString();
+    if (noteEl?.value?.trim()) params.p_admin_notes = noteEl.value.trim();
 
-  const { error } = await sb.rpc("admin_verify_order", params);
-  if (error){ toast("操作失败：" + error.message); return; }
-  toast("已确认到账并开通权益");
-  adminLoadOrders();
+    const { error } = await sb.rpc("admin_verify_order", params);
+    if (error){ toast("操作失败：" + error.message); return; }
+    toast("已确认到账并开通权益");
+    adminLoadOrders();
+  } finally {
+    _adminOrderBusy = false;
+  }
 }
 
 async function adminRejectOrder(orderId){
-  const reason = prompt("驳回原因（用户可见）：");
+  if (_adminOrderBusy) return;
+  const reason = prompt("驳回原因（用户可见，必填）：");
   if (reason === null) return;
-  const { error } = await sb.rpc("admin_reject_order", {
-    p_order_id: orderId, p_reject_reason: reason || null
-  });
-  if (error){ toast("操作失败：" + error.message); return; }
-  toast("已驳回");
-  adminLoadOrders();
+  if (!reason.trim()) { toast("驳回原因不能为空"); return; }
+
+  _adminOrderBusy = true;
+  try {
+    const { error } = await sb.rpc("admin_reject_order", {
+      p_order_id: orderId, p_reject_reason: reason.trim()
+    });
+    if (error){ toast("操作失败：" + error.message); return; }
+    toast("已驳回");
+    adminLoadOrders();
+  } finally {
+    _adminOrderBusy = false;
+  }
 }
 
 async function adminViewProofs(orderId){
