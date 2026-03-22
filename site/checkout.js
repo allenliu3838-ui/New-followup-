@@ -112,9 +112,24 @@ function goToStep(n) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-// ── Copy to clipboard ────────────────────────────────────
+// ── Copy to clipboard (兼容 HTTP) ────────────────────────
 function copyText(text, label) {
-  navigator.clipboard.writeText(text).then(() => toast(`已复制${label || ""}`)).catch(() => {});
+  if (!text) { toast("无内容可复制"); return; }
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).then(() => toast(`已复制${label || ""}`)).catch(() => fallbackCopy(text, label));
+  } else {
+    fallbackCopy(text, label);
+  }
+}
+function fallbackCopy(text, label) {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.cssText = "position:fixed;left:-9999px;top:0";
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand("copy"); toast(`已复制${label || ""}`); }
+  catch { toast("复制失败，请手动复制"); }
+  ta.remove();
 }
 
 // ── Payment Method Tabs ──────────────────────────────────
@@ -129,25 +144,35 @@ function setupPayTabs() {
   });
 }
 
-// ── Fill payment info from config ────────────────────────
-function fillPaymentInfo(orderNo, amount) {
+// ── Pre-fill static payment info from config (QR, bank) ──
+function prefillPaymentConfig() {
   const b = B();
-  const memo = orderNo;
-
   // QR images
-  if (el.wechatQrImg = qs("#wechatQrImg"))  el.wechatQrImg.src = b.WECHAT_QR_IMG || "";
-  if (el.alipayQrImg = qs("#alipayQrImg"))  el.alipayQrImg.src = b.ALIPAY_QR_IMG || "";
-  const wl = qs("#wechatLabel"); if (wl) wl.textContent = b.WECHAT_LABEL || "";
-  const al = qs("#alipayLabel"); if (al) al.textContent = b.ALIPAY_LABEL || "";
-
-  // Memos
-  [qs("#wechatMemo"), qs("#alipayMemo")].forEach(m => { if (m) m.textContent = memo; });
-  const bankMemo = qs("#bankMemo"); if (bankMemo) bankMemo.textContent = `KS${orderNo}`;
-
+  const wImg = qs("#wechatQrImg"); if (wImg) wImg.src = b.WECHAT_QR_IMG || "";
+  const aImg = qs("#alipayQrImg"); if (aImg) aImg.src = b.ALIPAY_QR_IMG || "";
+  const wl = qs("#wechatLabel");   if (wl) wl.textContent = b.WECHAT_LABEL || "";
+  const al = qs("#alipayLabel");   if (al) al.textContent = b.ALIPAY_LABEL || "";
   // Bank info
   const bn = qs("#bankName");      if (bn) bn.textContent = b.BANK_NAME || "";
   const bb = qs("#bankBranch");    if (bb) bb.textContent = b.BANK_BRANCH || "";
   const ba = qs("#bankAccount");   if (ba) ba.textContent = b.BANK_ACCOUNT || "";
+  // Bank account copy (always available)
+  const cba = qs("#copyBankAccount"); if (cba) cba.onclick = () => copyText(b.BANK_ACCOUNT || "", "银行账号");
+}
+
+// ── Fill order-specific payment info ─────────────────────
+function fillPaymentInfo(orderNo, amount) {
+  const b = B();
+  const memo = orderNo;
+
+  // Re-fill config (in case)
+  prefillPaymentConfig();
+
+  // Order-specific memos
+  [qs("#wechatMemo"), qs("#alipayMemo")].forEach(m => { if (m) m.textContent = memo; });
+  const bankMemo = qs("#bankMemo"); if (bankMemo) bankMemo.textContent = `KS${orderNo}`;
+
+  // Amount
   const bamt = qs("#bankAmount");  if (bamt) bamt.textContent = `¥${amount}`;
 
   // Display
@@ -157,7 +182,6 @@ function fillPaymentInfo(orderNo, amount) {
   // Copy buttons
   el.copyOrderNo.onclick = () => copyText(orderNo, "订单号");
   el.copyAmount.onclick = () => copyText(String(amount), "金额");
-  const cba = qs("#copyBankAccount"); if (cba) cba.onclick = () => copyText(b.BANK_ACCOUNT || "", "银行账号");
   const cwm = qs("#copyWechatMemo");  if (cwm) cwm.onclick = () => copyText(memo, "备注");
   const cam = qs("#copyAlipayMemo");  if (cam) cam.onclick = () => copyText(memo, "备注");
   const cbm = qs("#copyBankMemo");    if (cbm) cbm.onclick = () => copyText(`KS${orderNo}`, "转账备注");
@@ -394,8 +418,9 @@ async function init() {
   el.btnBackTo2.addEventListener("click", () => goToStep(2));
   el.btnSubmitProof.addEventListener("click", submitProof);
 
-  // Payment tabs
+  // Payment tabs & static payment info
   setupPayTabs();
+  prefillPaymentConfig();
 
   // Upload
   setupUpload();
