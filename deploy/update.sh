@@ -63,7 +63,12 @@ for dir in "${SITE_DIRS[@]}"; do
 done
 
 echo ""
-echo ">>> [4/4] 重载 Nginx..."
+echo ">>> [4/4] 更新 Nginx 配置并重载..."
+if [ -f "$TEMP_DIR/deploy/nginx.conf" ]; then
+  cp "$TEMP_DIR/deploy/nginx.conf" /etc/nginx/conf.d/kidneysphere.conf 2>/dev/null || \
+  cp "$TEMP_DIR/deploy/nginx.conf" /etc/nginx/sites-available/kidneysphere 2>/dev/null || \
+  echo "    ⚠ Nginx 配置未自动更新，请手动复制 deploy/nginx.conf"
+fi
 nginx -t && systemctl reload nginx
 echo "    ✓ Nginx 已重载"
 
