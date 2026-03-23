@@ -174,12 +174,20 @@
         </div>
 
         <div id="invoiceFields" style="display:none">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <label style="margin:0;white-space:nowrap">发票类型</label>
+            <select id="invoiceType" style="width:140px">
+              <option value="personal">个人</option>
+              <option value="company">单位 / 企业</option>
+            </select>
+            <span class="muted small" id="invoiceTypeHint">个人发票无需税号</span>
+          </div>
           <div class="row">
             <div class="col">
-              <label>发票抬头</label>
-              <input id="invoiceTitle" placeholder="公司/单位全称"/>
+              <label id="invoiceTitleLabel">发票抬头</label>
+              <input id="invoiceTitle" placeholder="您的真实姓名"/>
             </div>
-            <div class="col">
+            <div class="col" id="invoiceTaxNoCol">
               <label>税号</label>
               <input id="invoiceTaxNo" placeholder="统一社会信用代码"/>
             </div>

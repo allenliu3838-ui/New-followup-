@@ -26,11 +26,15 @@ const el = {
   payerName:     qs("#payerName"),
   payerEmail:    qs("#payerEmail"),
   payerHospital: qs("#payerHospital"),
-  invoiceNeeded: qs("#invoiceNeeded"),
-  invoiceFields: qs("#invoiceFields"),
-  invoiceTitle:  qs("#invoiceTitle"),
-  invoiceTaxNo:  qs("#invoiceTaxNo"),
-  invoiceEmail:  qs("#invoiceEmail"),
+  invoiceNeeded:    qs("#invoiceNeeded"),
+  invoiceFields:    qs("#invoiceFields"),
+  invoiceType:      qs("#invoiceType"),
+  invoiceTypeHint:  qs("#invoiceTypeHint"),
+  invoiceTitleLabel: qs("#invoiceTitleLabel"),
+  invoiceTaxNoCol:  qs("#invoiceTaxNoCol"),
+  invoiceTitle:     qs("#invoiceTitle"),
+  invoiceTaxNo:     qs("#invoiceTaxNo"),
+  invoiceEmail:     qs("#invoiceEmail"),
   orderNotes:    qs("#orderNotes"),
   btnBackTo1:    qs("#btnBackTo1"),
   btnToStep3:    qs("#btnToStep3"),
@@ -196,7 +200,9 @@ async function createOrder() {
   // 发票必填校验
   if (el.invoiceNeeded.value === "yes") {
     if (!el.invoiceTitle?.value.trim()) { toast("请填写发票抬头"); return; }
-    if (!el.invoiceTaxNo?.value.trim()) { toast("请填写税号"); return; }
+    if (el.invoiceType?.value !== "personal" && !el.invoiceTaxNo?.value.trim()) {
+      toast("请填写税号（单位发票必填）"); return;
+    }
     if (!el.invoiceEmail?.value.trim()) { toast("请填写收票邮箱"); return; }
   }
 
@@ -213,6 +219,7 @@ async function createOrder() {
       p_payer_email:    el.payerEmail.value.trim() || null,
       p_payer_hospital: el.payerHospital.value.trim() || null,
       p_invoice_needed: el.invoiceNeeded.value === "yes",
+      p_invoice_type:   el.invoiceType?.value || "company",
       p_invoice_title:  el.invoiceTitle?.value.trim() || null,
       p_invoice_tax_no: el.invoiceTaxNo?.value.trim() || null,
       p_invoice_email:  el.invoiceEmail?.value.trim() || null,
@@ -423,6 +430,18 @@ async function init() {
   // Invoice toggle
   el.invoiceNeeded.addEventListener("change", () => {
     el.invoiceFields.style.display = el.invoiceNeeded.value === "yes" ? "block" : "none";
+  });
+
+  // Invoice type toggle: personal hides tax ID field
+  el.invoiceType.addEventListener("change", () => {
+    const isPersonal = el.invoiceType.value === "personal";
+    el.invoiceTaxNoCol.style.display = isPersonal ? "none" : "";
+    el.invoiceTitleLabel.textContent = isPersonal ? "发票抬头（姓名）" : "发票抬头";
+    el.invoiceTitle.placeholder = isPersonal ? "您的真实姓名" : "公司/单位全称";
+    el.invoiceTypeHint.textContent = isPersonal ? "个人发票无需税号" : "增值税普通发票";
+    if (isPersonal && !el.invoiceTitle.value.trim()) {
+      el.invoiceTitle.value = el.payerName.value.trim();
+    }
   });
 
   // Step navigation
