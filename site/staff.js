@@ -157,6 +157,7 @@ const el = {
   contractStatus: qs("#contractStatus"),
   contractApplyForm: qs("#contractApplyForm"),
   contractPlan: qs("#contractPlan"),
+  contractWechat: qs("#contractWechat"),
   contractNote: qs("#contractNote"),
   btnApplyContract: qs("#btnApplyContract"),
 
@@ -2340,6 +2341,10 @@ async function loadMyContract(){
     // 没有申请记录 → 显示申请表单
     c.innerHTML = `<div class="muted small">暂无申请记录。如贵中心符合条件，请填写后提交。</div>`;
     form.style.display = "block";
+    // 预填微信号（如果用户资料里已有联系方式）
+    if (el.contractWechat && el.profContact?.value) {
+      el.contractWechat.value = el.profContact.value;
+    }
     return;
   }
 
@@ -2379,12 +2384,30 @@ function resetContractForm(e){
 }
 
 async function applyContract(){
-  const plan = el.contractPlan?.value;
-  const note = el.contractNote?.value.trim() || null;
+  const plan   = el.contractPlan?.value;
+  const wechat = el.contractWechat?.value.trim() || "";
+  const note   = el.contractNote?.value.trim() || null;
+
+  if (!wechat) {
+    toast("请填写微信号，方便平台联系您");
+    el.contractWechat?.focus();
+    return;
+  }
+
   const btn  = el.btnApplyContract;
   btn.dataset.label = "提交申请";
   setBusy(btn, true);
   try {
+    // 将微信号保存到用户资料的联系方式字段
+    await sb.rpc("upsert_my_profile", {
+      p_real_name:       el.profName?.value.trim()    || null,
+      p_hospital:        el.profHospital?.value.trim()|| null,
+      p_department:      el.profDept?.value.trim()    || null,
+      p_interested_plan: el.profPlan?.value            || null,
+      p_contact:         wechat,
+      p_notes:           el.profNotes?.value.trim()   || null,
+    });
+
     const { error } = await sb.rpc("apply_partner_contract", {
       p_plan: plan, p_note: note
     });
@@ -2524,7 +2547,7 @@ function renderAdminContracts(rows){
         <span class="muted small">${na(r.owner_email)}</span>
         <span class="muted small">·</span>
         <span class="muted small">${na(r.hospital)} ${na(r.department)}</span>
-        ${r.contact ? `<span class="muted small">· 📞 ${escapeHtml(r.contact)}</span>` : ""}
+        ${r.contact ? `<span class="muted small">· 微信: ${escapeHtml(r.contact)}</span>` : ""}
         <span class="muted small" style="margin-left:auto">${fmtDate(r.applied_at)}</span>
       </div>
       <div class="muted small">
