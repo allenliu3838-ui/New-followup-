@@ -450,8 +450,10 @@ async function init(){
 function renderAuthState(){
   const container = document.querySelector(".container");
 
+  const authGated = document.getElementById("authGated");
   if (!user){
     // Anonymous: only show login card, hide everything else
+    if (authGated) authGated.hidden = true;
     el.loginCard.style.display = "block";
     el.appCard.style.display = "none";
     if (el.profileCard) el.profileCard.style.display = "none";
@@ -467,7 +469,8 @@ function renderAuthState(){
     setLoginHint("提示：首次使用请先点击「注册账号」创建账号，之后再登录。");
     return;
   }
-  // Logged in: hide login form, show workspace
+  // Logged in: unhide auth-gated wrapper, then show workspace
+  if (authGated) authGated.hidden = false;
   el.loginCard.style.display = "none";
   el.appCard.style.display = "block";
   if (el.profileCard) el.profileCard.style.display = "block";
