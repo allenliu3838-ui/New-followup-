@@ -98,8 +98,8 @@
 
         <div class="row">
           <div class="col">
-            <label>微信号 / 手机（选填，方便约时间）</label>
-            <input id="f_contact" type="text" placeholder="微信号 或 13x-xxxx-xxxx"/>
+            <label>微信号 / 手机 <span class="muted small">（必填，方便约时间）</span></label>
+            <input id="f_contact" type="text" placeholder="微信号 或 13x-xxxx-xxxx" required/>
           </div>
         </div>
 
@@ -218,6 +218,12 @@
 
       if (!document.getElementById('f_inquiry_type').value) {
         showErr('请选择咨询类型。');
+        reset();
+        return;
+      }
+
+      if (!document.getElementById('f_contact').value.trim()) {
+        showErr('请填写微信号或手机号，方便我们联系您。');
         reset();
         return;
       }
