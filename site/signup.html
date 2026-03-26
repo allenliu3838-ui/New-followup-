@@ -198,6 +198,15 @@
           qs("#registerHint").textContent = "该邮箱已注册，请直接登录。";
           return;
         }
+        // Log consent
+        try {
+          await sb.rpc("log_consent", {
+            p_action: "register",
+            p_policy_type: "both",
+            p_policy_version: "v1.0",
+            p_user_agent: navigator.userAgent || null,
+          });
+        } catch (_) { /* best-effort */ }
         toast("注册成功");
       } catch (e) {
         toast("注册失败：" + (e?.message || e));

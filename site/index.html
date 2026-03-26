@@ -29,7 +29,9 @@
     }
     var h = location.hash;
     if (h && (h.includes('access_token=') || h.includes('type=recovery') || h.includes('error='))) {
-      location.replace('/staff' + h);
+      // Route password recovery to /login, other auth callbacks to /staff
+      var dest = h.includes('type=recovery') ? '/login' : '/staff';
+      location.replace(dest + h);
     }
   </script>
   <style>

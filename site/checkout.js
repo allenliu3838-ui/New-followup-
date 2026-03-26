@@ -279,6 +279,12 @@ function setupUploadHandlers() {
 
 // ── Create Order ─────────────────────────────────────────
 async function createOrder() {
+  // If order already created (e.g. user went back from step 3), just go to step 3
+  if (currentOrder) {
+    goToStep(3);
+    return;
+  }
+
   const b = B();
   const count = Math.max(3, parseInt(el.projectCount.value) || 3);
   const extra = count - (b.PRO_BASE_PROJECTS || 3);
@@ -319,6 +325,15 @@ async function createOrder() {
     if (error) throw error;
 
     currentOrder = data;
+    // Log consent for checkout
+    try {
+      await sb.rpc("log_consent", {
+        p_action: "checkout",
+        p_policy_type: "both",
+        p_policy_version: "v1.0",
+        p_user_agent: navigator.userAgent || null,
+      });
+    } catch (_) { /* best-effort */ }
     buildStep3(data.order_no, data.amount_due);
     goToStep(3);
   } catch (e) {
@@ -441,6 +456,28 @@ async function loadMyOrders() {
 
     el.myOrdersList.innerHTML = data.map(o => {
       const s = ORDER_STATUS_MAP[o.status] || { text: o.status, cls: "badge" };
+
+      // Status-specific details
+      let statusDetail = "";
+      if (o.status === "activated" && o.end_at) {
+        statusDetail = `<div class="small" style="margin-top:4px;color:var(--ok)">权益有效至 ${fmtDate(o.end_at)}</div>`;
+      } else if (o.status === "rejected") {
+        statusDetail = `<div class="small" style="margin-top:4px;color:var(--bad)">驳回原因：${escapeHtml(o.reject_reason || "—")}</div>
+          <div class="small muted" style="margin-top:2px">您可以重新上传凭证或联系客服。</div>`;
+      } else if (o.status === "pending_verification") {
+        statusDetail = `<div class="small muted" style="margin-top:4px">凭证已提交，平台将在 1–2 个工作日内核验。${o.submitted_at ? "提交时间：" + fmtDate(o.submitted_at) : ""}</div>`;
+      } else if (o.status === "expired") {
+        statusDetail = `<div class="small muted" style="margin-top:4px">订单已过期。如需继续购买，请重新下单。</div>`;
+      } else if (o.status === "cancelled") {
+        statusDetail = `<div class="small muted" style="margin-top:4px">订单已取消。</div>`;
+      } else if (o.status === "unpaid") {
+        statusDetail = `<div class="small muted" style="margin-top:4px">订单待付款。请尽快完成支付。</div>`;
+      } else if (o.status === "refund_pending") {
+        statusDetail = `<div class="small muted" style="margin-top:4px">退款处理中，请耐心等待。</div>`;
+      } else if (o.status === "refunded") {
+        statusDetail = `<div class="small muted" style="margin-top:4px">已完成退款。</div>`;
+      }
+
       return `<div class="order-status-card">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
           <span class="${s.cls}" style="font-size:11px">${s.text}</span>
@@ -450,11 +487,10 @@ async function loadMyOrders() {
         <div class="small">
           ${planMap[o.plan_code] || o.plan_code} · ${cycleMap[o.billing_cycle] || o.billing_cycle}
           · ${o.project_quota} 个项目
-          · ¥${o.amount_due}
+          · &yen;${o.amount_due}
           ${o.payment_method ? ` · ${methodMap[o.payment_method] || o.payment_method}` : ""}
         </div>
-        ${o.status === "activated" && o.end_at ? `<div class="small" style="margin-top:4px;color:var(--ok)">权益有效至 ${fmtDate(o.end_at)}</div>` : ""}
-        ${o.status === "rejected" ? `<div class="small" style="margin-top:4px;color:var(--bad)">驳回原因：${escapeHtml(o.reject_reason || "—")}</div>` : ""}
+        ${statusDetail}
       </div>`;
     }).join("");
   } catch (e) {

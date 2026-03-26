@@ -84,11 +84,14 @@
       <input id="password" type="password" placeholder="请输入密码"/>
       <label id="confirmPwdLabel" style="display:none">确认新密码</label>
       <input id="confirmPwd" type="password" placeholder="再次输入新密码" style="display:none"/>
-      <div id="registerConsentBox" style="margin-top:10px">
+      <div id="registerConsentBox" style="margin-top:10px;display:none">
         <label style="display:flex;align-items:flex-start;gap:6px;cursor:pointer;margin:0">
           <input type="checkbox" id="agreeTermsStaff" style="width:auto;margin-top:2px"/>
-          <span class="small">我已阅读并同意 <a href="/terms" target="_blank">用户协议</a> 和 <a href="/privacy" target="_blank">隐私政策</a></span>
+          <span class="small">注册即表示同意 <a href="/terms" target="_blank">用户协议</a> 和 <a href="/privacy" target="_blank">隐私政策</a></span>
         </label>
+      </div>
+      <div class="muted small" style="margin-top:8px">
+        还没有账号？<a href="/signup">前往注册页面</a> · 已有账号直接登录即可
       </div>
       <div class="btnbar">
         <button class="btn primary" id="btnSendLink">登录</button>

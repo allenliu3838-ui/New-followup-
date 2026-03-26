@@ -604,8 +604,11 @@ async function registerAccount(){
   const password = el.password?.value || "";
   if (!email){ toast("请输入邮箱"); return; }
   if (!password || password.length < 8){ toast("密码至少需要8位"); return; }
+  // Show consent box on first register attempt
+  const consentBox = qs("#registerConsentBox");
+  if (consentBox) consentBox.style.display = "block";
   const agreeBox = qs("#agreeTermsStaff");
-  if (agreeBox && !agreeBox.checked){ toast("请先阅读并同意用户协议和隐私政策"); return; }
+  if (agreeBox && !agreeBox.checked){ toast("请先勾选同意用户协议和隐私政策"); return; }
   const btn = el.btnRegister;
   setBusy(btn, true);
   try{
@@ -615,6 +618,15 @@ async function registerAccount(){
       options: { emailRedirectTo: `${location.origin}/staff` }
     });
     if (error) throw error;
+    // Log consent after successful registration
+    try {
+      await sb.rpc("log_consent", {
+        p_action: "register",
+        p_policy_type: "both",
+        p_policy_version: "v1.0",
+        p_user_agent: navigator.userAgent || null,
+      });
+    } catch (_) { /* consent logging is best-effort */ }
     if (data?.session) {
       toast("注册成功，已自动登录");
     } else {
