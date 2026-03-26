@@ -84,6 +84,12 @@
       <input id="password" type="password" placeholder="请输入密码"/>
       <label id="confirmPwdLabel" style="display:none">确认新密码</label>
       <input id="confirmPwd" type="password" placeholder="再次输入新密码" style="display:none"/>
+      <div id="registerConsentBox" style="margin-top:10px">
+        <label style="display:flex;align-items:flex-start;gap:6px;cursor:pointer;margin:0">
+          <input type="checkbox" id="agreeTermsStaff" style="width:auto;margin-top:2px"/>
+          <span class="small">我已阅读并同意 <a href="/terms" target="_blank">用户协议</a> 和 <a href="/privacy" target="_blank">隐私政策</a></span>
+        </label>
+      </div>
       <div class="btnbar">
         <button class="btn primary" id="btnSendLink">登录</button>
         <button class="btn" id="btnRegister">注册账号</button>
@@ -175,6 +181,28 @@
         </div>
       </div>
     </div>
+
+    <!-- ===== 账户设置 ===== -->
+    <details class="card" id="accountSettingsCard" style="cursor:pointer">
+      <summary style="font-weight:700;font-size:15px;list-style:none;display:flex;align-items:center;gap:8px">
+        账户设置
+        <span class="muted small" style="font-weight:400">数据导出 · 账户管理 · 联系客服</span>
+      </summary>
+      <div style="margin-top:12px">
+        <div class="infobox" style="margin-bottom:12px">
+          <b>数据存储说明：</b>您的账户和科研数据存储在中国区域的云服务器上。数据传输采用 HTTPS/TLS 加密，数据库实施行级安全策略。
+          如需了解详细的安全措施，请查看 <a href="/security">安全合规</a> 页面。
+        </div>
+        <div class="btnbar">
+          <button class="btn" id="btnExportAccount">导出我的数据</button>
+          <button class="btn danger" id="btnDeleteAccount">注销账户</button>
+          <a class="btn" href="mailto:china@kidneysphere.com">联系客服</a>
+          <a class="btn" href="/privacy" target="_blank">隐私政策</a>
+          <a class="btn" href="/terms" target="_blank">用户协议</a>
+        </div>
+        <div id="accountSettingsHint" class="muted small" style="margin-top:8px"></div>
+      </div>
+    </details>
 
     <div class="card" id="appCard" data-testid="workspace-card" style="display:none">
       <div class="row">
@@ -692,140 +720,8 @@
     </div>
   </div>
 
-  <!-- ===== 平台管理员面板（仅平台管理员可见） ===== -->
-  <div class="card" id="adminCard" data-testid="admin-card" style="display:none">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-      <h2 style="margin:0">🔑 平台管理员</h2>
-      <span class="badge ok" style="font-size:11px">仅你可见</span>
-    </div>
-    <div class="muted small">通过邮箱搜索用户及其项目，管理试用期与权益。</div>
-
-    <div class="hr"></div>
-
-    <!-- 合同管理：待审批 -->
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-      <h3 style="margin:0;font-size:15px">合作申请</h3>
-      <span id="adminContractsBadge" class="badge warn" style="display:none;font-size:11px"></span>
-      <button class="btn small" id="btnAdminLoadContracts" style="margin-left:auto">刷新</button>
-    </div>
-    <div id="adminContracts" class="muted small">加载中…</div>
-
-    <div class="hr"></div>
-
-    <!-- 订单管理 -->
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-      <h3 style="margin:0;font-size:15px">支付订单</h3>
-      <span id="adminOrdersBadge" class="badge warn" style="display:none;font-size:11px"></span>
-      <button class="btn small" id="btnAdminLoadOrders" style="margin-left:auto">刷新</button>
-    </div>
-    <div id="adminOrders" class="muted small">加载中…</div>
-
-    <div class="hr"></div>
-
-    <!-- 销售参考定价（仅管理员可见） -->
-    <details style="margin-bottom:4px">
-      <summary style="cursor:pointer;font-size:15px;font-weight:700;padding:6px 0;list-style:none;display:flex;align-items:center;gap:8px">
-        📋 销售参考定价 <span class="badge" style="font-size:11px;font-weight:400">内部资料 · 勿外传</span>
-      </summary>
-
-      <div style="margin-top:10px;font-size:13px;line-height:1.8">
-
-        <!-- 四档收费模型 -->
-        <div style="font-weight:700;margin-bottom:6px">一、四档收费模型（按项目报价，非 SaaS 订阅）</div>
-
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px">
-          <div style="font-weight:700;color:#1d4ed8">A · 单中心轻定制　¥12,800 – 19,800 / 项 / 首年</div>
-          <div class="muted small" style="margin:4px 0 6px">适用：单中心回顾性 / 前瞻性起步 / 青年医生课题 / 快速建库</div>
-          <div class="small">默认边界：1 课题 · 1 病种 · 4–5 张 CRF · 120–150 变量 · 1 次启动培训 · 1 套基础 QC · 1 次导出模板配置 · 3–6 月支持</div>
-        </div>
-
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px">
-          <div style="font-weight:700;color:#1d4ed8">B · 单中心标准定制　¥29,800 – 49,800 / 项 / 首年</div>
-          <div class="muted small" style="margin:4px 0 6px">适用：科室重点课题 / 多轮字段迭代 / 基金前期数据沉淀 / 准备投稿</div>
-          <div class="small">默认边界：更完整字段设计 · 2 次较大版本迭代 · 更细 QC 规则 · 1 版质控报告模板 · 1 次中期复盘 · 6–12 月支持</div>
-        </div>
-
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px">
-          <div style="font-weight:700;color:#1d4ed8">C · 多中心试点　¥59,800 – 89,800 / 项 / 年</div>
-          <div class="muted small" style="margin:4px 0 6px">适用：牵头单位发起 3–10 家中心合作 / 统一编码 / 统一 CRF / 合并分析路径</div>
-          <div class="small">含 5 家中心打包；额外中心 +¥3,000–5,000 / 中心 / 年</div>
-          <div class="small" style="margin-top:4px">默认边界：多中心统一编码 · CRF / 数据字典共建 · 权限设计 · 质控闭环 · 阶段性数据质量简报</div>
-        </div>
-
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:12px">
-          <div style="font-weight:700;color:#1d4ed8">D · 私有化 / 医院平台版</div>
-          <div class="muted small" style="margin:4px 0 6px">适用：医院本地部署 / 私有云 / 独立数据库 / 院内专网 / 单院域名 / SSO</div>
-          <div class="small">实施费：¥80,000–150,000 &nbsp;·&nbsp; 年维护费：¥30,000–60,000 / 年</div>
-          <div class="small" style="margin-top:4px">以下单独报价：SSO · 院内专网适配 · 审计/备份定制 · 特殊接口 · 复杂安全策略</div>
-        </div>
-
-        <!-- 增值项目 -->
-        <div style="font-weight:700;margin:10px 0 6px">二、增值项（不默认包含，需单独报价）</div>
-        <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px;margin-bottom:12px">
-          <div class="small" style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px">
-            <div>统计分析支持：¥8,000–20,000</div>
-            <div>Table 1 / 图表整理：¥5,000–10,000</div>
-            <div>伦理 / 信息科材料支持：¥3,000–8,000</div>
-            <div>额外培训：¥2,000 / 次</div>
-            <div>额外大改版：¥3,000–5,000 / 轮</div>
-            <div>新增病种模块：¥5,000–15,000</div>
-          </div>
-        </div>
-
-        <!-- 标准项目边界 -->
-        <div style="font-weight:700;margin:10px 0 6px">三、标准项目边界（超出即单独报价）</div>
-        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px;margin-bottom:12px">
-          <div class="small" style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px">
-            <div>1 个病种 / 课题</div>
-            <div>≤ 5 张 CRF 表</div>
-            <div>≤ 150 个变量</div>
-            <div>≤ 2 轮结构性修改</div>
-            <div>1 次培训</div>
-            <div>1 套导出模板</div>
-            <div>1 套 QC 规则</div>
-            <div>支持期 6 个月</div>
-          </div>
-        </div>
-
-        <!-- 收款方式 -->
-        <div style="font-weight:700;margin:10px 0 6px">四、建议收款方式</div>
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:12px">
-          <div class="small">
-            <b>常规项目：</b>50% 签约启动 · 40% 首版上线 / 建库完成 · 10% 首轮导出或验收<br/>
-            <b>私有化项目：</b>60% 启动 · 30% 部署完成 · 10% 验收
-          </div>
-        </div>
-
-        <!-- 销售注意事项 -->
-        <div style="font-weight:700;margin:10px 0 6px">五、销售沟通要点</div>
-        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px">
-          <ul class="small" style="margin:0;padding-left:16px;line-height:2">
-            <li>公域不公开详细报价，先私信/邮件沟通</li>
-            <li>先问项目结构（病种/中心数/变量量级/周期），再报区间价</li>
-            <li>先卖"项目交付能力"，不要上来先卖"账号数"</li>
-            <li>Pro 负责拉新，定制项目负责盈利，机构版/私有化负责高客单价</li>
-            <li>不承诺发表，不承诺伦理一定通过</li>
-            <li>伦理/信息科材料支持是增值项，不默认白送</li>
-          </ul>
-        </div>
-
-      </div>
-    </details>
-
-    <div class="hr"></div>
-
-    <!-- 用户搜索 -->
-    <h3 style="margin:0 0 8px 0;font-size:15px">用户 & 项目搜索</h3>
-    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
-      <div style="flex:1;min-width:220px">
-        <label>用户邮箱（支持模糊搜索）</label>
-        <input id="adminSearchEmail" type="text" placeholder="例如：researcher@hospital.com"/>
-      </div>
-      <button class="btn primary" id="btnAdminSearch" style="margin-top:4px">搜索</button>
-    </div>
-
-    <div id="adminResults" style="margin-top:14px"></div>
-  </div>
+  <!-- Admin panel: dynamically injected by JS after server-side role check -->
+  <div id="adminCard" data-testid="admin-card" style="display:none"></div>
 
     </div><!-- /authGated -->
 
@@ -835,7 +731,7 @@
   <script type="module" src="/staff.js"></script>
   <footer class="site-footer">
     <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
-    <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></div>
+    <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></div>
   </footer>
 </body>
 </html>

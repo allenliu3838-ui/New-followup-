@@ -77,7 +77,7 @@
     <!-- 未登录提示 -->
     <div class="card" id="loginPrompt" data-testid="checkout-login-prompt" style="display:none">
       <div class="warnbox">
-        请先 <a href="/staff" data-testid="checkout-login-link">登录</a> 后再进行升级购买。
+        请先 <a href="/login?returnTo=/checkout" data-testid="checkout-login-link">登录</a> 后再进行升级购买。
         <div class="small muted" style="margin-top:6px">登录后将自动返回此页面。</div>
       </div>
     </div>
@@ -201,117 +201,23 @@
         <label>备注（选填）</label>
         <input id="orderNotes" placeholder="例如：课题编号、特殊需求等"/>
 
+        <div style="margin-top:12px">
+          <label style="display:flex;align-items:flex-start;gap:6px;cursor:pointer;margin:0">
+            <input type="checkbox" id="agreeTermsCheckout" style="width:auto;margin-top:2px"/>
+            <span class="small">我已阅读并同意 <a href="/terms" target="_blank">用户协议</a> 和 <a href="/privacy" target="_blank">隐私政策</a></span>
+          </label>
+        </div>
+
         <div class="btnbar">
           <button class="btn" id="btnBackTo1">上一步</button>
           <button class="btn primary" id="btnToStep3">下一步：选择付款方式</button>
         </div>
       </div>
 
-      <!-- ===== Step 3: 选择付款方式 & 付款 ===== -->
+      <!-- ===== Step 3: Payment info injected dynamically after order creation ===== -->
       <div class="card step" id="step3">
-        <h2 style="margin:0 0 4px">付款</h2>
-        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
-          <span>订单号：</span>
-          <code id="orderNoDisplay" data-testid="order-no"></code>
-          <span class="copy-btn" id="copyOrderNo">复制</span>
-        </div>
-        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px">
-          <span>应付金额：</span>
-          <span class="amount-big" id="amountDisplay">¥499</span>
-          <span class="copy-btn" id="copyAmount">复制</span>
-        </div>
-
-        <!-- 付款方式 Tabs -->
-        <div class="pay-tabs">
-          <div class="pay-tab active" data-method="wechat_qr">
-            <span class="tab-icon">💚</span>微信支付
-          </div>
-          <div class="pay-tab" data-method="alipay_qr">
-            <span class="tab-icon">💙</span>支付宝
-          </div>
-          <div class="pay-tab" data-method="bank_transfer">
-            <span class="tab-icon">🏦</span>对公转账
-          </div>
-        </div>
-
-        <!-- 微信 -->
-        <div class="pay-panel active" id="panel_wechat_qr">
-          <div class="qr-box">
-            <img id="wechatQrImg" src="" alt="微信收款码"/>
-            <div class="muted small" id="wechatLabel" style="margin-top:6px"></div>
-          </div>
-          <div class="infobox small">
-            <b>付款说明：</b><br/>
-            1. 请打开微信扫一扫，扫描上方二维码<br/>
-            2. 付款金额请与页面显示金额一致<br/>
-            3. 付款备注请填写：<code id="wechatMemo"></code> <span class="copy-btn" id="copyWechatMemo">复制</span><br/>
-            4. 支付完成后点击下方"上传付款凭证"
-          </div>
-        </div>
-
-        <!-- 支付宝 -->
-        <div class="pay-panel" id="panel_alipay_qr">
-          <div class="qr-box">
-            <img id="alipayQrImg" src="" alt="支付宝收款码"/>
-            <div class="muted small" id="alipayLabel" style="margin-top:6px"></div>
-          </div>
-          <div class="infobox small">
-            <b>付款说明：</b><br/>
-            1. 请打开支付宝扫一扫，扫描上方二维码<br/>
-            2. 付款金额请与页面显示金额一致<br/>
-            3. 付款备注请填写：<code id="alipayMemo"></code> <span class="copy-btn" id="copyAlipayMemo">复制</span><br/>
-            4. 支付完成后点击下方"上传付款凭证"
-          </div>
-        </div>
-
-        <!-- 对公转账 -->
-        <div class="pay-panel" id="panel_bank_transfer">
-          <div class="bank-info">
-            <div class="kv">
-              <div class="muted small">公司名称</div><div id="bankName"></div>
-              <div class="muted small">开户行</div><div id="bankBranch"></div>
-              <div class="muted small">银行账号</div>
-              <div><code id="bankAccount"></code> <span class="copy-btn" id="copyBankAccount">复制</span></div>
-              <div class="muted small">转账金额</div><div id="bankAmount" style="font-weight:700;color:var(--brand)"></div>
-            </div>
-          </div>
-          <div class="infobox small" style="margin-top:10px">
-            <b>转账说明：</b><br/>
-            1. 转账备注请填写：<code id="bankMemo"></code> <span class="copy-btn" id="copyBankMemo">复制</span><br/>
-            2. 转账完成后请上传转账回单或凭证截图
-          </div>
-        </div>
-
-        <div class="hr"></div>
-
-        <!-- 上传凭证 -->
-        <h3 style="margin:0 0 8px;font-size:15px">上传付款凭证</h3>
-        <div class="upload-zone" id="uploadZone">
-          <div class="muted">点击选择文件，或拖拽文件到此处</div>
-          <div class="muted small">支持 PNG / JPG / PDF，最大 10MB</div>
-          <input type="file" id="proofFile" accept="image/*,.pdf" style="display:none"/>
-        </div>
-        <div id="uploadPreview" style="display:none;margin-top:8px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span id="uploadFileName" class="small"></span>
-            <button class="btn small" id="btnRemoveFile" style="color:#c0392b">移除</button>
-          </div>
-        </div>
-
-        <div class="row" style="margin-top:10px">
-          <div class="col">
-            <label>实付金额（选填）</label>
-            <input id="proofAmount" type="number" step="0.01" placeholder="和应付一致则可不填"/>
-          </div>
-          <div class="col">
-            <label>付款人姓名 / 账号后四位（选填）</label>
-            <input id="proofPayerInfo" placeholder="方便核验"/>
-          </div>
-        </div>
-
-        <div class="btnbar">
-          <button class="btn" id="btnBackTo2">上一步</button>
-          <button class="btn primary" id="btnSubmitProof" disabled>提交付款凭证</button>
+        <div id="step3Content" data-testid="step3-payment">
+          <div class="muted small">请先完成前两步以查看付款信息。</div>
         </div>
       </div>
 
@@ -352,7 +258,7 @@
 
   <footer class="site-footer">
     <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
-    <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></div>
+    <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></div>
   </footer>
 
   <script src="/lib/error-logger.js"></script>

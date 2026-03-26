@@ -414,10 +414,30 @@ async function init(){
   el.btnSaveProfile?.addEventListener("click", saveProfile);
   el.btnApplyContract?.addEventListener("click", applyContract);
 
-  el.btnAdminLoadContracts?.addEventListener("click", adminLoadContracts);
-  el.btnAdminLoadOrders?.addEventListener("click", adminLoadOrders);
-  el.btnAdminSearch?.addEventListener("click", adminSearch);
-  el.adminSearchEmail?.addEventListener("keydown", e=>{ if(e.key==="Enter") adminSearch(); });
+  // Account settings
+  qs("#btnExportAccount")?.addEventListener("click", async () => {
+    toast("正在准备导出…");
+    // Trigger all table exports
+    try {
+      await exportTable("baseline");
+      await exportTable("visits");
+      await exportTable("labs");
+      await exportTable("meds");
+      await exportTable("variants");
+      toast("数据已导出为 CSV 文件");
+    } catch (e) { toast("导出失败：" + (e?.message || e)); }
+  });
+  qs("#btnDeleteAccount")?.addEventListener("click", async () => {
+    const confirmed = confirm("确认注销账户？此操作不可撤销，所有数据将在 30 天内被删除。建议先导出数据。");
+    if (!confirmed) return;
+    const doubleConfirm = prompt("请输入您的邮箱以确认注销：");
+    if (doubleConfirm !== user?.email) { toast("邮箱不匹配，操作取消"); return; }
+    toast("账户注销请求已提交，请联系 china@kidneysphere.com 完成注销流程。");
+    const hint = qs("#accountSettingsHint");
+    if (hint) hint.textContent = "注销请求已记录。平台将在确认后 30 天内删除您的数据。如有疑问请联系客服。";
+  });
+
+  // Admin event listeners are now bound dynamically in checkPlatformAdmin()
 
   // Lab catalog wiring
   el.labTestCode?.addEventListener("change", updateLabUnits);
@@ -494,16 +514,69 @@ function renderAuthState(){
 async function checkPlatformAdmin(){
   const { data, error } = await sb.rpc("is_platform_admin");
   isPlatformAdmin = !error && data === true;
-  // Only show admin panel after server confirms admin status
+  if (!isPlatformAdmin) {
+    // Ensure admin panel is empty and hidden for non-admins
+    if (el.adminCard) { el.adminCard.innerHTML = ""; el.adminCard.style.display = "none"; }
+    return;
+  }
+  // Dynamically inject admin panel HTML only after server confirms admin role
   if (el.adminCard) {
-    el.adminCard.style.display = isPlatformAdmin ? "block" : "none";
+    el.adminCard.className = "card";
+    el.adminCard.innerHTML = buildAdminPanelHtml();
+    el.adminCard.style.display = "block";
+    // Re-bind admin element references after injection
+    el.adminContractsBadge = qs("#adminContractsBadge");
+    el.adminContracts = qs("#adminContracts");
+    el.btnAdminLoadContracts = qs("#btnAdminLoadContracts");
+    el.adminOrdersBadge = qs("#adminOrdersBadge");
+    el.adminOrders = qs("#adminOrders");
+    el.btnAdminLoadOrders = qs("#btnAdminLoadOrders");
+    el.adminSearchEmail = qs("#adminSearchEmail");
+    el.btnAdminSearch = qs("#btnAdminSearch");
+    el.adminResults = qs("#adminResults");
+    // Bind admin event listeners
+    el.btnAdminLoadContracts?.addEventListener("click", adminLoadContracts);
+    el.btnAdminLoadOrders?.addEventListener("click", adminLoadOrders);
+    el.btnAdminSearch?.addEventListener("click", adminSearch);
+    el.adminSearchEmail?.addEventListener("keydown", e=>{ if(e.key==="Enter") adminSearch(); });
   }
-  if (isPlatformAdmin) {
-    adminLoadContracts();
-    adminLoadOrders();
-    // Re-render trial badge now that admin status is confirmed
-    renderTrialBadge(selectedProject);
-  }
+  adminLoadContracts();
+  adminLoadOrders();
+  // Re-render trial badge now that admin status is confirmed
+  renderTrialBadge(selectedProject);
+}
+
+function buildAdminPanelHtml(){
+  return `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <h2 style="margin:0">平台管理员</h2>
+      <span class="badge ok" style="font-size:11px">仅你可见</span>
+    </div>
+    <div class="muted small">通过邮箱搜索用户及其项目，管理试用期与权益。</div>
+    <div class="hr"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <h3 style="margin:0;font-size:15px">合作申请</h3>
+      <span id="adminContractsBadge" class="badge warn" style="display:none;font-size:11px"></span>
+      <button class="btn small" id="btnAdminLoadContracts" style="margin-left:auto">刷新</button>
+    </div>
+    <div id="adminContracts" class="muted small">加载中…</div>
+    <div class="hr"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <h3 style="margin:0;font-size:15px">支付订单</h3>
+      <span id="adminOrdersBadge" class="badge warn" style="display:none;font-size:11px"></span>
+      <button class="btn small" id="btnAdminLoadOrders" style="margin-left:auto">刷新</button>
+    </div>
+    <div id="adminOrders" class="muted small">加载中…</div>
+    <div class="hr"></div>
+    <h3 style="margin:0 0 8px 0;font-size:15px">用户 & 项目搜索</h3>
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px">
+        <label>用户邮箱（支持模糊搜索）</label>
+        <input id="adminSearchEmail" type="text" placeholder="例如：researcher@hospital.com"/>
+      </div>
+      <button class="btn primary" id="btnAdminSearch" style="margin-top:4px">搜索</button>
+    </div>
+    <div id="adminResults" style="margin-top:14px"></div>`;
 }
 
 async function sendMagicLink(){
@@ -531,6 +604,8 @@ async function registerAccount(){
   const password = el.password?.value || "";
   if (!email){ toast("请输入邮箱"); return; }
   if (!password || password.length < 8){ toast("密码至少需要8位"); return; }
+  const agreeBox = qs("#agreeTermsStaff");
+  if (agreeBox && !agreeBox.checked){ toast("请先阅读并同意用户协议和隐私政策"); return; }
   const btn = el.btnRegister;
   setBusy(btn, true);
   try{

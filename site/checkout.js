@@ -38,20 +38,8 @@ const el = {
   orderNotes:    qs("#orderNotes"),
   btnBackTo1:    qs("#btnBackTo1"),
   btnToStep3:    qs("#btnToStep3"),
-  // Step 3
-  orderNoDisplay: qs("#orderNoDisplay"),
-  amountDisplay:  qs("#amountDisplay"),
-  copyOrderNo:    qs("#copyOrderNo"),
-  copyAmount:     qs("#copyAmount"),
-  proofFile:      qs("#proofFile"),
-  uploadZone:     qs("#uploadZone"),
-  uploadPreview:  qs("#uploadPreview"),
-  uploadFileName: qs("#uploadFileName"),
-  btnRemoveFile:  qs("#btnRemoveFile"),
-  proofAmount:    qs("#proofAmount"),
-  proofPayerInfo: qs("#proofPayerInfo"),
-  btnBackTo2:     qs("#btnBackTo2"),
-  btnSubmitProof: qs("#btnSubmitProof"),
+  // Step 3 — elements created dynamically after order creation
+  step3Content:   qs("#step3Content"),
   // Step 4
   s4OrderNo: qs("#s4OrderNo"), s4Plan: qs("#s4Plan"), s4Quota: qs("#s4Quota"),
   s4Amount: qs("#s4Amount"), s4Method: qs("#s4Method"), s4Status: qs("#s4Status"),
@@ -136,59 +124,157 @@ function fallbackCopy(text, label) {
   ta.remove();
 }
 
-// ── Payment Method Tabs ──────────────────────────────────
-function setupPayTabs() {
-  qsa(".pay-tab").forEach(tab => {
+// ── Build Step 3 payment DOM dynamically (only after order created) ──
+function buildStep3(orderNo, amount) {
+  const b = B();
+  const memo = orderNo;
+  const container = el.step3Content;
+  if (!container) return;
+
+  container.innerHTML = `
+    <h2 style="margin:0 0 4px">付款</h2>
+    <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
+      <span>订单号：</span>
+      <code id="orderNoDisplay" data-testid="order-no">${escapeHtml(orderNo)}</code>
+      <span class="copy-btn" id="copyOrderNo">复制</span>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px">
+      <span>应付金额：</span>
+      <span class="amount-big" id="amountDisplay">&yen;${escapeHtml(String(amount))}</span>
+      <span class="copy-btn" id="copyAmount">复制</span>
+    </div>
+    <div class="pay-tabs">
+      <div class="pay-tab active" data-method="wechat_qr"><span class="tab-icon">&#128154;</span>微信支付</div>
+      <div class="pay-tab" data-method="alipay_qr"><span class="tab-icon">&#128153;</span>支付宝</div>
+      <div class="pay-tab" data-method="bank_transfer"><span class="tab-icon">&#127974;</span>对公转账</div>
+    </div>
+    <div class="pay-panel active" id="panel_wechat_qr">
+      <div class="qr-box">
+        <img src="${escapeHtml(b.WECHAT_QR_IMG || "")}" alt="微信收款码" style="max-width:260px;border-radius:14px;border:1px solid var(--border)"/>
+        <div class="muted small" style="margin-top:6px">${escapeHtml(b.WECHAT_LABEL || "")}</div>
+      </div>
+      <div class="infobox small">
+        <b>付款说明：</b><br/>
+        1. 请打开微信扫一扫，扫描上方二维码<br/>
+        2. 付款金额请与页面显示金额一致<br/>
+        3. 付款备注请填写：<code id="wechatMemo">${escapeHtml(memo)}</code> <span class="copy-btn" id="copyWechatMemo">复制</span><br/>
+        4. 支付完成后点击下方"上传付款凭证"
+      </div>
+    </div>
+    <div class="pay-panel" id="panel_alipay_qr">
+      <div class="qr-box">
+        <img src="${escapeHtml(b.ALIPAY_QR_IMG || "")}" alt="支付宝收款码" style="max-width:260px;border-radius:14px;border:1px solid var(--border)"/>
+        <div class="muted small" style="margin-top:6px">${escapeHtml(b.ALIPAY_LABEL || "")}</div>
+      </div>
+      <div class="infobox small">
+        <b>付款说明：</b><br/>
+        1. 请打开支付宝扫一扫，扫描上方二维码<br/>
+        2. 付款金额请与页面显示金额一致<br/>
+        3. 付款备注请填写：<code id="alipayMemo">${escapeHtml(memo)}</code> <span class="copy-btn" id="copyAlipayMemo">复制</span><br/>
+        4. 支付完成后点击下方"上传付款凭证"
+      </div>
+    </div>
+    <div class="pay-panel" id="panel_bank_transfer">
+      <div class="bank-info">
+        <div class="kv">
+          <div class="muted small">公司名称</div><div>${escapeHtml(b.BANK_NAME || "")}</div>
+          <div class="muted small">开户行</div><div>${escapeHtml(b.BANK_BRANCH || "")}</div>
+          <div class="muted small">银行账号</div>
+          <div><code id="bankAccount">${escapeHtml(b.BANK_ACCOUNT || "")}</code> <span class="copy-btn" id="copyBankAccount">复制</span></div>
+          <div class="muted small">转账金额</div><div style="font-weight:700;color:var(--brand)">&yen;${escapeHtml(String(amount))}</div>
+        </div>
+      </div>
+      <div class="infobox small" style="margin-top:10px">
+        <b>转账说明：</b><br/>
+        1. 转账备注请填写：<code id="bankMemo">KS${escapeHtml(orderNo)}</code> <span class="copy-btn" id="copyBankMemo">复制</span><br/>
+        2. 转账完成后请上传转账回单或凭证截图
+      </div>
+    </div>
+    <div class="hr"></div>
+    <h3 style="margin:0 0 8px;font-size:15px">上传付款凭证</h3>
+    <div class="upload-zone" id="uploadZone">
+      <div class="muted">点击选择文件，或拖拽文件到此处</div>
+      <div class="muted small">支持 PNG / JPG / PDF，最大 10MB</div>
+      <input type="file" id="proofFile" accept="image/*,.pdf" style="display:none"/>
+    </div>
+    <div id="uploadPreview" style="display:none;margin-top:8px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span id="uploadFileName" class="small"></span>
+        <button class="btn small" id="btnRemoveFile" style="color:#c0392b">移除</button>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div class="col">
+        <label>实付金额（选填）</label>
+        <input id="proofAmount" type="number" step="0.01" placeholder="和应付一致则可不填"/>
+      </div>
+      <div class="col">
+        <label>付款人姓名 / 账号后四位（选填）</label>
+        <input id="proofPayerInfo" placeholder="方便核验"/>
+      </div>
+    </div>
+    <div class="btnbar">
+      <button class="btn" id="btnBackTo2">上一步</button>
+      <button class="btn primary" id="btnSubmitProof" disabled>提交付款凭证</button>
+    </div>`;
+
+  // Re-bind dynamic element refs
+  el.orderNoDisplay = qs("#orderNoDisplay");
+  el.amountDisplay = qs("#amountDisplay");
+  el.proofFile = qs("#proofFile");
+  el.uploadZone = qs("#uploadZone");
+  el.uploadPreview = qs("#uploadPreview");
+  el.uploadFileName = qs("#uploadFileName");
+  el.btnRemoveFile = qs("#btnRemoveFile");
+  el.proofAmount = qs("#proofAmount");
+  el.proofPayerInfo = qs("#proofPayerInfo");
+  el.btnBackTo2 = qs("#btnBackTo2");
+  el.btnSubmitProof = qs("#btnSubmitProof");
+
+  // Copy buttons
+  qs("#copyOrderNo").onclick = () => copyText(orderNo, "订单号");
+  qs("#copyAmount").onclick = () => copyText(String(amount), "金额");
+  qs("#copyWechatMemo")?.addEventListener("click", () => copyText(memo, "备注"));
+  qs("#copyAlipayMemo")?.addEventListener("click", () => copyText(memo, "备注"));
+  qs("#copyBankMemo")?.addEventListener("click", () => copyText(`KS${orderNo}`, "转账备注"));
+  qs("#copyBankAccount")?.addEventListener("click", () => copyText(b.BANK_ACCOUNT || "", "银行账号"));
+
+  // Payment method tabs
+  container.querySelectorAll(".pay-tab").forEach(tab => {
     tab.addEventListener("click", () => {
       const method = tab.dataset.method;
       selectedMethod = method;
-      qsa(".pay-tab").forEach(t => t.classList.toggle("active", t === tab));
-      qsa(".pay-panel").forEach(p => p.classList.toggle("active", p.id === `panel_${method}`));
+      container.querySelectorAll(".pay-tab").forEach(t => t.classList.toggle("active", t === tab));
+      container.querySelectorAll(".pay-panel").forEach(p => p.classList.toggle("active", p.id === `panel_${method}`));
     });
   });
+
+  // Upload handlers
+  setupUploadHandlers();
+
+  // Back button
+  el.btnBackTo2.addEventListener("click", () => goToStep(2));
+  el.btnSubmitProof.addEventListener("click", submitProof);
 }
 
-// ── Pre-fill static payment info from config (QR, bank) ──
-function prefillPaymentConfig() {
-  const b = B();
-  // QR images
-  const wImg = qs("#wechatQrImg"); if (wImg) wImg.src = b.WECHAT_QR_IMG || "";
-  const aImg = qs("#alipayQrImg"); if (aImg) aImg.src = b.ALIPAY_QR_IMG || "";
-  const wl = qs("#wechatLabel");   if (wl) wl.textContent = b.WECHAT_LABEL || "";
-  const al = qs("#alipayLabel");   if (al) al.textContent = b.ALIPAY_LABEL || "";
-  // Bank info
-  const bn = qs("#bankName");      if (bn) bn.textContent = b.BANK_NAME || "";
-  const bb = qs("#bankBranch");    if (bb) bb.textContent = b.BANK_BRANCH || "";
-  const ba = qs("#bankAccount");   if (ba) ba.textContent = b.BANK_ACCOUNT || "";
-  // Bank account copy (always available)
-  const cba = qs("#copyBankAccount"); if (cba) cba.onclick = () => copyText(b.BANK_ACCOUNT || "", "银行账号");
-}
-
-// ── Fill order-specific payment info ─────────────────────
-function fillPaymentInfo(orderNo, amount) {
-  const b = B();
-  const memo = orderNo;
-
-  // Re-fill config (in case)
-  prefillPaymentConfig();
-
-  // Order-specific memos
-  [qs("#wechatMemo"), qs("#alipayMemo")].forEach(m => { if (m) m.textContent = memo; });
-  const bankMemo = qs("#bankMemo"); if (bankMemo) bankMemo.textContent = `KS${orderNo}`;
-
-  // Amount
-  const bamt = qs("#bankAmount");  if (bamt) bamt.textContent = `¥${amount}`;
-
-  // Display
-  el.orderNoDisplay.textContent = orderNo;
-  el.amountDisplay.textContent = `¥${amount}`;
-
-  // Copy buttons
-  el.copyOrderNo.onclick = () => copyText(orderNo, "订单号");
-  el.copyAmount.onclick = () => copyText(String(amount), "金额");
-  const cwm = qs("#copyWechatMemo");  if (cwm) cwm.onclick = () => copyText(memo, "备注");
-  const cam = qs("#copyAlipayMemo");  if (cam) cam.onclick = () => copyText(memo, "备注");
-  const cbm = qs("#copyBankMemo");    if (cbm) cbm.onclick = () => copyText(`KS${orderNo}`, "转账备注");
+function setupUploadHandlers() {
+  el.uploadZone.addEventListener("click", () => el.proofFile.click());
+  el.uploadZone.addEventListener("dragover", e => { e.preventDefault(); el.uploadZone.style.borderColor = "rgba(47,111,235,.5)"; });
+  el.uploadZone.addEventListener("dragleave", () => { el.uploadZone.style.borderColor = ""; });
+  el.uploadZone.addEventListener("drop", e => {
+    e.preventDefault();
+    el.uploadZone.style.borderColor = "";
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  el.proofFile.addEventListener("change", () => {
+    if (el.proofFile.files.length) handleFile(el.proofFile.files[0]);
+  });
+  el.btnRemoveFile.addEventListener("click", () => {
+    el.proofFile.value = "";
+    el.uploadZone.classList.remove("has-file");
+    el.uploadPreview.style.display = "none";
+    el.btnSubmitProof.disabled = true;
+  });
 }
 
 // ── Create Order ─────────────────────────────────────────
@@ -196,6 +282,10 @@ async function createOrder() {
   const b = B();
   const count = Math.max(3, parseInt(el.projectCount.value) || 3);
   const extra = count - (b.PRO_BASE_PROJECTS || 3);
+
+  // Consent check
+  const agreeBox = qs("#agreeTermsCheckout");
+  if (agreeBox && !agreeBox.checked) { toast("请先阅读并同意用户协议和隐私政策"); return; }
 
   // 发票必填校验
   if (el.invoiceNeeded.value === "yes") {
@@ -229,7 +319,7 @@ async function createOrder() {
     if (error) throw error;
 
     currentOrder = data;
-    fillPaymentInfo(data.order_no, data.amount_due);
+    buildStep3(data.order_no, data.amount_due);
     goToStep(3);
   } catch (e) {
     if (window.ErrorLogger) ErrorLogger.log("checkout.createOrder", e);
@@ -241,26 +331,6 @@ async function createOrder() {
 }
 
 // ── Upload Proof ─────────────────────────────────────────
-function setupUpload() {
-  el.uploadZone.addEventListener("click", () => el.proofFile.click());
-  el.uploadZone.addEventListener("dragover", e => { e.preventDefault(); el.uploadZone.style.borderColor = "rgba(47,111,235,.5)"; });
-  el.uploadZone.addEventListener("dragleave", () => { el.uploadZone.style.borderColor = ""; });
-  el.uploadZone.addEventListener("drop", e => {
-    e.preventDefault();
-    el.uploadZone.style.borderColor = "";
-    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
-  });
-  el.proofFile.addEventListener("change", () => {
-    if (el.proofFile.files.length) handleFile(el.proofFile.files[0]);
-  });
-  el.btnRemoveFile.addEventListener("click", () => {
-    el.proofFile.value = "";
-    el.uploadZone.classList.remove("has-file");
-    el.uploadPreview.style.display = "none";
-    el.btnSubmitProof.disabled = true;
-  });
-}
-
 function handleFile(file) {
   if (file.size > 10 * 1024 * 1024) { toast("文件超过 10MB"); return; }
   const validTypes = ["image/png","image/jpeg","image/jpg","image/webp","application/pdf"];
@@ -285,9 +355,9 @@ async function submitProof() {
   el.btnSubmitProof.textContent = "上传中…";
 
   try {
-    // Upload to Supabase Storage
+    // Upload to Supabase Storage — path isolated by userId/orderId
     const ext = file.name.split(".").pop();
-    const path = `proofs/${currentOrder.order_id}/${Date.now()}.${ext}`;
+    const path = `${user.id}/${currentOrder.order_id}/${Date.now()}.${ext}`;
     const { data: uploadData, error: uploadErr } = await sb.storage
       .from("payment-proofs")
       .upload(path, file, { contentType: file.type });
@@ -444,19 +514,10 @@ async function init() {
     }
   });
 
-  // Step navigation
+  // Step navigation (step 1 & 2 only; step 3 buttons bound dynamically in buildStep3)
   el.btnToStep2.addEventListener("click", () => goToStep(2));
   el.btnBackTo1.addEventListener("click", () => goToStep(1));
   el.btnToStep3.addEventListener("click", createOrder);
-  el.btnBackTo2.addEventListener("click", () => goToStep(2));
-  el.btnSubmitProof.addEventListener("click", submitProof);
-
-  // Payment tabs & static payment info
-  setupPayTabs();
-  prefillPaymentConfig();
-
-  // Upload
-  setupUpload();
 
   // My orders
   el.btnRefreshOrders.addEventListener("click", loadMyOrders);

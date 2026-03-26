@@ -3,6 +3,31 @@
   command = "echo 'no build'"
 
 [[redirects]]
+  from = "/login"
+  to   = "/login.html"
+  status = 200
+
+[[redirects]]
+  from = "/signup"
+  to   = "/signup.html"
+  status = 200
+
+[[redirects]]
+  from = "/privacy"
+  to   = "/privacy.html"
+  status = 200
+
+[[redirects]]
+  from = "/terms"
+  to   = "/terms.html"
+  status = 200
+
+[[redirects]]
+  from = "/disclaimer"
+  to   = "/disclaimer.html"
+  status = 200
+
+[[redirects]]
   from = "/staff"
   to   = "/staff.html"
   status = 200
