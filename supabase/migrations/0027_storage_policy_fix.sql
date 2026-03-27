@@ -29,10 +29,13 @@ values (
 on conflict (id) do nothing;
 
 -- ──────────────────────────────────────────────────────────
--- 1. 删除现有的宽松 policy
+-- 1. 删除所有已存在的 policy（旧的 + 新的，保证幂等）
 -- ──────────────────────────────────────────────────────────
 drop policy if exists "payment_proofs_user_read" on storage.objects;
 drop policy if exists "payment_proofs_user_upload" on storage.objects;
+drop policy if exists "payment_proofs_insert_own" on storage.objects;
+drop policy if exists "payment_proofs_select_own" on storage.objects;
+drop policy if exists "payment_proofs_delete_own" on storage.objects;
 
 -- ──────────────────────────────────────────────────────────
 -- 2. INSERT — 仅允许已登录用户上传到自己的目录
