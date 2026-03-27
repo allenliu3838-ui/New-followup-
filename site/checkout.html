@@ -82,9 +82,10 @@
       </div>
     </div>
 
-    <!-- 主内容（登录后可见） -->
-    <div id="checkoutMain" data-testid="checkout-main" style="display:none">
+    <!-- 主内容容器（content injected from template after auth） -->
+    <div id="checkoutMain" data-testid="checkout-main" style="display:none"></div>
 
+    <template id="checkoutTpl">
       <!-- Step Indicator -->
       <div class="card">
         <div class="step-indicator">
@@ -253,7 +254,7 @@
         <div id="myOrdersList" data-testid="my-orders" class="muted small"></div>
       </div>
 
-    </div>
+    </template><!-- /checkoutTpl -->
   </div>
 
   <footer class="site-footer">

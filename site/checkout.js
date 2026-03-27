@@ -12,46 +12,50 @@ const rlUpload = throttle("upload", { maxAttempts: 10, windowMs: 15 * 60_000, me
 const el = {
   loginPrompt:    qs("#loginPrompt"),
   checkoutMain:   qs("#checkoutMain"),
-  // Steps
-  step1: qs("#step1"), step2: qs("#step2"), step3: qs("#step3"), step4: qs("#step4"),
-  dot1: qs("#dot1"), dot2: qs("#dot2"), dot3: qs("#dot3"), dot4: qs("#dot4"),
-  stepLabel: qs("#stepLabel"),
-  // Step 1
-  planCode:     qs("#planCode"),
-  billingCycle: qs("#billingCycle"),
-  projectCount: qs("#projectCount"),
-  totalPrice:   qs("#totalPrice"),
-  priceUnit:    qs("#priceUnit"),
-  priceBreakdown: qs("#priceBreakdown"),
-  btnProjMinus: qs("#btnProjMinus"),
-  btnProjPlus:  qs("#btnProjPlus"),
-  btnToStep2:   qs("#btnToStep2"),
-  // Step 2
-  payerName:     qs("#payerName"),
-  payerEmail:    qs("#payerEmail"),
-  payerHospital: qs("#payerHospital"),
-  invoiceNeeded:    qs("#invoiceNeeded"),
-  invoiceFields:    qs("#invoiceFields"),
-  invoiceType:      qs("#invoiceType"),
-  invoiceTypeHint:  qs("#invoiceTypeHint"),
-  invoiceTitleLabel: qs("#invoiceTitleLabel"),
-  invoiceTaxNoCol:  qs("#invoiceTaxNoCol"),
-  invoiceTitle:     qs("#invoiceTitle"),
-  invoiceTaxNo:     qs("#invoiceTaxNo"),
-  invoiceEmail:     qs("#invoiceEmail"),
-  orderNotes:    qs("#orderNotes"),
-  btnBackTo1:    qs("#btnBackTo1"),
-  btnToStep3:    qs("#btnToStep3"),
-  // Step 3 — elements created dynamically after order creation
-  step3Content:   qs("#step3Content"),
-  // Step 4
-  s4OrderNo: qs("#s4OrderNo"), s4Plan: qs("#s4Plan"), s4Quota: qs("#s4Quota"),
-  s4Amount: qs("#s4Amount"), s4Method: qs("#s4Method"), s4Status: qs("#s4Status"),
-  s4Contact: qs("#s4Contact"),
-  // My orders
-  myOrdersList: qs("#myOrdersList"),
-  btnRefreshOrders: qs("#btnRefreshOrders"),
 };
+
+// Auth-gated checkout element refs — populated after template injection
+function injectCheckoutContent() {
+  const tpl = document.getElementById("checkoutTpl");
+  const container = el.checkoutMain;
+  if (!tpl || !container || container.children.length > 0) return;
+  container.appendChild(tpl.content.cloneNode(true));
+
+  // Now capture all element references
+  el.step1 = qs("#step1"); el.step2 = qs("#step2"); el.step3 = qs("#step3"); el.step4 = qs("#step4");
+  el.dot1 = qs("#dot1"); el.dot2 = qs("#dot2"); el.dot3 = qs("#dot3"); el.dot4 = qs("#dot4");
+  el.stepLabel = qs("#stepLabel");
+  el.planCode = qs("#planCode");
+  el.billingCycle = qs("#billingCycle");
+  el.projectCount = qs("#projectCount");
+  el.totalPrice = qs("#totalPrice");
+  el.priceUnit = qs("#priceUnit");
+  el.priceBreakdown = qs("#priceBreakdown");
+  el.btnProjMinus = qs("#btnProjMinus");
+  el.btnProjPlus = qs("#btnProjPlus");
+  el.btnToStep2 = qs("#btnToStep2");
+  el.payerName = qs("#payerName");
+  el.payerEmail = qs("#payerEmail");
+  el.payerHospital = qs("#payerHospital");
+  el.invoiceNeeded = qs("#invoiceNeeded");
+  el.invoiceFields = qs("#invoiceFields");
+  el.invoiceType = qs("#invoiceType");
+  el.invoiceTypeHint = qs("#invoiceTypeHint");
+  el.invoiceTitleLabel = qs("#invoiceTitleLabel");
+  el.invoiceTaxNoCol = qs("#invoiceTaxNoCol");
+  el.invoiceTitle = qs("#invoiceTitle");
+  el.invoiceTaxNo = qs("#invoiceTaxNo");
+  el.invoiceEmail = qs("#invoiceEmail");
+  el.orderNotes = qs("#orderNotes");
+  el.btnBackTo1 = qs("#btnBackTo1");
+  el.btnToStep3 = qs("#btnToStep3");
+  el.step3Content = qs("#step3Content");
+  el.s4OrderNo = qs("#s4OrderNo"); el.s4Plan = qs("#s4Plan"); el.s4Quota = qs("#s4Quota");
+  el.s4Amount = qs("#s4Amount"); el.s4Method = qs("#s4Method"); el.s4Status = qs("#s4Status");
+  el.s4Contact = qs("#s4Contact");
+  el.myOrdersList = qs("#myOrdersList");
+  el.btnRefreshOrders = qs("#btnRefreshOrders");
+}
 
 // ── State ────────────────────────────────────────────────
 let session = null;
@@ -517,6 +521,9 @@ async function init() {
     el.checkoutMain.style.display = "none";
     return;
   }
+
+  // Inject checkout content from template (only after auth confirmed)
+  injectCheckoutContent();
 
   el.loginPrompt.style.display = "none";
   el.checkoutMain.style.display = "block";

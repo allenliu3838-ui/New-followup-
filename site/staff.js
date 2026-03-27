@@ -9,9 +9,10 @@ const rlLogin    = throttle("login",    { maxAttempts: 10, windowMs: 15 * 60_000
 const rlRegister = throttle("register", { maxAttempts: 5,  windowMs: 15 * 60_000, message: "注册请求过于频繁" });
 const rlReset    = throttle("reset",    { maxAttempts: 5,  windowMs: 15 * 60_000, message: "密码重置请求过于频繁" });
 
+// ── Element references ────────────────────────────────────
+// Login elements (always in DOM)
 const el = {
   loginCard: qs("#loginCard"),
-  appCard: qs("#appCard"),
   email: qs("#email"),
   password: qs("#password"),
   confirmPwdLabel: qs("#confirmPwdLabel"),
@@ -23,162 +24,250 @@ const el = {
   btnSetNewPwd: qs("#btnSetNewPwd"),
   btnSignOut: qs("#btnSignOut"),
   loginHint: qs("#loginHint"),
-
-  projName: qs("#projName"),
-  projCenter: qs("#projCenter"),
-  projModule: qs("#projModule"),
-  projDesc: qs("#projDesc"),
-  btnCreateProject: qs("#btnCreateProject"),
-  projectsList: qs("#projectsList"),
-  projectMeta: qs("#projectMeta"),
-  trialBadge:  qs("#trialBadge"),
-  upgradeBtn:  qs("#upgradeBtn"),
-
-  patCode: qs("#patCode"),
-  patSex: qs("#patSex"),
-  patBirthYear: qs("#patBirthYear"),
-  patBaselineDate: qs("#patBaselineDate"),
-  patBaselineScr: qs("#patBaselineScr"),
-  patBaselineUpcr: qs("#patBaselineUpcr"),
-  iganPathBox: qs("#iganPathBox"),
-  biopsyDate: qs("#biopsyDate"),
-  mestM: qs("#mestM"),
-  mestE: qs("#mestE"),
-  mestS: qs("#mestS"),
-  mestT: qs("#mestT"),
-  mestC: qs("#mestC"),
-  lnPathBox: qs("#lnPathBox"),
-  lnBiopsyDate: qs("#lnBiopsyDate"),
-  lnClass: qs("#lnClass"),
-  lnAI: qs("#lnAI"),
-  lnCI: qs("#lnCI"),
-  lnPodocytopathy: qs("#lnPodocytopathy"),
-  rctArm: qs("#rctArm"),
-  rctRandomId: qs("#rctRandomId"),
-  rctDate: qs("#rctDate"),
-  btnCreatePatient: qs("#btnCreatePatient"),
-  patientsList: qs("#patientsList"),
-
-  tokenPatientCode: qs("#tokenPatientCode"),
-  tokenDays: qs("#tokenDays"),
-  tokenSingleUse: qs("#tokenSingleUse"),
-  btnGenToken: qs("#btnGenToken"),
-  tokenOut: qs("#tokenOut"),
-  issuePanel: qs("#issuePanel"),
-  issueSummary: qs("#issueSummary"),
-  issueList: qs("#issueList"),
-  btnLoadIssues: qs("#btnLoadIssues"),
-
-
-  // Optional extra data entry
-  varPatientCode: qs("#varPatientCode"),
-  varTestDate: qs("#varTestDate"),
-  varTestName: qs("#varTestName"),
-  varGene: qs("#varGene"),
-  varVariant: qs("#varVariant"),
-  varHgvsC: qs("#varHgvsC"),
-  varHgvsP: qs("#varHgvsP"),
-  varZygosity: qs("#varZygosity"),
-  varClass: qs("#varClass"),
-  varLabName: qs("#varLabName"),
-  varNotes: qs("#varNotes"),
-  btnAddVariant: qs("#btnAddVariant"),
-  variantsPreview: qs("#variantsPreview"),
-
-  labPatientCode: qs("#labPatientCode"),
-  labDate: qs("#labDate"),
-  labTestCode: qs("#labTestCode"),
-  labName: qs("#labName"),
-  labCustomName: qs("#labCustomName"),
-  labCustomUnit: qs("#labCustomUnit"),
-  labValue: qs("#labValue"),
-  labUnit: qs("#labUnit"),
-  labStdValue: qs("#labStdValue"),
-  labQcReasonCol: qs("#labQcReasonCol"),
-  labQcReason: qs("#labQcReason"),
-  labHint: qs("#labHint"),
-  btnAddLab: qs("#btnAddLab"),
-  labsPreview: qs("#labsPreview"),
-  projCustomLabsPanel: qs("#projCustomLabsPanel"),
-  projCustomLabsList: qs("#projCustomLabsList"),
-
-  medPatientCode: qs("#medPatientCode"),
-  medName: qs("#medName"),
-  medClass: qs("#medClass"),
-  medDose: qs("#medDose"),
-  medStart: qs("#medStart"),
-  medEnd: qs("#medEnd"),
-  btnAddMed: qs("#btnAddMed"),
-  medsPreview: qs("#medsPreview"),
-
-  // Events
-  evtPatientCode: qs("#evtPatientCode"),
-  evtType: qs("#evtType"),
-  evtDate: qs("#evtDate"),
-  evtNotes: qs("#evtNotes"),
-  btnAddEvent: qs("#btnAddEvent"),
-  eventsPreview: qs("#eventsPreview"),
-
-  btnExportBaseline: qs("#btnExportBaseline"),
-  btnExportVisits: qs("#btnExportVisits"),
-  btnExportLabs: qs("#btnExportLabs"),
-  btnExportMeds: qs("#btnExportMeds"),
-  btnExportVariants: qs("#btnExportVariants"),
-  btnExportEvents: qs("#btnExportEvents"),
-
-  btnPaperPack: qs("#btnPaperPack"),
-  btnCreateSnapshot: qs("#btnCreateSnapshot"),
-  btnPaperPackWithSnapshot: qs("#btnPaperPackWithSnapshot"),
-  btnRefreshSnapshots: qs("#btnRefreshSnapshots"),
-  snapshotOut: qs("#snapshotOut"),
-  snapshotsList: qs("#snapshotsList"),
-
-  // Import
-  importType: qs("#importType"),
-  btnDownloadTemplate: qs("#btnDownloadTemplate"),
-  importFile: qs("#importFile"),
-  importPreview: qs("#importPreview"),
-  importSummary: qs("#importSummary"),
-  importTable: qs("#importTable"),
-  btnConfirmImport: qs("#btnConfirmImport"),
-  btnCancelImport: qs("#btnCancelImport"),
-  importProgress: qs("#importProgress"),
-
-  // Header auth controls
+  // Header auth controls (always in DOM)
   headerUserEmail: qs("#headerUserEmail"),
   btnHeaderSignOut: qs("#btnHeaderSignOut"),
-
-  // Profile
-  profileCard: qs("#profileCard"),
-  profileStatus: qs("#profileStatus"),
-  profName: qs("#profName"),
-  profHospital: qs("#profHospital"),
-  profDept: qs("#profDept"),
-  profPlan: qs("#profPlan"),
-  profContact: qs("#profContact"),
-  profNotes: qs("#profNotes"),
-  btnSaveProfile: qs("#btnSaveProfile"),
-
-  // Contract apply (user side)
-  contractStatus: qs("#contractStatus"),
-  contractApplyForm: qs("#contractApplyForm"),
-  contractPlan: qs("#contractPlan"),
-  contractWechat: qs("#contractWechat"),
-  contractNote: qs("#contractNote"),
-  btnApplyContract: qs("#btnApplyContract"),
-
-  // Admin panel
-  adminCard: qs("#adminCard"),
-  adminContractsBadge: qs("#adminContractsBadge"),
-  adminContracts: qs("#adminContracts"),
-  btnAdminLoadContracts: qs("#btnAdminLoadContracts"),
-  adminOrdersBadge: qs("#adminOrdersBadge"),
-  adminOrders: qs("#adminOrders"),
-  btnAdminLoadOrders: qs("#btnAdminLoadOrders"),
-  adminSearchEmail: qs("#adminSearchEmail"),
-  btnAdminSearch: qs("#btnAdminSearch"),
-  adminResults: qs("#adminResults"),
+  trialBadge:  qs("#trialBadge"),
+  upgradeBtn:  qs("#upgradeBtn"),
 };
+
+// Auth-gated element refs — populated AFTER template injection
+let _authGatedBound = false;
+
+function injectAuthGatedContent() {
+  if (_authGatedBound) return;
+  const tpl = document.getElementById("authGatedTpl");
+  const container = document.getElementById("authGatedContainer");
+  if (!tpl || !container) return;
+  container.appendChild(tpl.content.cloneNode(true));
+  _authGatedBound = true;
+
+  // Now capture all auth-gated element references
+  el.appCard = qs("#appCard");
+  el.projName = qs("#projName");
+  el.projCenter = qs("#projCenter");
+  el.projModule = qs("#projModule");
+  el.projDesc = qs("#projDesc");
+  el.btnCreateProject = qs("#btnCreateProject");
+  el.projectsList = qs("#projectsList");
+  el.projectMeta = qs("#projectMeta");
+
+  el.patCode = qs("#patCode");
+  el.patSex = qs("#patSex");
+  el.patBirthYear = qs("#patBirthYear");
+  el.patBaselineDate = qs("#patBaselineDate");
+  el.patBaselineScr = qs("#patBaselineScr");
+  el.patBaselineUpcr = qs("#patBaselineUpcr");
+  el.iganPathBox = qs("#iganPathBox");
+  el.biopsyDate = qs("#biopsyDate");
+  el.mestM = qs("#mestM");
+  el.mestE = qs("#mestE");
+  el.mestS = qs("#mestS");
+  el.mestT = qs("#mestT");
+  el.mestC = qs("#mestC");
+  el.lnPathBox = qs("#lnPathBox");
+  el.lnBiopsyDate = qs("#lnBiopsyDate");
+  el.lnClass = qs("#lnClass");
+  el.lnAI = qs("#lnAI");
+  el.lnCI = qs("#lnCI");
+  el.lnPodocytopathy = qs("#lnPodocytopathy");
+  el.rctArm = qs("#rctArm");
+  el.rctRandomId = qs("#rctRandomId");
+  el.rctDate = qs("#rctDate");
+  el.btnCreatePatient = qs("#btnCreatePatient");
+  el.patientsList = qs("#patientsList");
+
+  el.tokenPatientCode = qs("#tokenPatientCode");
+  el.tokenDays = qs("#tokenDays");
+  el.tokenSingleUse = qs("#tokenSingleUse");
+  el.btnGenToken = qs("#btnGenToken");
+  el.tokenOut = qs("#tokenOut");
+  el.issuePanel = qs("#issuePanel");
+  el.issueSummary = qs("#issueSummary");
+  el.issueList = qs("#issueList");
+  el.btnLoadIssues = qs("#btnLoadIssues");
+
+  el.varPatientCode = qs("#varPatientCode");
+  el.varTestDate = qs("#varTestDate");
+  el.varTestName = qs("#varTestName");
+  el.varGene = qs("#varGene");
+  el.varVariant = qs("#varVariant");
+  el.varHgvsC = qs("#varHgvsC");
+  el.varHgvsP = qs("#varHgvsP");
+  el.varZygosity = qs("#varZygosity");
+  el.varClass = qs("#varClass");
+  el.varLabName = qs("#varLabName");
+  el.varNotes = qs("#varNotes");
+  el.btnAddVariant = qs("#btnAddVariant");
+  el.variantsPreview = qs("#variantsPreview");
+
+  el.labPatientCode = qs("#labPatientCode");
+  el.labDate = qs("#labDate");
+  el.labTestCode = qs("#labTestCode");
+  el.labName = qs("#labName");
+  el.labCustomName = qs("#labCustomName");
+  el.labCustomUnit = qs("#labCustomUnit");
+  el.labValue = qs("#labValue");
+  el.labUnit = qs("#labUnit");
+  el.labStdValue = qs("#labStdValue");
+  el.labQcReasonCol = qs("#labQcReasonCol");
+  el.labQcReason = qs("#labQcReason");
+  el.labHint = qs("#labHint");
+  el.btnAddLab = qs("#btnAddLab");
+  el.labsPreview = qs("#labsPreview");
+  el.projCustomLabsPanel = qs("#projCustomLabsPanel");
+  el.projCustomLabsList = qs("#projCustomLabsList");
+
+  el.medPatientCode = qs("#medPatientCode");
+  el.medName = qs("#medName");
+  el.medClass = qs("#medClass");
+  el.medDose = qs("#medDose");
+  el.medStart = qs("#medStart");
+  el.medEnd = qs("#medEnd");
+  el.btnAddMed = qs("#btnAddMed");
+  el.medsPreview = qs("#medsPreview");
+
+  el.evtPatientCode = qs("#evtPatientCode");
+  el.evtType = qs("#evtType");
+  el.evtDate = qs("#evtDate");
+  el.evtNotes = qs("#evtNotes");
+  el.btnAddEvent = qs("#btnAddEvent");
+  el.eventsPreview = qs("#eventsPreview");
+
+  el.btnExportBaseline = qs("#btnExportBaseline");
+  el.btnExportVisits = qs("#btnExportVisits");
+  el.btnExportLabs = qs("#btnExportLabs");
+  el.btnExportMeds = qs("#btnExportMeds");
+  el.btnExportVariants = qs("#btnExportVariants");
+  el.btnExportEvents = qs("#btnExportEvents");
+
+  el.btnPaperPack = qs("#btnPaperPack");
+  el.btnCreateSnapshot = qs("#btnCreateSnapshot");
+  el.btnPaperPackWithSnapshot = qs("#btnPaperPackWithSnapshot");
+  el.btnRefreshSnapshots = qs("#btnRefreshSnapshots");
+  el.snapshotOut = qs("#snapshotOut");
+  el.snapshotsList = qs("#snapshotsList");
+
+  el.importType = qs("#importType");
+  el.btnDownloadTemplate = qs("#btnDownloadTemplate");
+  el.importFile = qs("#importFile");
+  el.importPreview = qs("#importPreview");
+  el.importSummary = qs("#importSummary");
+  el.importTable = qs("#importTable");
+  el.btnConfirmImport = qs("#btnConfirmImport");
+  el.btnCancelImport = qs("#btnCancelImport");
+  el.importProgress = qs("#importProgress");
+
+  el.profileCard = qs("#profileCard");
+  el.profileStatus = qs("#profileStatus");
+  el.profName = qs("#profName");
+  el.profHospital = qs("#profHospital");
+  el.profDept = qs("#profDept");
+  el.profPlan = qs("#profPlan");
+  el.profContact = qs("#profContact");
+  el.profNotes = qs("#profNotes");
+  el.btnSaveProfile = qs("#btnSaveProfile");
+
+  el.contractStatus = qs("#contractStatus");
+  el.contractApplyForm = qs("#contractApplyForm");
+  el.contractPlan = qs("#contractPlan");
+  el.contractWechat = qs("#contractWechat");
+  el.contractNote = qs("#contractNote");
+  el.btnApplyContract = qs("#btnApplyContract");
+
+  el.adminCard = qs("#adminCard");
+  el.adminContractsBadge = qs("#adminContractsBadge");
+  el.adminContracts = qs("#adminContracts");
+  el.btnAdminLoadContracts = qs("#btnAdminLoadContracts");
+  el.adminOrdersBadge = qs("#adminOrdersBadge");
+  el.adminOrders = qs("#adminOrders");
+  el.btnAdminLoadOrders = qs("#btnAdminLoadOrders");
+  el.adminSearchEmail = qs("#adminSearchEmail");
+  el.btnAdminSearch = qs("#btnAdminSearch");
+  el.adminResults = qs("#adminResults");
+
+  // Bind auth-gated event listeners
+  bindAuthGatedEvents();
+}
+
+function bindAuthGatedEvents() {
+  el.btnCreateProject?.addEventListener("click", createProject);
+  el.btnCreatePatient?.addEventListener("click", createPatientBaseline);
+  el.btnGenToken?.addEventListener("click", genToken);
+
+  el.btnAddVariant?.addEventListener("click", addVariant);
+  el.btnAddLab?.addEventListener("click", addLab);
+  el.btnAddMed?.addEventListener("click", addMed);
+  el.btnAddEvent?.addEventListener("click", addEvent);
+
+  el.btnExportBaseline?.addEventListener("click", ()=>exportTable("baseline"));
+  el.btnExportVisits?.addEventListener("click", ()=>exportTable("visits"));
+  el.btnExportLabs?.addEventListener("click", ()=>exportTable("labs"));
+  el.btnExportMeds?.addEventListener("click", ()=>exportTable("meds"));
+  el.btnExportVariants?.addEventListener("click", ()=>exportTable("variants"));
+  el.btnExportEvents?.addEventListener("click", ()=>exportTable("events"));
+
+  el.btnPaperPack?.addEventListener("click", ()=>generatePaperPack({withSnapshot:false}));
+  el.btnCreateSnapshot?.addEventListener("click", createSnapshotOnly);
+  el.btnPaperPackWithSnapshot?.addEventListener("click", ()=>generatePaperPack({withSnapshot:true}));
+  el.btnRefreshSnapshots?.addEventListener("click", loadSnapshots);
+
+  el.btnDownloadTemplate?.addEventListener("click", downloadImportTemplate);
+  el.importFile?.addEventListener("change", handleImportFile);
+  el.btnConfirmImport?.addEventListener("click", confirmImport);
+  el.btnCancelImport?.addEventListener("click", ()=>{
+    el.importPreview.style.display = "none";
+    el.importFile.value = "";
+    el.importProgress.style.display = "none";
+    _importParsed = null;
+  });
+
+  el.btnSaveProfile?.addEventListener("click", saveProfile);
+  el.btnApplyContract?.addEventListener("click", applyContract);
+
+  qs("#btnExportAccount")?.addEventListener("click", async () => {
+    toast("正在准备导出…");
+    try {
+      await exportTable("baseline");
+      await exportTable("visits");
+      await exportTable("labs");
+      await exportTable("meds");
+      await exportTable("variants");
+      toast("数据已导出为 CSV 文件");
+    } catch (e) { toast("导出失败：" + (e?.message || e)); }
+  });
+  qs("#btnDeleteAccount")?.addEventListener("click", async () => {
+    const confirmed = confirm("确认注销账户？此操作不可撤销，所有数据将在 30 天内被删除。建议先导出数据。");
+    if (!confirmed) return;
+    const doubleConfirm = prompt("请输入您的邮箱以确认注销：");
+    if (doubleConfirm !== user?.email) { toast("邮箱不匹配，操作取消"); return; }
+    toast("账户注销请求已提交，请联系 china@kidneysphere.com 完成注销流程。");
+    const hint = qs("#accountSettingsHint");
+    if (hint) hint.textContent = "注销请求已记录。平台将在确认后 30 天内删除您的数据。如有疑问请联系客服。";
+  });
+
+  el.labTestCode?.addEventListener("change", updateLabUnits);
+  el.labValue?.addEventListener("input", updateLabStdValue);
+  el.labUnit?.addEventListener("change", updateLabStdValue);
+
+  el.btnLoadIssues?.addEventListener("click", loadIssues);
+
+  [
+    { el: el.evtNotes,  label: "事件备注" },
+    { el: el.varNotes,  label: "基因备注" },
+    { el: el.labQcReason, label: "留痕原因" },
+  ].forEach(({ el: inp, label }) => {
+    inp?.addEventListener("input", () => {
+      if (containsPII(inp.value)) {
+        inp.style.borderColor = "#dc2626";
+        inp.title = `⚠ 检测到疑似PII，请删除个人信息（手机号/身份证/住院号/姓名等）`;
+      } else {
+        inp.style.borderColor = "";
+        inp.title = "";
+      }
+    });
+  });
+}
 
 let session = null;
 let user = null;
@@ -334,6 +423,10 @@ function showIganPathBox(){
 }
 
 async function init(){
+  // Show loading indicator during auth check
+  const authLoading = document.getElementById("authLoading");
+  if (authLoading) authLoading.style.display = "block";
+
   // Show friendly message for Supabase auth errors forwarded from index.html
   const hashParams = new URLSearchParams(location.hash.slice(1));
   if (hashParams.get("error")) {
@@ -371,6 +464,7 @@ async function init(){
     renderAuthState();
   }
 
+  // Login-related event listeners (always in DOM)
   el.btnSendLink.addEventListener("click", sendMagicLink);
   el.btnRegister.addEventListener("click", registerAccount);
   el.btnResetPwd.addEventListener("click", resetPassword);
@@ -384,104 +478,17 @@ async function init(){
     toast("已退出登录");
   });
 
-  el.btnCreateProject.addEventListener("click", createProject);
-  el.btnCreatePatient.addEventListener("click", createPatientBaseline);
-  el.btnGenToken.addEventListener("click", genToken);
-
-  // optional extra data entry
-  el.btnAddVariant?.addEventListener("click", addVariant);
-  el.btnAddLab?.addEventListener("click", addLab);
-  el.btnAddMed?.addEventListener("click", addMed);
-  el.btnAddEvent?.addEventListener("click", addEvent);
-
-  el.btnExportBaseline.addEventListener("click", ()=>exportTable("baseline"));
-  el.btnExportVisits.addEventListener("click", ()=>exportTable("visits"));
-  el.btnExportLabs.addEventListener("click", ()=>exportTable("labs"));
-  el.btnExportMeds.addEventListener("click", ()=>exportTable("meds"));
-  el.btnExportVariants.addEventListener("click", ()=>exportTable("variants"));
-  el.btnExportEvents?.addEventListener("click", ()=>exportTable("events"));
-
-  el.btnPaperPack.addEventListener("click", ()=>generatePaperPack({withSnapshot:false}));
-  el.btnCreateSnapshot?.addEventListener("click", createSnapshotOnly);
-  el.btnPaperPackWithSnapshot?.addEventListener("click", ()=>generatePaperPack({withSnapshot:true}));
-  el.btnRefreshSnapshots?.addEventListener("click", loadSnapshots);
-
-  // Import
-  el.btnDownloadTemplate?.addEventListener("click", downloadImportTemplate);
-  el.importFile?.addEventListener("change", handleImportFile);
-  el.btnConfirmImport?.addEventListener("click", confirmImport);
-  el.btnCancelImport?.addEventListener("click", ()=>{
-    el.importPreview.style.display = "none";
-    el.importFile.value = "";
-    el.importProgress.style.display = "none";
-    _importParsed = null;
-  });
-
-  el.btnSaveProfile?.addEventListener("click", saveProfile);
-  el.btnApplyContract?.addEventListener("click", applyContract);
-
-  // Account settings
-  qs("#btnExportAccount")?.addEventListener("click", async () => {
-    toast("正在准备导出…");
-    // Trigger all table exports
-    try {
-      await exportTable("baseline");
-      await exportTable("visits");
-      await exportTable("labs");
-      await exportTable("meds");
-      await exportTable("variants");
-      toast("数据已导出为 CSV 文件");
-    } catch (e) { toast("导出失败：" + (e?.message || e)); }
-  });
-  qs("#btnDeleteAccount")?.addEventListener("click", async () => {
-    const confirmed = confirm("确认注销账户？此操作不可撤销，所有数据将在 30 天内被删除。建议先导出数据。");
-    if (!confirmed) return;
-    const doubleConfirm = prompt("请输入您的邮箱以确认注销：");
-    if (doubleConfirm !== user?.email) { toast("邮箱不匹配，操作取消"); return; }
-    toast("账户注销请求已提交，请联系 china@kidneysphere.com 完成注销流程。");
-    const hint = qs("#accountSettingsHint");
-    if (hint) hint.textContent = "注销请求已记录。平台将在确认后 30 天内删除您的数据。如有疑问请联系客服。";
-  });
-
-  // Admin event listeners are now bound dynamically in checkPlatformAdmin()
-
-  // Lab catalog wiring
-  el.labTestCode?.addEventListener("change", updateLabUnits);
-  el.labValue?.addEventListener("input", updateLabStdValue);
-  el.labUnit?.addEventListener("change", updateLabStdValue);
-
-  // Issue panel
-  el.btnLoadIssues?.addEventListener("click", loadIssues);
-
-  // PII real-time detection on notes fields
-  [
-    { el: el.evtNotes,  label: "事件备注" },
-    { el: el.varNotes,  label: "基因备注" },
-    { el: el.labQcReason, label: "留痕原因" },
-  ].forEach(({ el: inp, label }) => {
-    inp?.addEventListener("input", () => {
-      if (containsPII(inp.value)) {
-        inp.style.borderColor = "#dc2626";
-        inp.title = `⚠ 检测到疑似PII，请删除个人信息（手机号/身份证/住院号/姓名等）`;
-      } else {
-        inp.style.borderColor = "";
-        inp.title = "";
-      }
-    });
-  });
-
-  renderAuthState();
+  // Auth-gated event listeners are bound in bindAuthGatedEvents() via injectAuthGatedContent()
 }
 
 function renderAuthState(){
-  const container = document.querySelector(".container");
+  const authLoading = document.getElementById("authLoading");
+  if (authLoading) authLoading.style.display = "none";
 
-  const authGated = document.getElementById("authGated");
   if (!user){
-    // Anonymous: only show login card, hide everything else
-    if (authGated) authGated.hidden = true;
+    // Anonymous: only show login card, no auth-gated content in DOM at all
     el.loginCard.style.display = "block";
-    el.appCard.style.display = "none";
+    if (el.appCard) el.appCard.style.display = "none";
     if (el.profileCard) el.profileCard.style.display = "none";
     if (el.adminCard) el.adminCard.style.display = "none";
     if (el.issuePanel) el.issuePanel.style.display = "none";
@@ -495,8 +502,8 @@ function renderAuthState(){
     setLoginHint("提示：首次使用请先点击「注册账号」创建账号，之后再登录。");
     return;
   }
-  // Logged in: unhide auth-gated wrapper, then show workspace
-  if (authGated) authGated.hidden = false;
+  // Logged in: inject auth-gated content from template (only once)
+  injectAuthGatedContent();
   el.loginCard.style.display = "none";
   el.appCard.style.display = "block";
   if (el.profileCard) el.profileCard.style.display = "block";
