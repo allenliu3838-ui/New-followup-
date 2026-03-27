@@ -129,7 +129,7 @@
       <a href="/guide">使用说明</a>
       <a href="/demo">预约演示</a>
       <a href="/collaboration">合作项目</a>
-      <a href="/staff">立即试用</a>
+      <a href="/signup?trial=1">立即试用</a>
     </div>
     <div style="margin-top:20px;font-size:12px;opacity:.55">← → 键或底部按钮翻页</div>
   </div>
@@ -453,7 +453,7 @@
         <thead><tr><th>问题</th><th>回答</th></tr></thead>
         <tbody>
           <tr><td>可以用于注册临床试验（IND）吗？</td><td>不建议直接作为 EDC/eCRF 主系统；适合观察性研究、RWS、IIT。需要 GCP/Part11 请联系私有化方案。</td></tr>
-          <tr><td>数据存在哪里？</td><td>默认存 Supabase 云（新加坡节点）；机构版支持私有化部署至院内服务器。</td></tr>
+          <tr><td>数据存在哪里？</td><td>默认存储在中国区域的云服务器上；机构版支持私有化部署至院内服务器。</td></tr>
           <tr><td>GENERAL 模块没有我需要的字段怎么办？</td><td>用 labs_long / meds_long 自由字段表追加；分析脚本支持自定义读取列。</td></tr>
           <tr><td>多个课题可以共用一个系统吗？</td><td>可以；每个课题建一个"项目"，center_code 隔离，数据互不干扰。</td></tr>
           <tr><td>随访护士不会用电脑怎么办？</td><td>随访入口 /p/&lt;token&gt; 极简设计，手机浏览器打开即可，4 个字段，无需账号。</td></tr>
@@ -467,7 +467,7 @@
     <h1 class="slide-h1">立即开始，<br/>30 天免费试用</h1>
     <p class="sub" style="margin-top:14px">无需信用卡 · 完整功能 · 随时退出</p>
     <div class="link-row" style="margin-top:28px">
-      <a href="/staff" style="background:rgba(255,255,255,.25);font-weight:700">🚀 开始试用 /staff</a>
+      <a href="/signup?trial=1" style="background:rgba(255,255,255,.25);font-weight:700">🚀 开始免费试用</a>
       <a href="/demo">📅 预约演示</a>
       <a href="/guide">📖 使用说明</a>
       <a href="/guide#scenarios">🔬 科研场景举例</a>
@@ -526,7 +526,7 @@
 </script>
 <footer class="site-footer">
     <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
-    <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></div>
+    <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></div>
   </footer>
   <script src="/analytics.js"></script>
 </body>

@@ -19,12 +19,15 @@ test.describe("Public pages — anonymous access", () => {
     }
   });
 
-  test("Homepage: core CTAs are clickable", async ({ page }) => {
+  test("Homepage: core CTAs point to /signup and /login, not /staff", async ({ page }) => {
     await page.goto("/");
-    // "开始 30 天试用" button links to /staff
-    const trialBtn = page.locator('a.btn.primary[href="/staff"]').first();
+    // "开始 30 天试用" button links to /signup?trial=1
+    const trialBtn = page.locator('a.btn.primary[href="/signup?trial=1"]').first();
     await expect(trialBtn).toBeVisible();
-    expect(await trialBtn.getAttribute("href")).toBe("/staff");
+    expect(await trialBtn.getAttribute("href")).toBe("/signup?trial=1");
+    // No trial CTA should point to /staff
+    const staffTrialBtns = page.locator('a.btn.primary[href="/staff"]');
+    await expect(staffTrialBtns).toHaveCount(0);
   });
 
   test("/demo: no success state on initial load", async ({ page }) => {

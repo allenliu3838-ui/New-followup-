@@ -28,6 +28,11 @@
   status = 200
 
 [[redirects]]
+  from = "/auth/callback"
+  to   = "/auth-callback.html"
+  status = 200
+
+[[redirects]]
   from = "/staff"
   to   = "/staff.html"
   status = 200
