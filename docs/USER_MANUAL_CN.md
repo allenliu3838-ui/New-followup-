@@ -36,46 +36,9 @@
 
 ## 2. 上线前准备（管理员一次性完成）
 
-下面流程建议由技术管理员/项目管理员先完成，再培训普通用户。
+SaaS 版用户无需任何部署操作，注册后即可使用。
 
-## 2.1 创建 Supabase 项目
-
-1. 登录 Supabase，点击 **New Project**。
-2. 记录两个关键信息：
-   - `Project URL`
-   - `anon public key`
-
-## 2.2 初始化数据库（必须）
-
-在 Supabase 的 SQL Editor 运行：
-
-- `supabase/migrations/0001_core.sql`
-
-> 作用：创建核心表、RLS 策略、token 随访 RPC 等关键能力。
-
-## 2.3 配置登录回调地址（避免“收到了邮件却登录失败”）
-
-Supabase → Authentication → URL Configuration：
-
-- Site URL：你的站点域名（例如 Netlify 域名）
-- Redirect URLs 至少包含：
-  - `https://你的域名/staff`
-  - `https://你的域名/p/*`
-  - 本地调试可加：`http://localhost:8888/staff`
-
-## 2.4 前端配置
-
-编辑 `site/config.js`：
-
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-
-## 2.5 部署
-
-推荐 Netlify（无构建静态站）：
-
-- Publish directory: `site`
-- Build command: 留空或 `echo 'no build'`
+私有化部署或自行搭建请联系技术支持获取部署文档：china@kidneysphere.com
 
 ---
 
@@ -224,8 +187,8 @@ Supabase → Authentication → URL Configuration：
 ## 6. 常见问题（FAQ）与应对话术
 
 ## Q1：收到了登录邮件，点击后又回到登录页？
-**原因**：Redirect URL 没配置好。  
-**处理**：检查 Supabase Authentication 的 Site URL 和 Redirect URLs。
+**原因**：登录链接可能已过期（链接有效期有限）。
+**处理**：请返回登录页重新发送登录链接。如仍有问题请联系 china@kidneysphere.com。
 
 ## Q2：同一患者怎么更新后续数据？
 **答**：不用新建患者，直接使用该患者 token 新增后续访视记录。

@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>登录验证中 · 肾域·科研</title>
+  <meta name="robots" content="noindex,nofollow"/>
+  <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
+  <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
+  <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
+  <link rel="stylesheet" href="/app.css"/>
+  <link rel="icon" href="/assets/kidneysphere-ai.png"/>
+</head>
+<body>
+  <div class="container" style="max-width:480px">
+    <!-- Loading state (default) -->
+    <div class="card" id="callbackLoading" data-testid="auth-callback-loading">
+      <div class="brand">
+        <img src="/assets/kidneysphere-ai.png" alt="肾域·科研"/>
+        <div>
+          <h1 class="brand-title">登录验证中</h1>
+          <div class="brand-sub">正在处理您的登录请求…</div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:20px">
+        <div class="muted">请稍候，正在验证登录信息…</div>
+      </div>
+    </div>
+
+    <!-- Success state -->
+    <div class="card" id="callbackSuccess" data-testid="auth-callback-success" style="display:none">
+      <div class="brand">
+        <img src="/assets/kidneysphere-ai.png" alt="肾域·科研"/>
+        <div>
+          <h1 class="brand-title">登录成功</h1>
+          <div class="brand-sub">即将跳转…</div>
+        </div>
+      </div>
+      <div class="okbox" style="margin-top:12px">
+        登录成功！正在为您跳转到工作台…
+      </div>
+    </div>
+
+    <!-- Error state -->
+    <div class="card" id="callbackError" data-testid="auth-callback-error" style="display:none">
+      <div class="brand">
+        <img src="/assets/kidneysphere-ai.png" alt="肾域·科研"/>
+        <div>
+          <h1 class="brand-title">登录失败</h1>
+          <div class="brand-sub">请重试或联系支持</div>
+        </div>
+      </div>
+      <div class="warnbox" style="margin-top:12px">
+        <div id="callbackErrorMsg" data-testid="auth-callback-error-msg">登录链接无效或已过期。</div>
+      </div>
+      <div class="btnbar" style="margin-top:14px">
+        <a class="btn primary" href="/login" id="callbackResendBtn" data-testid="auth-callback-resend">重新发送登录链接</a>
+        <a class="btn" href="/">返回首页</a>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
+    <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></div>
+  </footer>
+
+  <script src="/lib/error-logger.js"></script>
+  <script src="/config.js"></script>
+  <script type="module">
+    import { supabase } from "/lib/supabase-client.js";
+
+    const sb = supabase();
+    const elLoading = document.getElementById("callbackLoading");
+    const elSuccess = document.getElementById("callbackSuccess");
+    const elError   = document.getElementById("callbackError");
+    const elErrorMsg = document.getElementById("callbackErrorMsg");
+
+    // Determine returnTo from query params or sessionStorage
+    const params = new URLSearchParams(location.search);
+    const returnTo = params.get("returnTo") || sessionStorage.getItem("auth_returnTo") || "/staff";
+    sessionStorage.removeItem("auth_returnTo");
+
+    function showSuccess() {
+      elLoading.style.display = "none";
+      elSuccess.style.display = "block";
+      elError.style.display   = "none";
+      // Log success event
+      if (window.ErrorLogger) ErrorLogger.log("auth.callback.success", { returnTo });
+    }
+
+    function showError(msg) {
+      elLoading.style.display = "none";
+      elSuccess.style.display = "none";
+      elError.style.display   = "block";
+      elErrorMsg.textContent  = msg || "登录链接无效或已过期。";
+      // Log error event
+      if (window.ErrorLogger) ErrorLogger.log("auth.callback.error", { message: msg });
+    }
+
+    async function handleCallback() {
+      const hash = location.hash;
+      const hashParams = new URLSearchParams(hash.replace(/^#/, ""));
+
+      // Check for explicit error in hash
+      if (hashParams.get("error")) {
+        const desc = (hashParams.get("error_description") || "认证失败，请重试。").replace(/\+/g, " ");
+        // Clean URL immediately
+        history.replaceState(null, "", location.pathname);
+        showError(desc);
+        return;
+      }
+
+      // Check for PKCE code in query params
+      const code = params.get("code");
+      if (code) {
+        try {
+          const { data, error } = await sb.auth.exchangeCodeForSession(code);
+          // Clean URL immediately after exchange
+          history.replaceState(null, "", location.pathname);
+          if (error) throw error;
+          showSuccess();
+          setTimeout(() => location.replace(returnTo), 800);
+          return;
+        } catch (e) {
+          history.replaceState(null, "", location.pathname);
+          showError("登录验证失败：" + (e?.message || "请重试。"));
+          return;
+        }
+      }
+
+      // Check for implicit flow tokens in hash
+      if (hash && (hash.includes("access_token=") || hash.includes("type="))) {
+        // Password recovery should go to /login
+        if (hash.includes("type=recovery")) {
+          location.replace("/login" + hash);
+          return;
+        }
+
+        // Let Supabase client detect and process the session from URL hash
+        // The detectSessionInUrl option in supabase-client.js handles this
+        try {
+          const { data: { session }, error } = await sb.auth.getSession();
+          // Clean URL immediately
+          history.replaceState(null, "", location.pathname);
+          if (error) throw error;
+          if (session) {
+            showSuccess();
+            setTimeout(() => location.replace(returnTo), 800);
+            return;
+          }
+          showError("登录链接已失效，请重新获取登录链接。");
+        } catch (e) {
+          history.replaceState(null, "", location.pathname);
+          showError("登录验证失败：" + (e?.message || "请重试。"));
+        }
+        return;
+      }
+
+      // No auth tokens found — check if already logged in
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        showSuccess();
+        setTimeout(() => location.replace(returnTo), 600);
+        return;
+      }
+
+      // Nothing to process
+      showError("未检测到有效的登录信息。请返回登录页面重新发送登录链接。");
+    }
+
+    handleCallback();
+  </script>
+</body>
+</html>
