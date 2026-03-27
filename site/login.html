@@ -30,6 +30,10 @@
         <button class="btn primary" id="btnLogin">登录</button>
         <button class="btn" id="btnResetPwd">忘记密码</button>
       </div>
+      <div style="margin-top:12px;text-align:center">
+        <span class="muted small">── 或 ──</span>
+      </div>
+      <button class="btn" id="btnMagicLink" style="width:100%;margin-top:8px">📩 发送一次性登录链接</button>
       <div id="loginHint" class="muted small" style="margin-top:8px"></div>
       <div class="muted small" style="margin-top:12px">
         还没有账号？<a href="/signup">注册新账号</a>
@@ -81,6 +85,28 @@
         toast("登录成功");
       } catch (e) {
         toast("登录失败：" + (e?.message || e));
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    const rlMagic = throttle("magic", { maxAttempts: 5, windowMs: 15 * 60_000, message: "Magic Link 请求过于频繁" });
+
+    qs("#btnMagicLink").addEventListener("click", async () => {
+      if (!rlMagic.allow()) { toast(rlMagic.message); return; }
+      const email = qs("#email").value.trim().toLowerCase();
+      if (!email) { toast("请先输入邮箱"); return; }
+      const btn = qs("#btnMagicLink");
+      btn.disabled = true;
+      try {
+        const { error } = await sb.auth.signInWithOtp({
+          email,
+          options: { emailRedirectTo: location.origin + returnTo }
+        });
+        if (error) throw error;
+        qs("#loginHint").textContent = "✅ 一次性登录链接已发送至 " + email + "，请查看收件箱。";
+      } catch (e) {
+        toast("发送失败：" + (e?.message || e));
       } finally {
         btn.disabled = false;
       }
