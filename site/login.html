@@ -47,6 +47,10 @@
   <script type="module">
     import { supabase } from "/lib/supabase-client.js";
     import { qs, toast } from "/lib/utils.js";
+    import { throttle } from "/lib/rate-limit.js";
+
+    const rlLogin = throttle("login", { maxAttempts: 10, windowMs: 15 * 60_000, message: "登录尝试过于频繁" });
+    const rlReset = throttle("reset", { maxAttempts: 5, windowMs: 15 * 60_000, message: "密码重置请求过于频繁" });
 
     const sb = supabase();
     const returnTo = new URLSearchParams(location.search).get("returnTo") || "/staff";
@@ -64,6 +68,7 @@
     });
 
     qs("#btnLogin").addEventListener("click", async () => {
+      if (!rlLogin.allow()) { toast(rlLogin.message); return; }
       const email = qs("#email").value.trim().toLowerCase();
       const password = qs("#password").value;
       if (!email) { toast("请输入邮箱"); return; }
@@ -82,6 +87,7 @@
     });
 
     qs("#btnResetPwd").addEventListener("click", async () => {
+      if (!rlReset.allow()) { toast(rlReset.message); return; }
       const email = qs("#email").value.trim().toLowerCase();
       if (!email) { toast("请先输入邮箱"); return; }
       try {

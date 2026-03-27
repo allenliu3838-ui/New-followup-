@@ -7,3 +7,6 @@ analysis/outputs
 test-results/
 playwright-report/
 lighthouse-reports/
+
+# Internal documents (moved from docs/ and deploy/)
+.internal/

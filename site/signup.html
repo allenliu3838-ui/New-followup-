@@ -145,8 +145,11 @@
   <script type="module">
     import { supabase } from "/lib/supabase-client.js";
     import { qs, toast } from "/lib/utils.js";
+    import { throttle } from "/lib/rate-limit.js";
+    import { validatePassword } from "/lib/password-strength.js";
 
     const sb = supabase();
+    const rlRegister = throttle("register", { maxAttempts: 5, windowMs: 15 * 60_000, message: "注册请求过于频繁" });
     const params = new URLSearchParams(location.search);
     const isTrial = params.get("trial") === "1";
     let currentObStep = 1;
@@ -181,11 +184,13 @@
 
     // Registration
     qs("#btnRegister").addEventListener("click", async () => {
+      if (!rlRegister.allow()) { toast(rlRegister.message); return; }
       const email = qs("#email").value.trim().toLowerCase();
       const password = qs("#password").value;
       const confirm = qs("#confirmPwd").value;
       if (!email) { toast("请输入邮箱"); return; }
-      if (!password || password.length < 8) { toast("密码至少需要 8 位"); return; }
+      const pwCheck = validatePassword(password);
+      if (!pwCheck.valid) { toast(pwCheck.message); return; }
       if (password !== confirm) { toast("两次密码不一致"); return; }
       if (!qs("#agreeTerms").checked) { toast("请先阅读并同意用户协议和隐私政策"); return; }
 
