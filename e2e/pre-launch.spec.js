@@ -84,69 +84,101 @@ test.describe("Pre-launch: Auth callback page", () => {
   });
 });
 
-test.describe("Pre-launch: Protected routes", () => {
-  test("/staff anonymous: login card visible, authGated hidden", async ({ page }) => {
+test.describe("Pre-launch: Protected routes — DOM isolation", () => {
+  test("/staff anonymous: login card visible, auth-gated content NOT in DOM", async ({ page }) => {
     await page.goto("/staff");
     const loginCard = page.locator("[data-testid=login-card]");
     await expect(loginCard).toBeVisible({ timeout: 10000 });
 
-    // authGated wrapper should have hidden attribute
-    const authGatedHidden = await page.evaluate(() => {
-      const el = document.getElementById("authGated");
-      return el ? el.hidden : null;
+    // authGatedContainer should be empty (template not injected)
+    const containerHtml = await page.evaluate(() => {
+      const el = document.getElementById("authGatedContainer");
+      return el ? el.innerHTML.trim() : null;
     });
-    expect(authGatedHidden).toBe(true);
+    expect(containerHtml).toBe("");
   });
 
-  test("/staff anonymous: no workspace module titles visible", async ({ page }) => {
+  test("/staff anonymous: protected element IDs not in DOM", async ({ page }) => {
     await page.goto("/staff");
     await page.waitForTimeout(2000);
 
-    // These module titles should NOT be visible
-    const moduleTitles = ["研究者资料", "我的项目列表", "患者（去标识化）", "导出论文包"];
-    for (const title of moduleTitles) {
-      const visibleText = await page.evaluate((t) => {
-        const els = document.querySelectorAll("#authGated h2, #authGated h3");
-        return Array.from(els).some(el => el.offsetParent !== null && el.textContent.includes(t));
-      }, title);
-      expect(visibleText).toBe(false);
+    // These element IDs should NOT exist in the rendered DOM (they're inside <template>)
+    const protectedIds = ["profileCard", "appCard", "projName", "patCode", "btnExportBaseline",
+                          "btnPaperPack", "importType", "tokenOut", "labTestCode"];
+    for (const id of protectedIds) {
+      const exists = await page.evaluate((elemId) => document.getElementById(elemId) !== null, id);
+      expect(exists).toBe(false);
     }
+  });
+
+  test("/staff anonymous: no workspace module titles in DOM at all", async ({ page }) => {
+    await page.goto("/staff");
+    await page.waitForTimeout(2000);
+
+    // These module titles should NOT exist anywhere in the active DOM (only inside template)
+    const moduleTitles = ["研究者资料", "我的项目列表", "患者（去标识化）", "导出论文包", "批量导入"];
+    const bodyText = await page.evaluate(() => {
+      // Get text from all elements EXCEPT template content
+      const clone = document.body.cloneNode(true);
+      clone.querySelectorAll("template").forEach(t => t.remove());
+      return clone.textContent;
+    });
+    for (const title of moduleTitles) {
+      expect(bodyText).not.toContain(title);
+    }
+  });
+
+  test("/staff anonymous: no data requests made (no Supabase RPC calls before auth)", async ({ page }) => {
+    const rpcCalls = [];
+    await page.route("**/rest/v1/rpc/**", (route) => {
+      rpcCalls.push(route.request().url());
+      route.continue();
+    });
+    await page.goto("/staff");
+    await page.waitForTimeout(3000);
+    // No RPC calls should be made for anonymous users (data loads only after auth)
+    expect(rpcCalls.length).toBe(0);
   });
 });
 
-test.describe("Pre-launch: Checkout guest state", () => {
-  test("Guest: shows login prompt, hides checkout main", async ({ page }) => {
+test.describe("Pre-launch: Checkout guest state — DOM isolation", () => {
+  test("Guest: shows login prompt, checkout main is empty", async ({ page }) => {
     await page.goto("/checkout");
     const loginPrompt = page.locator("[data-testid=checkout-login-prompt]");
-    const mainContent = page.locator("[data-testid=checkout-main]");
     await expect(loginPrompt).toBeVisible({ timeout: 10000 });
-    await expect(mainContent).not.toBeVisible();
+    // checkoutMain should exist but be empty (template not injected)
+    const mainHtml = await page.evaluate(() => {
+      const el = document.getElementById("checkoutMain");
+      return el ? el.innerHTML.trim() : null;
+    });
+    expect(mainHtml).toBe("");
   });
 
-  test("Guest: no order details, no proof status, no my orders loading", async ({ page }) => {
+  test("Guest: no order form, payment, or order status elements in DOM", async ({ page }) => {
     await page.goto("/checkout");
     await page.waitForTimeout(2000);
-    const pageText = await page.textContent("body");
-    expect(pageText).not.toContain("凭证已提交");
-    expect(pageText).not.toContain("加载中");
-    // "我的订单" header is inside checkoutMain which is hidden
-    const myOrdersVisible = await page.evaluate(() => {
-      const el = document.getElementById("myOrdersCard");
-      return el ? el.offsetParent !== null : false;
-    });
-    expect(myOrdersVisible).toBe(false);
+    // These IDs should NOT exist in DOM for guest (inside template)
+    const protectedIds = ["step1", "step2", "step3", "step4", "myOrdersCard",
+                          "payerName", "planCode", "proofFile", "s4OrderNo"];
+    for (const id of protectedIds) {
+      const exists = await page.evaluate((elemId) => document.getElementById(elemId) !== null, id);
+      expect(exists).toBe(false);
+    }
   });
 
-  test("Guest: step3 has no payment info", async ({ page }) => {
+  test("Guest: no checkout keywords in active DOM", async ({ page }) => {
     await page.goto("/checkout");
-    await page.waitForTimeout(1000);
-    const step3Html = await page.evaluate(() => {
-      const el = document.getElementById("step3Content");
-      return el ? el.innerHTML : "";
+    await page.waitForTimeout(2000);
+    const bodyText = await page.evaluate(() => {
+      const clone = document.body.cloneNode(true);
+      clone.querySelectorAll("template").forEach(t => t.remove());
+      return clone.textContent;
     });
-    expect(step3Html).not.toContain("pay-tab");
-    expect(step3Html).not.toContain("upload-zone");
-    expect(step3Html).toContain("请先完成前两步");
+    expect(bodyText).not.toContain("凭证已提交");
+    expect(bodyText).not.toContain("我的订单");
+    expect(bodyText).not.toContain("订单号");
+    expect(bodyText).not.toContain("当前状态");
+    expect(bodyText).not.toContain("加载中");
   });
 });
 

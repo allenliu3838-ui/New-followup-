@@ -32,10 +32,12 @@
     .issue-warning  { background:#fef3c7;color:#b45309; }
     .issue-info     { background:#dbeafe;color:#1d4ed8; }
     .issue-resolved { background:#d1fae5;color:#065f46; }
-    /* Auth-gated content hidden by default; JS controls via inline style */
+    /* Auth-gated content: moved to <template>, injected only after auth */
     #profileCard, #appCard, #adminCard, #issuePanel { display:none; }
-    /* Auth-gated wrapper: hidden until JS confirms session */
-    #authGated[hidden] { display:none !important; }
+    /* Loading indicator during auth check */
+    #authLoading { text-align:center; padding:24px; }
+    #authLoading .spinner { display:inline-block; width:20px; height:20px; border:3px solid var(--border); border-top-color:var(--brand); border-radius:50%; animation:spin .6s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -103,8 +105,19 @@
       <div id="loginHint" class="muted small" style="margin-top:8px"></div>
     </div>
 
-    <!-- ===== 以下内容仅登录后可见 ===== -->
-    <div id="authGated" hidden>
+    <!-- Auth loading indicator (shown during session check) -->
+    <div class="card" id="authLoading" data-testid="auth-loading" style="display:none">
+      <div style="text-align:center;padding:16px">
+        <div class="spinner"></div>
+        <div class="muted small" style="margin-top:10px">正在验证登录状态…</div>
+      </div>
+    </div>
+
+    <!-- Auth-gated container (content injected from template after auth) -->
+    <div id="authGatedContainer"></div>
+
+    <!-- ===== 以下内容仅登录后可见（template, not in DOM until auth succeeds） ===== -->
+    <template id="authGatedTpl">
 
     <!-- ===== 研究者资料（登录后填写） ===== -->
     <div class="card" id="profileCard" style="display:none">
@@ -726,7 +739,7 @@
   <!-- Admin panel: dynamically injected by JS after server-side role check -->
   <div id="adminCard" data-testid="admin-card" style="display:none"></div>
 
-    </div><!-- /authGated -->
+    </template><!-- /authGatedTpl -->
 
   <script src="/lib/error-logger.js"></script>
   <script src="/config.js"></script>

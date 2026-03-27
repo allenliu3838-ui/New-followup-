@@ -2,19 +2,20 @@
 const { test, expect } = require("@playwright/test");
 
 test.describe("Checkout page state machine", () => {
-  test("Anonymous: no payment info in DOM at all", async ({ page }) => {
+  test("Anonymous: checkout content NOT in DOM at all", async ({ page }) => {
     await page.goto("/checkout");
     await page.waitForTimeout(2000);
 
-    // Step 3 content should be a placeholder
-    const step3Html = await page.evaluate(() => {
-      const el = document.getElementById("step3Content");
-      return el ? el.innerHTML : "";
+    // checkoutMain should be empty — template not injected for guests
+    const mainHtml = await page.evaluate(() => {
+      const el = document.getElementById("checkoutMain");
+      return el ? el.innerHTML.trim() : "";
     });
-    expect(step3Html).not.toContain("微信支付");
-    expect(step3Html).not.toContain("支付宝");
-    expect(step3Html).not.toContain("对公转账");
-    expect(step3Html).not.toContain("upload-zone");
+    expect(mainHtml).toBe("");
+
+    // Step 3 element should not exist in DOM
+    const step3Exists = await page.evaluate(() => document.getElementById("step3Content") !== null);
+    expect(step3Exists).toBe(false);
   });
 
   test("Step 1 is active by default when logged in", async ({ page }) => {
