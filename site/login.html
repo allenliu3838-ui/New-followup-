@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>登录 · 肾域·科研</title>
+  <meta name="robots" content="noindex,nofollow"/>
+  <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
+  <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
+  <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
+  <link rel="stylesheet" href="/app.css"/>
+  <link rel="icon" href="/assets/kidneysphere-ai.png"/>
+</head>
+<body>
+  <div class="container" style="max-width:480px">
+    <div class="card">
+      <div class="brand">
+        <img src="/assets/kidneysphere-ai.png" alt="肾域·科研"/>
+        <div>
+          <h1 class="brand-title">登录</h1>
+          <div class="brand-sub">肾域·科研 · 科研工作台</div>
+        </div>
+      </div>
+
+      <label>邮箱</label>
+      <input id="email" type="email" placeholder="name@example.com"/>
+      <label>密码</label>
+      <input id="password" type="password" placeholder="请输入密码"/>
+      <div class="btnbar">
+        <button class="btn primary" id="btnLogin">登录</button>
+        <button class="btn" id="btnResetPwd">忘记密码</button>
+      </div>
+      <div id="loginHint" class="muted small" style="margin-top:8px"></div>
+      <div class="muted small" style="margin-top:12px">
+        还没有账号？<a href="/signup">注册新账号</a>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
+    <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></div>
+  </footer>
+
+  <script src="/lib/error-logger.js"></script>
+  <script src="/config.js"></script>
+  <script type="module">
+    import { supabase } from "/lib/supabase-client.js";
+    import { qs, toast } from "/lib/utils.js";
+
+    const sb = supabase();
+    const returnTo = new URLSearchParams(location.search).get("returnTo") || "/staff";
+
+    // If already logged in, redirect
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) { location.replace(returnTo); }
+
+    sb.auth.onAuthStateChange((_event, s) => {
+      if (_event === "PASSWORD_RECOVERY") {
+        qs("#loginHint").textContent = "请输入新密码后点击登录。";
+        return;
+      }
+      if (s) location.replace(returnTo);
+    });
+
+    qs("#btnLogin").addEventListener("click", async () => {
+      const email = qs("#email").value.trim().toLowerCase();
+      const password = qs("#password").value;
+      if (!email) { toast("请输入邮箱"); return; }
+      if (!password) { toast("请输入密码"); return; }
+      const btn = qs("#btnLogin");
+      btn.disabled = true;
+      try {
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        toast("登录成功");
+      } catch (e) {
+        toast("登录失败：" + (e?.message || e));
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    qs("#btnResetPwd").addEventListener("click", async () => {
+      const email = qs("#email").value.trim().toLowerCase();
+      if (!email) { toast("请先输入邮箱"); return; }
+      try {
+        const { error } = await sb.auth.resetPasswordForEmail(email, {
+          redirectTo: location.origin + "/login"
+        });
+        if (error) throw error;
+        qs("#loginHint").textContent = "密码重置邮件已发送，请查看收件箱。";
+      } catch (e) {
+        toast("发送失败：" + (e?.message || e));
+      }
+    });
+  </script>
+</body>
+</html>

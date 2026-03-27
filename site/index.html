@@ -29,7 +29,9 @@
     }
     var h = location.hash;
     if (h && (h.includes('access_token=') || h.includes('type=recovery') || h.includes('error='))) {
-      location.replace('/staff' + h);
+      // Route password recovery to /login, other auth callbacks to /staff
+      var dest = h.includes('type=recovery') ? '/login' : '/staff';
+      location.replace(dest + h);
     }
   </script>
   <style>
@@ -79,9 +81,9 @@
           <b>科研用途，不录入 PII，不提供诊断建议。</b>30 天免费试用，功能完整。
         </p>
         <div class="hero-ctas">
-          <a class="btn primary" href="/staff"
+          <a class="btn primary" href="/signup?trial=1"
              data-track="click_start_trial" data-track-source="hero">开始 30 天试用</a>
-          <a class="btn" href="/staff"
+          <a class="btn" href="/login"
              style="border-color:var(--brand);color:var(--brand)"
              data-track="click_login" data-track-source="hero">登录后台</a>
         </div>
@@ -276,7 +278,7 @@
   </script>
   <footer class="site-footer">
     <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
-    <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></div>
+    <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a></div>
   </footer>
 </body>
 </html>
