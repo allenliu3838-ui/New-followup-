@@ -1,8 +1,12 @@
 import { supabase } from "/lib/supabase-client.js";
 import { qs, qsa, toast, fmtDate, escapeHtml } from "/lib/utils.js";
+import { throttle } from "/lib/rate-limit.js";
 
 const sb = supabase();
 const B = () => window.CONFIG?.BILLING || {};
+
+const rlOrder  = throttle("order",  { maxAttempts: 5,  windowMs: 15 * 60_000, message: "下单请求过于频繁" });
+const rlUpload = throttle("upload", { maxAttempts: 10, windowMs: 15 * 60_000, message: "凭证上传过于频繁" });
 
 // ── DOM refs ────────────────────────────────────────────────
 const el = {
@@ -285,6 +289,8 @@ async function createOrder() {
     return;
   }
 
+  if (!rlOrder.allow()) { toast(rlOrder.message); return; }
+
   const b = B();
   const count = Math.max(3, parseInt(el.projectCount.value) || 3);
   const extra = count - (b.PRO_BASE_PROJECTS || 3);
@@ -362,6 +368,7 @@ function handleFile(file) {
 }
 
 async function submitProof() {
+  if (!rlUpload.allow()) { toast(rlUpload.message); return; }
   if (!currentOrder) { toast("请先完成下单"); return; }
   const file = el.proofFile.files[0];
   if (!file) { toast("请先选择凭证文件"); return; }

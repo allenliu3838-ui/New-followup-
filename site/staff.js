@@ -1,7 +1,13 @@
 import { supabase } from "/lib/supabase-client.js";
 import { qs, qsa, toast, toCsv, downloadCsvUtf8Bom, escapeCsv, fmtDate, daysLeft, humanNumber, escapeHtml } from "/lib/utils.js";
+import { throttle } from "/lib/rate-limit.js";
+import { validatePassword } from "/lib/password-strength.js";
 
 const sb = supabase();
+
+const rlLogin    = throttle("login",    { maxAttempts: 10, windowMs: 15 * 60_000, message: "登录尝试过于频繁" });
+const rlRegister = throttle("register", { maxAttempts: 5,  windowMs: 15 * 60_000, message: "注册请求过于频繁" });
+const rlReset    = throttle("reset",    { maxAttempts: 5,  windowMs: 15 * 60_000, message: "密码重置请求过于频繁" });
 
 const el = {
   loginCard: qs("#loginCard"),
@@ -580,6 +586,7 @@ function buildAdminPanelHtml(){
 }
 
 async function sendMagicLink(){
+  if (!rlLogin.allow()) { toast(rlLogin.message); return; }
   const email = getInputEmail();
   const password = el.password?.value || "";
   if (!email){ toast("请输入邮箱"); return; }
@@ -600,10 +607,12 @@ async function sendMagicLink(){
 }
 
 async function registerAccount(){
+  if (!rlRegister.allow()) { toast(rlRegister.message); return; }
   const email = getInputEmail();
   const password = el.password?.value || "";
   if (!email){ toast("请输入邮箱"); return; }
-  if (!password || password.length < 8){ toast("密码至少需要8位"); return; }
+  const pwCheck = validatePassword(password);
+  if (!pwCheck.valid){ toast(pwCheck.message); return; }
   // Show consent box on first register attempt
   const consentBox = qs("#registerConsentBox");
   if (consentBox) consentBox.style.display = "block";
@@ -642,6 +651,7 @@ async function registerAccount(){
 }
 
 async function resetPassword(){
+  if (!rlReset.allow()) { toast(rlReset.message); return; }
   const email = getInputEmail();
   if (!email){ toast("请先输入您的注册邮箱"); return; }
   const btn = el.btnResetPwd;
@@ -679,7 +689,8 @@ function showNewPasswordMode(){
 async function setNewPassword(){
   const newPwd = el.password?.value || "";
   const confirmPwd = el.confirmPwd?.value || "";
-  if (!newPwd || newPwd.length < 8){ toast("密码至少需要8位"); return; }
+  const pwCheck = validatePassword(newPwd);
+  if (!pwCheck.valid){ toast(pwCheck.message); return; }
   if (newPwd !== confirmPwd){ toast("两次输入的密码不一致，请重新输入"); el.confirmPwd.value = ""; el.confirmPwd.focus(); return; }
   const btn = el.btnSetNewPwd;
   setBusy(btn, true);
