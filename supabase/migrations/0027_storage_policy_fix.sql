@@ -1,17 +1,32 @@
 -- ============================================================
 -- 0027_storage_policy_fix.sql
--- 修复 payment-proofs bucket 的 storage policy
+-- 创建 payment-proofs bucket + 修复 storage policy
 --
 -- 问题：
---   1. 现有 policy applied to public（匿名可访问）
---   2. 缺少路径隔离（用户可读写他人文件）
+--   1. bucket 可能尚未创建
+--   2. 现有 policy applied to public（匿名可访问）
+--   3. 缺少路径隔离（用户可读写他人文件）
 --
 -- 修复：
+--   - 创建 bucket（如不存在）
 --   - 删除旧 policy
 --   - 新建 policy：仅 authenticated 用户可操作
 --   - INSERT/SELECT/DELETE 均按 auth.uid() 路径隔离
 --   - 上传路径格式：{user_id}/{order_id}/{timestamp}.{ext}
 -- ============================================================
+
+-- ──────────────────────────────────────────────────────────
+-- 0. 创建 bucket（如不存在）
+-- ──────────────────────────────────────────────────────────
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'payment-proofs',
+  'payment-proofs',
+  false,                                                    -- 私有
+  10485760,                                                 -- 10MB
+  array['image/png','image/jpeg','image/webp','application/pdf']
+)
+on conflict (id) do nothing;
 
 -- ──────────────────────────────────────────────────────────
 -- 1. 删除现有的宽松 policy
