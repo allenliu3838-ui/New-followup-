@@ -5,12 +5,10 @@ create or replace function public.patient_list_labs(
   p_limit int default 30
 )
 returns table (
-  test_date date,
+  lab_date date,
   lab_name text,
   lab_value numeric,
-  unit text,
-  std_value numeric,
-  notes text,
+  lab_unit text,
   created_at timestamptz
 )
 language sql
@@ -18,12 +16,10 @@ security definer
 set search_path = public
 as $$
   select
-    l.test_date,
+    l.lab_date,
     l.lab_name,
     l.lab_value,
-    l.unit,
-    l.std_value,
-    l.notes,
+    l.lab_unit,
     l.created_at
   from public.patient_tokens t
   join public.labs_long l
@@ -31,7 +27,7 @@ as $$
   where t.token = p_token
     and t.active = true
     and (t.expires_at is null or t.expires_at > now())
-  order by l.test_date desc nulls last, l.created_at desc
+  order by l.lab_date desc nulls last, l.created_at desc
   limit greatest(1, least(p_limit, 100));
 $$;
 
@@ -47,8 +43,6 @@ returns table (
   drug_name text,
   drug_class text,
   dose text,
-  route text,
-  frequency text,
   start_date date,
   end_date date,
   created_at timestamptz
@@ -61,8 +55,6 @@ as $$
     m.drug_name,
     m.drug_class,
     m.dose,
-    m.route,
-    m.frequency,
     m.start_date,
     m.end_date,
     m.created_at
