@@ -478,9 +478,32 @@ async function init(){
     renderAuthState();
   });
 
+  // Detect ?recovery=1 from password reset redirect URL
+  const urlParams = new URLSearchParams(location.search);
+  const isRecoveryUrl = urlParams.get("recovery") === "1";
+  if (isRecoveryUrl) {
+    passwordRecoveryMode = true;
+    // Clean up URL parameter
+    urlParams.delete("recovery");
+    const cleanUrl = urlParams.toString()
+      ? `${location.pathname}?${urlParams.toString()}`
+      : location.pathname;
+    history.replaceState(null, "", cleanUrl);
+  }
+
   // getSession triggers PKCE code exchange; the listener above handles the result
   const { data: { session: s } } = await sb.auth.getSession();
-  if (!stateHandled){
+
+  // If recovery URL detected, force password reset UI after session is established
+  if (passwordRecoveryMode && !stateHandled) {
+    session = s;
+    user = s?.user || null;
+    if (user) {
+      showNewPasswordMode();
+    } else {
+      renderAuthState();
+    }
+  } else if (!stateHandled) {
     // onAuthStateChange hasn't fired yet — render with whatever getSession returned
     session = s;
     user = s?.user || null;
@@ -688,7 +711,7 @@ async function resetPassword(){
   setBusy(btn, true);
   try{
     const { error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo: `${location.origin}/staff`
+      redirectTo: `${location.origin}/staff?recovery=1`
     });
     if (error) throw error;
     toast("重置邮件已发送，请查收邮件");
