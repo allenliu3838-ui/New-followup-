@@ -304,16 +304,15 @@ async function loadLabs(){
   }
   const trs = rows.map(r=>`
     <tr>
-      <td>${escapeHtml(r.test_date||"")}</td>
+      <td>${escapeHtml(r.lab_date||"")}</td>
       <td>${escapeHtml(r.lab_name||"")}</td>
       <td>${escapeHtml(r.lab_value!=null?String(r.lab_value):"")}</td>
-      <td>${escapeHtml(r.unit||"")}</td>
-      <td class="muted small">${escapeHtml((r.notes||"").slice(0,40))}</td>
+      <td>${escapeHtml(r.lab_unit||"")}</td>
     </tr>
   `).join("");
   el.labsBox.innerHTML = `
     <table class="table">
-      <thead><tr><th>日期</th><th>项目</th><th>数值</th><th>单位</th><th>备注</th></tr></thead>
+      <thead><tr><th>日期</th><th>项目</th><th>数值</th><th>单位</th></tr></thead>
       <tbody>${trs}</tbody>
     </table>
   `;
