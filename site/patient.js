@@ -24,6 +24,8 @@ const el = {
   qcBox: qs("#qcBox"),
   receiptBox: qs("#receiptBox"),
   visitsBox: qs("#visitsBox"),
+  labsBox: qs("#labsBox"),
+  medsBox: qs("#medsBox"),
 };
 
 let token = null;
@@ -287,9 +289,69 @@ async function loadVisits(){
   `;
 }
 
+async function loadLabs(){
+  if (!el.labsBox) return;
+  el.labsBox.innerHTML = "<div class='muted small'>加载中…</div>";
+  const { data, error } = await sb.rpc("patient_list_labs", { p_token: token, p_limit: 20 });
+  if (error){
+    el.labsBox.innerHTML = "<div class='muted small'>读取失败</div>";
+    return;
+  }
+  const rows = data || [];
+  if (!rows.length){
+    el.labsBox.innerHTML = "<div class='muted small'>暂无化验记录</div>";
+    return;
+  }
+  const trs = rows.map(r=>`
+    <tr>
+      <td>${escapeHtml(r.test_date||"")}</td>
+      <td>${escapeHtml(r.lab_name||"")}</td>
+      <td>${escapeHtml(r.lab_value!=null?String(r.lab_value):"")}</td>
+      <td>${escapeHtml(r.unit||"")}</td>
+      <td class="muted small">${escapeHtml((r.notes||"").slice(0,40))}</td>
+    </tr>
+  `).join("");
+  el.labsBox.innerHTML = `
+    <table class="table">
+      <thead><tr><th>日期</th><th>项目</th><th>数值</th><th>单位</th><th>备注</th></tr></thead>
+      <tbody>${trs}</tbody>
+    </table>
+  `;
+}
+
+async function loadMeds(){
+  if (!el.medsBox) return;
+  el.medsBox.innerHTML = "<div class='muted small'>加载中…</div>";
+  const { data, error } = await sb.rpc("patient_list_meds", { p_token: token, p_limit: 20 });
+  if (error){
+    el.medsBox.innerHTML = "<div class='muted small'>读取失败</div>";
+    return;
+  }
+  const rows = data || [];
+  if (!rows.length){
+    el.medsBox.innerHTML = "<div class='muted small'>暂无用药记录</div>";
+    return;
+  }
+  const trs = rows.map(r=>`
+    <tr>
+      <td>${escapeHtml(r.drug_name||"")}</td>
+      <td>${escapeHtml(r.drug_class||"")}</td>
+      <td>${escapeHtml(r.dose||"")}</td>
+      <td>${escapeHtml(r.start_date||"")}</td>
+      <td>${escapeHtml(r.end_date||"")}</td>
+    </tr>
+  `).join("");
+  el.medsBox.innerHTML = `
+    <table class="table">
+      <thead><tr><th>药品</th><th>类别</th><th>剂量</th><th>开始</th><th>结束</th></tr></thead>
+      <tbody>${trs}</tbody>
+    </table>
+  `;
+}
+
 function bind(){
   el.btnSubmit.addEventListener("click", submitVisit);
-  el.btnRefresh.addEventListener("click", loadVisits);
+  el.btnRefresh.addEventListener("click", ()=>{ loadVisits(); loadLabs(); loadMeds(); });
   [el.scr, el.scrUnit, el.upcr, el.upcrUnit, el.sbp, el.dbp, el.visitDate, el.notes].forEach((n)=>{
     n.addEventListener("input", ()=>{ computeEgfr(); renderQc(); });
     n.addEventListener("change", ()=>{ computeEgfr(); renderQc(); });
@@ -306,7 +368,7 @@ async function main(){
   }
   bind();
   await loadContext();
-  await loadVisits();
+  await Promise.all([loadVisits(), loadLabs(), loadMeds()]);
 }
 
 main();
