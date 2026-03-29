@@ -22,13 +22,24 @@
         </div>
       </div>
 
-      <label>邮箱</label>
-      <input id="email" type="email" placeholder="name@example.com"/>
-      <label>密码</label>
-      <input id="password" type="password" placeholder="请输入密码"/>
-      <div class="btnbar">
-        <button class="btn primary" id="btnLogin">登录</button>
-        <button class="btn" id="btnResetPwd">忘记密码</button>
+      <div id="loginFields">
+        <label>邮箱</label>
+        <input id="email" type="email" placeholder="name@example.com"/>
+        <label>密码</label>
+        <input id="password" type="password" placeholder="请输入密码"/>
+        <div class="btnbar">
+          <button class="btn primary" id="btnLogin">登录</button>
+          <button class="btn" id="btnResetPwd">忘记密码</button>
+        </div>
+      </div>
+      <div id="resetFields" style="display:none">
+        <label>新密码（至少8位）</label>
+        <input id="newPassword" type="password" placeholder="输入新密码"/>
+        <label>确认新密码</label>
+        <input id="confirmPassword" type="password" placeholder="再次输入新密码"/>
+        <div class="btnbar">
+          <button class="btn primary" id="btnSetNewPwd">确认修改密码</button>
+        </div>
       </div>
       <div id="loginHint" class="muted small" style="margin-top:8px"></div>
       <div class="muted small" style="margin-top:12px">
@@ -49,24 +60,49 @@
     import { qs, toast } from "/lib/utils.js";
     import { throttle } from "/lib/rate-limit.js";
 
+    import { validatePassword } from "/lib/password-strength.js";
+
     const rlLogin = throttle("login", { maxAttempts: 10, windowMs: 15 * 60_000, message: "登录尝试过于频繁" });
     const rlReset = throttle("reset", { maxAttempts: 5, windowMs: 15 * 60_000, message: "密码重置请求过于频繁" });
 
     const sb = supabase();
     const returnTo = new URLSearchParams(location.search).get("returnTo") || "/staff";
+    let recoveryMode = false;
 
-    // If already logged in, redirect
+    // Check localStorage for pending reset
+    let pendingReset = null;
+    try { pendingReset = localStorage.getItem("ks_pending_pwd_reset"); } catch(_){}
+
+    function showResetUI() {
+      recoveryMode = true;
+      qs("#loginFields").style.display = "none";
+      qs("#resetFields").style.display = "block";
+      qs("#loginHint").textContent = "请输入新密码并确认，然后点击「确认修改密码」。";
+    }
+
+    // If already logged in
     const { data: { session } } = await sb.auth.getSession();
-    if (session) { location.replace(returnTo); }
+    if (session && pendingReset) {
+      // Logged in with pending reset — show reset UI
+      showResetUI();
+    } else if (session) {
+      location.replace(returnTo);
+    }
 
     sb.auth.onAuthStateChange((_event, s) => {
       if (_event === "PASSWORD_RECOVERY") {
-        qs("#loginHint").textContent = "请输入新密码后点击登录。";
+        showResetUI();
+        return;
+      }
+      if (recoveryMode) return; // Don't redirect during password reset
+      if (s && pendingReset) {
+        showResetUI();
         return;
       }
       if (s) location.replace(returnTo);
     });
 
+    // Login
     qs("#btnLogin").addEventListener("click", async () => {
       if (!rlLogin.allow()) { toast(rlLogin.message); return; }
       const email = qs("#email").value.trim().toLowerCase();
@@ -78,6 +114,7 @@
       try {
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        try { localStorage.removeItem("ks_pending_pwd_reset"); } catch(_){}
         toast("登录成功");
       } catch (e) {
         toast("登录失败：" + (e?.message || e));
@@ -86,6 +123,7 @@
       }
     });
 
+    // Forgot password
     qs("#btnResetPwd").addEventListener("click", async () => {
       if (!rlReset.allow()) { toast(rlReset.message); return; }
       const email = qs("#email").value.trim().toLowerCase();
@@ -95,9 +133,33 @@
           redirectTo: location.origin + "/login"
         });
         if (error) throw error;
+        try { localStorage.setItem("ks_pending_pwd_reset", email); } catch(_){}
         qs("#loginHint").textContent = "密码重置邮件已发送，请查看收件箱。";
       } catch (e) {
         toast("发送失败：" + (e?.message || e));
+      }
+    });
+
+    // Set new password
+    qs("#btnSetNewPwd").addEventListener("click", async () => {
+      const newPwd = qs("#newPassword").value;
+      const confirmPwd = qs("#confirmPassword").value;
+      const pwCheck = validatePassword(newPwd);
+      if (!pwCheck.valid) { toast(pwCheck.message); return; }
+      if (newPwd !== confirmPwd) { toast("两次输入的密码不一致"); qs("#confirmPassword").value = ""; return; }
+      const btn = qs("#btnSetNewPwd");
+      btn.disabled = true;
+      try {
+        const { error } = await sb.auth.updateUser({ password: newPwd });
+        if (error) throw error;
+        try { localStorage.removeItem("ks_pending_pwd_reset"); } catch(_){}
+        toast("密码修改成功，正在跳转…");
+        recoveryMode = false;
+        setTimeout(() => location.replace(returnTo), 800);
+      } catch (e) {
+        toast("修改失败：" + (e?.message || e));
+      } finally {
+        btn.disabled = false;
       }
     });
   </script>

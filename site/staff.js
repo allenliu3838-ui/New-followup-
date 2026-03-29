@@ -316,6 +316,98 @@ function getInputEmail(){
   return (el.email?.value || "").trim().toLowerCase();
 }
 
+// ── User-level status badge (subscription + projects, independent of project selection) ──
+async function loadUserSubscriptionBadge(){
+  if (isPlatformAdmin) return; // admin badge handled separately
+  try {
+    // Query orders and projects in parallel
+    const [ordersRes, projRes] = await Promise.all([
+      sb.rpc("get_my_orders"),
+      sb.from("projects").select("id,name,subscription_plan,subscription_active_until,trial_expires_at").order("created_at", {ascending:false})
+    ]);
+    const orders = ordersRes.data || [];
+    const projs  = projRes.data || [];
+    const projCount = projs.length;
+
+    // Find best active order
+    const active = orders
+      .filter(o => o.status === "activated" && o.end_at)
+      .sort((a, b) => new Date(b.end_at) - new Date(a.end_at));
+
+    const upgradeHref = window.CONFIG?.UPGRADE_URL || "/checkout";
+    const RENEW_WARN_DAYS = 30;
+
+    if (active.length) {
+      // ── 付费用户 ──
+      const best = active[0];
+      const planMap = { pro: "Pro", institutional: "机构版" };
+      const planLabel = planMap[best.plan_code] || best.plan_code;
+      const left = daysLeft(best.end_at);
+      const projInfo = ` · ${projCount} 个项目`;
+
+      if (left > RENEW_WARN_DAYS) {
+        el.trialBadge.className = "badge ok";
+        el.trialBadge.textContent = `${planLabel}（到期 ${fmtDate(best.end_at)}）${projInfo}`;
+      } else if (left >= 0) {
+        el.trialBadge.className = "badge warn";
+        el.trialBadge.textContent = `${planLabel} 即将到期：剩余 ${left} 天${projInfo}`;
+        if (el.upgradeBtn) {
+          el.upgradeBtn.href = upgradeHref;
+          el.upgradeBtn.textContent = "续费";
+          el.upgradeBtn.style.display = "inline-flex";
+        }
+      } else {
+        el.trialBadge.className = "badge bad";
+        el.trialBadge.textContent = `${planLabel} 已过期${projInfo}`;
+        if (el.upgradeBtn) {
+          el.upgradeBtn.href = upgradeHref;
+          el.upgradeBtn.textContent = "续费恢复使用";
+          el.upgradeBtn.style.display = "inline-flex";
+        }
+      }
+    } else {
+      // ── 未付费 / 试用用户 ──
+      // Check trial status from projects
+      const trialProj = projs.find(p => p.trial_expires_at);
+      if (trialProj) {
+        const left = daysLeft(trialProj.trial_expires_at);
+        if (left > 14) {
+          el.trialBadge.className = "badge ok";
+          el.trialBadge.textContent = `试用中：剩余 ${left} 天 · ${projCount} 个项目`;
+        } else if (left >= 0) {
+          el.trialBadge.className = "badge warn";
+          el.trialBadge.textContent = `试用将到期：剩余 ${left} 天 · ${projCount} 个项目`;
+          if (el.upgradeBtn) {
+            el.upgradeBtn.href = upgradeHref;
+            el.upgradeBtn.textContent = "升级";
+            el.upgradeBtn.style.display = "inline-flex";
+          }
+        } else {
+          el.trialBadge.className = "badge bad";
+          el.trialBadge.textContent = `试用已结束 · ${projCount} 个项目`;
+          if (el.upgradeBtn) {
+            el.upgradeBtn.href = upgradeHref;
+            el.upgradeBtn.textContent = "订阅以恢复使用";
+            el.upgradeBtn.style.display = "inline-flex";
+          }
+        }
+      } else if (projCount > 0) {
+        el.trialBadge.className = "badge";
+        el.trialBadge.textContent = `免费试用 · ${projCount} 个项目`;
+        if (el.upgradeBtn) {
+          el.upgradeBtn.href = upgradeHref;
+          el.upgradeBtn.textContent = "升级";
+          el.upgradeBtn.style.display = "inline-flex";
+        }
+      } else {
+        el.trialBadge.className = "badge";
+        el.trialBadge.textContent = "尚未创建项目";
+      }
+    }
+    el.trialBadge.style.display = "inline-flex";
+  } catch(_){}
+}
+
 function renderTrialBadge(p){
   const hide = () => {
     el.trialBadge.style.display = "none";
@@ -545,6 +637,7 @@ function renderAuthState(){
   loadAll();
   loadProfile();
   loadMyContract();
+  loadUserSubscriptionBadge();
   checkPlatformAdmin();
 }
 
