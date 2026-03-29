@@ -122,6 +122,8 @@ function injectAuthGatedContent() {
   el.medName = qs("#medName");
   el.medClass = qs("#medClass");
   el.medDose = qs("#medDose");
+  el.medRoute = qs("#medRoute");
+  el.medFrequency = qs("#medFrequency");
   el.medStart = qs("#medStart");
   el.medEnd = qs("#medEnd");
   el.btnAddMed = qs("#btnAddMed");
@@ -784,7 +786,7 @@ async function resetPassword(){
   setBusy(btn, true);
   try{
     const { error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo: `${location.origin}/staff?recovery=1`
+      redirectTo: `${location.origin}/auth-callback?returnTo=/staff`
     });
     if (error) throw error;
     // Mark pending reset in localStorage so we can detect it after redirect
@@ -1809,12 +1811,21 @@ async function addMed(){
   if (!patient_code) return toast("请填写用药记录的 patient_code");
   const drug_name = el.medName?.value.trim();
   if (!drug_name) return toast("请填写 drug_name");
+  // Compose structured dose string: "2 mg bid PO"
+  const doseVal = el.medDose?.value.trim() || "";
+  const routeVal = el.medRoute?.value || "";
+  const freqVal = el.medFrequency?.value || "";
+  const doseParts = [doseVal, freqVal, routeVal].filter(Boolean);
+  const doseStr = doseParts.join(" ") || null;
+
   const payload = {
     project_id: selectedProject.id,
     patient_code,
     drug_name,
     drug_class: el.medClass?.value.trim() || null,
-    dose: el.medDose?.value.trim() || null,
+    dose: doseStr,
+    route: routeVal || null,
+    frequency: freqVal || null,
     start_date: el.medStart?.value || null,
     end_date: el.medEnd?.value || null
   };
@@ -1827,6 +1838,8 @@ async function addMed(){
     toast("已添加用药记录");
     if (el.medName) el.medName.value = "";
     if (el.medDose) el.medDose.value = "";
+    if (el.medRoute) el.medRoute.value = "";
+    if (el.medFrequency) el.medFrequency.value = "";
     await loadExtras();
   await loadSnapshots();
   }catch(e){

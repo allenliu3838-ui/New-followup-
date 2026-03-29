@@ -675,9 +675,41 @@
           <label>药品名称</label>
           <input id="medName" placeholder="例如：泼尼松 / 吗替麦考酚酯 / ACEI"/>
           <label>药物类别（可选）</label>
-          <input id="medClass" placeholder="例如：糖皮质激素"/>
-          <label>剂量（可选）</label>
-          <input id="medDose" placeholder="例如：10 mg qd"/>
+          <input id="medClass" placeholder="例如：糖皮质激素 / 免疫抑制剂 / RAAS阻断剂"/>
+          <div class="row">
+            <div class="col">
+              <label>剂量（可选）</label>
+              <input id="medDose" placeholder="例如：2 mg / 500 mg / 10 mg/kg"/>
+            </div>
+            <div class="col">
+              <label>给药途径（可选）</label>
+              <select id="medRoute">
+                <option value="">-- 选择 --</option>
+                <option value="PO">PO（口服）</option>
+                <option value="IV">IV（静脉）</option>
+                <option value="SC">SC（皮下注射）</option>
+                <option value="IM">IM（肌肉注射）</option>
+                <option value="topical">外用</option>
+                <option value="other">其他</option>
+              </select>
+            </div>
+            <div class="col">
+              <label>频次（可选）</label>
+              <select id="medFrequency">
+                <option value="">-- 选择 --</option>
+                <option value="qd">qd（每日1次）</option>
+                <option value="bid">bid（每日2次）</option>
+                <option value="tid">tid（每日3次）</option>
+                <option value="qod">qod（隔日1次）</option>
+                <option value="qw">qw（每周1次）</option>
+                <option value="biw">biw（每周2次）</option>
+                <option value="q2w">q2w（每2周1次）</option>
+                <option value="qm">qm（每月1次）</option>
+                <option value="prn">prn（按需）</option>
+                <option value="other">其他</option>
+              </select>
+            </div>
+          </div>
           <div class="row">
             <div class="col">
               <label>开始日期（可选）</label>
