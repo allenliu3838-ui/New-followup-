@@ -40,3 +40,40 @@ as $$
 $$;
 
 grant execute on function public.patient_list_variants(text, int) to anon, authenticated;
+
+-- RPC: patient_list_events — let token-based patient view see their clinical endpoint events
+drop function if exists public.patient_list_events(text, int);
+create or replace function public.patient_list_events(
+  p_token text,
+  p_limit int default 30
+)
+returns table (
+  event_type text,
+  event_date date,
+  confirmed boolean,
+  source text,
+  notes text,
+  created_at timestamptz
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    e.event_type,
+    e.event_date,
+    e.confirmed,
+    e.source,
+    e.notes,
+    e.created_at
+  from public.patient_tokens t
+  join public.events_long e
+    on e.project_id = t.project_id and e.patient_code = t.patient_code
+  where t.token = p_token
+    and t.active = true
+    and (t.expires_at is null or t.expires_at > now())
+  order by e.event_date desc nulls last, e.created_at desc
+  limit greatest(1, least(p_limit, 100));
+$$;
+
+grant execute on function public.patient_list_events(text, int) to anon, authenticated;
