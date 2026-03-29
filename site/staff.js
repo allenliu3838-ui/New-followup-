@@ -469,52 +469,23 @@ async function init(){
       showNewPasswordMode();
       return;
     }
-    // Don't let SIGNED_IN override the password reset UI
-    if (passwordRecoveryMode && _event === "SIGNED_IN") return;
     // Token refresh just updates the session in memory — no need to reload all data
     if (_event === "TOKEN_REFRESHED") return;
     // Clear selection state on sign out
     if (_event === "SIGNED_OUT"){ selectedProject = null; patients = []; passwordRecoveryMode = false; }
     renderAuthState();
+    // After normal login/auth, check if there's a pending password reset
+    if (user && !passwordRecoveryMode) checkPendingPasswordReset();
   });
-
-  // Detect password recovery from multiple sources:
-  // 1) ?recovery=1 in URL (from redirectTo)
-  // 2) localStorage flag set when user clicked "forgot password"
-  const urlParams = new URLSearchParams(location.search);
-  const isRecoveryUrl = urlParams.get("recovery") === "1";
-  let pendingResetEmail = null;
-  try { pendingResetEmail = localStorage.getItem("ks_pending_pwd_reset"); } catch(_){}
-
-  if (isRecoveryUrl || pendingResetEmail) {
-    passwordRecoveryMode = true;
-    // Clean up URL parameter
-    if (isRecoveryUrl) {
-      urlParams.delete("recovery");
-      const cleanUrl = urlParams.toString()
-        ? `${location.pathname}?${urlParams.toString()}`
-        : location.pathname;
-      history.replaceState(null, "", cleanUrl);
-    }
-  }
 
   // getSession triggers PKCE code exchange; the listener above handles the result
   const { data: { session: s } } = await sb.auth.getSession();
-
-  // If recovery URL detected, force password reset UI after session is established
-  if (passwordRecoveryMode && !stateHandled) {
-    session = s;
-    user = s?.user || null;
-    if (user) {
-      showNewPasswordMode();
-    } else {
-      renderAuthState();
-    }
-  } else if (!stateHandled) {
+  if (!stateHandled){
     // onAuthStateChange hasn't fired yet — render with whatever getSession returned
     session = s;
     user = s?.user || null;
     renderAuthState();
+    if (user) checkPendingPasswordReset();
   }
 
   // Login-related event listeners (always in DOM)
@@ -733,6 +704,22 @@ async function resetPassword(){
   }finally{
     setBusy(btn, false);
   }
+}
+
+// Check localStorage for pending password reset — works after normal login completes
+function checkPendingPasswordReset(){
+  try {
+    const pending = localStorage.getItem("ks_pending_pwd_reset");
+    if (!pending) return;
+    // Verify the logged-in email matches the one that requested reset
+    if (user && user.email && user.email.toLowerCase() === pending.toLowerCase()) {
+      passwordRecoveryMode = true;
+      showNewPasswordMode();
+    } else {
+      // Different user logged in, or email doesn't match — clear stale flag
+      localStorage.removeItem("ks_pending_pwd_reset");
+    }
+  } catch(_){}
 }
 
 function showNewPasswordMode(){
