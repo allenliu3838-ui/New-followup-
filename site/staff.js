@@ -359,27 +359,46 @@ function renderTrialBadge(p){
   let txt = "试用未配置";
   if (el.upgradeBtn) el.upgradeBtn.style.display = "none";
 
-  // ── 状态 1：付费订阅 / 合作伙伴有效 ──────────────────────────────────────
+  // ── 状态 1：付费订阅 / 合作伙伴 ──────────────────────────────────────
+  const RENEW_WARN_DAYS = 30;  // 付费订阅到期前 30 天提醒续费
+
   if (subPlan !== "trial") {
-    const paidActive = !subUntil || new Date(subUntil) > new Date();
-    if (paidActive) {
-      const planLabel = subPlan === "institution" ? "机构版"
-                      : subPlan === "partner"      ? "合作伙伴"
-                      : "Pro";
-      const isPermanent = subPlan === "partner" && subUntil &&
-                          new Date(subUntil).getFullYear() >= 2099;
+    const planLabel = subPlan === "institution" ? "机构版"
+                    : subPlan === "partner"      ? "合作伙伴"
+                    : "Pro";
+    const isPermanent = subPlan === "partner" && subUntil &&
+                        new Date(subUntil).getFullYear() >= 2099;
+    const paidLeft = subUntil ? daysLeft(subUntil) : null;
+    const paidActive = !subUntil || paidLeft >= 0;
+
+    if (isPermanent) {
       cls = "badge ok";
-      txt = isPermanent
-        ? `${planLabel}（长期免费）`
-        : subUntil
-          ? `${planLabel} 已订阅（到期 ${fmtDate(subUntil)}）`
-          : `${planLabel} 已订阅`;
-      el.trialBadge.className = cls;
-      el.trialBadge.textContent = txt;
-      el.trialBadge.style.display = "inline-flex";
-      return;
+      txt = `${planLabel}（长期免费）`;
+    } else if (paidActive && paidLeft !== null && paidLeft <= RENEW_WARN_DAYS) {
+      // 付费即将到期（≤30 天）
+      cls = "badge warn";
+      txt = `${planLabel} 即将到期：剩余 ${paidLeft} 天（${fmtDate(subUntil)}）`;
+      showUpgrade("续费");
+    } else if (paidActive) {
+      // 付费正常
+      cls = "badge ok";
+      txt = subUntil
+        ? `${planLabel} 已订阅（到期 ${fmtDate(subUntil)}）`
+        : `${planLabel} 已订阅`;
+    } else {
+      // 付费已过期
+      cls = "badge bad";
+      txt = `${planLabel} 已过期`;
+      showUpgrade("续费恢复使用");
     }
-    // Paid plan expired — fall through to trial check
+
+    el.trialBadge.className = cls;
+    el.trialBadge.textContent = txt;
+    el.trialBadge.style.display = "inline-flex";
+    if (paidActive && !(paidLeft !== null && paidLeft <= RENEW_WARN_DAYS)) {
+      if (el.upgradeBtn) el.upgradeBtn.style.display = "none";
+    }
+    return;
   }
 
   if (!exp){ hide(); return; }
