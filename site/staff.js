@@ -784,7 +784,7 @@ async function resetPassword(){
   setBusy(btn, true);
   try{
     const { error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo: `${location.origin}/staff?recovery=1`
+      redirectTo: `${location.origin}/auth-callback?returnTo=/staff`
     });
     if (error) throw error;
     // Mark pending reset in localStorage so we can detect it after redirect
