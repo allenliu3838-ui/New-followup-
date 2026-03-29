@@ -10,11 +10,11 @@ window.CONFIG = {
   // ── 收款配置（后台可改，不要写死在 UI 代码里）──────────
   BILLING: {
     // 微信企业收款码
-    WECHAT_QR_IMG: "/assets/billing/wechat-qr.jpg",
+    WECHAT_QR_IMG: "https://etsyglgpiutflethgirs.supabase.co/storage/v1/object/public/billing/wechat-qr.png.jpg",
     WECHAT_LABEL:  "上海胤域医学科技有限公司的店铺",
 
     // 支付宝企业收款码
-    ALIPAY_QR_IMG: "/assets/billing/alipay-qr.jpg",
+    ALIPAY_QR_IMG: "https://etsyglgpiutflethgirs.supabase.co/storage/v1/object/public/billing/alipay-qr.png.jpg",
     ALIPAY_LABEL:  "上海胤域医学科技有限公司",
 
     // 对公转账
