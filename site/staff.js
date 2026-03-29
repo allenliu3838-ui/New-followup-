@@ -272,6 +272,7 @@ function bindAuthGatedEvents() {
 let session = null;
 let user = null;
 let isPlatformAdmin = false;
+let passwordRecoveryMode = false;
 
 let projects = [];
 let selectedProject = null;
@@ -464,13 +465,16 @@ async function init(){
     user = s2?.user || null;
     stateHandled = true;
     if (_event === "PASSWORD_RECOVERY"){
+      passwordRecoveryMode = true;
       showNewPasswordMode();
       return;
     }
+    // Don't let SIGNED_IN override the password reset UI
+    if (passwordRecoveryMode && _event === "SIGNED_IN") return;
     // Token refresh just updates the session in memory — no need to reload all data
     if (_event === "TOKEN_REFRESHED") return;
     // Clear selection state on sign out
-    if (_event === "SIGNED_OUT"){ selectedProject = null; patients = []; }
+    if (_event === "SIGNED_OUT"){ selectedProject = null; patients = []; passwordRecoveryMode = false; }
     renderAuthState();
   });
 
@@ -698,6 +702,13 @@ async function resetPassword(){
 }
 
 function showNewPasswordMode(){
+  // Ensure login card is visible and app content is hidden during password reset
+  el.loginCard.style.display = "block";
+  if (el.appCard) el.appCard.style.display = "none";
+  if (el.profileCard) el.profileCard.style.display = "none";
+  if (el.adminCard) el.adminCard.style.display = "none";
+  if (el.issuePanel) el.issuePanel.style.display = "none";
+
   el.emailLabel.style.display = "none";
   el.email.style.display = "none";
   el.password.placeholder = "输入新密码（至少8位）";
@@ -709,6 +720,8 @@ function showNewPasswordMode(){
   el.btnRegister.style.display = "none";
   el.btnResetPwd.style.display = "none";
   if (el.btnSetNewPwd) el.btnSetNewPwd.style.display = "inline-flex";
+  // Hide header sign-out during password reset to prevent skipping
+  if (el.btnHeaderSignOut) el.btnHeaderSignOut.style.display = "none";
   setLoginHint("请输入新密码并确认，然后点击「确认修改密码」。");
 }
 
@@ -724,6 +737,7 @@ async function setNewPassword(){
     const { error } = await sb.auth.updateUser({ password: newPwd });
     if (error) throw error;
     toast("密码修改成功，已自动登录");
+    passwordRecoveryMode = false;
     // Restore normal login UI
     el.emailLabel.style.display = "";
     el.email.style.display = "";
