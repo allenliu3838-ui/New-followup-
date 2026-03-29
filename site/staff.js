@@ -501,13 +501,14 @@ async function init(){
   // getSession triggers PKCE code exchange; the listener above handles the result
   const { data: { session: s } } = await sb.auth.getSession();
 
-  // If recovery URL detected, force password reset UI after session is established
-  if (passwordRecoveryMode && !stateHandled) {
-    session = s;
-    user = s?.user || null;
+  // Always force password reset UI if recovery mode, regardless of stateHandled
+  if (passwordRecoveryMode) {
+    session = s || session;
+    user = session?.user || user;
     if (user) {
       showNewPasswordMode();
     } else {
+      // Not authenticated yet — show login, recovery will trigger after login
       renderAuthState();
     }
   } else if (!stateHandled) {
