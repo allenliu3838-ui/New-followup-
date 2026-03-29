@@ -316,6 +316,47 @@ function getInputEmail(){
   return (el.email?.value || "").trim().toLowerCase();
 }
 
+// ── User-level subscription badge (from orders, independent of project selection) ──
+async function loadUserSubscriptionBadge(){
+  if (isPlatformAdmin) return; // admin badge handled separately
+  try {
+    const { data } = await sb.rpc("get_my_orders");
+    if (!data || !data.length) return;
+    // Find the best active order (activated with latest end date)
+    const active = data
+      .filter(o => o.status === "activated" && o.end_at)
+      .sort((a, b) => new Date(b.end_at) - new Date(a.end_at));
+    if (!active.length) return;
+    const best = active[0];
+    const planMap = { pro: "Pro", institutional: "机构版" };
+    const planLabel = planMap[best.plan_code] || best.plan_code;
+    const left = daysLeft(best.end_at);
+    const RENEW_WARN_DAYS = 30;
+
+    if (left > RENEW_WARN_DAYS) {
+      el.trialBadge.className = "badge ok";
+      el.trialBadge.textContent = `${planLabel} 已订阅（到期 ${fmtDate(best.end_at)}）`;
+    } else if (left >= 0) {
+      el.trialBadge.className = "badge warn";
+      el.trialBadge.textContent = `${planLabel} 即将到期：剩余 ${left} 天`;
+      if (el.upgradeBtn) {
+        el.upgradeBtn.href = window.CONFIG?.UPGRADE_URL || "/checkout";
+        el.upgradeBtn.textContent = "续费";
+        el.upgradeBtn.style.display = "inline-flex";
+      }
+    } else {
+      el.trialBadge.className = "badge bad";
+      el.trialBadge.textContent = `${planLabel} 已过期`;
+      if (el.upgradeBtn) {
+        el.upgradeBtn.href = window.CONFIG?.UPGRADE_URL || "/checkout";
+        el.upgradeBtn.textContent = "续费恢复使用";
+        el.upgradeBtn.style.display = "inline-flex";
+      }
+    }
+    el.trialBadge.style.display = "inline-flex";
+  } catch(_){}
+}
+
 function renderTrialBadge(p){
   const hide = () => {
     el.trialBadge.style.display = "none";
@@ -545,6 +586,7 @@ function renderAuthState(){
   loadAll();
   loadProfile();
   loadMyContract();
+  loadUserSubscriptionBadge();
   checkPlatformAdmin();
 }
 
