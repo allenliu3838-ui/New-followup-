@@ -26,6 +26,7 @@ const el = {
   visitsBox: qs("#visitsBox"),
   labsBox: qs("#labsBox"),
   medsBox: qs("#medsBox"),
+  variantsBox: qs("#variantsBox"),
 };
 
 let token = null;
@@ -348,9 +349,40 @@ async function loadMeds(){
   `;
 }
 
+async function loadVariants(){
+  if (!el.variantsBox) return;
+  el.variantsBox.innerHTML = "<div class='muted small'>加载中…</div>";
+  const { data, error } = await sb.rpc("patient_list_variants", { p_token: token, p_limit: 20 });
+  if (error){
+    el.variantsBox.innerHTML = "<div class='muted small'>读取失败</div>";
+    return;
+  }
+  const rows = data || [];
+  if (!rows.length){
+    el.variantsBox.innerHTML = "<div class='muted small'>暂无基因变异记录</div>";
+    return;
+  }
+  const trs = rows.map(r=>`
+    <tr>
+      <td>${escapeHtml(r.test_date||"")}</td>
+      <td>${escapeHtml(r.test_name||"")}</td>
+      <td>${escapeHtml(r.gene||"")}</td>
+      <td>${escapeHtml(r.variant||"")}</td>
+      <td>${escapeHtml(r.classification||"")}</td>
+      <td>${escapeHtml(r.zygosity||"")}</td>
+    </tr>
+  `).join("");
+  el.variantsBox.innerHTML = `
+    <table class="table">
+      <thead><tr><th>日期</th><th>检测</th><th>基因</th><th>变异</th><th>分类</th><th>合子性</th></tr></thead>
+      <tbody>${trs}</tbody>
+    </table>
+  `;
+}
+
 function bind(){
   el.btnSubmit.addEventListener("click", submitVisit);
-  el.btnRefresh.addEventListener("click", ()=>{ loadVisits(); loadLabs(); loadMeds(); });
+  el.btnRefresh.addEventListener("click", ()=>{ loadVisits(); loadLabs(); loadMeds(); loadVariants(); });
   [el.scr, el.scrUnit, el.upcr, el.upcrUnit, el.sbp, el.dbp, el.visitDate, el.notes].forEach((n)=>{
     n.addEventListener("input", ()=>{ computeEgfr(); renderQc(); });
     n.addEventListener("change", ()=>{ computeEgfr(); renderQc(); });
@@ -367,7 +399,7 @@ async function main(){
   }
   bind();
   await loadContext();
-  await Promise.all([loadVisits(), loadLabs(), loadMeds()]);
+  await Promise.all([loadVisits(), loadLabs(), loadMeds(), loadVariants()]);
 }
 
 main();
