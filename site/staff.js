@@ -478,17 +478,24 @@ async function init(){
     renderAuthState();
   });
 
-  // Detect ?recovery=1 from password reset redirect URL
+  // Detect password recovery from multiple sources:
+  // 1) ?recovery=1 in URL (from redirectTo)
+  // 2) localStorage flag set when user clicked "forgot password"
   const urlParams = new URLSearchParams(location.search);
   const isRecoveryUrl = urlParams.get("recovery") === "1";
-  if (isRecoveryUrl) {
+  let pendingResetEmail = null;
+  try { pendingResetEmail = localStorage.getItem("ks_pending_pwd_reset"); } catch(_){}
+
+  if (isRecoveryUrl || pendingResetEmail) {
     passwordRecoveryMode = true;
     // Clean up URL parameter
-    urlParams.delete("recovery");
-    const cleanUrl = urlParams.toString()
-      ? `${location.pathname}?${urlParams.toString()}`
-      : location.pathname;
-    history.replaceState(null, "", cleanUrl);
+    if (isRecoveryUrl) {
+      urlParams.delete("recovery");
+      const cleanUrl = urlParams.toString()
+        ? `${location.pathname}?${urlParams.toString()}`
+        : location.pathname;
+      history.replaceState(null, "", cleanUrl);
+    }
   }
 
   // getSession triggers PKCE code exchange; the listener above handles the result
@@ -649,6 +656,8 @@ async function sendMagicLink(){
   try{
     const { error } = await sb.auth.signInWithPassword({ email, password });
     if (error) throw error;
+    // Clear any pending password reset flag on successful login
+    try { localStorage.removeItem("ks_pending_pwd_reset"); } catch(_){}
     toast("登录成功");
   }catch(e){
     console.error(e);
@@ -714,6 +723,8 @@ async function resetPassword(){
       redirectTo: `${location.origin}/staff?recovery=1`
     });
     if (error) throw error;
+    // Mark pending reset in localStorage so we can detect it after redirect
+    try { localStorage.setItem("ks_pending_pwd_reset", email); } catch(_){}
     toast("重置邮件已发送，请查收邮件");
     setLoginHint("已发送密码重置邮件，请点击邮件中的链接完成重置。");
   }catch(e){
@@ -761,6 +772,7 @@ async function setNewPassword(){
     if (error) throw error;
     toast("密码修改成功，已自动登录");
     passwordRecoveryMode = false;
+    try { localStorage.removeItem("ks_pending_pwd_reset"); } catch(_){}
     // Restore normal login UI
     el.emailLabel.style.display = "";
     el.email.style.display = "";
