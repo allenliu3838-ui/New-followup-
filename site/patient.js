@@ -27,6 +27,7 @@ const el = {
   labsBox: qs("#labsBox"),
   medsBox: qs("#medsBox"),
   variantsBox: qs("#variantsBox"),
+  eventsBox: qs("#eventsBox"),
 };
 
 let token = null;
@@ -380,9 +381,47 @@ async function loadVariants(){
   `;
 }
 
+async function loadEvents(){
+  if (!el.eventsBox) return;
+  el.eventsBox.innerHTML = "<div class='muted small'>加载中…</div>";
+  const { data, error } = await sb.rpc("patient_list_events", { p_token: token, p_limit: 20 });
+  if (error){
+    el.eventsBox.innerHTML = "<div class='muted small'>读取失败</div>";
+    return;
+  }
+  const rows = data || [];
+  if (!rows.length){
+    el.eventsBox.innerHTML = "<div class='muted small'>暂无终点事件</div>";
+    return;
+  }
+  const typeMap = {
+    egfr_decline_40pct: "eGFR 下降 ≥40%",
+    egfr_decline_57pct: "eGFR 下降 ≥57%",
+    esrd: "ESRD / 透析",
+    death: "死亡",
+    complete_remission: "完全缓解",
+    partial_remission: "部分缓解",
+    custom: "自定义"
+  };
+  const trs = rows.map(r=>`
+    <tr>
+      <td>${escapeHtml(typeMap[r.event_type] || r.event_type || "")}</td>
+      <td>${escapeHtml(r.event_date||"")}</td>
+      <td>${escapeHtml(r.source==="computed"?"系统计算":"手动录入")}</td>
+      <td class="muted small">${escapeHtml((r.notes||"").slice(0,60))}</td>
+    </tr>
+  `).join("");
+  el.eventsBox.innerHTML = `
+    <table class="table">
+      <thead><tr><th>事件类型</th><th>日期</th><th>来源</th><th>备注</th></tr></thead>
+      <tbody>${trs}</tbody>
+    </table>
+  `;
+}
+
 function bind(){
   el.btnSubmit.addEventListener("click", submitVisit);
-  el.btnRefresh.addEventListener("click", ()=>{ loadVisits(); loadLabs(); loadMeds(); loadVariants(); });
+  el.btnRefresh.addEventListener("click", ()=>{ loadVisits(); loadLabs(); loadMeds(); loadVariants(); loadEvents(); });
   [el.scr, el.scrUnit, el.upcr, el.upcrUnit, el.sbp, el.dbp, el.visitDate, el.notes].forEach((n)=>{
     n.addEventListener("input", ()=>{ computeEgfr(); renderQc(); });
     n.addEventListener("change", ()=>{ computeEgfr(); renderQc(); });
@@ -399,7 +438,7 @@ async function main(){
   }
   bind();
   await loadContext();
-  await Promise.all([loadVisits(), loadLabs(), loadMeds(), loadVariants()]);
+  await Promise.all([loadVisits(), loadLabs(), loadMeds(), loadVariants(), loadEvents()]);
 }
 
 main();
