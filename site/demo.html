@@ -28,7 +28,7 @@
   <div class="container">
     <div class="card">
       <div class="brand">
-        <img src="/assets/kidneysphere-ai.png" alt="KidneySphere AI"/>
+        <img src="/assets/kidneysphere-ai.png" alt="肾域·科研"/>
         <div>
           <h1 class="brand-title">研究合作咨询 · 肾域·科研</h1>
           <div class="brand-sub">填写后我们将在 1 个工作日内联系您：可按“预约演示 / 加入现有项目 / 发起新项目 / 机构合作咨询”对接。</div>
@@ -154,8 +154,10 @@
         </div>
       </form>
 
-      <!-- Success state: hidden by default, shown only after confirmed server-side submit -->
-      <div class="demo-success" id="demoSuccess" data-testid="demo-success" aria-hidden="true">
+      <!-- Success state container (content injected from template after submit) -->
+      <div class="demo-success" id="demoSuccess" data-testid="demo-success" aria-hidden="true"></div>
+
+      <template id="demoSuccessTpl">
         <div class="icon">✅</div>
         <h2>申请已提交！</h2>
         <p class="small">我们已收到您的申请，将在 <b>1 个工作日内</b>按您的咨询类型（演示 / 加入项目 / 发起项目 / 机构合作）与您联系。<br/>如需加急，请直接发邮件至 <a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a>。</p>
@@ -164,7 +166,7 @@
           <a class="btn" href="/slides">看系统介绍PPT</a>
           <a class="btn" href="/">返回首页</a>
         </div>
-      </div>
+      </template>
 
       <div class="hr"></div>
 
@@ -183,6 +185,15 @@
 
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+    // Auto-select inquiry type from URL param (e.g. ?type=预约演示)
+    const _urlType = new URLSearchParams(location.search).get('type');
+    if (_urlType) {
+      const sel = document.getElementById('f_inquiry_type');
+      for (const opt of sel.options) {
+        if (opt.value === _urlType) { sel.value = _urlType; break; }
+      }
+    }
 
     // Tag multi-select
     const tagRow = document.getElementById('tagRow');
@@ -253,6 +264,9 @@
       } else {
         form.style.display = 'none';
         var successEl = document.getElementById('demoSuccess');
+        // Inject success content from template (keeps it out of initial DOM)
+        var tpl = document.getElementById('demoSuccessTpl');
+        successEl.appendChild(tpl.content.cloneNode(true));
         successEl.style.display = 'block';
         successEl.setAttribute('aria-hidden', 'false');
       }

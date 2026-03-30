@@ -2228,7 +2228,7 @@ async function generatePaperPack({ withSnapshot = false } = {}){
       pii_policy: "No PII stored. All records use center-assigned research codes only.",
       tables: {
         patients_baseline: {
-          patient_code: "Center-assigned research ID (NOT name/MRN). Format: centerId-year-seq, e.g. BJ01-2024-001",
+          patient_code: "Center-assigned research ID (NOT name/MRN). Unique within center, e.g. 0001. Merge key = center_code + patient_code",
           sex: "M=Male, F=Female",
           birth_year: "Year of birth (integer)",
           baseline_scr: "Serum creatinine at baseline, unit: μmol/L",
