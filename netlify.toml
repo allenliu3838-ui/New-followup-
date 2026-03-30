@@ -72,8 +72,47 @@
   to   = "/patient.html"
   status = 200
 
-## SPA fallback is handled via /site/_redirects to allow
-## static files (sitemap.xml, robots.txt) to be served directly.
+[[redirects]]
+  from = "/pricing"
+  to   = "/pricing.html"
+  status = 200
+
+[[redirects]]
+  from = "/demo"
+  to   = "/demo.html"
+  status = 200
+
+[[redirects]]
+  from = "/security"
+  to   = "/security.html"
+  status = 200
+
+[[redirects]]
+  from = "/deployment"
+  to   = "/deployment.html"
+  status = 200
+
+[[redirects]]
+  from = "/slides"
+  to   = "/slides.html"
+  status = 200
+
+[[redirects]]
+  from = "/user-manual-cn"
+  to   = "/user-manual-cn.html"
+  status = 200
+
+[[redirects]]
+  from = "/collaboration"
+  to   = "/collaboration.html"
+  status = 200
+
+[[redirects]]
+  from = "/collaboration/*"
+  to   = "/collaboration.html"
+  status = 200
+
+# No catch-all: static files (sitemap.xml, robots.txt, etc.) served directly by Netlify
 
 [[headers]]
   for = "/*"
