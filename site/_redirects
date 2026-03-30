@@ -6,4 +6,9 @@
 /p/*      /patient.html 200
 /collaboration    /collaboration.html   200
 /collaboration/*  /collaboration.html   200
-/*        /index.html   200
+/pricing          /pricing.html         200
+/demo             /demo.html            200
+/security         /security.html        200
+/deployment       /deployment.html      200
+/slides           /slides.html          200
+/user-manual-cn   /user-manual-cn.html  200
