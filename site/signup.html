@@ -27,7 +27,7 @@
         <img src="/assets/kidneysphere-ai.png" alt="肾域·科研"/>
         <div>
           <h1 class="brand-title">注册账号</h1>
-          <div class="brand-sub">30 天免费试用，功能完整</div>
+          <div class="brand-sub">30 天免费试用，核心功能可用</div>
         </div>
       </div>
 
@@ -54,8 +54,10 @@
       </div>
     </div>
 
-    <!-- Onboarding Steps (after registration) -->
-    <div id="onboardingCard" class="card" style="display:none">
+    <!-- Onboarding container (content injected from template after auth) -->
+    <div id="onboardingCard" class="card" style="display:none"></div>
+
+    <template id="onboardingTpl">
       <h2 style="margin:0 0 4px">快速上手</h2>
       <div class="muted small">完成以下 3 步，即可开始使用。</div>
 
@@ -132,7 +134,7 @@
           <a class="btn primary" href="/staff">进入工作台</a>
         </div>
       </div>
-    </div>
+    </template>
   </div>
 
   <footer class="site-footer">
@@ -164,8 +166,14 @@
     });
 
     function showOnboarding() {
+      const card = qs("#onboardingCard");
+      // Inject onboarding content from template only once (keeps it out of initial DOM)
+      if (!card.children.length) {
+        const tpl = document.getElementById("onboardingTpl");
+        card.appendChild(tpl.content.cloneNode(true));
+      }
       qs("#registerCard").style.display = "none";
-      qs("#onboardingCard").style.display = "block";
+      card.style.display = "block";
     }
 
     function goObStep(n) {

@@ -27,7 +27,7 @@
   <div class="container doc">
     <div class="card">
       <div class="brand">
-        <img src="/assets/kidneysphere-ai.png" alt="KidneySphere AI"/>
+        <img src="/assets/kidneysphere-ai.png" alt="肾域·科研"/>
         <div>
           <h1 class="brand-title">肾域·科研 详细使用说明（培训版）</h1>
           <div class="brand-sub">用于培训 PI / CRC / 录入员 / 随访护士 · 全程零门槛</div>
@@ -76,8 +76,8 @@
         <li><b>合并键：</b>多中心最终按 <code>center_code + patient_code</code> 合并。</li>
       </ul>
       <div class="example small">
-        ✅ 正确的 patient_code：<code>BJ01-2024-001</code>（含中心前缀）<br/>
-        ❌ 错误的 patient_code：<code>001</code>（无中心前缀，多中心合并会冲突）
+        ✅ 正确的 patient_code：<code>0001</code> 或 <code>A023</code>（中心内唯一即可，合并键为 center_code + patient_code）<br/>
+        ❌ 错误的 patient_code：不同中心使用相同编号且未区分 center_code
       </div>
 
       <!-- ════ Token 说明 ════ -->
@@ -173,7 +173,7 @@
 
       <h3>步骤 2：录入患者基线</h3>
       <ul>
-        <li>必填：<code>patient_code</code>（如 <code>BJ01-0001</code>）</li>
+        <li>必填：<code>patient_code</code>（如 <code>0001</code>，中心内唯一即可）</li>
         <li>IGAN 可选填 Oxford MEST-C</li>
       </ul>
 
@@ -202,21 +202,21 @@
       <h2 id="scenario">6）实战演示模板（15 分钟培训）</h2>
       <ol>
         <li>创建项目：<code>IgAN-BJ-2026</code>（center_code: <code>BJ01</code>）。</li>
-        <li>新增患者：<code>BJ01-0123</code>，MEST-C: <code>M1 E0 S1 T0 C1</code>。</li>
+        <li>新增患者：<code>0123</code>，MEST-C: <code>M1 E0 S1 T0 C1</code>。</li>
         <li>发送 token 给护士 A。</li>
         <li>完成两次随访录入并核查时间递增、数值合理。</li>
       </ol>
 
       <h2 id="rules">7）填写规范</h2>
       <ul>
-        <li>patient_code 建议格式：中心代码 + 流水号（如 <code>BJ01-0001</code>）。</li>
+        <li>patient_code 为中心内唯一编号（如 <code>0001</code>）。多中心合并键为 <code>center_code + patient_code</code>，无需在编号中重复中心前缀。</li>
         <li>日期统一 <code>YYYY-MM-DD</code>。</li>
         <li>缺失值留空，不要用 0 代替。</li>
         <li>统一单位，异常值先复核再提交。</li>
       </ul>
 
       <h2 id="setup-faq">⚙️ 常见问题</h2>
-      <p><b>Q：</b>收到了登录邮件但进不去？<br/><b>A：</b>请检查邮件链接是否过期（链接有效期有限），或尝试重新发送登录链接。如仍有问题请联系 <a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a>。</p>
+      <p><b>Q：</b>登录遇到问题？<br/><b>A：</b>当前登录方式为邮箱 + 密码。如忘记密码，请在登录页点击"忘记密码"重置。如仍有问题请联系 <a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a>。</p>
       <p><b>Q：</b>可以录入姓名电话吗？<br/><b>A：</b>不可以，只能用研究编号。</p>
       <p><b>Q：</b>如何保证论文复现？<br/><b>A：</b>先生成 Snapshot，再基于 Snapshot 导出论文包并引用 snapshot ID。</p>
 
