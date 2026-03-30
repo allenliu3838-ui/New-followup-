@@ -72,20 +72,8 @@
   to   = "/patient.html"
   status = 200
 
-[[redirects]]
-  from = "/sitemap.xml"
-  to   = "/sitemap.xml"
-  status = 200
-
-[[redirects]]
-  from = "/robots.txt"
-  to   = "/robots.txt"
-  status = 200
-
-[[redirects]]
-  from = "/*"
-  to   = "/index.html"
-  status = 200
+## SPA fallback is handled via /site/_redirects to allow
+## static files (sitemap.xml, robots.txt) to be served directly.
 
 [[headers]]
   for = "/*"
