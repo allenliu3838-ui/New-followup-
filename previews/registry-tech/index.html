@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>肾域·科研 — 肾脏专科多中心研究登记系统</title>
+  <meta name="description" content="面向肾脏专科科研团队的多中心随访登记系统。邀请国内大学及附属医院共建研究方案、数据字典与质控流程，了解拟议的90天可行性试点。30天免费试用，科研用途，不录入PII。"/>
+  <meta property="og:type" content="website"/>
+  <meta property="og:title" content="肾域·科研 — 肾脏专科多中心研究登记"/>
+  <meta property="og:description" content="肾脏专科科研团队的多中心随访登记系统，可复现导出，30 天免费试用。"/>
+  <meta property="og:url" content="https://kidneysphereregistry.cn/"/>
+  <meta name="twitter:card" content="summary"/>
+  <meta name="twitter:title" content="肾域·科研"/>
+  <meta name="twitter:description" content="肾脏专科科研团队的多中心随访登记系统，可复现导出，30 天免费试用。"/>
+  <link rel="canonical" href="https://kidneysphereregistry.cn/"/>
+  <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
+  <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
+  <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
+  <link rel="stylesheet" href="/app.css"/>
+  <link rel="icon" href="/assets/kidneysphere-ai.png"/>
+  <link rel="preload" as="image" href="/assets/registry-tech-hero.png"/>
+  <script>
+    var _p = location.pathname;
+    if (_p.indexOf('/p/') === 0) {
+      var _tok = _p.replace(/^\/p\//, '').replace(/\/$/, '');
+      if (_tok) { location.replace('/followup#' + encodeURIComponent(_tok)); }
+    }
+    if (_p === '/followup' && location.hash && location.hash.length > 1) {
+      location.replace('/patient.html' + location.hash);
+    }
+    var h = location.hash;
+    if (h && (h.includes('access_token=') || h.includes('type=recovery') || h.includes('error='))) {
+      // Route password recovery to /login, other auth callbacks to /auth/callback
+      var dest = h.includes('type=recovery') ? '/login' : '/auth/callback';
+      location.replace(dest + h);
+    }
+  </script>
+  <style>
+    /* Hero */
+    .hero-headline{font-size:clamp(1.35rem,3vw,1.9rem);font-weight:800;line-height:1.28;margin:0 0 10px;color:var(--text);}
+    .hero-sub{font-size:14px;line-height:1.65;color:var(--muted);margin:0 0 16px;}
+    .hero-ctas{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+    .hero-ctas .btn{padding:10px 20px;font-size:14px;font-weight:700;}
+    /* Role cards */
+    .role-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:10px;}
+    @media(max-width:680px){.role-grid{grid-template-columns:1fr;}}
+    .role-card{border:1px solid var(--border);border-radius:14px;padding:16px;background:#fff;cursor:pointer;transition:border-color .15s,box-shadow .15s;text-decoration:none;color:var(--text);display:block;}
+    .role-card:hover{border-color:rgba(47,111,235,.4);box-shadow:0 4px 16px rgba(47,111,235,.10);}
+    .role-icon{font-size:1.5rem;margin-bottom:8px;}
+    .role-title{font-weight:700;font-size:14px;margin-bottom:4px;}
+    .role-desc{font-size:12px;color:var(--muted);line-height:1.55;}
+    /* Onboarding steps */
+    .steps-track{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:12px;}
+    @media(max-width:700px){.steps-track{grid-template-columns:1fr;}}
+    .step-card{border:1px solid var(--border);border-radius:12px;padding:12px 10px;background:#fff;position:relative;}
+    .step-num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--brand);color:#fff;font-size:11px;font-weight:800;margin-bottom:7px;}
+    .step-title{font-size:12px;font-weight:700;margin-bottom:4px;line-height:1.35;}
+    .step-output{font-size:11px;color:var(--muted);line-height:1.5;}
+    /* Secondary nav */
+    .sec-nav{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
+    .sec-nav a{font-size:12px;color:var(--muted);text-decoration:none;padding:3px 10px;border-radius:999px;border:1px solid var(--border);}
+    .sec-nav a:hover{color:var(--brand);border-color:rgba(47,111,235,.35);}
+    /* University collaboration invitation, scoped to this page */
+    .university-intro{background:linear-gradient(120deg,#eef4ff,#fff);border-color:rgba(47,111,235,.22);}
+    .university-eyebrow{display:inline-block;color:#1d4ed8;font-size:12px;font-weight:700;letter-spacing:.04em;margin-bottom:8px;}
+    .university-intro h2{margin:0 0 8px;font-size:clamp(1.2rem,2.4vw,1.55rem);line-height:1.45;}
+    .university-intro p{margin:0;line-height:1.75;}
+    .university-paths{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0;}
+    .university-path{display:block;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px;color:var(--text);line-height:1.65;}
+    .university-path strong{display:block;margin-bottom:5px;font-size:14px;}
+    .university-path span{display:block;font-size:13px;color:var(--muted);}
+    .university-path:hover{border-color:var(--brand);text-decoration:none;}
+    .university-path:focus-visible{outline:3px solid var(--brand);outline-offset:3px;}
+    @media(max-width:680px){.university-paths{grid-template-columns:1fr;}}
+    /* Homepage visual treatment: kept local to the registry homepage. */
+    .registry-home{background:linear-gradient(180deg,#eaf1fa 0,#f6f8fc 880px);}
+    .registry-home>.container{max-width:1180px;padding-top:28px;}
+    .registry-home .registry-hero{position:relative;isolation:isolate;overflow:hidden;padding:30px;background:#081a30;border:1px solid #203e5b;box-shadow:0 20px 48px rgba(8,26,48,.18);color:#fff;}
+    .registry-hero::before{content:"";position:absolute;z-index:-1;width:620px;height:620px;right:-210px;top:-220px;background:radial-gradient(circle,rgba(30,158,205,.2),transparent 68%);pointer-events:none;}
+    .registry-hero .brand{gap:12px;}
+    .registry-hero .brand img{width:52px;height:52px;border-radius:13px;border-color:rgba(141,206,231,.25);}
+    .registry-hero .brand-title{color:#fff;font-size:23px;letter-spacing:1px;}
+    .registry-hero .brand-sub{color:#afc3d7;line-height:1.65;font-size:12px;}
+    .registry-hero-grid{display:grid;grid-template-columns:minmax(0,1.04fr) minmax(0,1fr);align-items:center;gap:30px;margin:32px 0 26px;}
+    .registry-eyebrow{display:flex;align-items:center;gap:9px;color:#82dce9;letter-spacing:.13em;font-size:10px;font-weight:700;margin:0 0 15px;}
+    .registry-eyebrow::before{content:"";width:6px;height:6px;flex:0 0 6px;border-radius:50%;background:#72dce9;box-shadow:0 0 14px rgba(114,220,233,.6);}
+    .registry-hero .hero-headline{font-size:clamp(1.55rem,2.7vw,2rem);line-height:1.48;letter-spacing:.02em;color:#fff;margin-bottom:16px;}
+    .registry-hero .hero-headline em{font-style:normal;color:#8fdef0;}
+    .registry-hero .hero-sub{font-size:14px;line-height:1.9;color:#c1d0df;margin-bottom:18px;}
+    .registry-hero .hero-sub b{font-weight:500;color:#e4eef7;}
+    .registry-hero .hero-ctas{margin-bottom:12px;}
+    .registry-hero .hero-ctas .btn{min-height:44px;border-radius:10px;}
+    .registry-hero .hero-ctas .btn.primary{background:linear-gradient(110deg,#b0e9f2,#70c8ee);color:#09213a;border-color:#abe4f0;box-shadow:0 5px 22px rgba(95,193,230,.14);}
+    .registry-hero .hero-ctas .registry-login{background:rgba(255,255,255,.06);border:1px solid #5c7894;color:#f4f9ff;}
+    .registry-hero .hero-ctas .registry-login:hover{background:rgba(255,255,255,.12);border-color:#b0d8e7;}
+    .registry-hero .registry-trial-note{font-size:11px;line-height:1.8;color:#aac0d6;}
+    .registry-visual{position:relative;margin:0;border:1px solid rgba(129,197,221,.28);border-radius:18px;background:#0a2038;overflow:hidden;box-shadow:0 0 50px rgba(55,178,212,.09);min-width:0;}
+    .registry-visual-top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid rgba(151,207,230,.14);font-size:10px;letter-spacing:.12em;color:#a0c6db;}
+    .registry-visual-mark{display:flex;gap:5px;}
+    .registry-visual-mark i{display:block;width:4px;height:4px;border-radius:50%;background:#80cbdf;}
+    .registry-visual img{display:block;width:100%;height:auto;aspect-ratio:3/2;object-fit:cover;}
+    .registry-visual figcaption{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;padding:12px 16px;border-top:1px solid rgba(151,207,230,.14);font-size:11px;line-height:1.6;color:#a0c2d6;}
+    .registry-visual figcaption strong{font-weight:500;color:#d2e7f4;}
+    .registry-hero .sec-nav{margin-top:0;padding-top:17px;border-color:rgba(151,207,230,.18);gap:8px;}
+    .registry-hero .sec-nav a{color:#bdd1e2;border-color:rgba(151,207,230,.2);background:rgba(255,255,255,.02);padding:5px 12px;}
+    .registry-hero .sec-nav a:hover{color:#fff;border-color:#77bed8;background:rgba(255,255,255,.06);}
+    .registry-hero a:focus-visible{outline:3px solid #83dcea;outline-offset:4px;}
+    .registry-home .university-intro{padding:26px;background:linear-gradient(135deg,#fff 40%,#f0f7fc);border-color:#d8e4ef;}
+    .registry-home .university-eyebrow{color:#286b91;letter-spacing:.07em;font-size:11px;}
+    .registry-home .university-intro h2{font-size:clamp(1.2rem,2.4vw,1.5rem);line-height:1.5;}
+    .registry-home .university-paths{gap:14px;margin:20px 0;}
+    .registry-home .university-path{padding:0 0 17px;overflow:hidden;border-color:#dce8f1;border-radius:14px;transition:border-color .15s,box-shadow .15s;}
+    .registry-home .university-path:hover{border-color:#6baecb;box-shadow:0 7px 22px rgba(24,76,113,.08);}
+    .registry-path-art{position:relative;height:104px;margin-bottom:15px;background:linear-gradient(115deg,#edf5fd,#f8fbfe);border-bottom:1px solid #e4edf5;}
+    .registry-path-art svg{width:100%;height:100%;display:block;}
+    .registry-path-art .registry-path-code{position:absolute;top:13px;left:15px;display:block;color:#517b9a;font:600 10px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.06em;}
+    .registry-home .university-path>strong,.registry-home .university-path>span{margin-left:17px;margin-right:17px;}
+    .registry-home .university-path>strong{font-size:14px;color:#153854;}
+    .registry-home .university-path>span{font-size:13px;line-height:1.75;color:#60768b;}
+    @media(max-width:840px){.registry-hero-grid{grid-template-columns:1fr;gap:24px;margin-top:26px;}.registry-hero .hero-headline{font-size:clamp(1.6rem,4.4vw,2rem);}.registry-visual{max-width:600px;width:100%;justify-self:center;}.registry-hero .hero-sub{max-width:650px;}.registry-home .registry-hero{padding:24px;}}
+    @media(max-width:680px){.registry-home>.container{padding:14px;}.registry-home .registry-hero,.registry-home .university-intro{padding:20px;}.registry-hero .brand-sub{font-size:11px;}.registry-hero .hero-sub{font-size:13px;}.registry-hero .hero-ctas{gap:8px;}.registry-hero .hero-ctas .btn{padding:10px 14px;font-size:13px;}.registry-visual-top{padding:11px 13px;font-size:9px;}.registry-visual figcaption{padding:10px 13px;font-size:10px;}.registry-hero .sec-nav a{font-size:11px;padding:5px 10px;}.registry-home .university-paths{gap:12px;}}
+    @media(prefers-reduced-motion:reduce){.registry-home .university-path{transition:none;}}
+  </style>
+</head>
+<body class="registry-home">
+  <div class="container">
+
+    <!-- ===== HERO ===== -->
+    <div class="card registry-hero">
+      <div class="brand">
+        <img src="/assets/kidneysphere-ai.png" alt="肾域·科研" width="64" height="64" decoding="async"/>
+        <div>
+          <h1 class="brand-title">肾域·科研</h1>
+          <div class="brand-sub">KidneySphere Research · 肾脏专科多中心研究登记系统</div>
+        </div>
+      </div>
+
+      <div class="registry-hero-grid">
+        <div class="registry-hero-copy">
+        <div class="registry-eyebrow">KIDNEYSPHERE · RESEARCH REGISTRY</div>
+        <p class="hero-headline">让肾脏专科的研究问题<br/><em>走向规范的多中心登记</em></p>
+        <p class="hero-sub">
+          连接临床团队、大学研究者与附属医院，从研究方案、标准化字段和数据质量开始。适合 IgAN / LN / MN / CKD 等场景的 PI、CRC 及多中心协作团队。<br/>
+          <b>科研用途，不录入 PII，不提供诊断建议。</b>30 天免费试用，核心功能可用（含 1 个项目）。
+        </p>
+        <div class="hero-ctas">
+          <a class="btn primary" href="/signup?trial=1"
+             data-track="click_start_trial" data-track-source="hero">开始 30 天试用</a>
+          <a class="btn registry-login" href="/login"
+             data-track="click_login" data-track-source="hero">登录后台</a>
+        </div>
+        <div class="small registry-trial-note">试用无需信用卡 · 到期后 7 天只读宽限 · 随时导出数据</div>
+        </div>
+        <figure class="registry-visual">
+          <div class="registry-visual-top"><span>MEDICINE / DATA / COLLABORATION</span><span class="registry-visual-mark" aria-hidden="true"><i></i><i></i><i></i></span></div>
+          <img src="/assets/registry-tech-hero.png" width="1536" height="1024" decoding="async" fetchpriority="high" alt="蓝色肾脏形态与相连数据节点构成的医学研究概念插画"/>
+          <figcaption><strong>连接临床问题与研究协作</strong><span>医学研究概念图</span></figcaption>
+        </figure>
+      </div>
+
+      <!-- Secondary nav -->
+      <nav class="sec-nav" aria-label="次级导航">
+        <a href="/demo" data-track="click_book_demo" data-track-source="sec_nav">预约演示</a>
+        <a href="/collaboration" data-track="click_view_projects" data-track-source="sec_nav">合作项目</a>
+        <a href="/guide">使用说明</a>
+        <a href="/user-manual-cn">详细手册</a>
+        <a href="/slides">介绍PPT</a>
+        <a href="/pricing">价格方案</a>
+        <a href="/security">安全合规</a>
+        <a href="/deployment">部署方式</a>
+      </nav>
+    </div>
+
+    <!-- ===== UNIVERSITY PILOT INVITATION ===== -->
+    <section class="card university-intro" aria-labelledby="universityHeading">
+      <span class="university-eyebrow">大学及附属医院合作 · 拟议试点</span>
+      <h2 id="universityHeading">共建一个可评估、可复盘的研究起点</h2>
+      <p class="small muted">建议从一个病种、一个研究问题开始。临床、方法学与医学信息团队共同确定方案，先用模拟数据验证流程，再按审批与授权范围开展真实数据试点。</p>
+      <div class="university-paths">
+        <a class="university-path" href="/collaboration#clinical-lead">
+          <div class="registry-path-art"><span class="registry-path-code">01 / CLINICAL</span><svg viewBox="0 0 300 104" width="300" height="104" fill="none" aria-hidden="true" focusable="false"><path d="M30 80H270M84 24V84M216 24V84" stroke="#d7e5f0" stroke-dasharray="3 5"/><path d="M64 66H105M195 66H237" stroke="#88b8d2"/><circle cx="57" cy="66" r="6" fill="#d6edf6" stroke="#72a9c5"/><circle cx="244" cy="66" r="6" fill="#d6edf6" stroke="#72a9c5"/><rect x="112" y="32" width="76" height="55" rx="6" fill="#fff" stroke="#70a5c3" stroke-width="1.5"/><path d="M145 44H155M150 39V49" stroke="#388aab" stroke-width="2.5" stroke-linecap="round"/><path d="M127 59H135M146 59H154M165 59H173M127 69H135M165 69H173M145 86V73H155V86" stroke="#91b5cc" stroke-width="2" stroke-linecap="round"/><circle cx="213" cy="39" r="3" fill="#6fbdcf"/></svg></div>
+          <strong>临床牵头团队 →</strong><span>确定研究问题、入排标准、结局和随访安排。</span>
+        </a>
+        <a class="university-path" href="/collaboration#methods-team">
+          <div class="registry-path-art"><span class="registry-path-code">02 / METHODS</span><svg viewBox="0 0 300 104" width="300" height="104" fill="none" aria-hidden="true" focusable="false"><path d="M34 81H270M84 27V85M216 27V85" stroke="#d7e5f0" stroke-dasharray="3 5"/><rect x="106" y="31" width="91" height="56" rx="6" fill="#fff" stroke="#70a5c3" stroke-width="1.5"/><path d="M122 42V73H181" stroke="#a0bdcf" stroke-width="1.5"/><path d="M128 61L144 65L161 48L178 52" stroke="#388aab" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="128" cy="61" r="2.5" fill="#73c2d4"/><circle cx="144" cy="65" r="2.5" fill="#73c2d4"/><circle cx="161" cy="48" r="2.5" fill="#73c2d4"/><circle cx="178" cy="52" r="2.5" fill="#73c2d4"/><path d="M64 53H87M74 43V64M216 60H242M216 67H232M216 74H237" stroke="#88b8d2" stroke-width="1.5"/><circle cx="237" cy="37" r="3" fill="#6fbdcf"/></svg></div>
+          <strong>公共卫生 / 统计团队 →</strong><span>共建分析方案，评估缺失、偏倚和样本可行性。</span>
+        </a>
+        <a class="university-path" href="/collaboration#informatics-team">
+          <div class="registry-path-art"><span class="registry-path-code">03 / INFORMATICS</span><svg viewBox="0 0 300 104" width="300" height="104" fill="none" aria-hidden="true" focusable="false"><path d="M30 80H270M84 24V84M216 24V84" stroke="#d7e5f0" stroke-dasharray="3 5"/><path d="M102 44H123M102 76H123M177 44H199M177 76H199" stroke="#88b8d2" stroke-width="1.5"/><path d="M124 43V77C124 87 176 87 176 77V43" fill="#fff"/><path d="M124 43V77C124 87 176 87 176 77V43M124 60C124 70 176 70 176 60" stroke="#70a5c3" stroke-width="1.5"/><ellipse cx="150" cy="43" rx="26" ry="9" fill="#e1f1f8" stroke="#70a5c3" stroke-width="1.5"/><rect x="79" y="36" width="22" height="16" rx="4" fill="#fff" stroke="#91b5cc"/><rect x="79" y="69" width="22" height="16" rx="4" fill="#fff" stroke="#91b5cc"/><rect x="200" y="36" width="22" height="16" rx="4" fill="#fff" stroke="#91b5cc"/><rect x="200" y="69" width="22" height="16" rx="4" fill="#fff" stroke="#91b5cc"/><circle cx="90" cy="44" r="2" fill="#59a6bd"/><circle cx="211" cy="44" r="2" fill="#59a6bd"/><circle cx="90" cy="77" r="2" fill="#59a6bd"/><circle cx="211" cy="77" r="2" fill="#59a6bd"/></svg></div>
+          <strong>医学信息团队 →</strong><span>核对数据字典、权限边界与部署条件。</span>
+        </a>
+      </div>
+      <p class="small"><b>拟议90天目标：</b>形成试点方案、字段字典、数据质量报告与继续 / 调整 / 暂停建议；不以论文发表或临床疗效作为试点承诺。</p>
+      <div class="btnbar">
+        <a class="btn primary" href="/collaboration#pilot-plan">查看90天试点安排</a>
+        <a class="btn" href="mailto:china@kidneysphere.com">联系讨论大学合作</a>
+      </div>
+    </section>
+
+    <!-- ===== ROLE CARDS ===== -->
+    <div class="card">
+      <h2 style="margin:0 0 4px">选择最适合你的路径</h2>
+      <div class="small muted">不同角色关心的问题不一样，找到你最快能跑通的那一条。</div>
+      <div class="role-grid">
+        <a class="role-card" href="/guide#research"
+           data-track="click_role_card" data-track-role="pi">
+          <div class="role-icon">🔬</div>
+          <div class="role-title">PI / 课题负责人</div>
+          <div class="role-desc">建立队列、设计字段、准备分析数据。我想了解从研究问题到首轮数据检查的流程。</div>
+          <div style="margin-top:8px;font-size:12px;color:var(--brand);font-weight:600">查看研究流程 →</div>
+        </a>
+        <a class="role-card" href="/guide#entry-qc"
+           data-track="click_role_card" data-track-role="crc">
+          <div class="role-icon">📋</div>
+          <div class="role-title">CRC / 录入员 / 随访护士</div>
+          <div class="role-desc">标准化录入、自动质控、补录提醒。我想知道哪些字段最关键，怎么避免 QC 报错。</div>
+          <div style="margin-top:8px;font-size:12px;color:var(--brand);font-weight:600">查看录入质控指南 →</div>
+        </a>
+        <a class="role-card" href="/collaboration"
+           data-track="click_role_card" data-track-role="institution">
+          <div class="role-icon">🏥</div>
+          <div class="role-title">多中心牵头 / 机构合作</div>
+          <div class="role-desc">统一 CRF、合并分析、管理多中心数据质量。我想了解机构合作与私有化部署方案。</div>
+          <div style="margin-top:8px;font-size:12px;color:var(--brand);font-weight:600">查看合作路径 →</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- ===== TRIAL ONBOARDING ===== -->
+    <div class="card">
+      <h2 style="margin:0 0 4px">30 天试用，怎么跑通</h2>
+      <div class="small muted">先用模拟病例熟悉流程；真实数据录入须符合所在机构的审批和授权要求。</div>
+      <div class="steps-track">
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <div class="step-title">建项目，选病种场景</div>
+          <div class="step-output">→ IgAN / MN / LN / CKD 等模板字段自动加载</div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <div class="step-title">录入 3–5 例模拟病例</div>
+          <div class="step-output">→ 练习日期 / BP / Scr / UPCR 等字段；正式必填项由研究方案确定</div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <div class="step-title">一键导出首版数据包</div>
+          <div class="step-output">→ 结构化 CSV + 字段说明 + 示例分析脚本</div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">4</div>
+          <div class="step-title">看 QC 报告，补录字段</div>
+          <div class="step-output">→ 核心字段完整率可见，缺口清单一目了然</div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">5</div>
+          <div class="step-title">生成可汇报版本</div>
+          <div class="step-output">→ 复跑，锁定版本，用于汇报 / 多中心合并</div>
+        </div>
+      </div>
+      <div class="btnbar" style="margin-top:14px">
+        <a class="btn primary" href="/signup?trial=1"
+           data-track="click_start_trial" data-track-source="onboarding">立即开始试用</a>
+        <a class="btn" href="/guide#research"
+           data-track="click_guide" data-track-source="onboarding">查看完整操作说明</a>
+      </div>
+      <div class="small muted" style="margin-top:6px">试用成功标准：能稳定导出分析包并完成至少 1 轮 QC → 补录 → 复跑。</div>
+    </div>
+
+    <!-- ===== CORE CAPABILITIES ===== -->
+    <div class="card">
+      <h2 style="margin:0 0 8px">为什么选择肾域·科研</h2>
+      <div class="value-grid">
+        <div class="value-card">
+          <div class="price-title">为分析复现做好准备</div>
+          <div class="small">结构化数据、字段说明与示例分析脚本支持研究汇总；复现时需固定数据、脚本和运行环境版本，并核对结果。</div>
+        </div>
+        <div class="value-card">
+          <div class="price-title">先统一规则，再合并数据</div>
+          <div class="small">按项目、中心与研究编号核对患者和访视归属；合并前检查重复、时间窗、单位和字段定义。</div>
+        </div>
+        <div class="value-card">
+          <div class="price-title">把数据质量变成日常流程</div>
+          <div class="small">通过 QC → 核查 → 修订 → 复跑逐步改善数据质量。缺失原因、修订依据和导出版本由项目团队共同记录。</div>
+        </div>
+      </div>
+      <div class="warnbox" style="margin-top:10px">
+        <b>合规边界：</b>仅用于随访数据登记与研究汇总，不提供诊断/处方/急救指导；<b>禁止录入</b>姓名/电话/病案号/身份证等个人信息（PII）。
+      </div>
+    </div>
+
+    <!-- ===== PRICING SUMMARY ===== -->
+    <div class="card">
+      <h2 style="margin:0 0 8px">定价与试用</h2>
+      <div class="pricing-grid">
+        <div class="price-card">
+          <div class="price-title">试用（30 天）</div>
+          <div class="price-main" style="font-size:1.5rem">免费</div>
+          <div class="small muted">完整功能 · 到期后 7 天只读宽限</div>
+          <div class="btnbar" style="margin-top:10px">
+            <a class="btn small primary" href="/signup?trial=1"
+               data-track="click_start_trial" data-track-source="pricing">开始试用</a>
+          </div>
+        </div>
+        <div class="price-card recommended">
+          <div class="price-title">个人科研版（Pro）</div>
+          <div class="price-main" data-testid="index-pro-price"><span data-pricing="proMonthlyBase">¥499</span><span class="small muted"> / 月（含 <span data-pricing="proBaseProjects">3</span> 个项目）</span></div>
+          <div class="small muted">年付 <span data-pricing="proYearlyBase">¥4,790</span> · 支持微信 / 支付宝 / 对公转账</div>
+          <div class="btnbar" style="margin-top:10px">
+            <a class="btn small primary" href="/checkout"
+               data-track="click_upgrade" data-track-source="pricing">立即升级</a>
+            <a class="btn small" href="/pricing"
+               data-track="click_view_pricing" data-track-source="pricing">查看详情</a>
+          </div>
+        </div>
+        <div class="price-card">
+          <div class="price-title">机构科研合作版</div>
+          <div class="price-main">联系报价</div>
+          <div class="small muted">多中心协作、数据治理与合规支持</div>
+          <div class="btnbar" style="margin-top:10px">
+            <a class="btn small" href="/demo"
+               data-track="click_institution_inquiry" data-track-source="pricing">咨询机构合作</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PROJECTS ===== -->
+    <div class="card">
+      <h2 style="margin:0 0 4px" id="projectHeading" data-testid="project-heading">正在招募合作中心 · <span id="projectCount" data-testid="project-count">10</span> 个研究项目</h2>
+      <div class="small muted">涵盖 IgAN / MN / C3G / MGRS / DKD / HD / CKD 康复 / 肾移植 / 腹膜透析。项目卡用于了解合作方向；当前招募状态、正式方案、入组条件及支持范围，请与项目团队逐项确认。</div>
+      <div id="indexProjects" class="projects-grid" style="margin-top:10px"></div>
+      <div class="btnbar" style="margin-top:12px">
+        <a class="btn primary" href="mailto:china@kidneysphere.com"
+           data-track="click_join_project" data-track-source="index_projects">联系加入</a>
+        <a class="btn" href="/collaboration"
+           data-track="click_view_projects" data-track-source="index_projects">查看全部项目</a>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/lib/error-logger.js"></script>
+  <script src="/config.js"></script>
+  <script src="/pricing-config.js"></script>
+  <script src="/analytics.js"></script>
+  <script src="/collaboration-data.js"></script>
+  <script src="/collaboration-components.js"></script>
+  <script>
+    (function(){
+      try {
+        var idxData = window.CollabData;
+        var idxC = window.CollabComponents;
+        var countEl = document.getElementById('projectCount');
+        var headingEl = document.getElementById('projectHeading');
+        if (!idxData || !idxData.projectCards || !idxData.projectCards.length) {
+          // Hide the entire heading if no data available
+          if (headingEl) headingEl.textContent = '正在招募合作中心';
+          return;
+        }
+        idxC.renderProjects(
+          document.getElementById('indexProjects'),
+          idxData.projectCards
+        );
+        if (countEl) countEl.textContent = idxData.projectCards.length;
+      } catch(e) {
+        // Graceful degradation: hide count on error
+        var h = document.getElementById('projectHeading');
+        if (h) h.textContent = '正在招募合作中心';
+        console.error('[index] project render error:', e);
+      }
+    })();
+  </script>
+  <footer class="site-footer">
+    <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
+    <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener">鲁公网安备37091102000922号</a></div>
+  </footer>
+</body>
+</html>
