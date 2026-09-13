@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>肾域·科研｜肾脏专科合作项目与多中心研究招募</title>
-  <meta name="description" content="面向肾脏专科的多中心研究合作项目招募，涵盖 IgAN、MN、C3G、MGRS、DKD 等领域，提供数据治理、可复现导出、长期随访与研究平台支持。加入研究项目，联系 china@kidneysphere.com。"/>
+  <title>肾域·科研｜大学合作与多中心研究试点</title>
+  <meta name="description" content="邀请国内大学及附属医院共建肾脏专科研究登记。临床、公共卫生统计、医学信息三类合作路径，以及拟议90天可行性试点、启动条件与阶段产出。联系 china@kidneysphere.com。"/>
   <meta property="og:type" content="website"/>
-  <meta property="og:title" content="肾域·科研｜肾脏专科多中心研究合作招募"/>
-  <meta property="og:description" content="面向肾脏专科的多中心研究合作、可复现导出、数据质量提升与阶段统计支持。先选项目，再检查字段完整率，再启动首轮产出。"/>
+  <meta property="og:title" content="肾域·科研｜大学合作与多中心研究试点"/>
+  <meta property="og:description" content="从一个研究问题开始，共建方案、字段字典与数据质量流程。了解临床、统计和医学信息团队的合作分工与拟议90天试点。"/>
   <meta property="og:url" content="https://kidneysphereregistry.cn/collaboration"/>
   <link rel="canonical" href="https://kidneysphereregistry.cn/collaboration"/>
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
@@ -15,6 +15,39 @@
   <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
   <link rel="stylesheet" href="/app.css"/>
   <link rel="icon" href="/assets/kidneysphere-ai.png"/>
+  <style>
+    .ucollab-hero{padding:22px;background:linear-gradient(120deg,#edf4ff,#fff);}
+    .ucollab-hero h2{font-size:clamp(1.4rem,3vw,2rem);line-height:1.4;max-width:780px;margin:10px 0;}
+    .ucollab-hero p{line-height:1.8;max-width:840px;margin:0;}
+    .ucollab-label{display:inline-block;border:1px solid rgba(47,111,235,.22);background:#fff;border-radius:999px;padding:5px 10px;font-size:12px;color:#1d4ed8;font-weight:700;}
+    .ucollab-nav{display:flex;flex-wrap:wrap;gap:8px 18px;margin:14px 0 0;font-size:13px;}
+    .ucollab-heading{margin:0 0 8px;font-size:1.3rem;line-height:1.45;}
+    .ucollab-intro{margin:0 0 14px;color:var(--muted);font-size:13px;line-height:1.75;}
+    .ucollab-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+    .ucollab-role,.ucollab-phase{border:1px solid var(--border);border-radius:14px;padding:16px;background:#fff;min-width:0;}
+    .ucollab-role{display:flex;flex-direction:column;scroll-margin-top:100px;}
+    .ucollab-role h3,.ucollab-phase h3{font-size:15px;margin:8px 0;line-height:1.5;}
+    .ucollab-role p,.ucollab-phase p{font-size:13px;line-height:1.75;margin:0 0 10px;}
+    .ucollab-role .btn{align-self:flex-start;margin-top:auto;}
+    .ucollab-number{font-size:12px;font-weight:700;color:#1d4ed8;}
+    .ucollab-deliverable{background:#f5f8ff;border-radius:10px;padding:10px;font-size:13px;line-height:1.7;margin:0 0 14px;}
+    .ucollab-phase{border-top:3px solid var(--brand);background:linear-gradient(#f7faff,#fff);}
+    .ucollab-phase dl{font-size:13px;line-height:1.7;margin:12px 0 0;}
+    .ucollab-phase dt{font-weight:700;}
+    .ucollab-phase dd{margin:2px 0 10px;color:var(--muted);}
+    .ucollab-note{font-size:13px;line-height:1.75;color:var(--muted);margin:12px 0 0;}
+    .ucollab-table-wrap{overflow-x:auto;}
+    .ucollab-table{width:100%;border-collapse:collapse;font-size:13px;line-height:1.65;min-width:610px;}
+    .ucollab-table caption{text-align:left;font-weight:700;padding:0 0 10px;}
+    .ucollab-table th,.ucollab-table td{text-align:left;vertical-align:top;border-bottom:1px solid var(--border);padding:11px 12px;}
+    .ucollab-table thead th{background:#f3f7ff;color:#1e40af;}
+    .ucollab-table tbody th{width:23%;}
+    .ucollab-contact{background:linear-gradient(120deg,#edf4ff,#fff);border-color:rgba(47,111,235,.22);}
+    .ucollab-contact p{font-size:13px;line-height:1.8;}
+    #pilot-plan,#start-conditions,#research-projects,#cooperation-contact{scroll-margin-top:100px;}
+    .ucollab-nav a:focus-visible,.ucollab-role a:focus-visible,.ucollab-table-wrap:focus-visible{outline:3px solid var(--brand);outline-offset:3px;}
+    @media(max-width:760px){.ucollab-grid{grid-template-columns:1fr;}.ucollab-hero{padding:16px;}}
+  </style>
 </head>
 <body>
   <div class="container">
@@ -25,7 +58,7 @@
         <img src="/assets/kidneysphere-ai.png" alt="肾域·科研"/>
         <div>
           <h1 class="brand-title">肾域·科研｜研究合作</h1>
-          <div class="brand-sub">多中心研究合作 · 可复现导出 · 数据质量提升 · 阶段统计支持</div>
+          <div class="brand-sub">大学及附属医院合作 · 肾脏专科登记 · 多中心可行性试点</div>
         </div>
       </div>
 
@@ -38,19 +71,24 @@
         <a class="btn primary" href="/demo">预约演示</a>
       </div>
 
-      <div class="hero-lite" style="margin-top:14px">
-        <h2 style="margin:0 0 8px">加入一个可执行的研究项目，比单独试一个系统更容易起步</h2>
-        <div class="small" style="line-height:1.65">
-          面向肾脏专科的多中心研究合作、可复现导出、数据质量提升与阶段统计支持。先选项目，再检查字段完整率，再启动首轮产出。
-        </div>
+      <div class="hero-lite ucollab-hero" style="margin-top:14px">
+        <span class="ucollab-label">合作邀请 · 以下试点安排为拟议方案</span>
+        <h2>把临床问题、方法学与医学信息<br/>连接成一项可执行的研究</h2>
+        <p class="small">邀请国内大学、附属医院与研究团队共同讨论：以肾脏专科登记为基础，如何统一字段、提高随访数据质量，并评估多中心研究的可行性。建议先围绕一个病种和一个研究问题开展小规模试点。</p>
         <div class="btnbar" style="margin-top:12px">
-          <a class="btn primary" href="mailto:china@kidneysphere.com">联系加入项目</a>
+          <a class="btn primary" href="mailto:china@kidneysphere.com">讨论大学合作试点</a>
           <a class="btn" href="/demo?type=发起新项目">发起新项目</a>
           <a class="btn" href="/demo?type=预约演示">预约演示</a>
         </div>
         <div class="small muted" style="margin-top:8px">
-          直接发邮件：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a>，注明项目名称
+          直接发邮件：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a>，注明单位、研究方向与希望承担的角色。
         </div>
+        <nav class="ucollab-nav" aria-label="合作内容导航">
+          <a href="#cooperation-roles">选择合作角色</a>
+          <a href="#pilot-plan">90天试点安排</a>
+          <a href="#start-conditions">启动前确认事项</a>
+          <a href="#research-projects">浏览研究项目</a>
+        </nav>
       </div>
 
       <div class="warnbox" style="margin-top:12px">
@@ -58,83 +96,134 @@
       </div>
     </div>
 
-    <!-- ===== 3-Step Process ===== -->
-    <div class="card">
-      <h2 style="margin:0 0 12px">如何加入或发起项目</h2>
-      <div class="value-grid">
-        <div class="value-card">
-          <div class="price-title">① 选择项目或提交意向</div>
-          <div class="small" style="margin-top:6px">明确咨询类型：加入现有项目 / 发起新项目 / 机构合作咨询。</div>
-        </div>
-        <div class="value-card">
-          <div class="price-title">② 确认字段准备度与缺口</div>
-          <div class="small" style="margin-top:6px">系统与团队一起检查关键字段完整率，给出可执行补齐清单。</div>
-        </div>
-        <div class="value-card">
-          <div class="price-title">③ 达标后启动首轮产出</div>
-          <div class="small" style="margin-top:6px">录入 → QC → 导出首版结果，形成可复现导出与阶段汇报材料。</div>
-        </div>
+    <!-- ===== Proposed Collaboration Roles ===== -->
+    <section class="card" aria-labelledby="cooperation-roles">
+      <h2 class="ucollab-heading" id="cooperation-roles">三类团队，共同明确一个研究问题</h2>
+      <p class="ucollab-intro">以下是建议分工。可由同一大学的多个团队协作，也可跨机构组建；具体负责人、资源投入和交付范围需共同确认。</p>
+      <div class="ucollab-grid">
+        <article class="ucollab-role" id="clinical-lead">
+          <span class="ucollab-number">01 · 临床牵头</span>
+          <h3>大学附属医院 / 肾内科团队</h3>
+          <p>提出临床问题，定义入排标准、主要结局与随访窗口；评估病历来源和中心招募能力，协调各中心研究执行。</p>
+          <div class="ucollab-deliverable"><b>建议带来：</b>一页研究构想、候选中心、可用变量清单及审批进度。</div>
+          <a class="btn small" href="mailto:china@kidneysphere.com">讨论临床牵头合作</a>
+        </article>
+        <article class="ucollab-role" id="methods-team">
+          <span class="ucollab-number">02 · 方法学共建</span>
+          <h3>公共卫生 / 生物统计团队</h3>
+          <p>明确目标人群与分析问题，制定统计分析计划；评估样本可行性、缺失数据、混杂和中心差异，设计复现核查。</p>
+          <div class="ucollab-deliverable"><b>建议带来：</b>拟承担的方法学任务、人员安排和分析环境需求。</div>
+          <a class="btn small" href="mailto:china@kidneysphere.com">讨论方法学合作</a>
+        </article>
+        <article class="ucollab-role" id="informatics-team">
+          <span class="ucollab-number">03 · 数据流程共建</span>
+          <h3>医学信息 / 医院信息团队</h3>
+          <p>核对字段、单位与来源映射；评估部署地点、角色权限、审计和恢复要求，以模拟数据验证导入与导出流程。</p>
+          <div class="ucollab-deliverable"><b>建议带来：</b>不含患者信息的字段样表、现有系统边界与院内评估要求。</div>
+          <a class="btn small" href="/demo">预约数据流程演示</a>
+        </article>
       </div>
-    </div>
+    </section>
+
+    <!-- ===== Proposed 90-Day Feasibility Pilot ===== -->
+    <section class="card" aria-labelledby="pilot-plan">
+      <h2 class="ucollab-heading" id="pilot-plan">拟议90天试点：先验证可行性，再决定扩大</h2>
+      <p class="ucollab-intro">可讨论以1家牵头单位与2–4家参与中心起步，例如选择 IgAN 登记。病种、中心数、样本量及周期均需按资源和方案协商；下列安排不代表已启动的合作或已实现的平台能力。</p>
+      <div class="ucollab-grid">
+        <article class="ucollab-phase">
+          <span class="ucollab-number">第1–30天 · 方案与准备</span>
+          <h3>把研究问题写成共同规则</h3>
+          <p>临床与统计团队起草方案、CRF和分析计划；信息团队核对字段与权限要求，使用模拟病例演练。</p>
+          <dl><dt>预期交付</dt><dd>试点方案、数据字典初版、职责清单与待解决问题。</dd><dt>进入下一阶段前</dt><dd>各中心完成适用的审批、协议与数据使用授权；关键数据流程通过验证。</dd></dl>
+        </article>
+        <article class="ucollab-phase">
+          <span class="ucollab-number">第31–60天 · 小规模试运行</span>
+          <h3>找出真实流程中的缺口</h3>
+          <p>获准的中心按确认后的范围开展登记，逐项核查缺失、重复、单位与访视窗口，并记录修订依据。</p>
+          <dl><dt>预期交付</dt><dd>中心质控报告、问题处理记录与字典修订版。</dd><dt>进入下一阶段前</dt><dd>临床与统计负责人复核关键问题，达到事先约定的数据质量标准。</dd></dl>
+        </article>
+        <article class="ucollab-phase">
+          <span class="ucollab-number">第61–90天 · 评估与复现</span>
+          <h3>给扩大合作一个可核查的依据</h3>
+          <p>在获准的数据范围内固定数据与分析版本，复核描述性结果、录入负担和流程问题，召开联合复盘。</p>
+          <dl><dt>预期交付</dt><dd>可行性报告、分析复现记录与后续队列方案建议。</dd><dt>共同决策</dt><dd>临床、统计及信息负责人建议继续、调整或暂停，由各机构按职责确认。</dd></dl>
+        </article>
+      </div>
+      <p class="ucollab-note">审批或准备工作未完成时，继续模拟数据验证并顺延真实数据阶段。90天用于评估登记与协作流程，不等同于完成长期临床结局随访，也不承诺论文发表或研究结果。</p>
+    </section>
 
     <!-- ===== Projects Grid ===== -->
     <div class="card">
-      <h2 style="margin:0 0 4px">正在招募合作中心的研究项目</h2>
-      <div class="small muted">以下均为正在启动或招募阶段的真实研究，欢迎符合条件的中心联系加入。</div>
+      <h2 style="margin:0 0 4px" id="research-projects">浏览研究项目与合作方向</h2>
+      <div class="small muted">了解各项目的研究方向并联系团队。卡片中的招募状态、字段、研究规模与支持内容须由项目负责人确认；是否入组和进入分析，以正式方案及审批范围为准。上方90天试点为独立的合作建议。</div>
       <div class="filter-tabs" id="filterTabs"></div>
       <div id="projectsGrid" class="projects-grid"></div>
     </div>
 
     <!-- ===== Value Section ===== -->
     <div class="card">
-      <h2 style="margin:0 0 12px">参与价值 / 牵头价值</h2>
+      <h2 style="margin:0 0 12px">试点如何评估成效</h2>
       <div class="row">
         <div class="col">
           <div class="infobox">
-            <b>参与单位获得什么</b>
+            <b>数据质量与研究可行性</b>
             <ul class="small" style="margin:8px 0 0;padding-left:18px;line-height:1.8">
-              <li>更低启动成本，更快进入研究流程</li>
-              <li>补齐关键字段后快速拿到首版图表/表格</li>
-              <li>形成数据质量提升闭环</li>
+              <li>按预设必填项计算完整率，记录缺失原因</li>
+              <li>核查重复记录、时间窗与单位不一致问题</li>
+              <li>评估现有数据能否支持原定研究问题</li>
             </ul>
           </div>
         </div>
         <div class="col">
           <div class="okbox">
-            <b>牵头单位获得什么</b>
+            <b>协作流程与使用负担</b>
             <ul class="small" style="margin:8px 0 0;padding-left:18px;line-height:1.8">
-              <li>多中心项目合作路径更清晰</li>
-              <li>方法学 / 统计支持与导出规范更一致</li>
-              <li>科室与管理侧汇报材料更容易形成</li>
+              <li>记录每例录入用时、培训需求与问题处理时间</li>
+              <li>核对导出结果能否在约定环境中复现</li>
+              <li>结合中心反馈，形成继续 / 调整 / 暂停建议</li>
             </ul>
           </div>
         </div>
       </div>
+      <p class="ucollab-note">指标定义、分母、测量方法和达标阈值，由临床与统计负责人在试点开始前约定；这些指标是拟议评估内容，并非既有成效。</p>
     </div>
 
-    <!-- ===== Compliance ===== -->
-    <div class="card">
-      <h2 style="margin:0 0 8px">合规与院内评估支持</h2>
-      <div class="kv">
-        <div>去标识化</div><div>默认以 patient_code + center_code 工作流，禁止录入 PII。</div>
-        <div>权限与审计</div><div>RLS 权限隔离 + 关键动作审计日志，支持研究过程追溯。</div>
-        <div>备份与恢复</div><div>按部署模式执行备份与恢复策略，可配合院内要求。</div>
-        <div>私有化部署</div><div>支持院内私有化部署评估与边界说明。</div>
-        <div>评估材料</div><div>可提供伦理 / 信息科评估材料模板（不承诺伦理通过）。</div>
+    <!-- ===== Proposed Start Conditions and Decision Owners ===== -->
+    <section class="card" aria-labelledby="start-conditions">
+      <h2 class="ucollab-heading" id="start-conditions">启动前，先把责任与边界写清楚</h2>
+      <p class="ucollab-intro">以下为建议协商清单。实际审批、数据使用和系统验收由相关机构完成，不能以注册系统或签订意向替代。</p>
+      <div class="ucollab-table-wrap" role="region" aria-label="启动事项与建议责任方对照" tabindex="0">
+        <table class="ucollab-table">
+          <caption>事项、确认内容与建议责任方</caption>
+          <thead><tr><th scope="col">事项</th><th scope="col">启动前应确认的内容</th><th scope="col">建议责任方</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">研究方案与审批</th><td>方案版本、中心职责、伦理路径及知情同意或豁免依据；真实数据使用范围。</td><td>牵头PI、各中心PI及所在机构相应审批部门。</td></tr>
+            <tr><th scope="row">数据授权与使用</th><td>数据归属、用途、访问和导出范围、保存期限与退出安排；识别信息及研究编号映射由来源机构按批准方案管理。</td><td>各机构数据管理责任方、法务与项目负责人。</td></tr>
+            <tr><th scope="row">信息系统验收</th><td>部署位置、权限边界、日志、备份与恢复验证；功能缺口和整改责任。</td><td>医院信息 / 安全部门与平台技术团队。</td></tr>
+            <tr><th scope="row">分析与成果规则</th><td>统计分析计划、版本留存、复现方法；子课题申请、贡献记录、署名和知识产权约定。</td><td>临床与统计负责人、参与机构科研管理部门。</td></tr>
+            <tr><th scope="row">资源与合作范围</th><td>人员投入、培训、技术支持、费用与交付节点，以具体合作协议为准。</td><td>合作各方负责人及机构授权签约方。</td></tr>
+          </tbody>
+        </table>
       </div>
-    </div>
+      <p class="ucollab-note">平台仅登记获准的研究编码数据，不接收姓名、电话、病案号、身份证等直接识别信息。去标识化仍需按研究与机构要求管理。更多说明见<a href="/security">安全合规</a>与<a href="/deployment">部署方式</a>。</p>
+    </section>
 
     <!-- ===== FAQ ===== -->
     <div class="card">
       <h2 style="margin:0 0 8px">FAQ</h2>
+      <details class="faq" open>
+        <summary>大学合作试点已经启动了吗？</summary>
+        <div class="small">大学合作分工与90天安排是供共同讨论的初步框架。请先联系确认研究问题、责任团队、资源和启动条件；具体合作以双方协议和机构审批为准，项目参与资格与分析纳入条件按各项目正式方案核定。</div>
+      </details>
       <div id="faqList"></div>
     </div>
 
     <!-- ===== Bottom CTA ===== -->
-    <div class="card">
-      <h2 style="margin:0 0 8px">准备开始研究合作？</h2>
+    <div class="card ucollab-contact" id="cooperation-contact">
+      <h2 style="margin:0 0 8px">从一页合作构想开始</h2>
+      <p>告诉我们：单位与科室、拟研究病种和问题、希望承担的角色、可用字段及审批进度。仅需概况，不发送患者资料；我们据此讨论试点范围和下一次方案沟通。</p>
       <div class="btnbar">
-        <a class="btn primary" href="mailto:china@kidneysphere.com">联系加入项目</a>
+        <a class="btn primary" href="mailto:china@kidneysphere.com">发送合作意向</a>
         <a class="btn" href="/demo?type=发起新项目">发起新项目</a>
         <a class="btn" href="/demo?type=预约演示">预约演示</a>
       </div>

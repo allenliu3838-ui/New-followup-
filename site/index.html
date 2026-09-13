@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>肾域·科研 — 肾脏专科多中心研究登记系统</title>
-  <meta name="description" content="面向肾脏专科科研团队的多中心随访登记系统，支持 IgAN / LN / MN / CKD 等场景，标准化字段、可复现导出、数据质量治理。30 天免费试用，科研用途，不录入 PII。"/>
+  <meta name="description" content="面向肾脏专科科研团队的多中心随访登记系统。邀请国内大学及附属医院共建研究方案、数据字典与质控流程，了解拟议的90天可行性试点。30天免费试用，科研用途，不录入PII。"/>
   <meta property="og:type" content="website"/>
   <meta property="og:title" content="肾域·科研 — 肾脏专科多中心研究登记"/>
   <meta property="og:description" content="肾脏专科科研团队的多中心随访登记系统，可复现导出，30 天免费试用。"/>
@@ -59,6 +59,18 @@
     .sec-nav{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
     .sec-nav a{font-size:12px;color:var(--muted);text-decoration:none;padding:3px 10px;border-radius:999px;border:1px solid var(--border);}
     .sec-nav a:hover{color:var(--brand);border-color:rgba(47,111,235,.35);}
+    /* University collaboration invitation, scoped to this page */
+    .university-intro{background:linear-gradient(120deg,#eef4ff,#fff);border-color:rgba(47,111,235,.22);}
+    .university-eyebrow{display:inline-block;color:#1d4ed8;font-size:12px;font-weight:700;letter-spacing:.04em;margin-bottom:8px;}
+    .university-intro h2{margin:0 0 8px;font-size:clamp(1.2rem,2.4vw,1.55rem);line-height:1.45;}
+    .university-intro p{margin:0;line-height:1.75;}
+    .university-paths{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0;}
+    .university-path{display:block;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px;color:var(--text);line-height:1.65;}
+    .university-path strong{display:block;margin-bottom:5px;font-size:14px;}
+    .university-path span{display:block;font-size:13px;color:var(--muted);}
+    .university-path:hover{border-color:var(--brand);text-decoration:none;}
+    .university-path:focus-visible{outline:3px solid var(--brand);outline-offset:3px;}
+    @media(max-width:680px){.university-paths{grid-template-columns:1fr;}}
   </style>
 </head>
 <body>
@@ -75,9 +87,9 @@
       </div>
 
       <div style="margin-top:18px">
-        <p class="hero-headline">肾脏专科科研团队<br/>30 天内跑通首版论文包</p>
+        <p class="hero-headline">让肾脏专科的研究问题<br/>走向规范的多中心登记</p>
         <p class="hero-sub">
-          多中心随访登记 · 可复现导出 · 数据质量治理。适合 IgAN / LN / MN / CKD 等场景的 PI、CRC 及多中心协作团队。<br/>
+          连接临床团队、大学研究者与附属医院，从研究方案、标准化字段和数据质量开始。适合 IgAN / LN / MN / CKD 等场景的 PI、CRC 及多中心协作团队。<br/>
           <b>科研用途，不录入 PII，不提供诊断建议。</b>30 天免费试用，核心功能可用（含 1 个项目）。
         </p>
         <div class="hero-ctas">
@@ -103,6 +115,23 @@
       </nav>
     </div>
 
+    <!-- ===== UNIVERSITY PILOT INVITATION ===== -->
+    <section class="card university-intro" aria-labelledby="universityHeading">
+      <span class="university-eyebrow">大学及附属医院合作 · 拟议试点</span>
+      <h2 id="universityHeading">共建一个可评估、可复盘的研究起点</h2>
+      <p class="small muted">建议从一个病种、一个研究问题开始。临床、方法学与医学信息团队共同确定方案，先用模拟数据验证流程，再按审批与授权范围开展真实数据试点。</p>
+      <div class="university-paths">
+        <a class="university-path" href="/collaboration#clinical-lead"><strong>临床牵头团队 →</strong><span>确定研究问题、入排标准、结局和随访安排。</span></a>
+        <a class="university-path" href="/collaboration#methods-team"><strong>公共卫生 / 统计团队 →</strong><span>共建分析方案，评估缺失、偏倚和样本可行性。</span></a>
+        <a class="university-path" href="/collaboration#informatics-team"><strong>医学信息团队 →</strong><span>核对数据字典、权限边界与部署条件。</span></a>
+      </div>
+      <p class="small"><b>拟议90天目标：</b>形成试点方案、字段字典、数据质量报告与继续 / 调整 / 暂停建议；不以论文发表或临床疗效作为试点承诺。</p>
+      <div class="btnbar">
+        <a class="btn primary" href="/collaboration#pilot-plan">查看90天试点安排</a>
+        <a class="btn" href="mailto:china@kidneysphere.com">联系讨论大学合作</a>
+      </div>
+    </section>
+
     <!-- ===== ROLE CARDS ===== -->
     <div class="card">
       <h2 style="margin:0 0 4px">选择最适合你的路径</h2>
@@ -112,7 +141,7 @@
            data-track="click_role_card" data-track-role="pi">
           <div class="role-icon">🔬</div>
           <div class="role-title">PI / 课题负责人</div>
-          <div class="role-desc">建立队列、设计字段、导出可复现论文包。我想知道多久能拿到首版 Table 1。</div>
+          <div class="role-desc">建立队列、设计字段、准备分析数据。我想了解从研究问题到首轮数据检查的流程。</div>
           <div style="margin-top:8px;font-size:12px;color:var(--brand);font-weight:600">查看研究流程 →</div>
         </a>
         <a class="role-card" href="/guide#entry-qc"
@@ -135,7 +164,7 @@
     <!-- ===== TRIAL ONBOARDING ===== -->
     <div class="card">
       <h2 style="margin:0 0 4px">30 天试用，怎么跑通</h2>
-      <div class="small muted">每一步有明确输出，不只是"系统很强大"。</div>
+      <div class="small muted">先用模拟病例熟悉流程；真实数据录入须符合所在机构的审批和授权要求。</div>
       <div class="steps-track">
         <div class="step-card">
           <div class="step-num">1</div>
@@ -144,8 +173,8 @@
         </div>
         <div class="step-card">
           <div class="step-num">2</div>
-          <div class="step-title">录入 3–5 例患者</div>
-          <div class="step-output">→ 录入核心四项：日期 / BP / Scr / UPCR</div>
+          <div class="step-title">录入 3–5 例模拟病例</div>
+          <div class="step-output">→ 练习日期 / BP / Scr / UPCR 等字段；正式必填项由研究方案确定</div>
         </div>
         <div class="step-card">
           <div class="step-num">3</div>
@@ -177,16 +206,16 @@
       <h2 style="margin:0 0 8px">为什么选择肾域·科研</h2>
       <div class="value-grid">
         <div class="value-card">
-          <div class="price-title">可复现论文包导出</div>
-          <div class="small">结构化数据 + 字段说明 + 分析脚本打包导出，同一版本任意时间重跑结果一致，可审计。</div>
+          <div class="price-title">为分析复现做好准备</div>
+          <div class="small">结构化数据、字段说明与示例分析脚本支持研究汇总；复现时需固定数据、脚本和运行环境版本，并核对结果。</div>
         </div>
         <div class="value-card">
-          <div class="price-title">多中心合并零冲突</div>
-          <div class="small"><code>center_code + patient_code</code> 全局唯一，跨中心合并稳定，支持 IgAN / MN / LN / CKD 等场景。</div>
+          <div class="price-title">先统一规则，再合并数据</div>
+          <div class="small">按项目、中心与研究编号核对患者和访视归属；合并前检查重复、时间窗、单位和字段定义。</div>
         </div>
         <div class="value-card">
-          <div class="price-title">质控闭环，数据可信</div>
-          <div class="small">核心字段完整率可见，QC → 补录 → 复跑闭环，确保每一批导出结果可追溯。</div>
+          <div class="price-title">把数据质量变成日常流程</div>
+          <div class="small">通过 QC → 核查 → 修订 → 复跑逐步改善数据质量。缺失原因、修订依据和导出版本由项目团队共同记录。</div>
         </div>
       </div>
       <div class="warnbox" style="margin-top:10px">
@@ -233,7 +262,7 @@
     <!-- ===== PROJECTS ===== -->
     <div class="card">
       <h2 style="margin:0 0 4px" id="projectHeading" data-testid="project-heading">正在招募合作中心 · <span id="projectCount" data-testid="project-count">10</span> 个研究项目</h2>
-      <div class="small muted">IgAN / MN / C3G / MGRS / DKD / HD / CKD 康复 / 肾移植 / 腹膜透析，均为真实启动或招募阶段研究，欢迎符合条件的中心联系加入。</div>
+      <div class="small muted">涵盖 IgAN / MN / C3G / MGRS / DKD / HD / CKD 康复 / 肾移植 / 腹膜透析。项目卡用于了解合作方向；当前招募状态、正式方案、入组条件及支持范围，请与项目团队逐项确认。</div>
       <div id="indexProjects" class="projects-grid" style="margin-top:10px"></div>
       <div class="btnbar" style="margin-top:12px">
         <a class="btn primary" href="mailto:china@kidneysphere.com"
