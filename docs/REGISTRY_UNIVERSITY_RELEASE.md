@@ -91,9 +91,9 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'test_registr
 
 ## 当前发布状态
 
-隔离副本的静态核查已通过：两页所有原始 script 块及页脚逐字保持；首页价格区块逐字保持；新增站内链接及锚点有效，无重复 ID；内联 JavaScript 语法检查及 `git diff --check` 通过。网站文件的差异范围只有上列两个 HTML 文件。尚未完成浏览器视觉检查或认证、付款等真实业务验证，不能把静态检查当作端到端测试。
+隔离副本的静态核查已通过：两页所有原始 script 块及页脚逐字保持；首页价格区块逐字保持；新增站内链接及锚点有效，无重复 ID；内联 JavaScript 语法检查及 `git diff --check` 通过。网站文件的差异范围只有上列两个 HTML 文件。后续上线核验见下文；尚未完成认证、付款等真实业务验证，不能把静态检查当作端到端测试。
 
-指定配置中的登记域名和根目录、两页基线哈希已经通过服务器截图核对。尚未完成服务器更新，亦未完成发布后的五站回归；创建代码分支或草稿 PR 不等于已发布至阿里云。
+指定配置中的登记域名和根目录、两页基线哈希已经通过服务器截图核对。用户现已通过离线包完成两页更新，公开网页内容亦已核验。PR 仍为草稿；服务器源码仓库未同步本分支，后续部署须避免以旧源码覆盖新版网页。
 
 ## GitHub 下载超时后的离线交付
 
@@ -112,3 +112,25 @@ PYTHONDONTWRITEBYTECODE=1 python3 scripts/build_registry_offline.py /absolute/ou
 文件上传本身仍需要阿里云上传服务的网络连接；仅更新包的执行不再依赖外部下载。上传入口依据：[阿里云 Workbench 文件传输文档](https://help.aliyun.com/zh/simple-application-server/user-guide/use-workbench-to-transfer-files-to-a-linux-server)。
 
 `tests/test_registry_offline_bundle.py` 验证精确包成员及原文一致、禁止网络时的更新/回退、正确的 `.pyz` 回退命令，以及损坏或缺失页面时在替换前拒绝。基础文件操作测试仍使用合成临时目录；离线交付不代表服务器已更新。
+
+## 2026-09-13 上线核验记录
+
+用户服务器截图显示整包 SHA-256 校验 `OK`，之后打印 `RELEASE_OK: both local page hashes verified; no services restarted`。备份目录为 `/root/registry-page-releases/20260913T160027Z-xum5pugy`，保留的工具为 `/root/registry-university-offline-20260913.pyz`。只有需要回退时才使用该工具的 `--rollback` 参数；本次未执行回退。
+
+随后进行公开页面的只读核验，未登录、注册账号、提交表单或读取患者记录：
+
+- 登记站 `/`、`/index.html`、`/collaboration` 直接 HTTP 请求均返回 200。两页响应体 SHA-256 与上列新版哈希完全一致；`Last-Modified` 为 `Sun, 13 Sep 2026 16:00:27 GMT`。
+- 网页检索工具最初返回了旧首页内容，随后直接请求及真实浏览器均确认新版，以后两者作为上线依据。
+- 浏览器首页显示大学合作新入口，点击“查看90天试点安排”到达 `/collaboration#pilot-plan`。合作页的研究项目筛选可切换到肾移植项目并恢复全部；另外六张团队和阶段说明卡保持显示。桌面当前视口截图未见明显重叠；未完成手机尺寸验证。
+- `/login`、`/signup?trial=1`、`/pricing` 返回 200，页面标题分别为登录、注册、价格与方案。首页价格内容显示正常；未执行真实认证或付款。
+
+浏览器可见导航明确提供另外四个域名，公开入口结果如下：
+
+| 站点 | 本次公开首页核验 | 限制 |
+| --- | --- | --- |
+| `https://kidneysphere.com/` | HTTP 200，无重定向 | 未测试登录后视频、付款等业务 |
+| `https://kidneyspheredoctorapp.cn/` | HTTP 200，无重定向 | JavaScript 应用入口，未测试登录和临床业务 |
+| `https://kidneyspherefollowup.cn/` | HTTP 200，无重定向 | 未测试记录业务 |
+| `https://kidneysphereremote.cn/` | 检查失败，需核查 TLS 证书 | 检查网关返回 502；正文为 `Certificate verify failed: certificate has expired`，响应 Server 为 `mitmproxy 12.2.3`。不能将其直接称为源站应用的 502 |
+
+随诊站错误经一次有限复核仍存在。未关闭证书校验、未改网络路径，也未修改该站文件、证书、Nginx 或服务。尚无更新前的该站实时基线或服务器证书日期，不能据此归因于本次发布；应先只读核查指定配置引用的公开证书及到期时间。不能报告五站业务全部正常。
