@@ -1,8 +1,12 @@
 # Registry homepage visual preview
 
-Status: user approved this preview; offline release prepared, **not yet deployed**.
+Status: user approved this preview and executed the offline release successfully
+in Aliyun Workbench on 2026-09-13. The terminal screenshot confirms the package
+checksum and local homepage/image checks. Independent public hashes now match the
+approved homepage and PNG, and desktop browser rendering has been verified.
 The user asked for a stronger technology aesthetic and kidney-themed images.
-The current production files under `site/` remain unchanged by this visual draft.
+The repository files under `site/` remain unchanged by this visual release; the
+deployed visual homepage is sourced from this preview directory.
 
 The draft adds a navy hero with cyan accents, a generated kidney/data-network
 illustration and three original decorative SVG illustrations for university
@@ -11,7 +15,7 @@ authentication/project scripts, links, tracking attributes, pricing markup and
 footer are preserved. The generated image is conceptual branding, not a clinical
 diagram or a claim of implemented AI functionality.
 
-Files to use in a future separately checked release:
+Files included in the executed release:
 
 - `index.html` → `/var/www/kidneysphere-registry/index.html`
 - `assets/registry-tech-hero.png` → `/var/www/kidneysphere-registry/assets/registry-tech-hero.png`
@@ -23,10 +27,19 @@ provide the separate guarded release. See `docs/REGISTRY_VISUAL_RELEASE.md`.
 No server access, service restart, database change or Nginx change was performed
 while preparing this preview.
 
-Current deployed homepage SHA-256:
+The user's execution reported `RELEASE_OK: homepage and image verified; no
+services restarted`. It retained the actual backup at
+`/root/registry-visual-releases/20260913T180229Z-6n2sagiq`. The printed recovery
+command is recorded for use only if needed; no rollback was shown:
+
+```sh
+python3 /root/registry-tech-offline-20260913.pyz --rollback /root/registry-visual-releases/20260913T180229Z-6n2sagiq
+```
+
+Previous deployed homepage SHA-256 (release baseline):
 `abbb6ebf61ed52c6e3200cb8606a9915a2d107f449c42d2b4e5c1585a5576864`
 
-Draft homepage SHA-256:
+Approved visual homepage SHA-256 (server-local verification reported):
 `68a3492147c3495d071d2c3b79c42dfcdb464b894042ac6b60ab3f2c99ebcd06`
 
 Hero PNG SHA-256:
@@ -50,6 +63,8 @@ python3 scripts/build_registry_visual_preview.py \
   --output /path/to/registry-tech-preview.html
 ```
 
-Validation: static HTML/asset checks and comparison of preserved functionality
-against the current homepage. Browser rendering and mobile device testing remain
-to be completed; responsive CSS alone is not a device test.
+Validation: static HTML/asset checks and comparison of preserved functionality;
+18 isolated release/recovery tests; public homepage and PNG hash checks; desktop
+browser image/layout and cooperation-link checks. The 10 project cards render.
+Mobile device testing remains to be completed; responsive CSS alone is not a
+device test. See the deployment document for the exact evidence and limits.

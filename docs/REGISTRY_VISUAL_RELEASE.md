@@ -1,7 +1,9 @@
 # Registry homepage visual release
 
-Status: approved by the user and packaged; awaiting execution in the user's
-Aliyun Workbench terminal. This document does not claim the visual update is live.
+Status: executed successfully by the user in Aliyun Workbench on 2026-09-13.
+The terminal screenshot confirms package integrity and local homepage/image
+verification. Independent public HTTPS hashes and desktop browser rendering have
+also been verified. The visual homepage is now live.
 
 The approved design is at content commit
 `b8eb79250a4a20360f2046b4884351c6b2db2116`, under `previews/registry-tech/`.
@@ -64,6 +66,27 @@ root. There is no CLI option to choose a different website directory.
 | Approved new homepage | `68a3492147c3495d071d2c3b79c42dfcdb464b894042ac6b60ab3f2c99ebcd06` |
 | Approved new PNG | `120433c30d6b2de5259d90935ba2a14eaf45c9537dcc5169199f1b3eb806fc11` |
 
+## Recorded server execution
+
+The user's terminal screenshot shows the package SHA-256 check returned `OK`,
+followed by `RELEASE_OK: homepage and image verified; no services restarted`.
+The screenshot also says `Public website checks remain to be completed.`
+These are server-local checks reported by the release tool, not independent
+verification of the public website or its browser rendering.
+
+- Server package: `/root/registry-tech-offline-20260913.pyz`
+- Actual backup: `/root/registry-visual-releases/20260913T180229Z-6n2sagiq`
+- No rollback was shown or requested.
+
+The exact recovery command printed for this release is retained here for use
+only if recovery is needed:
+
+```sh
+python3 /root/registry-tech-offline-20260913.pyz --rollback /root/registry-visual-releases/20260913T180229Z-6n2sagiq
+```
+
+### Guarded recovery behavior
+
 Before packaging, a fresh HTTPS homepage request returned HTTP 200 and exactly
 the baseline hash above. The server helper checks it again before replacing any
 public file. Image and homepage payload hashes are fixed in the helper and are
@@ -103,7 +126,27 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
   -s tests -p 'test_registry_visual_release.py' -v
 ```
 
-HTML/CSS were statically reviewed; browser rendering and mobile device testing
-remain to be completed. After the user executes the package, verify the public
-homepage and PNG hashes, visible image, links and layout before calling deployment
-complete. Actual login, payments and clinical records are not part of this test.
+Post-deployment public checks on 2026-09-13:
+
+- A fresh HTTPS response from `/` returned HTTP 200, 28,968 bytes and the exact
+  approved new homepage SHA-256 above.
+- `/assets/registry-tech-hero.png` returned HTTP 200, `image/png`, 2,039,989 bytes
+  and the exact approved PNG SHA-256 above. Both resources report Last-Modified
+  `Sun, 13 Sep 2026 18:02:29 GMT`.
+- `/collaboration` still matches the prior release's unchanged SHA-256
+  `da84f9e46a193fde9d4defb285cb03a605bee0a78258adbce464c4e238a857db`.
+- Public `/login` and `/signup?trial=1` pages both returned HTTP 200.
+- A browser loaded the actual homepage and displayed the navy hero and kidney
+  illustration. The image is complete with natural dimensions 1536 × 1024;
+  at the observed desktop width it displays at approximately 510 px wide.
+- Desktop document width and viewport width were both 1348 px; no horizontal
+  overflow was detected. The initial viewport screenshot showed readable hero
+  text, working image placement and the top of the cooperation cards.
+- All 10 project cards rendered. Clicking the homepage's 90-day trial-plan link
+  opened `https://kidneysphereregistry.cn/collaboration#pilot-plan`, and the target
+  heading was present. The browser then returned to the homepage.
+
+Web extraction can retain an earlier cached homepage; the independent fresh
+HTTPS byte comparisons and actual browser rendering above confirm this release.
+Mobile device testing, complete workflows on the other sites, actual login,
+payments and clinical records were not tested in this visual deployment check.
