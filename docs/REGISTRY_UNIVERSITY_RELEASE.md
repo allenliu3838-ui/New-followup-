@@ -93,4 +93,22 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'test_registr
 
 隔离副本的静态核查已通过：两页所有原始 script 块及页脚逐字保持；首页价格区块逐字保持；新增站内链接及锚点有效，无重复 ID；内联 JavaScript 语法检查及 `git diff --check` 通过。网站文件的差异范围只有上列两个 HTML 文件。尚未完成浏览器视觉检查或认证、付款等真实业务验证，不能把静态检查当作端到端测试。
 
-指定配置中的登记域名和根目录、两页基线哈希已经通过服务器截图核对。尚未执行服务器更新，亦未完成发布后的五站回归；创建代码分支或草稿 PR 不等于已发布至阿里云。
+指定配置中的登记域名和根目录、两页基线哈希已经通过服务器截图核对。尚未完成服务器更新，亦未完成发布后的五站回归；创建代码分支或草稿 PR 不等于已发布至阿里云。
+
+## GitHub 下载超时后的离线交付
+
+用户后续截图显示两次 `curl` 下载失败：一次等待 60 秒收到 0 字节，另一次连接 `raw.githubusercontent.com:443` 超时。此前提供的命令包含 `set -euo pipefail`，因此在下载失败处停止，没有执行 Python 更新程序。
+
+`scripts/build_registry_offline.py` 从同一份 helper 和两页经哈希校验的 HTML 创建 Python zipapp。包内只包含入口、helper 及 `pages/index.html`、`pages/collaboration.html`，不解压到网站目录。执行入口显式使用包内加载器，因此检查、更新和回退都不需要连接 GitHub。核心备份与替换函数保持不变；只向 `main` 增加内容加载器及回退命令路径的可选参数。
+
+构建命令（在源码仓库的开发副本中运行）：
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/build_registry_offline.py /absolute/output/registry-university-offline-20260913.pyz
+```
+
+操作人员下载交付的 `.pyz` 文件，通过阿里云 Workbench 左侧“文件管理”上传到 `/root`，等待上传完成。以另行提供的整包 SHA-256 校验成功为执行条件，之后运行 `python3 /root/registry-university-offline-20260913.pyz --apply`。没有 `--apply` 时只读检查。成功后保存打印出的 `BACKUP` 和 `ROLLBACK_COMMAND`；需要回退时仍使用同一个 `.pyz` 文件。不要同时执行更新和回退。
+
+文件上传本身仍需要阿里云上传服务的网络连接；仅更新包的执行不再依赖外部下载。上传入口依据：[阿里云 Workbench 文件传输文档](https://help.aliyun.com/zh/simple-application-server/user-guide/use-workbench-to-transfer-files-to-a-linux-server)。
+
+`tests/test_registry_offline_bundle.py` 验证精确包成员及原文一致、禁止网络时的更新/回退、正确的 `.pyz` 回退命令，以及损坏或缺失页面时在替换前拒绝。基础文件操作测试仍使用合成临时目录；离线交付不代表服务器已更新。

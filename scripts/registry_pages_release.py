@@ -15,6 +15,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shlex
 import shutil
 import stat
 import tempfile
@@ -249,7 +250,8 @@ def download_pages():
     return result
 
 
-def main():
+def main(*, page_loader=None, command_path=None):
+    """Allow a packaged entry point to supply local pages and its recovery path."""
     parser = argparse.ArgumentParser(description=__doc__)
     actions = parser.add_mutually_exclusive_group()
     actions.add_argument('--apply', action='store_true')
@@ -272,9 +274,11 @@ def main():
                 return
             if current_state(TARGET) != OLD_HASHES:
                 raise ReleaseError('Baseline mismatch; no files changed')
-            backup = apply_release(TARGET, download_pages(), BACKUPS)
+            loader = download_pages if page_loader is None else page_loader
+            backup = apply_release(TARGET, loader(), BACKUPS)
         print('RELEASE_OK: both local page hashes verified; no services restarted')
-        print(f'ROLLBACK_COMMAND: python3 {Path(__file__).resolve()} --rollback {backup}')
+        tool_path = Path(__file__ if command_path is None else command_path).resolve()
+        print(f'ROLLBACK_COMMAND: python3 {shlex.quote(str(tool_path))} --rollback {shlex.quote(str(backup))}')
         print('Public website and other-site checks remain to be completed.')
     else:
         state = current_state(TARGET)
