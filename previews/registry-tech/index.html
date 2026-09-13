@@ -18,6 +18,7 @@
   <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
   <link rel="stylesheet" href="/app.css"/>
   <link rel="icon" href="/assets/kidneysphere-ai.png"/>
+  <link rel="preload" as="image" href="/assets/registry-tech-hero.png"/>
   <script>
     var _p = location.pathname;
     if (_p.indexOf('/p/') === 0) {
@@ -71,23 +72,73 @@
     .university-path:hover{border-color:var(--brand);text-decoration:none;}
     .university-path:focus-visible{outline:3px solid var(--brand);outline-offset:3px;}
     @media(max-width:680px){.university-paths{grid-template-columns:1fr;}}
+    /* Homepage visual treatment: kept local to the registry homepage. */
+    .registry-home{background:linear-gradient(180deg,#eaf1fa 0,#f6f8fc 880px);}
+    .registry-home>.container{max-width:1180px;padding-top:28px;}
+    .registry-home .registry-hero{position:relative;isolation:isolate;overflow:hidden;padding:30px;background:#081a30;border:1px solid #203e5b;box-shadow:0 20px 48px rgba(8,26,48,.18);color:#fff;}
+    .registry-hero::before{content:"";position:absolute;z-index:-1;width:620px;height:620px;right:-210px;top:-220px;background:radial-gradient(circle,rgba(30,158,205,.2),transparent 68%);pointer-events:none;}
+    .registry-hero .brand{gap:12px;}
+    .registry-hero .brand img{width:52px;height:52px;border-radius:13px;border-color:rgba(141,206,231,.25);}
+    .registry-hero .brand-title{color:#fff;font-size:23px;letter-spacing:1px;}
+    .registry-hero .brand-sub{color:#afc3d7;line-height:1.65;font-size:12px;}
+    .registry-hero-grid{display:grid;grid-template-columns:minmax(0,1.04fr) minmax(0,1fr);align-items:center;gap:30px;margin:32px 0 26px;}
+    .registry-eyebrow{display:flex;align-items:center;gap:9px;color:#82dce9;letter-spacing:.13em;font-size:10px;font-weight:700;margin:0 0 15px;}
+    .registry-eyebrow::before{content:"";width:6px;height:6px;flex:0 0 6px;border-radius:50%;background:#72dce9;box-shadow:0 0 14px rgba(114,220,233,.6);}
+    .registry-hero .hero-headline{font-size:clamp(1.55rem,2.7vw,2rem);line-height:1.48;letter-spacing:.02em;color:#fff;margin-bottom:16px;}
+    .registry-hero .hero-headline em{font-style:normal;color:#8fdef0;}
+    .registry-hero .hero-sub{font-size:14px;line-height:1.9;color:#c1d0df;margin-bottom:18px;}
+    .registry-hero .hero-sub b{font-weight:500;color:#e4eef7;}
+    .registry-hero .hero-ctas{margin-bottom:12px;}
+    .registry-hero .hero-ctas .btn{min-height:44px;border-radius:10px;}
+    .registry-hero .hero-ctas .btn.primary{background:linear-gradient(110deg,#b0e9f2,#70c8ee);color:#09213a;border-color:#abe4f0;box-shadow:0 5px 22px rgba(95,193,230,.14);}
+    .registry-hero .hero-ctas .registry-login{background:rgba(255,255,255,.06);border:1px solid #5c7894;color:#f4f9ff;}
+    .registry-hero .hero-ctas .registry-login:hover{background:rgba(255,255,255,.12);border-color:#b0d8e7;}
+    .registry-hero .registry-trial-note{font-size:11px;line-height:1.8;color:#aac0d6;}
+    .registry-visual{position:relative;margin:0;border:1px solid rgba(129,197,221,.28);border-radius:18px;background:#0a2038;overflow:hidden;box-shadow:0 0 50px rgba(55,178,212,.09);min-width:0;}
+    .registry-visual-top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid rgba(151,207,230,.14);font-size:10px;letter-spacing:.12em;color:#a0c6db;}
+    .registry-visual-mark{display:flex;gap:5px;}
+    .registry-visual-mark i{display:block;width:4px;height:4px;border-radius:50%;background:#80cbdf;}
+    .registry-visual img{display:block;width:100%;height:auto;aspect-ratio:3/2;object-fit:cover;}
+    .registry-visual figcaption{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;padding:12px 16px;border-top:1px solid rgba(151,207,230,.14);font-size:11px;line-height:1.6;color:#a0c2d6;}
+    .registry-visual figcaption strong{font-weight:500;color:#d2e7f4;}
+    .registry-hero .sec-nav{margin-top:0;padding-top:17px;border-color:rgba(151,207,230,.18);gap:8px;}
+    .registry-hero .sec-nav a{color:#bdd1e2;border-color:rgba(151,207,230,.2);background:rgba(255,255,255,.02);padding:5px 12px;}
+    .registry-hero .sec-nav a:hover{color:#fff;border-color:#77bed8;background:rgba(255,255,255,.06);}
+    .registry-hero a:focus-visible{outline:3px solid #83dcea;outline-offset:4px;}
+    .registry-home .university-intro{padding:26px;background:linear-gradient(135deg,#fff 40%,#f0f7fc);border-color:#d8e4ef;}
+    .registry-home .university-eyebrow{color:#286b91;letter-spacing:.07em;font-size:11px;}
+    .registry-home .university-intro h2{font-size:clamp(1.2rem,2.4vw,1.5rem);line-height:1.5;}
+    .registry-home .university-paths{gap:14px;margin:20px 0;}
+    .registry-home .university-path{padding:0 0 17px;overflow:hidden;border-color:#dce8f1;border-radius:14px;transition:border-color .15s,box-shadow .15s;}
+    .registry-home .university-path:hover{border-color:#6baecb;box-shadow:0 7px 22px rgba(24,76,113,.08);}
+    .registry-path-art{position:relative;height:104px;margin-bottom:15px;background:linear-gradient(115deg,#edf5fd,#f8fbfe);border-bottom:1px solid #e4edf5;}
+    .registry-path-art svg{width:100%;height:100%;display:block;}
+    .registry-path-art .registry-path-code{position:absolute;top:13px;left:15px;display:block;color:#517b9a;font:600 10px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.06em;}
+    .registry-home .university-path>strong,.registry-home .university-path>span{margin-left:17px;margin-right:17px;}
+    .registry-home .university-path>strong{font-size:14px;color:#153854;}
+    .registry-home .university-path>span{font-size:13px;line-height:1.75;color:#60768b;}
+    @media(max-width:840px){.registry-hero-grid{grid-template-columns:1fr;gap:24px;margin-top:26px;}.registry-hero .hero-headline{font-size:clamp(1.6rem,4.4vw,2rem);}.registry-visual{max-width:600px;width:100%;justify-self:center;}.registry-hero .hero-sub{max-width:650px;}.registry-home .registry-hero{padding:24px;}}
+    @media(max-width:680px){.registry-home>.container{padding:14px;}.registry-home .registry-hero,.registry-home .university-intro{padding:20px;}.registry-hero .brand-sub{font-size:11px;}.registry-hero .hero-sub{font-size:13px;}.registry-hero .hero-ctas{gap:8px;}.registry-hero .hero-ctas .btn{padding:10px 14px;font-size:13px;}.registry-visual-top{padding:11px 13px;font-size:9px;}.registry-visual figcaption{padding:10px 13px;font-size:10px;}.registry-hero .sec-nav a{font-size:11px;padding:5px 10px;}.registry-home .university-paths{gap:12px;}}
+    @media(prefers-reduced-motion:reduce){.registry-home .university-path{transition:none;}}
   </style>
 </head>
-<body>
+<body class="registry-home">
   <div class="container">
 
     <!-- ===== HERO ===== -->
-    <div class="card">
+    <div class="card registry-hero">
       <div class="brand">
-        <img src="/assets/kidneysphere-ai.png" alt="肾域·科研"/>
+        <img src="/assets/kidneysphere-ai.png" alt="肾域·科研" width="64" height="64" decoding="async"/>
         <div>
           <h1 class="brand-title">肾域·科研</h1>
           <div class="brand-sub">KidneySphere Research · 肾脏专科多中心研究登记系统</div>
         </div>
       </div>
 
-      <div style="margin-top:18px">
-        <p class="hero-headline">让肾脏专科的研究问题<br/>走向规范的多中心登记</p>
+      <div class="registry-hero-grid">
+        <div class="registry-hero-copy">
+        <div class="registry-eyebrow">KIDNEYSPHERE · RESEARCH REGISTRY</div>
+        <p class="hero-headline">让肾脏专科的研究问题<br/><em>走向规范的多中心登记</em></p>
         <p class="hero-sub">
           连接临床团队、大学研究者与附属医院，从研究方案、标准化字段和数据质量开始。适合 IgAN / LN / MN / CKD 等场景的 PI、CRC 及多中心协作团队。<br/>
           <b>科研用途，不录入 PII，不提供诊断建议。</b>30 天免费试用，核心功能可用（含 1 个项目）。
@@ -95,11 +146,16 @@
         <div class="hero-ctas">
           <a class="btn primary" href="/signup?trial=1"
              data-track="click_start_trial" data-track-source="hero">开始 30 天试用</a>
-          <a class="btn" href="/login"
-             style="border-color:var(--brand);color:var(--brand)"
+          <a class="btn registry-login" href="/login"
              data-track="click_login" data-track-source="hero">登录后台</a>
         </div>
-        <div class="small muted">试用无需信用卡 · 到期后 7 天只读宽限 · 随时导出数据</div>
+        <div class="small registry-trial-note">试用无需信用卡 · 到期后 7 天只读宽限 · 随时导出数据</div>
+        </div>
+        <figure class="registry-visual">
+          <div class="registry-visual-top"><span>MEDICINE / DATA / COLLABORATION</span><span class="registry-visual-mark" aria-hidden="true"><i></i><i></i><i></i></span></div>
+          <img src="/assets/registry-tech-hero.png" width="1536" height="1024" decoding="async" fetchpriority="high" alt="蓝色肾脏形态与相连数据节点构成的医学研究概念插画"/>
+          <figcaption><strong>连接临床问题与研究协作</strong><span>医学研究概念图</span></figcaption>
+        </figure>
       </div>
 
       <!-- Secondary nav -->
@@ -121,9 +177,18 @@
       <h2 id="universityHeading">共建一个可评估、可复盘的研究起点</h2>
       <p class="small muted">建议从一个病种、一个研究问题开始。临床、方法学与医学信息团队共同确定方案，先用模拟数据验证流程，再按审批与授权范围开展真实数据试点。</p>
       <div class="university-paths">
-        <a class="university-path" href="/collaboration#clinical-lead"><strong>临床牵头团队 →</strong><span>确定研究问题、入排标准、结局和随访安排。</span></a>
-        <a class="university-path" href="/collaboration#methods-team"><strong>公共卫生 / 统计团队 →</strong><span>共建分析方案，评估缺失、偏倚和样本可行性。</span></a>
-        <a class="university-path" href="/collaboration#informatics-team"><strong>医学信息团队 →</strong><span>核对数据字典、权限边界与部署条件。</span></a>
+        <a class="university-path" href="/collaboration#clinical-lead">
+          <div class="registry-path-art"><span class="registry-path-code">01 / CLINICAL</span><svg viewBox="0 0 300 104" width="300" height="104" fill="none" aria-hidden="true" focusable="false"><path d="M30 80H270M84 24V84M216 24V84" stroke="#d7e5f0" stroke-dasharray="3 5"/><path d="M64 66H105M195 66H237" stroke="#88b8d2"/><circle cx="57" cy="66" r="6" fill="#d6edf6" stroke="#72a9c5"/><circle cx="244" cy="66" r="6" fill="#d6edf6" stroke="#72a9c5"/><rect x="112" y="32" width="76" height="55" rx="6" fill="#fff" stroke="#70a5c3" stroke-width="1.5"/><path d="M145 44H155M150 39V49" stroke="#388aab" stroke-width="2.5" stroke-linecap="round"/><path d="M127 59H135M146 59H154M165 59H173M127 69H135M165 69H173M145 86V73H155V86" stroke="#91b5cc" stroke-width="2" stroke-linecap="round"/><circle cx="213" cy="39" r="3" fill="#6fbdcf"/></svg></div>
+          <strong>临床牵头团队 →</strong><span>确定研究问题、入排标准、结局和随访安排。</span>
+        </a>
+        <a class="university-path" href="/collaboration#methods-team">
+          <div class="registry-path-art"><span class="registry-path-code">02 / METHODS</span><svg viewBox="0 0 300 104" width="300" height="104" fill="none" aria-hidden="true" focusable="false"><path d="M34 81H270M84 27V85M216 27V85" stroke="#d7e5f0" stroke-dasharray="3 5"/><rect x="106" y="31" width="91" height="56" rx="6" fill="#fff" stroke="#70a5c3" stroke-width="1.5"/><path d="M122 42V73H181" stroke="#a0bdcf" stroke-width="1.5"/><path d="M128 61L144 65L161 48L178 52" stroke="#388aab" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="128" cy="61" r="2.5" fill="#73c2d4"/><circle cx="144" cy="65" r="2.5" fill="#73c2d4"/><circle cx="161" cy="48" r="2.5" fill="#73c2d4"/><circle cx="178" cy="52" r="2.5" fill="#73c2d4"/><path d="M64 53H87M74 43V64M216 60H242M216 67H232M216 74H237" stroke="#88b8d2" stroke-width="1.5"/><circle cx="237" cy="37" r="3" fill="#6fbdcf"/></svg></div>
+          <strong>公共卫生 / 统计团队 →</strong><span>共建分析方案，评估缺失、偏倚和样本可行性。</span>
+        </a>
+        <a class="university-path" href="/collaboration#informatics-team">
+          <div class="registry-path-art"><span class="registry-path-code">03 / INFORMATICS</span><svg viewBox="0 0 300 104" width="300" height="104" fill="none" aria-hidden="true" focusable="false"><path d="M30 80H270M84 24V84M216 24V84" stroke="#d7e5f0" stroke-dasharray="3 5"/><path d="M102 44H123M102 76H123M177 44H199M177 76H199" stroke="#88b8d2" stroke-width="1.5"/><path d="M124 43V77C124 87 176 87 176 77V43" fill="#fff"/><path d="M124 43V77C124 87 176 87 176 77V43M124 60C124 70 176 70 176 60" stroke="#70a5c3" stroke-width="1.5"/><ellipse cx="150" cy="43" rx="26" ry="9" fill="#e1f1f8" stroke="#70a5c3" stroke-width="1.5"/><rect x="79" y="36" width="22" height="16" rx="4" fill="#fff" stroke="#91b5cc"/><rect x="79" y="69" width="22" height="16" rx="4" fill="#fff" stroke="#91b5cc"/><rect x="200" y="36" width="22" height="16" rx="4" fill="#fff" stroke="#91b5cc"/><rect x="200" y="69" width="22" height="16" rx="4" fill="#fff" stroke="#91b5cc"/><circle cx="90" cy="44" r="2" fill="#59a6bd"/><circle cx="211" cy="44" r="2" fill="#59a6bd"/><circle cx="90" cy="77" r="2" fill="#59a6bd"/><circle cx="211" cy="77" r="2" fill="#59a6bd"/></svg></div>
+          <strong>医学信息团队 →</strong><span>核对数据字典、权限边界与部署条件。</span>
+        </a>
       </div>
       <p class="small"><b>拟议90天目标：</b>形成试点方案、字段字典、数据质量报告与继续 / 调整 / 暂停建议；不以论文发表或临床疗效作为试点承诺。</p>
       <div class="btnbar">
