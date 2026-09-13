@@ -1,7 +1,7 @@
 # Registry homepage visual preview
 
-Status: prepared for review, **not deployed**. The user asked to restart from a
-homepage preview with a stronger technology aesthetic and kidney-themed images.
+Status: user approved this preview; offline release prepared, **not yet deployed**.
+The user asked for a stronger technology aesthetic and kidney-themed images.
 The current production files under `site/` remain unchanged by this visual draft.
 
 The draft adds a navy hero with cyan accents, a generated kidney/data-network
@@ -16,10 +16,10 @@ Files to use in a future separately checked release:
 - `index.html` → `/var/www/kidneysphere-registry/index.html`
 - `assets/registry-tech-hero.png` → `/var/www/kidneysphere-registry/assets/registry-tech-hero.png`
 
-Do not use the previous two-page university release tool for this visual draft;
-that tool is pinned to the already deployed first release. A future deployment
-needs a backup of the current homepage, installation of the image before the
-homepage, an exact current-homepage hash check and a matching rollback procedure.
+Do not use the previous two-page university release tool for this visual update;
+that tool is pinned to the already deployed first release. The new
+`scripts/registry_visual_release.py` and `scripts/build_registry_visual_offline.py`
+provide the separate guarded release. See `docs/REGISTRY_VISUAL_RELEASE.md`.
 No server access, service restart, database change or Nginx change was performed
 while preparing this preview.
 
