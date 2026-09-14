@@ -123,7 +123,12 @@ def release_lock(parent):
 def atomic_copy(source, destination, expected_current, metadata):
     """Copy permissions/xattrs from the saved original, with a fresh mtime."""
     directory(destination.parent)
-    require_hash(destination, expected_current)
+    def verify_current():
+        info = require_hash(destination, expected_current)
+        expected_identity = metadata.get('expected_identity')
+        if expected_identity is not None and [info.st_dev, info.st_ino] != expected_identity:
+            raise ReleaseError(f'File identity changed; no overwrite permitted: {destination}')
+    verify_current()
     fd, tmp_name = tempfile.mkstemp(prefix='.registry-page-', dir=destination.parent)
     tmp = Path(tmp_name)
     try:
@@ -140,7 +145,7 @@ def atomic_copy(source, destination, expected_current, metadata):
             os.fsync(stream.fileno())
         require_hash(tmp, metadata['expected_source'])
         # The helper lock cannot serialize an unrelated deployment tool.
-        require_hash(destination, expected_current)
+        verify_current()
         os.replace(tmp, destination)
         if metadata.get('after_replace'):
             metadata['after_replace']()

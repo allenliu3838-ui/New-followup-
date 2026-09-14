@@ -1,6 +1,7 @@
-import { supabase } from "/lib/supabase-client.js";
-import { qs, qsa, toast, fmtDate, escapeHtml } from "/lib/utils.js";
-import { throttle } from "/lib/rate-limit.js";
+import { supabase } from "/lib/supabase-client.js?v=registry-20260914-integrated-v1";
+import { qs, qsa, toast, fmtDate, escapeHtml } from "/lib/utils.js?v=registry-20260914-integrated-v1";
+import { throttle } from "/lib/rate-limit.js?v=registry-20260914-integrated-v1";
+import { createClient } from "/lib/vendor/supabase.js?v=registry-20260914-integrated-v1";
 
 const sb = supabase();
 const B = () => window.CONFIG?.BILLING || {};
@@ -63,6 +64,63 @@ let user = null;
 let currentOrder = null;   // after order created
 let currentStep = 1;
 let selectedMethod = "wechat_qr";
+let checkoutEpoch = 0;
+let checkoutAuthReady = false;
+let checkoutLocked = false;
+let observedUserId;
+let creatingOrder = false;
+let submittingProof = false;
+const CHECKOUT_IDENTITY_MESSAGE = "登录账号已变化或无法确认，付款表单已清空。请重新登录或刷新本页后继续。";
+
+function lockCheckoutIdentity() {
+  if (checkoutLocked) return;
+  checkoutLocked = true;
+  checkoutEpoch++;
+  session = null; user = null; currentOrder = null; currentStep = 1;
+  selectedMethod = "wechat_qr";
+  el.checkoutMain.querySelectorAll("input,textarea,select").forEach(node=>{
+    node.value="";if("checked" in node)node.checked=false;node.disabled=true;
+  });
+  el.checkoutMain.replaceChildren();
+  el.checkoutMain.style.display="none";
+  el.loginPrompt.innerHTML=`<p role="alert">${CHECKOUT_IDENTITY_MESSAGE}</p><div class="btnbar"><a class="btn primary" href="/login?returnTo=/checkout">重新登录</a><a class="btn" href="/checkout">刷新付款页面</a></div>`;
+  el.loginPrompt.style.display="block";
+}
+function observeCheckoutAuth(event,nextSession) {
+  observedUserId=nextSession?.user?.id||null;
+  // A return to the same account must not revive a form invalidated by sign-out.
+  if(checkoutAuthReady&&(event==='SIGNED_OUT'||observedUserId!==user?.id))lockCheckoutIdentity();
+  else if(!checkoutLocked&&observedUserId===user?.id)session=nextSession;
+}
+function captureCheckoutIdentity() {
+  if(!checkoutAuthReady||checkoutLocked||!user?.id)throw new Error(CHECKOUT_IDENTITY_MESSAGE);
+  return {id:user.id,epoch:checkoutEpoch};
+}
+function isCheckoutIdentityCurrent(op) {
+  return !!op&&!checkoutLocked&&checkoutAuthReady&&op.epoch===checkoutEpoch&&op.id===user?.id
+    &&(observedUserId===undefined||observedUserId===op.id);
+}
+function assertCheckoutIdentity(op) {
+  if(!isCheckoutIdentityCurrent(op))throw new Error(CHECKOUT_IDENTITY_MESSAGE);
+}
+async function checkoutClient(op) {
+  assertCheckoutIdentity(op);
+  let result;
+  try {result=await sb.auth.getSession();}
+  catch {lockCheckoutIdentity();throw new Error(CHECKOUT_IDENTITY_MESSAGE);}
+  const {data,error}=result;
+  assertCheckoutIdentity(op);
+  if(error||data?.session?.user?.id!==op.id||!data?.session?.access_token){
+    lockCheckoutIdentity();throw new Error(CHECKOUT_IDENTITY_MESSAGE);
+  }
+  // Pin each request to the checked identity. A later SDK session switch must
+  // not silently send this account's invoice/proof using another user's JWT.
+  const accessToken=data.session.access_token;
+  return createClient(window.CONFIG.SUPABASE_URL,window.CONFIG.SUPABASE_ANON_KEY,{
+    accessToken:async()=>accessToken,
+    auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}
+  });
+}
 
 // ── Price Calculation ────────────────────────────────────
 function calcPrice() {
@@ -194,7 +252,7 @@ function buildStep3(orderNo, amount) {
       </div>
       <div class="infobox small" style="margin-top:10px">
         <b>转账说明：</b><br/>
-        1. 转账备注请填写：<code id="bankMemo">KS${escapeHtml(orderNo)}</code> <span class="copy-btn" id="copyBankMemo">复制</span><br/>
+        1. 转账备注请填写：<code id="bankMemo">${escapeHtml(orderNo)}</code> <span class="copy-btn" id="copyBankMemo">复制</span><br/>
         2. 转账完成后请上传转账回单或凭证截图
       </div>
     </div>
@@ -213,8 +271,8 @@ function buildStep3(orderNo, amount) {
     </div>
     <div class="row" style="margin-top:10px">
       <div class="col">
-        <label>实付金额（选填）</label>
-        <input id="proofAmount" type="number" step="0.01" placeholder="和应付一致则可不填"/>
+        <label>实际支付金额（必填，以到账核验为准）</label>
+        <input id="proofAmount" type="number" step="0.01" min="0.01" placeholder="请输入实际支付金额"/>
       </div>
       <div class="col">
         <label>付款人姓名 / 账号后四位（选填）</label>
@@ -244,7 +302,7 @@ function buildStep3(orderNo, amount) {
   qs("#copyAmount").onclick = () => copyText(String(amount), "金额");
   qs("#copyWechatMemo")?.addEventListener("click", () => copyText(memo, "备注"));
   qs("#copyAlipayMemo")?.addEventListener("click", () => copyText(memo, "备注"));
-  qs("#copyBankMemo")?.addEventListener("click", () => copyText(`KS${orderNo}`, "转账备注"));
+  qs("#copyBankMemo")?.addEventListener("click", () => copyText(orderNo, "转账备注"));
   qs("#copyBankAccount")?.addEventListener("click", () => copyText(b.BANK_ACCOUNT || "", "银行账号"));
 
   // Payment method tabs
@@ -260,8 +318,11 @@ function buildStep3(orderNo, amount) {
   // Upload handlers
   setupUploadHandlers();
 
-  // Back button
-  el.btnBackTo2.addEventListener("click", () => goToStep(2));
+  // A created order is immutable; return to its list instead of editing stale inputs.
+  el.btnBackTo2.textContent = "查看我的订单";
+  el.btnBackTo2.addEventListener("click", () => { el.myOrdersList.scrollIntoView({behavior:"smooth"}); });
+  el.proofAmount.value = String(amount);
+  container.querySelector(`[data-method="${selectedMethod}"]`)?.click();
   el.btnSubmitProof.addEventListener("click", submitProof);
 }
 
@@ -287,76 +348,53 @@ function setupUploadHandlers() {
 
 // ── Create Order ─────────────────────────────────────────
 async function createOrder() {
-  // If order already created (e.g. user went back from step 3), just go to step 3
-  if (currentOrder) {
-    goToStep(3);
-    return;
-  }
-
-  if (!rlOrder.allow()) { toast(rlOrder.message); return; }
-
-  const b = B();
-  const count = Math.max(3, parseInt(el.projectCount.value) || 3);
-  const extra = count - (b.PRO_BASE_PROJECTS || 3);
-
-  // Consent check
-  const agreeBox = qs("#agreeTermsCheckout");
-  if (agreeBox && !agreeBox.checked) { toast("请先阅读并同意用户协议和隐私政策"); return; }
-
-  // 发票必填校验
-  if (el.invoiceNeeded.value === "yes") {
-    if (!el.invoiceTitle?.value.trim()) { toast("请填写发票抬头"); return; }
-    if (el.invoiceType?.value !== "personal" && !el.invoiceTaxNo?.value.trim()) {
-      toast("请填写税号（单位发票必填）"); return;
-    }
-    if (!el.invoiceEmail?.value.trim()) { toast("请填写收票邮箱"); return; }
-  }
-
-  el.btnToStep3.disabled = true;
-  el.btnToStep3.textContent = "提交中…";
-
+  if(creatingOrder)return;
+  let op;
   try {
-    const { data, error } = await sb.rpc("create_billing_order", {
-      p_plan_code:      el.planCode.value,
-      p_billing_cycle:  el.billingCycle.value,
-      p_extra_projects: extra,
-      p_payment_method: selectedMethod,
-      p_payer_name:     el.payerName.value.trim() || null,
-      p_payer_email:    el.payerEmail.value.trim() || null,
-      p_payer_hospital: el.payerHospital.value.trim() || null,
-      p_invoice_needed: el.invoiceNeeded.value === "yes",
-      p_invoice_type:   el.invoiceType?.value || "company",
-      p_invoice_title:  el.invoiceTitle?.value.trim() || null,
-      p_invoice_tax_no: el.invoiceTaxNo?.value.trim() || null,
-      p_invoice_email:  el.invoiceEmail?.value.trim() || null,
-      p_notes:          el.orderNotes.value.trim() || null,
-    });
-
-    if (error) throw error;
-
-    currentOrder = data;
-    // Log consent for checkout
-    try {
-      await sb.rpc("log_consent", {
-        p_action: "checkout",
-        p_policy_type: "both",
-        p_policy_version: "v1.0",
-        p_user_agent: navigator.userAgent || null,
-      });
-    } catch (_) { /* best-effort */ }
-    buildStep3(data.order_no, data.amount_due);
-    goToStep(3);
-  } catch (e) {
-    if (window.ErrorLogger) ErrorLogger.log("checkout.createOrder", e);
-    toast("下单失败：" + (e?.message || e));
+    op=captureCheckoutIdentity();
+    if(currentOrder){await checkoutClient(op);assertCheckoutIdentity(op);goToStep(3);return;}
+    if (!rlOrder.allow()) { toast(rlOrder.message); return; }
+    const count=Math.max(3,parseInt(el.projectCount.value)||3);
+    if(!Number.isInteger(count)||count>30){toast("项目数量需为 3–30");return;}
+    const agreeBox=qs("#agreeTermsCheckout");
+    if(!agreeBox?.checked){toast("请先阅读并同意用户协议和隐私政策");return;}
+    if(el.invoiceNeeded.value==='yes'){
+      if(!el.invoiceTitle?.value.trim()){toast("请填写发票抬头");return;}
+      if(el.invoiceType?.value!=='personal'&&!el.invoiceTaxNo?.value.trim()){toast("请填写税号（单位发票必填）");return;}
+      if(!el.invoiceEmail?.value.trim()){toast("请填写收票邮箱");return;}
+    }
+    const params={
+      p_plan_code:el.planCode.value,p_billing_cycle:el.billingCycle.value,p_extra_projects:count-3,
+      p_payment_method:selectedMethod,p_payer_name:el.payerName.value.trim()||null,
+      p_payer_email:el.payerEmail.value.trim()||null,p_payer_hospital:el.payerHospital.value.trim()||null,
+      p_invoice_needed:el.invoiceNeeded.value==='yes',p_invoice_type:el.invoiceType?.value||'company',
+      p_invoice_title:el.invoiceTitle?.value.trim()||null,p_invoice_tax_no:el.invoiceTaxNo?.value.trim()||null,
+      p_invoice_email:el.invoiceEmail?.value.trim()||null,p_notes:el.orderNotes.value.trim()||null
+    };
+    creatingOrder=true;el.btnToStep3.disabled=true;el.btnToStep3.textContent="提交中…";
+    const consentClient=await checkoutClient(op);
+    const {error:consentError}=await consentClient.rpc("log_consent",{p_action:"checkout",p_policy_type:"both",p_policy_version:"v2.0",p_user_agent:navigator.userAgent||null});
+    assertCheckoutIdentity(op);
+    if(consentError)throw new Error("未能保存协议确认，请重试："+consentError.message);
+    const orderClient=await checkoutClient(op);
+    const {data,error}=await orderClient.rpc("create_billing_order",params);
+    assertCheckoutIdentity(op);
+    if(error)throw error;
+    currentOrder=data;buildStep3(data.order_no,data.amount_due);goToStep(3);
+  } catch(e) {
+    if(isCheckoutIdentityCurrent(op)){
+      if(window.ErrorLogger)ErrorLogger.log("checkout.createOrder",e);
+      toast("下单失败："+(e?.message||e));
+    } else if(!checkoutLocked)toast(CHECKOUT_IDENTITY_MESSAGE);
   } finally {
-    el.btnToStep3.disabled = false;
-    el.btnToStep3.textContent = "下一步：选择付款方式";
+    creatingOrder=false;
+    if(isCheckoutIdentityCurrent(op)){el.btnToStep3.disabled=false;el.btnToStep3.textContent="下一步：选择付款方式";}
   }
 }
 
 // ── Upload Proof ─────────────────────────────────────────
 function handleFile(file) {
+  if(checkoutLocked||!checkoutAuthReady)return;
   if (file.size > 10 * 1024 * 1024) { toast("文件超过 10MB"); return; }
   const validTypes = ["image/png","image/jpeg","image/jpg","image/webp","application/pdf"];
   if (!validTypes.includes(file.type)) { toast("只支持 PNG / JPG / PDF 格式"); return; }
@@ -372,56 +410,43 @@ function handleFile(file) {
 }
 
 async function submitProof() {
-  if (!rlUpload.allow()) { toast(rlUpload.message); return; }
-  if (!currentOrder) { toast("请先完成下单"); return; }
-  const file = el.proofFile.files[0];
-  if (!file) { toast("请先选择凭证文件"); return; }
-
-  el.btnSubmitProof.disabled = true;
-  el.btnSubmitProof.textContent = "上传中…";
-
+  if(submittingProof)return;
+  let op;
   try {
-    // Upload to Supabase Storage — path isolated by userId/orderId
-    const ext = file.name.split(".").pop();
-    const path = `${user.id}/${currentOrder.order_id}/${Date.now()}.${ext}`;
-    const { data: uploadData, error: uploadErr } = await sb.storage
-      .from("payment-proofs")
-      .upload(path, file, { contentType: file.type });
-
-    let fileUrl;
-    if (uploadErr) {
-      // Storage bucket might not exist yet — use data URL as fallback
-      console.warn("Storage upload failed, using placeholder:", uploadErr.message);
-      fileUrl = `storage://${path}`;
-    } else {
-      const { data: urlData } = sb.storage.from("payment-proofs").getPublicUrl(path);
-      fileUrl = urlData?.publicUrl || `storage://${path}`;
-    }
-
-    // Submit proof
-    const { error } = await sb.rpc("submit_payment_proof", {
-      p_order_id:       currentOrder.order_id,
-      p_file_url:       fileUrl,
-      p_file_name:      file.name,
-      p_file_type:      file.type,
-      p_amount_paid:    parseFloat(el.proofAmount.value) || null,
-      p_payment_method: selectedMethod,
-      p_payer_name:     el.proofPayerInfo.value.trim() || null,
+    op=captureCheckoutIdentity();
+    if(!rlUpload.allow()){toast(rlUpload.message);return;}
+    if(!currentOrder){toast("请先完成下单");return;}
+    const order={...currentOrder};
+    const paidAmount=Number(el.proofAmount.value);
+    if(!el.proofAmount.value||!Number.isFinite(paidAmount)||paidAmount<=0){toast("请输入有效实付金额");return;}
+    const file=el.proofFile.files[0];
+    if(!file){toast("请先选择凭证文件");return;}
+    const method=selectedMethod,payer=el.proofPayerInfo.value.trim()||null;
+    const ext=({"image/png":"png","image/jpeg":"jpg","image/webp":"webp","application/pdf":"pdf"})[file.type];
+    if(!ext||file.size>10*1024*1024)throw new Error("文件格式或大小不符合要求");
+    submittingProof=true;el.btnSubmitProof.disabled=true;el.btnSubmitProof.textContent="上传中…";
+    const path=`${op.id}/${order.order_id}/${crypto.randomUUID()}.${ext}`;
+    const uploadClient=await checkoutClient(op);
+    const {data:uploadData,error:uploadErr}=await uploadClient.storage.from("payment-proofs").upload(path,file,{contentType:file.type});
+    assertCheckoutIdentity(op);
+    if(uploadErr)throw new Error("凭证未上传成功，订单仍可继续办理："+uploadErr.message);
+    if(uploadData?.path!==path)throw new Error("未能确认凭证存储位置，请重新上传");
+    const proofClient=await checkoutClient(op);
+    const {error}=await proofClient.rpc("submit_payment_proof",{
+      p_order_id:order.order_id,p_file_url:path,p_file_name:file.name,p_file_type:file.type,
+      p_amount_paid:paidAmount,p_payment_method:method,p_payer_name:payer
     });
-
-    if (error) throw error;
-
-    // Go to step 4
-    fillStep4();
-    goToStep(4);
-    toast("凭证已提交，等待平台核验");
-    loadMyOrders();
-  } catch (e) {
-    if (window.ErrorLogger) ErrorLogger.log("checkout.submitProof", e);
-    toast("提交失败：" + (e?.message || e));
+    assertCheckoutIdentity(op);
+    if(error)throw error;
+    fillStep4();goToStep(4);toast("凭证已提交，等待平台核验");loadMyOrders();
+  } catch(e) {
+    if(isCheckoutIdentityCurrent(op)){
+      if(window.ErrorLogger)ErrorLogger.log("checkout.submitProof",e);
+      toast("提交失败："+(e?.message||e));
+    } else if(!checkoutLocked)toast(CHECKOUT_IDENTITY_MESSAGE);
   } finally {
-    el.btnSubmitProof.disabled = false;
-    el.btnSubmitProof.textContent = "提交付款凭证";
+    submittingProof=false;
+    if(isCheckoutIdentityCurrent(op)){el.btnSubmitProof.disabled=false;el.btnSubmitProof.textContent="提交付款凭证";}
   }
 }
 
@@ -452,8 +477,12 @@ const ORDER_STATUS_MAP = {
 };
 
 async function loadMyOrders() {
+  let op;
   try {
-    const { data, error } = await sb.rpc("get_my_orders");
+    op=captureCheckoutIdentity();
+    const client=await checkoutClient(op);
+    const { data, error } = await client.rpc("get_my_orders");
+    assertCheckoutIdentity(op);
     if (error) throw error;
 
     if (!data || !data.length) {
@@ -502,19 +531,46 @@ async function loadMyOrders() {
           ${o.payment_method ? ` · ${methodMap[o.payment_method] || o.payment_method}` : ""}
         </div>
         ${statusDetail}
+        ${['unpaid','rejected'].includes(o.status) ? `<button class="btn small" data-resume-order="${escapeHtml(o.id)}">${o.status==='rejected'?'补交付款凭证':'继续付款 / 上传凭证'}</button>` : ''}
+        ${o.invoice_needed ? `<div class="small muted">发票：${escapeHtml(o.invoice_type==='personal'?'个人':'单位')} · ${escapeHtml(o.invoice_title||'待补充')} · ${escapeHtml(({none:'待处理',requested:'申请已记录，人工开票',issued:'已标记开票'})[o.invoice_status]||'待核实')}</div>` : ''}
       </div>`;
     }).join("");
+    el.myOrdersList.querySelectorAll("[data-resume-order]").forEach(button=>button.addEventListener("click",()=>resumeOrder(button.dataset.resumeOrder)));
   } catch (e) {
-    el.myOrdersList.innerHTML = `<div class="muted small" style="color:var(--bad)">加载失败：${escapeHtml(e?.message || String(e))}</div>`;
+    if(isCheckoutIdentityCurrent(op))el.myOrdersList.innerHTML = `<div class="muted small" style="color:var(--bad)">加载失败：${escapeHtml(e?.message || String(e))}</div>`;
   }
+}
+
+async function resumeOrder(orderId) {
+  if(creatingOrder||submittingProof){toast('请等待当前订单操作完成');return;}
+  let op;
+  try {
+    op=captureCheckoutIdentity();
+    const client=await checkoutClient(op);
+    const {data,error}=await client.rpc('get_my_orders');
+    assertCheckoutIdentity(op);
+    if(creatingOrder||submittingProof)return;
+    if(error) throw error;
+    const order=data?.find(o=>o.id===orderId && ['unpaid','rejected'].includes(o.status));
+    if(!order) throw new Error('订单状态已更新，请刷新列表');
+    currentOrder={...order,order_id:order.id};
+    selectedMethod=order.payment_method||'wechat_qr';
+    el.planCode.value=order.plan_code;el.billingCycle.value=order.billing_cycle;el.projectCount.value=order.project_quota;
+    buildStep3(order.order_no,order.amount_due);goToStep(3);
+  } catch(e) {if(isCheckoutIdentityCurrent(op))toast('无法继续该订单：'+(e?.message||'请重试'));}
 }
 
 // ── Init ─────────────────────────────────────────────────
 async function init() {
-  // Auth check
-  const { data: { session: s } } = await sb.auth.getSession();
+  // The auth callback is synchronous: no getSession/API call while the SDK auth lock is held.
+  sb.auth.onAuthStateChange(observeCheckoutAuth);
+  let result;
+  try {result=await sb.auth.getSession();}catch{lockCheckoutIdentity();return;}
+  const s=result.data?.session;
+  if(result.error||(observedUserId!==undefined&&observedUserId!==(s?.user?.id||null))){lockCheckoutIdentity();return;}
   session = s;
   user = s?.user || null;
+  checkoutAuthReady=true;
 
   if (!user) {
     el.loginPrompt.style.display = "block";

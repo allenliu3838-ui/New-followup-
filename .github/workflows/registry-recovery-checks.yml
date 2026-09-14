@@ -1,0 +1,39 @@
+name: Registry recovery acceptance
+on:
+  push:
+    branches-ignore: ['codex/registry-pg17-reference-*']
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci --ignore-scripts
+      - name: Install PostgreSQL 17 backup clients in the disposable runner
+        shell: bash
+        run: |
+          if [ ! -x /usr/lib/postgresql/17/bin/pg_dump ] || [ ! -x /usr/lib/postgresql/17/bin/pg_restore ]; then
+            sudo install -d /usr/share/postgresql-common/pgdg
+            curl --fail --silent --show-error --max-time 30 https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /tmp/registry-pgdg.asc
+            sudo install -m 0644 /tmp/registry-pgdg.asc /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+            . /etc/os-release
+            printf 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt %s-pgdg main\n' "$VERSION_CODENAME" | sudo tee /etc/apt/sources.list.d/registry-pg17-client.list
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends postgresql-client-17
+          fi
+          /usr/lib/postgresql/17/bin/pg_dump --version
+          /usr/lib/postgresql/17/bin/pg_restore --version
+      - run: npm test
+      - run: npm run test:restore
+      - run: python3 scripts/build_registry_integrated.py /tmp/registry-recovered.pyz
+      # No deployment, production database connection or browser execution.

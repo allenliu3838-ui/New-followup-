@@ -124,7 +124,7 @@
   <div class="slide slide-cover active">
     <div class="label" style="color:rgba(255,255,255,.7)">科研随访系统 · 完整介绍</div>
     <h1 class="slide-h1" style="margin-top:10px">肾域·科研<br/>KidneySphere Research</h1>
-    <p class="sub">IgAN · LN · MN · KTX · GENERAL（通用/混合）<br/>多中心合并 · 一键论文输出 · 科研优先</p>
+    <p class="sub">IgAN · LN · MN · KTX · GENERAL（通用/混合）<br/>多中心合并 · 数据与分析包 · 科研优先</p>
     <div class="link-row" style="margin-top:28px">
       <a href="/guide">使用说明</a>
       <a href="/demo">预约演示</a>
@@ -157,7 +157,7 @@
   <!-- ── Slide 3: 解决方案 ── -->
   <div class="slide slide-cover">
     <div class="label">我们的解决方案</div>
-    <h2 class="slide-h2" style="text-align:center;margin-top:8px">10 分钟科研闭环</h2>
+    <h2 class="slide-h2" style="text-align:center;margin-top:8px">从规范录入到可复核分析</h2>
     <div class="steps" style="margin-top:24px">
       <div class="step">
         <div class="step-circle">1</div>
@@ -165,61 +165,61 @@
       </div>
       <div class="step">
         <div class="step-circle">2</div>
-        <div class="step-label">一键导出<br/>论文包 zip<br/>去标识化 CSV</div>
+        <div class="step-label">一键导出<br/>分析包 zip<br/>去标识化 CSV</div>
       </div>
       <div class="step">
         <div class="step-circle">3</div>
-        <div class="step-label">本地运行<br/>分析脚本<br/>python run_analysis.py</div>
+        <div class="step-label">本地运行<br/>分析脚本<br/>python analysis/run_analysis.py</div>
       </div>
       <div class="step">
         <div class="step-circle">4</div>
-        <div class="step-label">自动生成<br/>Table 1 / 图 /<br/>12m 结局 / Methods</div>
+        <div class="step-label">自动生成<br/>Table 1 / 描述图 /<br/>年度访视 / 步骤说明</div>
       </div>
       <div class="step">
         <div class="step-circle">5</div>
-        <div class="step-label">QC→补录<br/>锁定版本<br/>多中心合并</div>
+        <div class="step-label">QC→更正<br/>重新冻结导出<br/>按方案复核</div>
       </div>
     </div>
-    <p class="sub" style="margin-top:20px">科研小白也能 10 分钟内拿到首版论文材料</p>
+    <p class="sub" style="margin-top:20px">先用模拟数据熟悉流程，再核对字段、单位与研究方案；下载分析包后需在本地运行脚本。</p>
   </div>
 
   <!-- ── Slide 4: 支持病种 ── -->
   <div class="slide slide-light">
     <div class="label" style="color:var(--muted)">支持的病种模块</div>
-    <h2 class="slide-h2" style="margin-top:8px">5 个模块，覆盖全肾科随访场景</h2>
+    <h2 class="slide-h2" style="margin-top:8px">5 个模块，按研究方案选择与配置</h2>
     <div class="wide" style="margin-top:12px">
       <table class="stbl">
-        <thead><tr><th>模块</th><th>适用疾病</th><th>特有字段</th><th>典型投稿期刊</th></tr></thead>
+        <thead><tr><th>模块</th><th>适用疾病</th><th>字段配置示例</th><th>研究关注点示例</th></tr></thead>
         <tbody>
           <tr>
             <td><span class="mod igan">IgAN</span></td>
             <td>IgA 肾病</td>
             <td>Oxford MEST-C 病理积分（M/E/S/T/C）</td>
-            <td>JASN · KI · AJKD</td>
+            <td>病理与肾功能随访</td>
           </tr>
           <tr>
             <td><span class="mod ln">LN</span></td>
             <td>狼疮性肾炎</td>
             <td>补体 C3/C4 · dsDNA · ISN/RPS 分型</td>
-            <td>ARD · Rheumatology</td>
+            <td>免疫指标与随访变化</td>
           </tr>
           <tr>
             <td><span class="mod mn">MN</span></td>
             <td>膜性肾病</td>
             <td>PLA2R / THSD7A 抗体滴度</td>
-            <td>JASN · KI</td>
+            <td>抗体与蛋白尿随访</td>
           </tr>
           <tr>
             <td><span class="mod ktx">KTX</span></td>
             <td>肾移植术后</td>
             <td>供体信息 · 免疫诱导方案 · 排斥分级</td>
-            <td>Transplantation · AJT</td>
+            <td>移植术后事件与随访</td>
           </tr>
           <tr>
             <td><span class="mod gen">GENERAL</span></td>
             <td>任意 / 混合病种</td>
-            <td>无特有限制，完全通用（FSGS/ANCA/CKD/DKD…）</td>
-            <td>任意肾病 / 内科期刊</td>
+            <td>通用随访与扩展字段（FSGS/ANCA/CKD/DKD…）</td>
+            <td>按方案设置分层</td>
           </tr>
         </tbody>
       </table>
@@ -242,18 +242,18 @@
         </ul>
       </div>
       <div class="scard">
-        <h3>GENERAL 能做什么分析？</h3>
+        <h3>分析包当前提供什么？</h3>
         <ul>
-          <li>eGFR 趋势（全病种通用）</li>
-          <li>UPCR 缓解率（定义：UPCR &lt; 0.5）</li>
-          <li>12 个月结局（eGFR 下降 ≥ 40%）</li>
+          <li>eGFR 描述性趋势（成人公式适用性需复核）</li>
+          <li>UPCR 描述性趋势与单位核对，不自动判定缓解</li>
+          <li>年度访视选取与数值阈值候选，不等于确认终点</li>
           <li>Table 1 基线特征表</li>
-          <li>QC 报告（缺失 / 异常 / 重复）</li>
-          <li>Methods 草稿（英文，可直接用于投稿）</li>
+          <li>QC 报告（缺失 / 单位 / 来源问题）</li>
+          <li>实际执行步骤说明（英文，研究团队复核后使用）</li>
         </ul>
       </div>
     </div>
-    <p class="sub" style="margin-top:16px;opacity:.8">病种特有指标（如补体、抗体）→ 用 labs_long 自由字段追加，分析脚本可自定义读取</p>
+    <p class="sub" style="margin-top:16px;opacity:.8">病种特有化验可录入扩展表；默认脚本仅处理说明中的六张核心表，额外专病统计需单独实现与验证。</p>
   </div>
 
   <!-- ── Slide 6: 多中心架构 ── -->
@@ -266,74 +266,74 @@
         <ul>
           <li>每个中心设置唯一 <strong>center_code</strong>（如 BJ01 / SH01 / GZ01）</li>
           <li>患者研究编号 <strong>patient_code</strong> 各中心内唯一</li>
-          <li>全局唯一键 = <strong>center_code + patient_code</strong></li>
-          <li>合并时不会冲突，无需人工对齐</li>
+          <li>分析身份键 = <strong>project_id + center_code + patient_code</strong></li>
+          <li>保留原始记录 ID；先核对字段、单位与编号，冲突会阻止合并</li>
         </ul>
       </div>
       <div class="scard">
         <h3>📦 DCC 合并流程</h3>
         <ul>
-          <li>各中心独立录入，后台各自导出论文包</li>
-          <li>DCC 收齐 N 份 CSV 后按中心键 concat</li>
-          <li>统一运行分析脚本 → 自动生成合并版 Table 1 + QC</li>
-          <li>结果与各中心子集分析保持一致（可复现）</li>
+          <li>各中心独立录入，后台各自导出分析包</li>
+          <li>DCC 收齐各中心六张 CSV，运行 merge_centers.py 校验合并</li>
+          <li>确认 MERGE_OK，再用 --data 指向合并目录运行分析</li>
+          <li>核对输入哈希与人数；合并总体结果不等同各中心子集结果</li>
         </ul>
       </div>
     </div>
     <div style="margin-top:20px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:12px 20px;font-size:13px;max-width:760px">
-      示例：3 中心 IgAN 研究（BJ01 / SH01 / GZ01），合计 280 例<br/>
-      → 各中心 5 分钟导出 → DCC 合并 → 1 小时出稿级 Table 1 + eGFR 趋势图
+      流程示例（模拟）：3 中心 IgAN 研究（BJ01 / SH01 / GZ01），假设合计 280 例<br/>
+      → 各中心导出 → DCC 核对与合并 → 描述性分析 → 团队复核；不预设完成时间或研究结果
     </div>
   </div>
 
   <!-- ── Slide 7: 数据安全 ── -->
   <div class="slide slide-green">
     <div class="label">安全与合规</div>
-    <h2 class="slide-h2" style="text-align:center;margin-top:8px">去标识化 · 可复现 · 合规</h2>
+    <h2 class="slide-h2" style="text-align:center;margin-top:8px">研究编号 · 权限管理 · 版本核对</h2>
     <div class="grid3" style="margin-top:16px">
       <div class="scard">
         <h3>🔒 去标识化</h3>
         <ul>
-          <li>系统仅存储研究编号（patient_code），<b>不存 PII</b></li>
+          <li>研究记录使用 patient_code；不录入姓名、证件号等直接身份信息</li>
           <li>身份映射表由各中心本地受控保管</li>
-          <li>多中心共享数据无隐私风险</li>
+          <li>编码后的健康记录仍可能识别个人，须在批准与授权范围内共享</li>
         </ul>
       </div>
       <div class="scard">
         <h3>📸 快照可复现</h3>
         <ul>
-          <li>一键生成不可变 Snapshot ID</li>
-          <li>论文包含 snapshot_readme.txt</li>
-          <li>同一版本数据重复运行结果完全一致</li>
-          <li>审稿人可核查，避免"边改边分析"</li>
+          <li>冻结同一次读取的研究数据并生成版本编号</li>
+          <li>分析包保留 research_data.json 与文件哈希清单</li>
+          <li>复核须保留相同输入、脚本与依赖环境，并核对运行日志</li>
+          <li>冻结版本可重新下载；旧元数据记录不能恢复历史内容</li>
         </ul>
       </div>
       <div class="scard">
         <h3>⏰ 到期只读</h3>
         <ul>
-          <li>试用到期 → 项目进入只读模式</li>
-          <li>7 天宽限期内仍可导出最终论文包</li>
-          <li>防止数据修改影响结果可复现性</li>
+          <li>无有效付费权益时，试用到期后停止新增与更正</li>
+          <li>授权用户查看与导出，不因 7 天宽限期结束而阻断</li>
+          <li>有效付费项目按实际权益继续录入，不被旧试用日期锁定</li>
         </ul>
       </div>
     </div>
   </div>
 
-  <!-- ── Slide 8: 论文输出 ── -->
+  <!-- ── Slide 8: 分析输出 ── -->
   <div class="slide slide-light">
-    <div class="label" style="color:var(--muted)">论文输出清单</div>
-    <h2 class="slide-h2" style="margin-top:8px">一键生成 · 直接用于投稿</h2>
+    <div class="label" style="color:var(--muted)">分析输出清单</div>
+    <h2 class="slide-h2" style="margin-top:8px">本地运行后生成 · 研究团队复核</h2>
     <div class="wide" style="margin-top:12px">
       <table class="stbl">
-        <thead><tr><th>输出文件</th><th>用于论文</th><th>说明</th></tr></thead>
+        <thead><tr><th>输出文件</th><th>用途</th><th>说明</th></tr></thead>
         <tbody>
-          <tr><td><code>table1_baseline.xlsx</code></td><td>Table 1</td><td>基线特征表（均数±SD / 中位数 IQR / 频率），按中心分层</td></tr>
-          <tr><td><code>qc_report.xlsx</code></td><td>数据质量</td><td>缺失率 / 异常值 / 重复记录 / 各中心完整率对比</td></tr>
-          <tr><td><code>plot_egfr_trend.png</code></td><td>Figure</td><td>eGFR 随时间趋势（分中心 / 分组，带置信区间）</td></tr>
-          <tr><td><code>plot_upcr_trend.png</code></td><td>Figure</td><td>UPCR 变化趋势</td></tr>
-          <tr><td><code>outcomes_12m.csv</code></td><td>Results</td><td>12 个月结局（eGFR 下降 ≥ 40% 率 / UPCR 缓解率）</td></tr>
-          <tr><td><code>METHODS_AUTO_EN.md</code></td><td>Methods 草稿</td><td>英文方法学段落（含统计方法说明），PI 最终审阅修改</td></tr>
-          <tr><td><code>snapshot_readme.txt</code></td><td>可复现凭证</td><td>数据版本 ID + 生成时间戳，用于补充材料</td></tr>
+          <tr><td><code>table1_baseline.xlsx</code></td><td>Table 1</td><td>描述性基线特征（均值/标准差、中位数/IQR、人数），列出各指标可用样本数</td></tr>
+          <tr><td><code>qc_report.xlsx</code></td><td>数据质量</td><td>缺失、单位、来源与数据质量问题；按提示回溯核对</td></tr>
+          <tr><td><code>plot_egfr_trend.png</code></td><td>Figure</td><td>先按患者月份汇总，再按患者等权描述；不计算置信区间</td></tr>
+          <tr><td><code>plot_upcr_trend.png</code></td><td>Figure</td><td>UPCR 描述性趋势；仅使用单位已核实的值</td></tr>
+          <tr><td><code>outcomes_12m.csv</code></td><td>Results</td><td>270–450 天窗口内选离365天最近的一条访视；保留缺失，不等于确认临床终点</td></tr>
+          <tr><td><code>METHODS_ACTUAL_EN.md</code></td><td>Methods 草稿</td><td>本次实际执行的步骤与人数；PI 与统计人员审阅修改</td></tr>
+          <tr><td><code>export_manifest.json</code><br/><code>RUN_LOG.json</code></td><td>来源核对</td><td>导出文件哈希；本地运行的输入、程序/依赖版本及执行状态</td></tr>
         </tbody>
       </table>
     </div>
@@ -342,7 +342,7 @@
   <!-- ── Slide 9: 操作演示 ── -->
   <div class="slide slide-purple">
     <div class="label">操作流程（PI / 研究生视角）</div>
-    <h2 class="slide-h2" style="text-align:center;margin-top:8px">从录入到论文：7 个步骤</h2>
+    <h2 class="slide-h2" style="text-align:center;margin-top:8px">从录入到分析：后台与本地流程</h2>
     <div class="grid2" style="margin-top:14px;max-width:820px">
       <div class="scard">
         <h3>后台操作（/staff）</h3>
@@ -350,17 +350,17 @@
           <li><strong>创建项目</strong>：填 center_code + 选模块（IgAN / LN / MN / GENERAL…）</li>
           <li><strong>录入基线</strong>：patient_code + 入组日期 + Scr + UPCR + 可选病理</li>
           <li><strong>发随访链接</strong>：生成 token → 发给随访护士，无需登录即可录入</li>
-          <li><strong>导出论文包</strong>：一键 zip，包含去标识化 CSV + 分析脚本</li>
+          <li><strong>导出分析包</strong>：一键 zip，包含去标识化 CSV + 分析脚本</li>
         </ul>
       </div>
       <div class="scard">
         <h3>本地分析（研究生）</h3>
         <ul>
-          <li>解压论文包</li>
-          <li><code>pip install -r requirements.txt</code>（首次）</li>
-          <li><code>python run_analysis.py</code></li>
-          <li>打开 <code>outputs/</code> 文件夹，直接使用图表与表格</li>
-          <li>看 QC 报告 → 回到后台补录 → 复跑 → 版本锁定</li>
+          <li>解压分析包</li>
+          <li>在包根目录建独立 Python 环境，按 analysis/README.md 安装依赖</li>
+          <li><code>python analysis/run_analysis.py</code></li>
+          <li>成功后打开 <code>analysis/outputs/run-时间/</code>，先核对日志和 QC</li>
+          <li>看 QC → 更正并重新导出 → 复跑；不能将旧输出当成本次结果</li>
         </ul>
       </div>
     </div>
@@ -369,14 +369,14 @@
   <!-- ── Slide 10: 价格 ── -->
   <div class="slide slide-light">
     <div class="label" style="color:var(--muted)">价格与试用</div>
-    <h2 class="slide-h2" style="margin-top:8px">透明定价 · 随时退款</h2>
+    <h2 class="slide-h2" style="margin-top:8px">透明定价 · 明确退款规则</h2>
     <div class="grid3" style="margin-top:14px">
       <div class="scard-light" style="border-top:3px solid #94a3b8">
         <h3>试用</h3>
         <div style="font-size:28px;font-weight:900;margin:8px 0;color:var(--text)">30 天</div>
         <ul style="color:#475569">
           <li>核心录入 / 导出 / QC 功能（含 1 个项目）</li>
-          <li>到期后 7 天只读宽限</li>
+          <li>到期无付费权益则只读，授权查看与导出仍保留</li>
           <li>无需信用卡</li>
         </ul>
       </div>
@@ -386,7 +386,7 @@
         <ul style="color:#475569">
           <li>额外项目：+¥99 / 个 / 月</li>
           <li>年付：¥4,790（约 8 折）</li>
-          <li>支持随时按比例退款</li>
+          <li>退款按购买页政策人工核验；首次年付支持 7 天无理由全额退款</li>
         </ul>
       </div>
       <div class="scard-light" style="border-top:3px solid var(--accent1)">
@@ -413,7 +413,7 @@
         <h3>🔬 PI / 科研负责人</h3>
         <ul>
           <li>需要建立多中心随访数据库</li>
-          <li>想发 JASN / KI 级别论文，手头缺乏数据整理工具</li>
+          <li>已有研究问题，需要规范数据整理与分析输入</li>
           <li>希望数据可复现，经得起审稿人核查</li>
         </ul>
       </div>
@@ -428,7 +428,7 @@
       <div class="scard">
         <h3>🏥 临床协调员 / 护士</h3>
         <ul>
-          <li>负责随访录入，希望界面简单（无需培训）</li>
+          <li>负责随访录入，希望通过简短培训掌握日期与单位核对</li>
           <li>用手机 / 电脑打开随访链接即可录入</li>
           <li>不需要登录，只需点 token 链接</li>
         </ul>
@@ -438,7 +438,7 @@
         <ul>
           <li>管理多中心数据合并与质量控制</li>
           <li>需要稳定可复现的分析基础设施</li>
-          <li>考虑私有化部署（数据完全在机构内部）</li>
+          <li>评估机构部署，并核验数据流向、备份与运维边界</li>
         </ul>
       </div>
     </div>
@@ -452,11 +452,11 @@
       <table class="stbl">
         <thead><tr><th>问题</th><th>回答</th></tr></thead>
         <tbody>
-          <tr><td>可以用于注册临床试验（IND）吗？</td><td>不建议直接作为 EDC/eCRF 主系统；适合观察性研究、RWS、IIT。需要 GCP/Part11 请联系私有化方案。</td></tr>
-          <tr><td>数据存在哪里？</td><td>默认存储在中国区域的云服务器上；机构版支持私有化部署至院内服务器。</td></tr>
-          <tr><td>GENERAL 模块没有我需要的字段怎么办？</td><td>用 labs_long / meds_long 自由字段表追加；分析脚本支持自定义读取列。</td></tr>
-          <tr><td>多个课题可以共用一个系统吗？</td><td>可以；每个课题建一个"项目"，center_code 隔离，数据互不干扰。</td></tr>
-          <tr><td>随访护士不会用电脑怎么办？</td><td>随访入口 /p/&lt;token&gt; 极简设计，手机浏览器打开即可，4 个字段，无需账号。</td></tr>
+          <tr><td>可以用于注册临床试验（IND）吗？</td><td>本系统用于研究登记。具体试验与验证要求须单独评估；私有化部署本身不等于满足 GCP/Part 11。</td></tr>
+          <tr><td>数据存在哪里？</td><td>网页托管于阿里云，认证与数据使用 Supabase 云服务。具体区域须核实本登记站连接项目；目前不声明全部数据在境内。</td></tr>
+          <tr><td>GENERAL 模块没有我需要的字段怎么办？</td><td>按表结构录入化验、用药等扩展记录；新增统计须另行编写与验证，不能仅加字段就认定已完成分析。</td></tr>
+          <tr><td>多个课题可以共用一个系统吗？</td><td>可以；按课题创建项目，以 project_id 与成员授权控制访问。center_code 用于中心标识，不单独承担权限隔离。</td></tr>
+          <tr><td>随访护士不会用电脑怎么办？</td><td>授权随访链接可在手机浏览器打开，无需账号；仍须核对研究编号、日期、血压、肌酐和 UPCR 单位。</td></tr>
         </tbody>
       </table>
     </div>
@@ -465,7 +465,7 @@
   <!-- ── Slide 13: CTA ── -->
   <div class="slide slide-cover">
     <h1 class="slide-h1">立即开始，<br/>30 天免费试用</h1>
-    <p class="sub" style="margin-top:14px">无需信用卡 · 完整功能 · 随时退出</p>
+    <p class="sub" style="margin-top:14px">无需信用卡 · 核心功能试用（含 1 个项目） · 权益见价格页</p>
     <div class="link-row" style="margin-top:28px">
       <a href="/signup?trial=1" style="background:rgba(255,255,255,.25);font-weight:700">🚀 开始免费试用</a>
       <a href="/demo">📅 预约演示</a>
@@ -528,6 +528,6 @@
     <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
     <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener">鲁公网安备37091102000922号</a></div>
   </footer>
-  <script src="/analytics.js"></script>
+  <script src="/analytics.js?v=registry-20260914-integrated-v1"></script>
 </body>
 </html>

@@ -1,0 +1,211 @@
+{
+  "format": 1,
+  "release": "registry-20260914-integrated-pg17-v3",
+  "required_versions": [
+    "0032_security_integrity",
+    "0033_billing_registration",
+    "0034_import_corrections",
+    "0035_frozen_exports",
+    "0036_project_members",
+    "0037_concept_view_security"
+  ],
+  "order": "lexicographic filenames; historical duplicate prefixes retained, unique full filenames",
+  "migrations": [
+    {
+      "ordinal": 1,
+      "file": "0001_core.sql",
+      "sha256": "adf3f5408e611bd6a83072a0e18f3c15462b7ecec2819a962338037ff03c9685"
+    },
+    {
+      "ordinal": 2,
+      "file": "0002_clinical_constraints.sql",
+      "sha256": "8fad429278640ad41834087ad46d06f3002271f6be20af66fc7b1fd1b202278a"
+    },
+    {
+      "ordinal": 3,
+      "file": "0002_events.sql",
+      "sha256": "e3b870a96ebfc163016a6af0f4c8984528205f22dfd08c0f38771feccebe435c"
+    },
+    {
+      "ordinal": 4,
+      "file": "0003_subscription.sql",
+      "sha256": "e40de768dcfa1e17a4a4a2ca916e37515de50b88b3698b3f581e782642643fc0"
+    },
+    {
+      "ordinal": 5,
+      "file": "0004_p0_guardrails.sql",
+      "sha256": "ae25413579f41218805208e24fc62685487f86a020399b524b2329cce1b63684"
+    },
+    {
+      "ordinal": 6,
+      "file": "0005_snapshots_and_ktx.sql",
+      "sha256": "3ca4af50d0541a86b20d04b9ba6f6d3fa2bdae2dac745aeb04a8b9f8207a24de"
+    },
+    {
+      "ordinal": 7,
+      "file": "0006_demo_requests.sql",
+      "sha256": "6a690c1de4a31eda440b83284a9e923d084c6785841df8981e5b251b264e56f3"
+    },
+    {
+      "ordinal": 8,
+      "file": "0007_trial_30days.sql",
+      "sha256": "61404026fa67dd5904aec6ebd85b7e57afb4e4ff0ae4b6be06c77fbfd057f450"
+    },
+    {
+      "ordinal": 9,
+      "file": "0008_rct_phase1.sql",
+      "sha256": "0ea53b690d3fe02bdf5f98abdaeca86974e20677820a70c29cafe52278f060d9"
+    },
+    {
+      "ordinal": 10,
+      "file": "0009_platform_admins.sql",
+      "sha256": "616feb3f8fb26996c1427d7253fc34c1b084ae1504e025e1e86bdc8bd48856c9"
+    },
+    {
+      "ordinal": 11,
+      "file": "0010_user_profiles.sql",
+      "sha256": "4d8b9242476b3c852342835523088b86023694571072b3400273774e59f1d20b"
+    },
+    {
+      "ordinal": 12,
+      "file": "0011_partner_contracts.sql",
+      "sha256": "7f7aac9136d1caa79bb3c1691a4812af371bd22471de8061a1b18a9dd033a751"
+    },
+    {
+      "ordinal": 13,
+      "file": "0012_pr1_foundation.sql",
+      "sha256": "2f21ca9a8f600f3d0d538c55d1bcb782a1f5d897eb49d2e1869460527626c885"
+    },
+    {
+      "ordinal": 14,
+      "file": "0013_pr2_lab_catalog.sql",
+      "sha256": "7a60c9b8c38f33dbb5b5ecb183b1a1a8f07e6524393ca882b1f027c48403cde9"
+    },
+    {
+      "ordinal": 15,
+      "file": "0014_pr3_validators.sql",
+      "sha256": "0c0cc83e156e579d8e769d4e8c2f19d30e320f1dd8af312694460d63f0acf640"
+    },
+    {
+      "ordinal": 16,
+      "file": "0015_pr5_pii_guard.sql",
+      "sha256": "3658e656fe09a57cce43963f1dd8c553c83ecf6164292196c645addf44b46064"
+    },
+    {
+      "ordinal": 17,
+      "file": "0016_pr6_issue_system.sql",
+      "sha256": "bf96f2e20b5312ea0c1f69322a0656954719f0035267ef0282c55fa0f474a5e3"
+    },
+    {
+      "ordinal": 18,
+      "file": "0017_pr7_field_audit.sql",
+      "sha256": "0980c86dff764ff910bfef80aa7ccd578da041c0f8d999bb2b177be023f8ab74"
+    },
+    {
+      "ordinal": 19,
+      "file": "0018_ln_pathology.sql",
+      "sha256": "35365d384eaae26ddac68a410e9961323bb4c64f32fbdedee267d44e701469d2"
+    },
+    {
+      "ordinal": 20,
+      "file": "0019_cn_friendly_layer.sql",
+      "sha256": "74d225b734dc25fdcf73856733c341c3db437e36f066dfd68b0ef7a527ba1d74"
+    },
+    {
+      "ordinal": 21,
+      "file": "0019_fix_visit_id_ambiguous.sql",
+      "sha256": "e7098cbb48e01334e134eae12953251fb5ccca5ae244783f8331d9e20be94932"
+    },
+    {
+      "ordinal": 22,
+      "file": "0020_lab_extend_mn_ktx_dkd.sql",
+      "sha256": "9283d27a78e339041cb1f6b0610be2ca72ba129f6ba83a7f96d3b54726a949c5"
+    },
+    {
+      "ordinal": 23,
+      "file": "0021_project_custom_labs.sql",
+      "sha256": "e8dc457054184dd6cde8da116dd7cecfbc12c3ee2ea3a10f0c91e2be333a582a"
+    },
+    {
+      "ordinal": 24,
+      "file": "0022_admin_status_permissions.sql",
+      "sha256": "8b0ec816c1004a15db8b1e58abe95176ca9142bfe287095404e3fa1253294bde"
+    },
+    {
+      "ordinal": 25,
+      "file": "0023_billing_orders.sql",
+      "sha256": "b3924d589e52e794987cc9ef422355c01e5440f5c94e19f148cb4647adf8e90d"
+    },
+    {
+      "ordinal": 26,
+      "file": "0024_billing_fixes.sql",
+      "sha256": "f064e39b18d0c4b4b8bc482e5f9af6cdd8d89c3d49ffb59f6ec566d6fe97666c"
+    },
+    {
+      "ordinal": 27,
+      "file": "0025_personal_invoice.sql",
+      "sha256": "03ff44e1f95b1451b30e6a49d19d6c4c78ba9194143a00dc9f8de2cdea8516d4"
+    },
+    {
+      "ordinal": 28,
+      "file": "0026_consent_logs.sql",
+      "sha256": "4025b0da3932bdcaa8c219e7c8dd78e3b36c1608e74eef1dd38babc56bd9a12d"
+    },
+    {
+      "ordinal": 29,
+      "file": "0027_storage_policy_fix.sql",
+      "sha256": "cdb39afc9e37242c646d5bbf2c78723009598aff89d1c3a8a09be480c57fd735"
+    },
+    {
+      "ordinal": 30,
+      "file": "0028_remove_pgcrypto_dependency.sql",
+      "sha256": "3b136140b9fb9a4c758dc54ab36c44f6252569c38f8f6e66d9ccbd7973a1a5fe"
+    },
+    {
+      "ordinal": 31,
+      "file": "0029_meds_route_frequency.sql",
+      "sha256": "04711f20ee09d6d3e4662661876f29b1c1fc6a7d32efd5128829f9d62e8eaaf4"
+    },
+    {
+      "ordinal": 32,
+      "file": "0030_patient_labs_meds_rpc.sql",
+      "sha256": "9469614849609a2ffe656fdabe0f2311fc363450fe3957ad0fd34b127b11eec0"
+    },
+    {
+      "ordinal": 33,
+      "file": "0031_patient_variants_rpc.sql",
+      "sha256": "be0b5873cb8d979df670276388762983b9a064077d63c83e1311df5e715679ad"
+    },
+    {
+      "ordinal": 34,
+      "file": "0032_security_integrity.sql",
+      "sha256": "34f099d44dd7102c9be49a0a1692279ca53a081692381f6dce90bdaa290058a1"
+    },
+    {
+      "ordinal": 35,
+      "file": "0033_billing_registration.sql",
+      "sha256": "15e0fc59cd88a1a1a922a6b303d374f9fc51a7fa9f05d4430c11d4647306da03"
+    },
+    {
+      "ordinal": 36,
+      "file": "0034_import_corrections.sql",
+      "sha256": "f5d2d6f3c1bdc054b5581862bc6f668a1f64b8c06b79a216543f2a6f1a20e2eb"
+    },
+    {
+      "ordinal": 37,
+      "file": "0035_frozen_exports.sql",
+      "sha256": "af79db34b27de9623773495f1551b18571d895661bfff8c5c2b00f6a01bc387f"
+    },
+    {
+      "ordinal": 38,
+      "file": "0036_project_members.sql",
+      "sha256": "bcf28cb84a52faf782be5aef3794ac928a3dc3771a176d186505c8fa333cd4a8"
+    },
+    {
+      "ordinal": 39,
+      "file": "0037_concept_view_security.sql",
+      "sha256": "6ce0782078b55eabdce5905e6d1c98d553724e3832f25d58bce53056e92e46ae"
+    }
+  ],
+  "bundle_sha256": "6d35f2e0530e2c32294a4fb3c1f3be98d00257b4641500ef20c9274c32ec269c"
+}

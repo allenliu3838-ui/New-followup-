@@ -1,16 +1,16 @@
 export function qs(sel, el=document){ return el.querySelector(sel); }
 export function qsa(sel, el=document){ return Array.from(el.querySelectorAll(sel)); }
 
-export function escapeCsv(v){
+export function escapeCsv(v, spreadsheetSafe = true){
   if (v === null || v === undefined) return "";
-  const s = String(v);
+  const s = spreadsheetSafe && typeof v === "string" && /^[\s]*[=+@\-]/.test(v) ? "'" + v : (typeof v === "object" ? JSON.stringify(v) : String(v));
   if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
   return s;
 }
 
-export function toCsv(rows, columns){
+export function toCsv(rows, columns, { spreadsheetSafe = true } = {}){
   const header = columns.map(c => escapeCsv(c)).join(",");
-  const lines = rows.map(r => columns.map(c => escapeCsv(r[c])).join(","));
+  const lines = rows.map(r => columns.map(c => escapeCsv(r[c], spreadsheetSafe)).join(","));
   return [header, ...lines].join("\r\n");
 }
 
@@ -62,5 +62,5 @@ export function humanNumber(n){
 }
 
 export function escapeHtml(s){
-  return String(s||"").replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  return String(s ?? "").replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 }

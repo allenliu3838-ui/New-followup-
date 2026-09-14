@@ -1,0 +1,10 @@
+{
+  "scope": "temporary directories and synthetic database report only",
+  "production_database_checked": false,
+  "archive_sha256": "d679937e4c2c3b2ec10a772c2011f821b6244ce9f6d363a15576b2a43418a693",
+  "payload_files": 58,
+  "changed_files": 45,
+  "apply_hashes": "PASS",
+  "rollback_bytes_and_modes": "PASS",
+  "config_and_six_sentinels": "UNCHANGED"
+}

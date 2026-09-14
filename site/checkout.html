@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
   <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
-  <link rel="stylesheet" href="/app.css"/>
+  <link rel="stylesheet" href="/app.css?v=registry-20260914-integrated-v1"/>
   <link rel="icon" href="/assets/kidneysphere-ai.png"/>
   <style>
     .step { display:none; }
@@ -245,13 +245,14 @@
         </div>
       </div>
 
-      <!-- ===== 我的订单 ===== -->
+      <!-- ===== 我的订单（未完成订单可继续办理） ===== -->
       <div class="card" id="myOrdersCard">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <h2 style="margin:0">我的订单</h2>
+          <h2 style="margin:0">我的订单（未完成订单可继续办理）</h2>
           <button class="btn small" id="btnRefreshOrders">刷新</button>
         </div>
         <div id="myOrdersList" data-testid="my-orders" class="muted small"></div>
+        <p class="muted small">到账核验、开票与退款由平台人工处理。需要补充开票资料或申请退款时，请将订单号发送至 <a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a>；页面提交凭证不代表已到账或已退款。</p>
       </div>
 
     </template><!-- /checkoutTpl -->
@@ -262,9 +263,9 @@
     <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener">鲁公网安备37091102000922号</a></div>
   </footer>
 
-  <script src="/lib/error-logger.js"></script>
-  <script src="/config.js"></script>
-  <script type="module" src="/checkout.js"></script>
-  <script src="/analytics.js"></script>
+  <script src="/lib/error-logger.js?v=registry-20260914-integrated-v1"></script>
+  <script src="/config.js?v=registry-20260914-integrated-v1"></script>
+  <script type="module" src="/checkout.js?v=registry-20260914-integrated-v1"></script>
+  <script src="/analytics.js?v=registry-20260914-integrated-v1"></script>
 </body>
 </html>

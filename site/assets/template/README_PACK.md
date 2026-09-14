@@ -1,148 +1,65 @@
-# 论文数据包使用指南 · {{PROJECT_NAME}}
-# Paper Pack Guide · {{PROJECT_NAME}}
+# 科研数据与描述性分析包 — {{PROJECT_NAME}}
 
-> 导出时间 / Exported: {{EXPORT_DATE}}
+导出日期：{{EXPORT_DATE}}。这是原始数据、数据字典与可复核分析脚本；下载 ZIP 本身不代表分析已运行。
 
----
+## 1. 原始数据与单位
 
-## 这个文件夹是什么？
+`analysis/data/` 包含六张供脚本读取的原值 CSV 长表；`excel_safe/` 是适合用 Excel 打开的安全文本版本。请保留一份原包副本，不用 Excel 直接覆盖 CSV（编号 `001`、`1`、`NA` 必须作为原样字符串保留）。分析脚本按字符串读取标识；处理前要求每条非空记录包含 `project_id`、`center_code`、`patient_code`、原始记录 `id` 和 `module`。缺标识的旧导出请升级后重新导出；不能猜测项目或患者归属。
 
-KidneySphere AI 已把你的研究数据**自动打包**好了。里面有：
+基线 UPCR 必须带经核实的 `baseline_upcr_unit`（mg/g 或 g/g）。无单位旧数据保留原值，但不参与 UPCR 变化、比例或阈值计算；由团队回溯来源核实。随访 UPCR 的存储单位为 mg/g。化验保留原值和单位，按每条记录显式单位换算；存储标准值与原值不一致时输出 QC，不按队列大小猜单位。
 
-- 去标识化的原始数据（CSV 表格）
-- 一键分析脚本 → 自动生成 **Table 1、终点事件、eGFR斜率、KFRE评分**
-- Methods 草稿（直接复制进论文，再由 PI 审改）
+## 2. 安装与运行
 
-**你只需要跑一个脚本，剩下的全自动完成。**
-
----
-
-## 第一步：安装 Python（只需做一次）
-
-1. 下载并安装 **Anaconda**（免费）：https://www.anaconda.com/download
-2. 安装完成后，打开 **Anaconda Prompt**（Windows）或 **Terminal**（Mac/Linux）
-
----
-
-## 第二步：安装依赖库（只需做一次）
-
-在终端里，`cd` 进入本文件夹，然后运行：
+在解压后的**包根目录**（包含 `analysis/` 的目录）打开终端。创建 Python 3.11 或 3.12 的独立环境，再安装锁定版本依赖：
 
 ```bash
-pip install -r analysis/requirements.txt
+python -m venv .venv
 ```
 
-看到 `Successfully installed ...` 即可。
-
----
-
-## 第三步：运行分析
-
-### 单中心
+Windows：`.venv\Scripts\activate`；macOS/Linux：`source .venv/bin/activate`。然后：
 
 ```bash
+python -m pip install -r analysis/requirements.txt
 python analysis/run_analysis.py
 ```
 
-### 多中心（先合并，再分析）
+成功时输出 `DESCRIPTIVE_REVIEW_OK` 及本次 `analysis/outputs/run-时间/` 路径。每次写新目录，旧结果不混入本次运行。出现 `ANALYSIS_FAILED` 应先解决源数据问题，不能把旧报告当成本次成功结果。
 
-**3a. 把各中心的 `data/` 文件夹整理成如下结构：**
+## 3. 多中心合并
 
-```
-centers/
-  中心A/
-    patients_baseline.csv
-    visits_long.csv
-    ...
-  中心B/
-    patients_baseline.csv
-    visits_long.csv
-    ...
-```
-
-**3b. 合并数据：**
+把各中心**完整导出的六张 CSV** 分别放在 `centers/A/`、`centers/B/` 等目录。保留各项目真实身份，不把不同项目改成同一个 project_id。运行：
 
 ```bash
-python analysis/merge_centers.py
+python analysis/merge_centers.py --dirs centers/A centers/B --out analysis/merged-data --qc merge_qc.xlsx
+python analysis/run_analysis.py --data analysis/merged-data
 ```
 
-脚本会自动发现 `centers/` 下的所有子目录，合并后写入 `analysis/data/`，并生成 `merge_qc.xlsx`。
+只有看到 `MERGE_OK` 才运行第二条。合并不会把 `001` 与 `1`、不同项目同号、不同日期的重复事件自动去重。完全相同记录 ID 与内容的重复传输可幂等去重；同 ID 内容冲突或同患者多个不同基线会产生冲突报告并阻止输出。空的可选表也会写出合法表头。重跑请换新的输出目录，如 `analysis/merged-data-v2`，再把同一路径传给 `--data`。
 
-> ⚠️ **合并后先打开 `merge_qc.xlsx` 检查一遍**，确认没有重复记录或病人编号冲突，再进行下一步。
+**确认运行日志的 input_dir、input_sha256 和人数是合并后的输入，不能只运行默认命令而误分析旧的单中心 data。**
 
-**3c. 运行分析：**
+## 4. 输出与含义
 
-```bash
-python analysis/run_analysis.py
-```
+- `RUN_LOG.json`：输入/输出 SHA-256、程序与依赖版本、计数、实际执行状态。
+- `table1_baseline.xlsx`：描述性人数、性别、基线均值/标准差及中位数/IQR、IgAN病理分类和完整身份键用药计数；各指标列出可用样本数。
+- `patients_derived.csv`、`visits_derived.csv`：原始字段与派生字段分开；eGFR 原值保存在 egfr_recorded。
+- `outcomes_12m.csv`：固定描述性窗口 270–450 天中选离365天最近的一整条访视；同距离按日期、记录ID排序，保留缺失与 tie_count。没有合格记录是“暂无可评估年度随访”，不会填0或用其他日期拼接。
+- `candidates_egfr_decline.csv`、`candidates_igan_proteinuria.csv`：数值阈值候选记录，**不是已确认、持续或经验证临床终点**。研究方案仍须指定窗口、确认次数、事件定义与统计分母。
+- `manual_events_review.csv`：所有人工事件逐条保留；明确确认、有日期且在基线之后才标为 confirmed_in_followup，其他情况保留相应状态。
+- `egfr_slope_per_patient.csv`：至少两个不同日期的描述性个人OLS斜率。同日多个eGFR先求均值；单日记录标为不可估计，不生成伪年斜率。
+- `trend_*_patient_month.csv` 与 `plot_*_trend.png`：先按患者月份求均值，再按患者等权汇总；没有把重复行当独立患者计算置信区间。
+- `labs_review.csv`、`qc_issues.csv`、`qc_report.xlsx`：单位与缺失/来源问题，需团队复核。
+- `METHODS_ACTUAL_EN.md`：只描述本次真实执行的步骤与人数。
+- `MODEL_STATUS.json`：明确列出暂停/未执行功能。
 
-运行结束后终端会打印 `✅ Done.` 并列出所有生成的文件。
+`analysis/data/` CSV 是供代码读取的原值数据，字符串不会被前缀改写。请勿把 `excel_safe/` 中已加安全文本前缀的版本替换到分析输入；否则研究编号和文字可能被改变。查看电子表格优先用 `excel_safe/` 或 XLSX；查看机器 CSV 时通过 Excel“从文本/CSV导入”把身份/文字列设为文本，不把未知文本解释成公式。
 
----
+## 5. 本次明确未执行的功能
 
-## 第四步：找到你需要的文件
+KFRE 风险计算已停用：旧实现用 UPCR 替代 UACR、猜测检验单位，未通过独立模型金标准验证；本包不输出风险数字。自动“完全/部分缓解”、持续肾脏终点判定、LME 队列推断、置信区间、生存/因果分析也不执行。阈值候选和描述性结果不自动变成这些结论。
 
-所有结果都在 `analysis/outputs/` 文件夹里：
+成人 CKD-EPI 2021 肌酐公式按 Inker 等原文 Table 2 实现，使用性别、血肌酐和“访视年份减出生年”的近似年龄；不是精确生日年龄。缺失/未知性别不当男性，未满18岁不使用该成人公式。原文：[NEJM 2021 作者稿与公式表](https://escholarship.org/content/qt3gj2d8m2/qt3gj2d8m2.pdf)。此实现不代替队列适用性与研究方案审查。
 
-| 文件 | 论文中的用途 |
-|------|-------------|
-| `table1_baseline.xlsx` | **直接用作 Table 1**（基线特征、药物、KFRE、终点） |
-| `outcomes_12m.csv` | 12个月 eGFR / UPCR 变化，用于结果章节 |
-| `kfre_scores.csv` | 每位患者的 KFRE 2年/5年肾衰竭风险（%）|
-| `endpoints_egfr_decline.csv` | eGFR 下降 ≥40% / ≥57% 的首次达标日期 |
-| `endpoints_igan_remission.csv` | IgAN 完全/部分缓解日期（IgAN 项目适用）|
-| `egfr_slope_lme.csv` | eGFR 下降速率（LME 模型，整体队列）|
-| `egfr_slope_per_patient.csv` | 每位患者个体 eGFR 斜率 |
-| `plot_egfr_trend.png` | eGFR 趋势图 → 直接插入论文 Figure |
-| `plot_upcr_trend.png` | UPCR 趋势图 → 直接插入论文 Figure |
-| `plot_egfr_slope_hist.png` | eGFR 斜率分布直方图 → 补充图 |
-| `qc_report.xlsx` | 数据质控报告（缺失率、重复、离群值）|
+本分析使用六张核心表；额外CSV会在 RUN_LOG 的 additional_csv_not_analyzed 中列明，不能据此认为额外专病表也已完成统计。原始变异记录保留在输入包，本次未执行遗传变异解释。
 
----
-
-## 第五步：写论文
-
-### Methods 草稿在哪里？
-
-打开 `manuscript/METHODS_AUTO_EN.md`，里面已经写好了**可直接引用的 Methods 段落**，包括：
-
-- 研究设计 & 数据来源
-- eGFR 计算方法（CKD-EPI 2021）
-- 多中心数据合并方法
-- eGFR 终点定义（≥40% / ≥57% 下降）
-- eGFR 斜率（线性混合效应模型）
-- KFRE 公式 & 引用（Tangri et al. JAMA 2011）
-- IgAN 缓解定义（CR / PR）
-- 药物统计方法
-- 统计分析平台
-
-> **复制 → 粘贴进你的论文 → PI 审改 → 提交**
-
----
-
-## 提交前必须检查（PI 清单）
-
-在论文投稿前，请 PI 逐项确认：
-
-- [ ] **KFRE 单位**：`kfre_scores.csv` 中的实验室值单位（白蛋白 g/dL、磷酸盐 mg/dL、钙 mg/dL）是否与你中心一致
-- [ ] **UPCR vs uACR**：你的 UPCR 是否适合作为 KFRE 中 uACR 的替代指标
-- [ ] **eGFR 终点确认**：`endpoints_egfr_decline.csv` 中的首次达标记录，需人工核实是否在 ≥2 次连续访视中持续
-- [ ] **IgAN 缓解标准**：CR（UPCR < 300 mg/g）和 PR（≥50% 降幅且 < 1000 mg/g）的单位是否适用于本研究
-- [ ] **多中心 QC**：`merge_qc.xlsx` 中无未解决的重复或碰撞记录
-- [ ] **Methods 草稿**：`METHODS_AUTO_EN.md` 已由 PI 完整审阅并修改
-
----
-
-## 常见问题
-
-**Q: 运行脚本报错 `ModuleNotFoundError`？**
-A: 重新运行 `pip install -r analysis/requirements.txt`，确保在正确的 conda 环境中。
-
-**Q: `statsmodels` 未安装时 eGFR 斜率怎么办？**
-A: 脚本会自动降级为个体 OLS 斜率（`egfr_slope_per_patient.csv`），LME 结果跳过。安装后重跑即可。
-
-**Q: 8变量 KFRE 全部是空值？**
-A: 说明 `labs_long.csv` 中未录入白蛋白/磷酸盐/碳酸氢根/钙。只用 4变量 KFRE 结果即可。
-
-**Q: 多中心合并后患者数不对？**
-A: 打开 `merge_qc.xlsx` → `PatientCollisions` 工作表，检查是否存在跨中心的 `patient_code` 重复。
+本包不修改数据库，输入文件不被覆盖。平台导出记录号或本地运行哈希也不等于服务器已提供不可变快照及备份恢复服务。

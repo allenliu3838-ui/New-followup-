@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
   <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
-  <link rel="stylesheet" href="/app.css"/>
+  <link rel="stylesheet" href="/app.css?v=registry-20260914-integrated-v1"/>
 </head>
 <body>
   <div class="container">
@@ -23,21 +23,16 @@
       </div>
       <div class="hr"></div>
       <h2>SaaS（公有云）</h2>
-      <div class="small">快速开通、低维护成本，适用于先行试点与科研团队快速启动。</div>
+      <div class="small">当前网页由阿里云托管，账户认证、数据库和附件使用 Supabase 项目。完整部署评估需同时确认两部分服务的区域、访问权限与备份。演示可先使用模拟数据。</div>
       <h2>私有化部署（医院本地 / 私有云）</h2>
-      <div class="small">数据不出院，支持 Docker/VM 交付、独立 Supabase/Postgres、单院域名与 SSO（可选）。</div>
-      <h2>私有化交付边界（示例）</h2>
+      <div class="small">院内或境内独立部署需要将应用、数据库、身份认证、附件和备份一起纳入部署范围，并核查外部请求。仅迁移网页文件不能实现“数据不出院”。具体交付架构、SSO 接入及验收范围需在机构项目中单独确认。</div>
+      <h2>机构部署核验范围</h2>
       <ul class="small">
-        <li>应用服务与数据库分层部署</li>
-        <li>独立备份与恢复策略</li>
-        <li>院内网络与安全策略对接</li>
+        <li>应用、数据库、认证、附件与备份的服务实体及区域</li>
+        <li>可执行的数据库与附件备份、恢复演练和负责人</li>
+        <li>院内网络、安全检测、账户权限及适用的跨境安排</li>
       </ul>
-      <div class="btnbar" style="margin-top:14px">
-        <a class="btn primary" href="/demo">预约演示</a>
-        <a class="btn" href="/demo">机构合作咨询</a>
-        <a class="btn" href="/collaboration">查看合作项目</a>
-        <a class="btn" href="/signup?trial=1">申请试用</a>
-      </div>
+
           <div class="hr"></div>
       <h2>院内评估常见材料</h2>
       <ul class="small" style="line-height:1.9">
@@ -59,6 +54,6 @@
     <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
     <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener">鲁公网安备37091102000922号</a></div>
   </footer>
-  <script src="/analytics.js"></script>
+  <script src="/analytics.js?v=registry-20260914-integrated-v1"></script>
 </body>
 </html>

@@ -1,0 +1,16 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> new-followup-@1.0.0 test
+> python3 tests/verify_recovered_release.py && node tests/recovered-database.mjs
+
+RECOVERY_BYTES_OK: 58 frontend files, 38 migrations, release tools and JavaScript/Python syntax.
+PASS 38 canonical migrations execute strictly with real pgcrypto
+PASS owner/editor/analyst/viewer capabilities are authoritative
+PASS clinical RLS permits editor writes and denies read-role/cross-project writes
+PASS shared projects do not consume owned quota; records cannot move between authorized projects
+PASS frozen exports contain nine tables, match SHA256 and enforce export authority/idempotence
+PASS project owners cannot grant themselves paid entitlements
+PASS removing an editor revokes existing project links and subsequent clinical reads
+PASS anonymous callers cannot administer membership
+PASS production inventory runs in a read-only transaction
+RECOVERY_DATABASE_OK 9 groups; synthetic local database only.

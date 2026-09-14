@@ -1,0 +1,43 @@
+name: Isolated PostgreSQL 17 reference review
+on:
+  push:
+    branches: ['codex/registry-pg17-reference-*']
+permissions:
+  contents: read
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci --ignore-scripts
+      - name: Build proposed reference from reviewed source in native PostgreSQL 17.6
+        run: node scripts/build_database_contract_pg17.mjs --write
+      - name: Export source-only reference for review
+        run: |
+          python3 - <<'PY'
+          import base64, gzip, hashlib
+          from pathlib import Path
+          data = Path('supabase/database-contract-pg17.json').read_bytes()
+          encoded = base64.b64encode(gzip.compress(data, mtime=0)).decode()
+          print('PG17_REFERENCE_SHA256=' + hashlib.sha256(data).hexdigest())
+          print('PG17_REFERENCE_BEGIN')
+          for start in range(0, len(encoded), 120):
+              print(encoded[start:start+120])
+          print('PG17_REFERENCE_END')
+          PY
+      - name: Exercise historical data upgrade
+        run: node tests/pg17-upgrade.mjs
+      - name: Exercise concept view least privilege
+        run: node tests/pg17-view.mjs
+      - name: Exercise fail-closed release gates
+        run: python3 -m unittest discover -s tests -p test_pg17_release_contract.py
+      # Generation is for review only. It neither blesses a production report
+      # nor updates a checked-in manifest. No deployment permissions or secrets.

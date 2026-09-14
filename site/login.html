@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>登录 · 肾域·科研</title>
   <meta name="robots" content="noindex,nofollow"/>
+  <meta name="referrer" content="no-referrer"/>
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
-  <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
-  <link rel="stylesheet" href="/app.css"/>
+  <link rel="stylesheet" href="/app.css?v=registry-20260914-integrated-v1"/>
   <link rel="icon" href="/assets/kidneysphere-ai.png"/>
 </head>
 <body>
@@ -53,25 +53,26 @@
     <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener">鲁公网安备37091102000922号</a></div>
   </footer>
 
-  <script src="/lib/error-logger.js"></script>
-  <script src="/config.js"></script>
+  <script src="/lib/error-logger.js?v=registry-20260914-integrated-v1"></script>
+  <script src="/config.js?v=registry-20260914-integrated-v1"></script>
   <script type="module">
-    import { supabase } from "/lib/supabase-client.js";
-    import { qs, toast } from "/lib/utils.js";
-    import { throttle } from "/lib/rate-limit.js";
+    import { supabase } from "/lib/supabase-client.js?v=registry-20260914-integrated-v1";
+    import { qs, toast } from "/lib/utils.js?v=registry-20260914-integrated-v1";
+    import { throttle } from "/lib/rate-limit.js?v=registry-20260914-integrated-v1";
 
-    import { validatePassword } from "/lib/password-strength.js";
+    import { validatePassword } from "/lib/password-strength.js?v=registry-20260914-integrated-v1";
+    import { safeReturnTo } from "/lib/auth-navigation.js?v=registry-20260914-integrated-v1";
 
     const rlLogin = throttle("login", { maxAttempts: 10, windowMs: 15 * 60_000, message: "登录尝试过于频繁" });
     const rlReset = throttle("reset", { maxAttempts: 5, windowMs: 15 * 60_000, message: "密码重置请求过于频繁" });
 
     const sb = supabase();
-    const returnTo = new URLSearchParams(location.search).get("returnTo") || "/staff";
+    const params = new URLSearchParams(location.search);
+    const returnTo = safeReturnTo(params.get("returnTo"));
     let recoveryMode = false;
 
     // Check localStorage for pending reset
-    let pendingReset = null;
-    try { pendingReset = localStorage.getItem("ks_pending_pwd_reset"); } catch(_){}
+    let pendingReset = params.get("recovery") === "1" || new URLSearchParams(location.hash.slice(1)).get("type") === "recovery";
 
     function showResetUI() {
       recoveryMode = true;
@@ -116,6 +117,7 @@
         if (error) throw error;
         try { localStorage.removeItem("ks_pending_pwd_reset"); } catch(_){}
         toast("登录成功");
+        location.replace(returnTo);
       } catch (e) {
         toast("登录失败：" + (e?.message || e));
       } finally {
@@ -130,10 +132,10 @@
       if (!email) { toast("请先输入邮箱"); return; }
       try {
         const { error } = await sb.auth.resetPasswordForEmail(email, {
-          redirectTo: location.origin + "/auth-callback?returnTo=/staff"
+          redirectTo: location.origin + "/auth-callback?recovery=1&returnTo=/staff"
         });
         if (error) throw error;
-        try { localStorage.setItem("ks_pending_pwd_reset", email); } catch(_){}
+
         qs("#loginHint").textContent = "密码重置邮件已发送，请查看收件箱。";
       } catch (e) {
         toast("发送失败：" + (e?.message || e));

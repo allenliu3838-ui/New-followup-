@@ -2,10 +2,12 @@
   var CONTACT_EMAIL = 'china@kidneysphere.com';
 
   function escapeHtml(str=''){
-    return str
+    return String(str == null ? '' : str)
       .replaceAll('&', '&amp;')
       .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;');
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
   }
 
   function showToast(msg) {
@@ -77,18 +79,18 @@
       : '';
 
     return `
-      <article class="price-card project-card" data-category="${escapeHtml(item.category || '')}">
+      <article class="price-card project-card" id="project-${escapeHtml(item.slug)}" data-project-slug="${escapeHtml(item.slug)}" data-category="${escapeHtml(item.category || '')}" aria-labelledby="project-${escapeHtml(item.slug)}-title">
         <div style="margin-bottom:4px">${statusHtml}${categoryHtml}</div>
-        <div class="price-title">${escapeHtml(item.name)}</div>
+        <h3 class="price-title" id="project-${escapeHtml(item.slug)}-title" style="font-size:inherit;margin:0 0 6px">${escapeHtml(item.name)}</h3>
         <div class="infobox" style="padding:8px 10px;font-size:12px;line-height:1.55;margin:8px 0">${escapeHtml(item.summary)}</div>
         ${suitableHtml}
         ${fieldsHtml}
         ${supportHtml}
         ${detailsHtml}
         <div class="btnbar" style="margin-top:10px">
-          <a class="btn small primary" href="${mailto}">${escapeHtml(item.ctaLabel || '联系加入')}</a>
+          <a class="btn small primary" href="${escapeHtml(mailto)}">${escapeHtml(item.ctaLabel || '联系加入')}</a>
         </div>
-        <button class="copy-email" onclick="window._copyEmail('${CONTACT_EMAIL}')" title="复制邮箱">
+        <button type="button" class="copy-email" style="display:none" data-copy-email="${CONTACT_EMAIL}" title="复制邮箱">
           📋 ${CONTACT_EMAIL}
         </button>
       </article>`;
@@ -102,46 +104,67 @@
       </article>`;
   }
 
+  function projectsHtml(items){
+    return items.map(ProjectCard).join('');
+  }
+
+  function enhanceProjects(el, items){
+    if (!el) return;
+    var cards = Array.from(el.querySelectorAll('.project-card'));
+    // Reuse authored, pre-rendered cards. A filter never rebuilds their content.
+    if (cards.length !== items.length || cards.some(function(card, index){
+      return card.dataset.projectSlug !== items[index].slug;
+    })) {
+      el.innerHTML = projectsHtml(items);
+    }
+    el.querySelectorAll('[data-copy-email]').forEach(function(btn){
+      if (!btn.dataset.copyBound) {
+        btn.addEventListener('click', function(){ copyEmail(btn.dataset.copyEmail); });
+        btn.dataset.copyBound = 'true';
+      }
+      btn.style.removeProperty('display');
+    });
+  }
+
   window.CollabComponents = {
+    // Same pure renderer is used by the deterministic build and browser fallback.
+    projectsHtml: projectsHtml,
+
     renderPaths: function(el, items, compact){
       if (!el) return;
       el.innerHTML = items.map(function(i){ return CollaborationPathCard(i, compact); }).join('');
     },
 
-    renderProjects: function(el, items){
-      if (!el) return;
-      el.innerHTML = items.map(ProjectCard).join('');
-    },
+    renderProjects: enhanceProjects,
 
     renderProjectsWithFilter: function(gridEl, tabsEl, items, tabs){
       if (!gridEl) return;
-      var active = 'all';
-
-      function renderTabs(){
-        if (!tabsEl) return;
-        tabsEl.innerHTML = tabs.map(function(t){
-          return '<button class="filter-tab' + (t.id === active ? ' active' : '') + '" data-id="' + escapeHtml(t.id) + '">' + escapeHtml(t.label) + '</button>';
-        }).join('');
-        tabsEl.querySelectorAll('.filter-tab').forEach(function(btn){
-          btn.addEventListener('click', function(){
-            active = btn.dataset.id;
-            renderTabs();
-            renderGrid();
+      enhanceProjects(gridEl, items);
+      if (!tabsEl || tabsEl.dataset.filtersBound) return;
+      tabsEl.innerHTML = tabs.map(function(t){
+        return '<button type="button" class="filter-tab' + (t.id === 'all' ? ' active' : '') + '" data-id="' + escapeHtml(t.id) + '" aria-controls="' + escapeHtml(gridEl.id) + '" aria-pressed="' + (t.id === 'all' ? 'true' : 'false') + '">' + escapeHtml(t.label) + '</button>';
+      }).join('');
+      tabsEl.setAttribute('role', 'group');
+      tabsEl.setAttribute('aria-label', '按研究方向筛选项目');
+      tabsEl.querySelectorAll('.filter-tab').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var active = btn.dataset.id;
+          tabsEl.querySelectorAll('.filter-tab').forEach(function(tab){
+            var selected = tab.dataset.id === active;
+            tab.classList.toggle('active', selected);
+            tab.setAttribute('aria-pressed', String(selected));
+          });
+          gridEl.querySelectorAll('.project-card').forEach(function(card){
+            var visible = active === 'all' || card.dataset.category === active;
+            card.hidden = !visible;
+            // Inline display also works if a theme overrides the hidden selector.
+            if (visible) card.style.removeProperty('display');
+            else card.style.display = 'none';
           });
         });
-      }
-
-      function renderGrid(){
-        var visible = active === 'all'
-          ? items
-          : items.filter(function(p){ return p.category === active; });
-        gridEl.innerHTML = visible.length
-          ? visible.map(ProjectCard).join('')
-          : '<div class="small muted" style="padding:12px">当前筛选无匹配项目。</div>';
-      }
-
-      renderTabs();
-      renderGrid();
+      });
+      tabsEl.dataset.filtersBound = 'true';
+      tabsEl.style.removeProperty('display');
     },
 
     renderCases: function(el, items){

@@ -8,19 +8,24 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "npx playwright test",
-    "test:e2e": "npx playwright test",
+    "test": "python3 tests/verify_recovered_release.py && python3 -m unittest discover -s tests -p test_pg17_release_contract.py && node tests/recovered-database.mjs && node tests/pg17-upgrade.mjs && node scripts/build_database_contract_pg17.mjs --check && node tests/pg17-preflight.mjs && node tests/pg17-view.mjs",
+    "test:e2e": "node scripts/refuse_unconfigured_e2e.cjs",
+    "test:restore": "node tests/pg17-restore.mjs",
     "smoke": "bash scripts/smoke-test.sh",
-    "lighthouse": "bash scripts/lighthouse-ci.sh"
+    "lighthouse": "bash scripts/lighthouse-ci.sh",
+    "build:release": "python3 scripts/build_registry_integrated.py"
   },
   "repository": {
     "type": "git",
-    "url": "http://local_proxy@127.0.0.1:41761/git/allenliu3838-ui/New-followup-"
+    "url": "https://github.com/allenliu3838-ui/New-followup-.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@playwright/test": "^1.58.2"
+    "@electric-sql/pglite": "0.5.8",
+    "@embedded-postgres/linux-x64": "17.6.0-beta.15",
+    "@playwright/test": "^1.58.2",
+    "pg": "8.16.3"
   }
 }
