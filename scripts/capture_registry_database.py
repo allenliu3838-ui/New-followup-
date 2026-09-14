@@ -17,7 +17,8 @@ ROOT=Path(__file__).resolve().parents[1]
 def approved_preflight_sql(root=ROOT):
     manifest_hash=hashlib.sha256((root/'supabase/migration-manifest.json').read_bytes()).hexdigest()
     contract=(root/'scripts/database_contract.sql').read_text().strip().removesuffix(';')
-    return (root/'scripts/database_preflight.sql.in').read_text().replace('__MIGRATION_MANIFEST_SHA256__',manifest_hash).replace('__DATABASE_CONTRACT_QUERY__',contract)
+    contract_hash=hashlib.sha256((root/'scripts/database_contract.sql').read_bytes()).hexdigest()
+    return (root/'scripts/database_preflight.sql.in').read_text().replace('__MIGRATION_MANIFEST_SHA256__',manifest_hash).replace('__DATABASE_CONTRACT_SHA256__',contract_hash).replace('__DATABASE_CONTRACT_QUERY__',contract)
 
 
 def validate_preflight_sql(sql,root=ROOT):

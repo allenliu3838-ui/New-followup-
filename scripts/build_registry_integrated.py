@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rebuild the recovered audited frontend package. Refuse changed/unreviewed bytes."""
+"""Build the reviewed PG17 v2 frontend package. Refuse changed/unreviewed bytes."""
 from pathlib import Path
 import argparse
 import hashlib

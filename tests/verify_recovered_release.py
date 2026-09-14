@@ -7,19 +7,27 @@ import re
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-EVIDENCE = ROOT / 'releases/registry-integrated-20260914'
+EVIDENCE = ROOT / 'releases/registry-integrated-pg17-20260914'
 
 def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 def verify():
-    manifest = json.loads((EVIDENCE / 'registry-integrated-20260914.manifest.json').read_text())
+    manifest = json.loads((EVIDENCE / 'registry-integrated-pg17-20260914.manifest.json').read_text())
+    contract_bytes = (ROOT / 'supabase/database-contract-pg17.json').read_bytes()
+    contract = json.loads(contract_bytes)
+    assert manifest['database_contract_reference_sha256'] == sha(contract_bytes)
+    assert contract['database_server_major'] == manifest['database_server_major'] == 17
+    assert contract['contract_protocol'] == manifest['database_contract_protocol'] == 'registry-contract-v2-pg17'
+    assert manifest['database_contract_profiles'] == contract['database_contract_profiles']
+    assert sha((ROOT / 'scripts/database_contract.sql').read_bytes()) == contract['database_contract_sha256'] == manifest['database_contract_sha256']
     for name, spec in manifest['files'].items():
         path = ROOT / 'site' / name
         assert sha(path.read_bytes()) == spec['new_sha256'], name
     assert sha((ROOT / 'site/config.js').read_bytes()) == manifest['config_sha256']
     migration_bytes = (ROOT / 'supabase/migration-manifest.json').read_bytes()
     assert sha(migration_bytes) == manifest['migration_manifest_sha256']
+    assert sha(migration_bytes) == contract['migration_manifest_sha256']
     migrations = json.loads(migration_bytes)['migrations']
     for migration in migrations:
         assert sha((ROOT / 'supabase/migrations' / migration['file']).read_bytes()) == migration['sha256'], migration['file']
@@ -35,7 +43,7 @@ def verify():
             if not body.strip() or 'application/ld+json' in attrs:
                 continue
             subprocess.run(['node', '--input-type=module', '--check'], input=body.encode(), check=True, capture_output=True)
-    print(f'RECOVERY_BYTES_OK: {len(manifest["files"])} frontend files, {len(migrations)} migrations, release tools and JavaScript/Python syntax.')
+    print(f'RELEASE_BYTES_OK: {len(manifest["files"])} frontend files, {len(migrations)} migrations, PG17 reference and reviewed tools; JavaScript/Python syntax.')
     return manifest
 
 if __name__ == '__main__':
