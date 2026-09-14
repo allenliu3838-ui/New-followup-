@@ -94,8 +94,8 @@ try {
         `${table}: every pre-existing column value remains unchanged`);
     }
   }
-  assert.equal(Number((await row('SELECT count(*) AS n FROM public.registry_schema_versions')).n), 5);
-  pass('incremental 0032–0036 preserves historical clinical, token, receipt and dictionary values');
+  assert.equal(Number((await row('SELECT count(*) AS n FROM public.registry_schema_versions')).n), 6);
+  pass('incremental 0032–0037 preserves historical clinical, token, receipt and dictionary values');
 
   const dictionaryInsertStatements = [
     "INSERT INTO public.abbreviation_dictionary(abbr,full_name_cn,category_cn) VALUES('DENIED','Denied','Denied')",

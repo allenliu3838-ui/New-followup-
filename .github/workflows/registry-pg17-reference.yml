@@ -35,6 +35,8 @@ jobs:
           PY
       - name: Exercise historical data upgrade
         run: node tests/pg17-upgrade.mjs
+      - name: Exercise concept view least privilege
+        run: node tests/pg17-view.mjs
       - name: Exercise fail-closed release gates
         run: python3 -m unittest discover -s tests -p test_pg17_release_contract.py
       # Generation is for review only. It neither blesses a production report

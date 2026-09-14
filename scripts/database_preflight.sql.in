@@ -9,6 +9,8 @@ WITH checks AS (
   '0034_import_corrections',EXISTS(SELECT 1 FROM public.registry_schema_versions WHERE version='0034_import_corrections'),
   '0035_frozen_exports',EXISTS(SELECT 1 FROM public.registry_schema_versions WHERE version='0035_frozen_exports'),
   '0036_project_members',EXISTS(SELECT 1 FROM public.registry_schema_versions WHERE version='0036_project_members'),
+  '0037_concept_view_security',EXISTS(SELECT 1 FROM public.registry_schema_versions WHERE version='0037_concept_view_security'),
+  'concept_view_invoker',COALESCE((SELECT 'security_invoker=true'=ANY(c.reloptions) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname='v_concept_export_mapping' AND c.relkind='v'),false),
   'frozen_export_signatures',to_regprocedure('public.create_registry_export(uuid,uuid)') IS NOT NULL AND to_regprocedure('public.get_registry_export(uuid)') IS NOT NULL,
   'frozen_export_private',(SELECT relrowsecurity FROM pg_class WHERE oid='registry_private.export_contents'::regclass) AND NOT has_table_privilege('anon','registry_private.export_contents','SELECT,INSERT,UPDATE,DELETE') AND NOT has_table_privilege('authenticated','registry_private.export_contents','SELECT,INSERT,UPDATE,DELETE'),
   'patient_idempotent_signature',to_regprocedure('public.patient_submit_visit_v2(text,date,numeric,numeric,numeric,numeric,numeric,text,uuid)') IS NOT NULL,
@@ -24,8 +26,8 @@ WITH checks AS (
  __DATABASE_CONTRACT_QUERY__
 )
 SELECT jsonb_build_object(
- 'release','registry-20260914-integrated-pg17-v2',
- 'contract_protocol','registry-contract-v2-pg17',
+ 'release','registry-20260914-integrated-pg17-v3',
+ 'contract_protocol','registry-contract-v3-pg17',
  'database_server_major',current_setting('server_version_num')::int/10000,
  'database_contract_sha256','__DATABASE_CONTRACT_SHA256__',
  'transaction_read_only',current_setting('transaction_read_only'),
@@ -48,6 +50,7 @@ SELECT jsonb_build_object(
  'columns',(SELECT jsonb_build_object->'columns' FROM contract),
  'indexes',(SELECT jsonb_build_object->'indexes' FROM contract),
  'schema_privileges',(SELECT jsonb_build_object->'schema_privileges' FROM contract),
+ 'views',(SELECT jsonb_build_object->'views' FROM contract),
  'buckets',(SELECT jsonb_build_object->'buckets' FROM contract)
 );
 ROLLBACK;

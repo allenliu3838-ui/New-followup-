@@ -8,8 +8,9 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "python3 tests/verify_recovered_release.py && python3 -m unittest discover -s tests -p test_pg17_release_contract.py && node tests/recovered-database.mjs && node tests/pg17-upgrade.mjs && node scripts/build_database_contract_pg17.mjs --check && node tests/pg17-preflight.mjs",
+    "test": "python3 tests/verify_recovered_release.py && python3 -m unittest discover -s tests -p test_pg17_release_contract.py && node tests/recovered-database.mjs && node tests/pg17-upgrade.mjs && node scripts/build_database_contract_pg17.mjs --check && node tests/pg17-preflight.mjs && node tests/pg17-view.mjs",
     "test:e2e": "node scripts/refuse_unconfigured_e2e.cjs",
+    "test:restore": "node tests/pg17-restore.mjs",
     "smoke": "bash scripts/smoke-test.sh",
     "lighthouse": "bash scripts/lighthouse-ci.sh",
     "build:release": "python3 scripts/build_registry_integrated.py"

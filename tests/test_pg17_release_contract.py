@@ -27,6 +27,7 @@ def fixture():
         'indexes': [{'schema': 'public', 'table': 'example_records', 'name': 'example_records_pkey', 'valid': True, 'ready': True, 'unique': True, 'nulls_not_distinct': False, 'columns': [{'position': 1, 'column': 'id', 'included': False, 'expression': False}]}],
         'schema_privileges': [{'schema': 'registry_private', 'anon_usage': False, 'anon_create': False, 'auth_usage': False, 'auth_create': False}],
         'buckets': [{'id': 'payment-proofs', 'public': False, 'file_size_limit': 10485760, 'allowed_mime_types': ['application/pdf', 'image/jpeg', 'image/png', 'image/webp']}],
+        'views': [{'schema': 'public', 'name': 'example_view', 'owner': 'postgres', 'definition_md5': '9' * 32, 'options': ['security_invoker=true'], 'anon_select': True, 'auth_select': True, 'anon_insert': False, 'auth_insert': False}],
     }
     historical = copy.deepcopy(canonical)
     historical['functions'][0]['definition_md5'] = 'a' * 32
@@ -65,6 +66,13 @@ def fixture():
 
 
 class Pg17ContractGate(unittest.TestCase):
+    def test_view_privilege_or_definition_changes_are_rejected(self):
+        for field, value in [('options', []), ('owner', 'other_owner'), ('definition_md5', '8' * 32), ('anon_insert', True), ('auth_insert', True)]:
+            with self.subTest(field=field):
+                self.manifest, self.report = fixture()
+                self.report['views'][0][field] = value
+                self.deny()
+
     def setUp(self):
         self.manifest, self.report = fixture()
 

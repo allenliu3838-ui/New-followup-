@@ -1,12 +1,13 @@
 {
   "format": 1,
-  "release": "registry-20260914-integrated-v1",
+  "release": "registry-20260914-integrated-pg17-v3",
   "required_versions": [
     "0032_security_integrity",
     "0033_billing_registration",
     "0034_import_corrections",
     "0035_frozen_exports",
-    "0036_project_members"
+    "0036_project_members",
+    "0037_concept_view_security"
   ],
   "order": "lexicographic filenames; historical duplicate prefixes retained, unique full filenames",
   "migrations": [
@@ -199,7 +200,12 @@
       "ordinal": 38,
       "file": "0036_project_members.sql",
       "sha256": "bcf28cb84a52faf782be5aef3794ac928a3dc3771a176d186505c8fa333cd4a8"
+    },
+    {
+      "ordinal": 39,
+      "file": "0037_concept_view_security.sql",
+      "sha256": "6ce0782078b55eabdce5905e6d1c98d553724e3832f25d58bce53056e92e46ae"
     }
   ],
-  "bundle_sha256": "2bf2ea68374bea2f03e114afeb7dd72eabf87e7601c2fa1f53b827469a982e33"
+  "bundle_sha256": "6d35f2e0530e2c32294a4fb3c1f3be98d00257b4641500ef20c9274c32ec269c"
 }

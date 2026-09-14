@@ -17,8 +17,8 @@ try{
  // written out as a deployable report or presented as a verified hosted connection.
  report.project_ref='etsyglgpiutflethgirs';
  report.identity_source='verified_connection_host';
- const manifest=JSON.parse(fs.readFileSync(path.join(root,'releases/registry-integrated-pg17-20260914/registry-integrated-pg17-20260914.manifest.json')));
+ const manifest=JSON.parse(fs.readFileSync(path.join(root,'releases/registry-integrated-pg17-v3-20260914/registry-integrated-pg17-v3-20260914.manifest.json')));
  const checked=execFileSync('python3',['-c',"import sys,json;sys.path.insert(0,'scripts');from registry_integrated_release import verify_db;x=json.load(sys.stdin);print(verify_db(x['report'],x['manifest']))"],{cwd:root,input:JSON.stringify({report,manifest}),encoding:'utf8',maxBuffer:4*1024*1024});
  assert.equal(checked.trim(),'canonical');
- console.log('PG17_PREFLIGHT_OK: exact read-only query and v2 verifier agree on native PostgreSQL 17.6; synthetic database only');
+ console.log('PG17_PREFLIGHT_OK: exact read-only query and v3 verifier agree on native PostgreSQL 17.6; synthetic database only');
 }finally{await db.close();}

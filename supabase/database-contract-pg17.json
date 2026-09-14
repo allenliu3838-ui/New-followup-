@@ -1,13 +1,89 @@
 {
-  "contract_protocol": "registry-contract-v2-pg17",
+  "contract_protocol": "registry-contract-v3-pg17",
   "database_server_major": 17,
   "reference_server_version": "17.6",
   "runtime": "@embedded-postgres/linux-x64@17.6.0-beta.15",
-  "migration_manifest_sha256": "05ab0f1113759d6f21aa67201adb5535a67cba0e270da54cd2c7d5f8f308333e",
-  "database_contract_sha256": "84774c92c1fa6cbd4c164c5bc7c6ccb62991076c178f586c82caf6d229de585d",
-  "profile_definition": "canonical: all reviewed LF SQL; historical_crlf: first 33 reviewed SQL files encoded CRLF, then five new LF migrations. UTC and fixed search_path. Synthetic Auth/Storage only.",
+  "migration_manifest_sha256": "60be511c5f5cdc5eaeb347149cb81f2878bc2ad7b72a93a1fed1e56698a824a1",
+  "database_contract_sha256": "aca7000205680905a853fc72280ff60a2f99af32d8b2807bb761de7769ed6b29",
+  "profile_definition": "canonical: all reviewed LF SQL; historical_crlf: first 33 reviewed SQL files encoded CRLF, then six new LF migrations. UTC and fixed search_path. Synthetic Auth/Storage only.",
   "database_contract_profiles": {
     "canonical": {
+      "views": [
+        {
+          "name": "v_concept_export_mapping",
+          "owner": "postgres",
+          "schema": "public",
+          "columns": [
+            {
+              "name": "english_code",
+              "type": "text",
+              "position": 1,
+              "anon_insert": false,
+              "anon_select": true,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "chinese_column_name",
+              "type": "text",
+              "position": 2,
+              "anon_insert": false,
+              "anon_select": true,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "chinese_short_name",
+              "type": "text",
+              "position": 3,
+              "anon_insert": false,
+              "anon_select": true,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "domain",
+              "type": "text",
+              "position": 4,
+              "anon_insert": false,
+              "anon_select": true,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "affects_export",
+              "type": "boolean",
+              "position": 5,
+              "anon_insert": false,
+              "anon_select": true,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            }
+          ],
+          "options": [
+            "security_invoker=true"
+          ],
+          "anon_delete": false,
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_delete": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "definition_md5": "c35b40b658453ba18418d6955694782b"
+        }
+      ],
       "tables": [
         {
           "rls": true,
@@ -15170,6 +15246,82 @@
       ]
     },
     "historical_crlf": {
+      "views": [
+        {
+          "name": "v_concept_export_mapping",
+          "owner": "postgres",
+          "schema": "public",
+          "columns": [
+            {
+              "name": "english_code",
+              "type": "text",
+              "position": 1,
+              "anon_insert": false,
+              "anon_select": true,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "chinese_column_name",
+              "type": "text",
+              "position": 2,
+              "anon_insert": false,
+              "anon_select": true,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "chinese_short_name",
+              "type": "text",
+              "position": 3,
+              "anon_insert": false,
+              "anon_select": true,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "domain",
+              "type": "text",
+              "position": 4,
+              "anon_insert": false,
+              "anon_select": true,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "affects_export",
+              "type": "boolean",
+              "position": 5,
+              "anon_insert": false,
+              "anon_select": true,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            }
+          ],
+          "options": [
+            "security_invoker=true"
+          ],
+          "anon_delete": false,
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_delete": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "definition_md5": "c35b40b658453ba18418d6955694782b"
+        }
+      ],
       "tables": [
         {
           "rls": true,

@@ -7,18 +7,18 @@ import re
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-EVIDENCE = ROOT / 'releases/registry-integrated-pg17-20260914'
+EVIDENCE = ROOT / 'releases/registry-integrated-pg17-v3-20260914'
 
 def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 def verify():
-    manifest = json.loads((EVIDENCE / 'registry-integrated-pg17-20260914.manifest.json').read_text())
+    manifest = json.loads((EVIDENCE / 'registry-integrated-pg17-v3-20260914.manifest.json').read_text())
     contract_bytes = (ROOT / 'supabase/database-contract-pg17.json').read_bytes()
     contract = json.loads(contract_bytes)
     assert manifest['database_contract_reference_sha256'] == sha(contract_bytes)
     assert contract['database_server_major'] == manifest['database_server_major'] == 17
-    assert contract['contract_protocol'] == manifest['database_contract_protocol'] == 'registry-contract-v2-pg17'
+    assert contract['contract_protocol'] == manifest['database_contract_protocol'] == 'registry-contract-v3-pg17'
     assert manifest['database_contract_profiles'] == contract['database_contract_profiles']
     assert sha((ROOT / 'scripts/database_contract.sql').read_bytes()) == contract['database_contract_sha256'] == manifest['database_contract_sha256']
     for name, spec in manifest['files'].items():
@@ -28,7 +28,12 @@ def verify():
     migration_bytes = (ROOT / 'supabase/migration-manifest.json').read_bytes()
     assert sha(migration_bytes) == manifest['migration_manifest_sha256']
     assert sha(migration_bytes) == contract['migration_manifest_sha256']
-    migrations = json.loads(migration_bytes)['migrations']
+    migration_manifest = json.loads(migration_bytes)
+    migrations = migration_manifest['migrations']
+    assert sha((ROOT / 'all_migrations_combined.sql').read_bytes()) == migration_manifest['bundle_sha256']
+    expected_bundle = '-- GENERATED from supabase/migrations in canonical filename order.\n-- Fresh/isolated databases only; use reviewed increments for production.\n\n'
+    expected_bundle += ''.join(f'-- MIGRATION {m["ordinal"]:03d}: {m["file"]}\n' + (ROOT / 'supabase/migrations' / m['file']).read_text() + '\n' for m in migrations)
+    assert (ROOT / 'all_migrations_combined.sql').read_text() == expected_bundle.rstrip() + '\n'
     for migration in migrations:
         assert sha((ROOT / 'supabase/migrations' / migration['file']).read_bytes()) == migration['sha256'], migration['file']
     for name, digest in json.loads((EVIDENCE / 'recovered-tools-sha256.json').read_text()).items():
