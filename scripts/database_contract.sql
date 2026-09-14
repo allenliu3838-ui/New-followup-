@@ -1,9 +1,29 @@
--- registry-contract-v2-pg17: catalog-only, shared by isolated build and live preflight.
+-- registry-contract-v3-pg17: catalog-only, shared by isolated build and live preflight.
 -- Caller MUST set LOCAL TimeZone=UTC and search_path=pg_catalog,public.
 -- Function/source text is compared exactly; no whitespace or newline normalization.
 -- Extension-owned routines are excluded: Supabase may install pgcrypto in a
 -- different schema. Every application routine in public/registry_private counts.
 SELECT jsonb_build_object(
+ 'views',COALESCE((SELECT jsonb_agg(jsonb_build_object(
+   'schema',n.nspname,'name',c.relname,'owner',pg_get_userbyid(c.relowner),
+   'definition_md5',md5(pg_get_viewdef(c.oid)),
+   'options',COALESCE((SELECT jsonb_agg(opt ORDER BY opt) FROM unnest(c.reloptions) opt),'[]'::jsonb),
+   'anon_select',has_table_privilege('anon',c.oid,'SELECT'),'anon_insert',has_table_privilege('anon',c.oid,'INSERT'),
+   'anon_update',has_table_privilege('anon',c.oid,'UPDATE'),'anon_delete',has_table_privilege('anon',c.oid,'DELETE'),
+   'auth_select',has_table_privilege('authenticated',c.oid,'SELECT'),'auth_insert',has_table_privilege('authenticated',c.oid,'INSERT'),
+   'auth_update',has_table_privilege('authenticated',c.oid,'UPDATE'),'auth_delete',has_table_privilege('authenticated',c.oid,'DELETE'),
+   'columns',(SELECT jsonb_agg(jsonb_build_object('position',a.attnum,'name',a.attname,'type',format_type(a.atttypid,a.atttypmod),
+     'anon_select',has_column_privilege('anon',c.oid,a.attnum,'SELECT'),
+     'anon_insert',has_column_privilege('anon',c.oid,a.attnum,'INSERT'),
+     'anon_update',has_column_privilege('anon',c.oid,a.attnum,'UPDATE'),
+     'auth_select',has_column_privilege('authenticated',c.oid,a.attnum,'SELECT'),
+     'auth_insert',has_column_privilege('authenticated',c.oid,a.attnum,'INSERT'),
+     'auth_update',has_column_privilege('authenticated',c.oid,a.attnum,'UPDATE')) ORDER BY a.attnum)
+     FROM pg_attribute a WHERE a.attrelid=c.oid AND a.attnum>0 AND NOT a.attisdropped))
+   ORDER BY n.nspname,c.relname)
+  FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+  WHERE c.relkind='v' AND n.nspname IN ('public','registry_private')
+   AND NOT EXISTS(SELECT 1 FROM pg_depend d WHERE d.classid='pg_class'::regclass AND d.objid=c.oid AND d.deptype='e')),'[]'::jsonb),
  'functions',COALESCE((SELECT jsonb_agg(jsonb_build_object(
    'signature',p.oid::regprocedure::text,'definition_md5',md5(pg_get_functiondef(p.oid)),
    'owner',pg_get_userbyid(p.proowner),'security_definer',p.prosecdef,
