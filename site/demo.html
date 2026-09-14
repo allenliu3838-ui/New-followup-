@@ -12,9 +12,9 @@
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
   <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
-  <link rel="stylesheet" href="/app.css"/>
+  <link rel="stylesheet" href="/app.css?v=registry-20260914-integrated-v1"/>
   <link rel="icon" href="/assets/kidneysphere-ai.png"/>
-  <script src="/config.js"></script>
+  <script src="/config.js?v=registry-20260914-integrated-v1"></script>
   <style>
     .demo-success{display:none;text-align:center;padding:32px 20px;}
     .demo-success .icon{font-size:48px;margin-bottom:12px;}
@@ -138,7 +138,7 @@
         </div>
 
         <label style="margin-top:14px;display:block;font-size:12px;color:#64748b">补充说明 / 您最想了解的功能</label>
-        <textarea id="f_message" placeholder="例如：我们是 3 个中心的 IgAN 队列，约 200 例，想了解多中心合并与论文包功能..." rows="4"></textarea>
+        <textarea id="f_message" placeholder="例如：我们是 3 个中心的 IgAN 队列，约 200 例，想了解多中心合并与分析包功能..." rows="4"></textarea>
 
         <div id="formErr" class="warnbox" data-testid="demo-error" style="display:none;margin-top:10px"></div>
 
@@ -173,7 +173,7 @@
       <div class="kv" style="margin-top:8px">
         <div>演示时长</div><div>约 30 分钟（含 Q&amp;A）</div>
         <div>演示形式</div><div>腾讯会议 / 飞书 / Zoom（按您偏好）</div>
-        <div>演示内容</div><div>后台录入演示 + 一键生成论文包 + 多中心合并 + 定价方案</div>
+        <div>演示内容</div><div>后台录入演示 + 数据与分析脚本包导出 + 多中心合并与 QC 复核 + 定价方案</div>
         <div>适合人群</div><div>PI / 研究生 / 数据管理员 / 医院科研管理人员</div>
       </div>
 
@@ -184,7 +184,7 @@
   </div>
 
   <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+    import { createClient } from "/lib/vendor/supabase.js?v=registry-20260914-integrated-v1";
 
     // Auto-select inquiry type from URL param (e.g. ?type=预约演示)
     const _urlType = new URLSearchParams(location.search).get('type');
@@ -285,6 +285,6 @@
     <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
     <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener">鲁公网安备37091102000922号</a></div>
   </footer>
-  <script src="/analytics.js"></script>
+  <script src="/analytics.js?v=registry-20260914-integrated-v1"></script>
 </body>
 </html>

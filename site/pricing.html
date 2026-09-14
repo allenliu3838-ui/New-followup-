@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
   <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
-  <link rel="stylesheet" href="/app.css"/>
+  <link rel="stylesheet" href="/app.css?v=registry-20260914-integrated-v1"/>
   <link rel="icon" href="/assets/kidneysphere-ai.png"/>
   <style>
     /* ── 年付/月付切换 ── */
@@ -93,15 +93,15 @@
       <div class="cap-item">
         <div class="cap-icon">🔗</div>
         <div class="cap-title">多中心合并与统一编码</div>
-        <div class="small muted">center_code + patient_code 全局不冲突，跨中心稳定合并与追溯。</div>
+        <div class="small muted">保留项目、中心与研究编号，按 project_id + center_code + patient_code 核对合并与追溯。</div>
       </div>
       <div class="cap-item">
         <div class="cap-icon">✅</div>
         <div class="cap-title">质控闭环（核查 → 补录 → 复跑）</div>
-        <div class="small muted">先过核心字段完整率，再复跑导出包，确保可复现与可审计。</div>
+        <div class="small muted">核对字段完整性、单位与质控问题，保留更正原因和冻结导出版本。</div>
       </div>
     </div>
-    <div class="muted small" style="margin-top:10px">不提供诊断 / 处方建议；请勿录入姓名 / 电话 / 病案号 / 身份证等可识别个人信息（PII）。</div>
+    <div class="muted small" style="margin-top:10px">不提供诊断 / 处方建议；请勿录入姓名、电话、病案号、身份证号或身份映射表。编码研究数据仍需按敏感个人信息要求管理。</div>
   </div>
 
   <!-- ── Step 1: 定价主体 ── -->
@@ -133,7 +133,7 @@
           <li>最多 1 个项目</li>
         </ul>
         <div class="small muted" style="margin-top:8px">
-          到期后 7 天只读宽限（支持导出），不允许新增 / 修改，保证可复现。
+          到期后进入只读状态，停止新增 / 修改；授权用户仍可查看和导出自有项目数据。
         </div>
         <div style="margin-top:14px">
           <a class="btn primary small" href="/signup?trial=1" style="width:100%;justify-content:center">申请免费试用</a>
@@ -226,31 +226,31 @@
               <td>项目数量</td>
               <td class="small muted">1 个</td>
               <td class="col-pro"><span data-pricing="proBaseProjects">3</span> 个起</td>
-              <td class="small muted">不限</td>
+              <td class="small muted">按合同配置</td>
             </tr>
             <tr>
-              <td>数据快照（可复现引用）</td>
-              <td><span class="cross">—</span></td>
+              <td>冻结数据版本与导出</td>
+              <td><span class="check">✓</span></td>
               <td class="col-pro"><span class="check">✓</span></td>
               <td><span class="check">✓</span></td>
             </tr>
             <tr>
-              <td>统计分析代码模板</td>
-              <td><span class="cross">—</span></td>
+              <td>随导出包提供的分析代码模板</td>
+              <td><span class="check">✓</span></td>
               <td class="col-pro"><span class="check">✓</span></td>
               <td><span class="check">✓</span></td>
             </tr>
             <tr>
-              <td>多中心合并（center_code）</td>
-              <td><span class="cross">—</span></td>
-              <td class="col-pro"><span class="partial">有限</span></td>
+              <td>已授权数据的合并脚本</td>
+              <td><span class="check">✓</span></td>
+              <td class="col-pro"><span class="check">✓</span></td>
               <td><span class="check">✓</span></td>
             </tr>
             <tr>
-              <td>质控闭环 + 审计记录</td>
-              <td><span class="cross">—</span></td>
-              <td class="col-pro"><span class="partial">基础</span></td>
-              <td><span class="check">✓ 完整</span></td>
+              <td>质控问题、更正记录与导出审计</td>
+              <td><span class="check">✓</span></td>
+              <td class="col-pro"><span class="check">✓</span></td>
+              <td><span class="check">✓</span></td>
             </tr>
             <tr>
               <td>方法学 / 统计分析支持</td>
@@ -265,7 +265,7 @@
               <td><span class="check">✓</span></td>
             </tr>
             <tr>
-              <td>到期只读宽限（7 天导出）</td>
+              <td>到期后查看与导出自有数据</td>
               <td><span class="check">✓</span></td>
               <td class="col-pro"><span class="check">✓</span></td>
               <td><span class="check">✓</span></td>
@@ -341,7 +341,7 @@
 
     <details class="faq">
       <summary>试用到期后会怎样？</summary>
-      <div class="small">试用到期后进入 7 天只读宽限：可导出与复核，不允许新增 / 修改，避免"边分析边改数据"，保证可复现。宽限期结束后数据保留，升级 Pro 即可继续使用。</div>
+      <div class="small">试用到期后进入只读状态，不能新增或修改。获授权用户查看项目数据、负责人及分析员生成冻结导出和下载已提供的分析脚本，不会因 7 天宽限期结束而被阻断。开通有效付费订阅后，可按套餐配额继续录入。</div>
     </details>
 
     <details class="faq">
@@ -350,7 +350,7 @@
         支持按剩余未使用天数比例退款（prorated）。<br>
         · 月付：随时取消，按剩余天数退款，3-7 个工作日原路退回。<br>
         · 年付：随时取消，按剩余天数退款；已使用期间按月价折算。<br>
-        首次大额年付支持 7 天无理由全额退款（可选）。具体以购买页与合同条款为准。
+        首次年付支持 7 天无理由全额退款。退款申请由平台人工核验处理，具体以购买页与合同条款为准。
       </div>
     </details>
 
@@ -367,7 +367,7 @@
     <!-- CTA -->
     <div style="background:rgba(37,99,235,.05);border:1.5px solid rgba(37,99,235,.15);border-radius:14px;padding:16px;margin-top:16px;text-align:center;">
       <div style="font-weight:800;font-size:16px;margin-bottom:6px">准备好了？选择最适合你的方案</div>
-      <div class="small muted" style="margin-bottom:14px">30 天免费试用，无需信用卡；随时可退款</div>
+      <div class="small muted" style="margin-bottom:14px">30 天免费试用，无需信用卡；付费退款规则见上方说明</div>
       <div class="btnbar" style="justify-content:center">
         <a class="btn primary" href="/signup?trial=1" data-track="click_trial" data-track-source="pricing_cta">免费试用 30 天</a>
         <a class="btn primary" href="/checkout" data-track="click_upgrade" data-track-source="pricing_cta">立即升级 Pro</a>
@@ -376,7 +376,7 @@
     </div>
 
     <div class="hr"></div>
-    <div class="muted small">本系统用于科研随访登记与研究汇总，不提供诊断 / 处方建议；请勿录入任何可识别个人信息（PII）。更多：<a href="/security">安全与合规</a> · <a href="/deployment">部署方式</a></div>
+    <div class="muted small">本系统用于科研随访登记与研究汇总，不提供诊断 / 处方建议。请勿录入患者直接身份信息；编码研究数据仍需按批准范围和数据处理约定管理。更多：<a href="/security">安全与合规</a> · <a href="/deployment">部署方式</a></div>
   </div>
 
 </div>
@@ -384,9 +384,9 @@
   <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
   <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener">鲁公网安备37091102000922号</a></div>
 </footer>
-<script src="/config.js"></script>
-<script src="/pricing-config.js"></script>
-<script src="/analytics.js"></script>
+<script src="/config.js?v=registry-20260914-integrated-v1"></script>
+<script src="/pricing-config.js?v=registry-20260914-integrated-v1"></script>
+<script src="/analytics.js?v=registry-20260914-integrated-v1"></script>
 <script>
 (function(){
   var toggle = document.getElementById("billingToggle");

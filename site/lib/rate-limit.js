@@ -7,7 +7,7 @@
  * GoTrue (auth) and RLS (data).
  *
  * Usage:
- *   import { throttle } from "/lib/rate-limit.js";
+ *   import { throttle } from "/lib/rate-limit.js?v=registry-20260914-integrated-v1";
  *   const rl = throttle("login", { maxAttempts: 5, windowMs: 15 * 60_000 });
  *   if (!rl.allow()) { toast(rl.message); return; }
  */

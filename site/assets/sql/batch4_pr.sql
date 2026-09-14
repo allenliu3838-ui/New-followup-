@@ -1,53 +1,227 @@
+-- GENERATED compatibility batch 4/6; execute all six in order, stop on error.
+-- MIGRATION 020: 0019_cn_friendly_layer.sql
 -- =============================================================
--- PR-1 基础列扩展
--- 目的：为后续所有 PR 打好地基，纯加列，不改现有逻辑，零风险
+-- PR-8 中文友好层（面向中国医生）
+-- 目标：保留内部英文编码稳定性，同时提供中文优先展示与搜索能力
 -- =============================================================
 
--- ─── 1. visits_long：补 eGFR 公式版本列 ─────────────────────────────────────
--- 记录这条 eGFR 是用哪个公式算出来的，让别人拿到数据也能复现
--- 取值说明：
---   'CKD-EPI-2021-Cr'  正式公式（无种族项，国际主流）
---   'manual'           研究者手动填写（不走公式）
---   'missing_inputs'   缺性别或出生年，无法计算
-ALTER TABLE visits_long
-  ADD COLUMN IF NOT EXISTS egfr_formula_version text;
+-- 1) 通用概念字典（内部 code + 中文展示元数据）
+CREATE TABLE IF NOT EXISTS concept_dictionary (
+  code                  text PRIMARY KEY,
+  domain                text NOT NULL DEFAULT 'GENERAL',
+  display_name_cn       text NOT NULL,
+  short_name_cn         text NOT NULL,
+  help_text_cn          text,
+  when_to_fill_cn       text,
+  example_value_cn      text,
+  unit_cn               text,
+  common_mistakes_cn    text,
+  patient_friendly_cn   text,
+  doctor_note_cn        text,
+  is_required           boolean NOT NULL DEFAULT false,
+  affects_export        boolean NOT NULL DEFAULT true,
+  affects_qc            boolean NOT NULL DEFAULT false,
+  created_at            timestamptz NOT NULL DEFAULT now(),
+  updated_at            timestamptz NOT NULL DEFAULT now()
+);
 
-COMMENT ON COLUMN visits_long.egfr_formula_version IS
-  'eGFR计算公式版本：CKD-EPI-2021-Cr | manual | missing_inputs';
+COMMENT ON TABLE concept_dictionary IS '中文展示层概念字典：前台默认读中文名，内部仍可用英文 code。';
+COMMENT ON COLUMN concept_dictionary.code IS '内部稳定英文编码，例如 dd_cfdna_fraction_pct。';
+COMMENT ON COLUMN concept_dictionary.display_name_cn IS '面向临床一线的完整中文显示名（可含缩写）。';
+COMMENT ON COLUMN concept_dictionary.short_name_cn IS '适合列表/表头的中文短名。';
 
--- ─── 2. patient_tokens：token v2 扩展列 ─────────────────────────────────────
--- 原有 token 只有 active/expires_at，新增单次使用与撤销追踪
+CREATE INDEX IF NOT EXISTS idx_concept_dictionary_domain ON concept_dictionary(domain);
+CREATE INDEX IF NOT EXISTS idx_concept_dictionary_display_name_cn ON concept_dictionary USING gin (to_tsvector('simple', coalesce(display_name_cn, '')));
 
--- single_use：是否设置为"只能用一次"
---   true  → 患者提交随访后自动失效，下次需重新生成
---   false → 可多次提交（适合长期随访追踪）
-ALTER TABLE patient_tokens
-  ADD COLUMN IF NOT EXISTS single_use boolean NOT NULL DEFAULT false;
+CREATE OR REPLACE FUNCTION set_concept_dictionary_updated_at()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.updated_at := now();
+  RETURN NEW;
+END;
+$$;
 
--- used_at：首次提交随访的时间，NULL 表示还没用过
-ALTER TABLE patient_tokens
-  ADD COLUMN IF NOT EXISTS used_at timestamptz;
+DROP TRIGGER IF EXISTS trg_concept_dictionary_updated_at ON concept_dictionary;
+CREATE TRIGGER trg_concept_dictionary_updated_at
+BEFORE UPDATE ON concept_dictionary
+FOR EACH ROW EXECUTE FUNCTION set_concept_dictionary_updated_at();
 
--- revoked_at：管理员手动撤销的时间，NULL 表示未撤销
-ALTER TABLE patient_tokens
-  ADD COLUMN IF NOT EXISTS revoked_at timestamptz;
+-- 2) 核心缩写词典（首次出现需中文解释）
+CREATE TABLE IF NOT EXISTS abbreviation_dictionary (
+  abbr               text PRIMARY KEY,
+  full_name_cn       text NOT NULL,
+  category_cn        text NOT NULL,
+  first_use_note_cn  text,
+  created_at         timestamptz NOT NULL DEFAULT now()
+);
 
--- revoke_reason：撤销原因（例："患者填错项目，重新生成"）
-ALTER TABLE patient_tokens
-  ADD COLUMN IF NOT EXISTS revoke_reason text;
+COMMENT ON TABLE abbreviation_dictionary IS '肾内科研究常见缩写词典，用于首次出现自动解释。';
 
-COMMENT ON COLUMN patient_tokens.single_use IS
-  '是否单次使用：true=提交一次后自动失效；false=可反复提交';
-COMMENT ON COLUMN patient_tokens.used_at IS
-  '首次提交随访的时间戳，用于单次token失效判断与追溯';
-COMMENT ON COLUMN patient_tokens.revoked_at IS
-  '管理员撤销此token的时间，不为NULL则表示已撤销';
-COMMENT ON COLUMN patient_tokens.revoke_reason IS
-  '撤销原因，例：患者填错信息，重新生成';
+INSERT INTO abbreviation_dictionary (abbr, full_name_cn, category_cn, first_use_note_cn) VALUES
+  ('KDPI', '肾供体概况指数', '移植相关', '首次显示建议：肾供体概况指数（KDPI）'),
+  ('KDRI', '肾供体风险指数', '移植相关', '首次显示建议：肾供体风险指数（KDRI）'),
+  ('DSA', '供者特异性抗体', '移植相关', '首次显示建议：供者特异性抗体（DSA）'),
+  ('dnDSA', '新生供者特异性抗体', '移植相关', '首次显示建议：新生供者特异性抗体（dnDSA）'),
+  ('dd-cfDNA', '供体来源细胞游离 DNA', '移植相关', '首次显示建议：供体来源细胞游离 DNA（dd-cfDNA）'),
+  ('BK', 'BK 病毒', '感染监测', '首次显示建议：BK 病毒（BK）'),
+  ('CMV', '巨细胞病毒', '感染监测', '首次显示建议：巨细胞病毒（CMV）'),
+  ('EBV', 'EB 病毒', '感染监测', '首次显示建议：EB 病毒（EBV）'),
+  ('Banff', '肾移植病理 Banff 分类', '病理相关', '首次显示建议：肾移植病理 Banff 分类（Banff）'),
+  ('CNI', '钙调神经磷酸酶抑制剂', '免疫抑制', '首次显示建议：钙调神经磷酸酶抑制剂（CNI）'),
+  ('mTORi', 'mTOR 抑制剂', '免疫抑制', '首次显示建议：mTOR 抑制剂（mTORi）'),
+  ('UPCR', '尿蛋白/肌酐比', '肾功能与尿检', '首次显示建议：尿蛋白/肌酐比（UPCR）'),
+  ('UACR', '尿白蛋白/肌酐比', '肾功能与尿检', '首次显示建议：尿白蛋白/肌酐比（UACR）'),
+  ('eGFR', '估算肾小球滤过率', '肾功能与尿检', '首次显示建议：估算肾小球滤过率（eGFR）'),
+  ('MCD', '微小病变病', '病种相关', '首次显示建议：微小病变病（MCD）'),
+  ('MN', '膜性肾病', '病种相关', '首次显示建议：膜性肾病（MN）'),
+  ('MGRS', '单克隆免疫球蛋白相关肾损害', '血液学与免疫相关', '首次显示建议：单克隆免疫球蛋白相关肾损害（MGRS）'),
+  ('C3G', 'C3 肾小球病', '病种相关', '首次显示建议：C3 肾小球病（C3G）')
+ON CONFLICT (abbr) DO UPDATE SET
+  full_name_cn = EXCLUDED.full_name_cn,
+  category_cn = EXCLUDED.category_cn,
+  first_use_note_cn = EXCLUDED.first_use_note_cn;
 
--- ─── 3. 更新 patient_submit_visit_v2：支持 single_use 逻辑 ──────────────────
-DROP FUNCTION IF EXISTS patient_submit_visit_v2(text, date, numeric, numeric, numeric, numeric, numeric, text);
-CREATE OR REPLACE FUNCTION patient_submit_visit_v2(
+-- 3) 中文别名检索表（支持“肌酐/尿蛋白/排斥/BK病毒”等中文搜索）
+CREATE TABLE IF NOT EXISTS concept_alias_dictionary (
+  concept_code   text NOT NULL REFERENCES concept_dictionary(code) ON DELETE CASCADE,
+  alias_cn       text NOT NULL,
+  alias_en       text,
+  priority       integer NOT NULL DEFAULT 100,
+  PRIMARY KEY (concept_code, alias_cn)
+);
+
+CREATE INDEX IF NOT EXISTS idx_concept_alias_cn_tsv
+  ON concept_alias_dictionary USING gin (to_tsvector('simple', coalesce(alias_cn,'')));
+
+-- 4) 兼容 lab_test_catalog：补充中文展示字段（如果已存在则跳过）
+ALTER TABLE lab_test_catalog
+  ADD COLUMN IF NOT EXISTS display_name_cn     text,
+  ADD COLUMN IF NOT EXISTS short_name_cn       text,
+  ADD COLUMN IF NOT EXISTS help_text_cn        text,
+  ADD COLUMN IF NOT EXISTS when_to_fill_cn     text,
+  ADD COLUMN IF NOT EXISTS example_value_cn    text,
+  ADD COLUMN IF NOT EXISTS unit_cn             text,
+  ADD COLUMN IF NOT EXISTS common_mistakes_cn  text,
+  ADD COLUMN IF NOT EXISTS patient_friendly_cn text,
+  ADD COLUMN IF NOT EXISTS doctor_note_cn      text;
+
+UPDATE lab_test_catalog
+SET
+  display_name_cn = COALESCE(display_name_cn, name_cn),
+  short_name_cn   = COALESCE(short_name_cn, name_cn),
+  help_text_cn    = COALESCE(help_text_cn, display_note),
+  unit_cn         = COALESCE(unit_cn, standard_unit)
+WHERE display_name_cn IS NULL
+   OR short_name_cn IS NULL
+   OR help_text_cn IS NULL
+   OR unit_cn IS NULL;
+
+-- 5) KTX 常用字段预置（来自中文友好化规范）
+INSERT INTO concept_dictionary(
+  code, domain, display_name_cn, short_name_cn, help_text_cn, when_to_fill_cn, unit_cn,
+  affects_export, affects_qc
+) VALUES
+  ('donor_type', 'KTX', '供体类型', '供体类型', '区分活体供者与尸体供者。', '创建移植基线时填写。', NULL, true, true),
+  ('kdpi', 'KTX', '肾供体概况指数（KDPI）', 'KDPI', '评估尸体供肾质量。', '有尸体供者资料时填写。', NULL, true, false),
+  ('kdri', 'KTX', '肾供体风险指数（KDRI）', 'KDRI', '用于供体风险分层。', '有供体风险评估时填写。', NULL, true, false),
+  ('tacrolimus_c0', 'KTX', '他克莫司谷浓度（C0）', '他克莫司 C0', '下一次服药前测得的最低血药浓度。', '术后随访监测免疫抑制时填写。', 'ng/mL（纳克/毫升）', true, true),
+  ('dd_cfdna_fraction_pct', 'KTX', '供体来源细胞游离 DNA（dd-cfDNA，百分比）', 'dd-cfDNA%', '建议明确是百分比结果。', '移植后生物标志物监测时填写。', '%（百分比）', true, false),
+  ('bk_plasma_pcr', 'KTX', 'BK 病毒血浆核酸定量', 'BK 病毒 PCR', 'BK 病毒监测核心字段。', '术后病毒监测时填写。', 'copies/mL（拷贝/毫升）', true, true),
+  ('cmv_pcr', 'KTX', '巨细胞病毒核酸定量', 'CMV PCR', 'CMV 复制监测字段。', '术后病毒监测时填写。', 'IU/mL（国际单位/毫升）', true, true),
+  ('banff_diagnosis', 'KTX', 'Banff 病理诊断', 'Banff 诊断', '请记录 Banff 版本和分级。', '活检结果回报后填写。', NULL, true, true),
+  ('abmr_event', 'KTX', '抗体介导排斥事件', 'ABMR 事件', '记录是否发生 ABMR 及日期。', '发生排斥事件时填写。', NULL, true, true),
+  ('tcmr_event', 'KTX', 'T 细胞介导排斥事件', 'TCMR 事件', '记录是否发生 TCMR 及日期。', '发生排斥事件时填写。', NULL, true, true)
+ON CONFLICT (code) DO UPDATE SET
+  domain = EXCLUDED.domain,
+  display_name_cn = EXCLUDED.display_name_cn,
+  short_name_cn = EXCLUDED.short_name_cn,
+  help_text_cn = EXCLUDED.help_text_cn,
+  when_to_fill_cn = EXCLUDED.when_to_fill_cn,
+  unit_cn = EXCLUDED.unit_cn,
+  affects_export = EXCLUDED.affects_export,
+  affects_qc = EXCLUDED.affects_qc;
+
+INSERT INTO concept_alias_dictionary(concept_code, alias_cn, alias_en, priority) VALUES
+  ('tacrolimus_c0', '谷浓度', 'tacrolimus_c0', 10),
+  ('dd_cfdna_fraction_pct', 'dd-cfDNA', 'dd-cfDNA', 20),
+  ('bk_plasma_pcr', 'BK 病毒', 'BK', 10),
+  ('banff_diagnosis', '排斥', 'Banff', 30)
+ON CONFLICT (concept_code, alias_cn) DO UPDATE SET
+  alias_en = EXCLUDED.alias_en,
+  priority = EXCLUDED.priority;
+
+-- 6) 中文搜索入口：支持 code / 中文显示名 / 中文别名
+CREATE OR REPLACE FUNCTION search_concepts_cn(
+  p_keyword text,
+  p_domain  text DEFAULT NULL,
+  p_limit   integer DEFAULT 30
+)
+RETURNS TABLE (
+  code             text,
+  domain           text,
+  display_name_cn  text,
+  short_name_cn    text,
+  matched_by       text
+)
+LANGUAGE sql
+STABLE
+AS $$
+  WITH kw AS (
+    SELECT trim(coalesce(p_keyword, '')) AS q
+  )
+  SELECT DISTINCT
+    c.code,
+    c.domain,
+    c.display_name_cn,
+    c.short_name_cn,
+    CASE
+      WHEN c.code ILIKE '%' || kw.q || '%' THEN 'code'
+      WHEN c.display_name_cn ILIKE '%' || kw.q || '%' THEN 'display_name_cn'
+      WHEN a.alias_cn ILIKE '%' || kw.q || '%' THEN 'alias_cn'
+      ELSE 'other'
+    END AS matched_by
+  FROM concept_dictionary c
+  CROSS JOIN kw
+  LEFT JOIN concept_alias_dictionary a ON a.concept_code = c.code
+  WHERE kw.q <> ''
+    AND (p_domain IS NULL OR c.domain = p_domain)
+    AND (
+      c.code ILIKE '%' || kw.q || '%'
+      OR c.display_name_cn ILIKE '%' || kw.q || '%'
+      OR c.short_name_cn ILIKE '%' || kw.q || '%'
+      OR a.alias_cn ILIKE '%' || kw.q || '%'
+      OR coalesce(a.alias_en, '') ILIKE '%' || kw.q || '%'
+    )
+  ORDER BY c.domain, c.code
+  LIMIT GREATEST(1, LEAST(coalesce(p_limit, 30), 200));
+$$;
+
+GRANT EXECUTE ON FUNCTION search_concepts_cn(text, text, integer) TO authenticated;
+
+-- 7) 导出映射：中文版列名 + 英文 code
+CREATE OR REPLACE VIEW v_concept_export_mapping AS
+SELECT
+  code AS english_code,
+  display_name_cn AS chinese_column_name,
+  short_name_cn AS chinese_short_name,
+  domain,
+  affects_export
+FROM concept_dictionary
+WHERE affects_export = true;
+
+COMMENT ON VIEW v_concept_export_mapping IS '导出时使用的中英文字段对照表（中文列名导出默认来源）。';
+
+-- MIGRATION 021: 0019_fix_visit_id_ambiguous.sql
+-- 修复：patient_submit_visit_v2 中 "column reference visit_id is ambiguous"
+-- 原因：RETURNS TABLE(visit_id uuid,...) 将 visit_id 注册为函数输出变量，
+--       导致 ON CONFLICT (visit_id) 里 PostgreSQL 无法区分列名与输出变量。
+-- 修复：改用 ON CONFLICT ON CONSTRAINT visit_receipts_pkey，消除歧义。
+
+DROP FUNCTION IF EXISTS public.patient_submit_visit_v2(text, date, numeric, numeric, numeric, numeric, numeric, text);
+
+CREATE OR REPLACE FUNCTION public.patient_submit_visit_v2(
   p_token       text,
   p_visit_date  date,
   p_sbp         numeric DEFAULT NULL,
@@ -58,12 +232,13 @@ CREATE OR REPLACE FUNCTION patient_submit_visit_v2(
   p_notes       text    DEFAULT NULL
 )
 RETURNS TABLE(
-  visit_id          uuid,
-  server_time       timestamptz,
-  receipt_token     text,
+  visit_id           uuid,
+  server_time        timestamptz,
+  receipt_token      text,
   receipt_expires_at timestamptz
 )
 LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
   v_token_row    patient_tokens%ROWTYPE;
@@ -129,9 +304,9 @@ BEGIN
   -- ⑩ 频率限制：每分钟不超过 12 次
   SELECT COUNT(*) INTO v_recent_count
   FROM visits_long
-  WHERE project_id = v_token_row.project_id
+  WHERE project_id  = v_token_row.project_id
     AND patient_code = v_token_row.patient_code
-    AND created_at > now() - interval '1 minute';
+    AND created_at  > now() - interval '1 minute';
 
   IF v_recent_count >= 12 THEN
     UPDATE patient_tokens SET active = false WHERE token = p_token;
@@ -146,9 +321,9 @@ BEGIN
   -- ⑪ 同日重复检测：每日不超过 6 次
   SELECT COUNT(*) INTO v_same_day
   FROM visits_long
-  WHERE project_id = v_token_row.project_id
+  WHERE project_id  = v_token_row.project_id
     AND patient_code = v_token_row.patient_code
-    AND visit_date = p_visit_date;
+    AND visit_date  = p_visit_date;
 
   IF v_same_day >= 6 THEN
     UPDATE patient_tokens SET active = false WHERE token = p_token;
@@ -156,7 +331,7 @@ BEGIN
       USING HINT = '同一日期已提交 ' || v_same_day || ' 条记录，链接已被暂停，请联系管理员';
   END IF;
 
-  -- ⑫ 写入随访记录（事务原子性保证）
+  -- ⑫ 写入随访记录
   INSERT INTO visits_long(
     project_id, patient_code, visit_date,
     sbp, dbp, scr_umol_l, upcr, egfr,
@@ -182,12 +357,15 @@ BEGIN
   END IF;
 
   -- ⑭ 生成回执 token（24 小时有效）
+  -- 使用 ON CONFLICT ON CONSTRAINT 而非 ON CONFLICT (visit_id)
+  -- 避免与 RETURNS TABLE 中同名输出列产生歧义（PostgreSQL ambiguous 错误）
   v_receipt := encode(gen_random_bytes(16), 'hex');
   v_expires  := now() + interval '24 hours';
   INSERT INTO visit_receipts(visit_id, receipt_token, expires_at)
   VALUES (v_visit_id, v_receipt, v_expires)
-  ON CONFLICT (visit_id) DO UPDATE
-    SET receipt_token = v_receipt, expires_at = v_expires;
+  ON CONFLICT ON CONSTRAINT visit_receipts_pkey DO UPDATE
+    SET receipt_token = v_receipt,
+        expires_at    = v_expires;
 
   -- ⑮ 审计日志
   INSERT INTO security_audit_logs(
@@ -197,7 +375,7 @@ BEGIN
     encode(digest(p_token,'sha256'),'hex'),
     'visit_submitted', 'INFO',
     jsonb_build_object(
-      'visit_id', v_visit_id,
+      'visit_id',   v_visit_id,
       'visit_date', p_visit_date,
       'single_use', v_token_row.single_use
     )
@@ -207,973 +385,1006 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION patient_submit_visit_v2(text, date, numeric, numeric, numeric, numeric, numeric, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.patient_submit_visit_v2(text, date, numeric, numeric, numeric, numeric, numeric, text) TO anon, authenticated;
 
--- ─── 4. 更新 revoke_patient_token：支持填写撤销原因 ────────────────────────
--- 先删除旧的单参数版本（0004 中创建），避免重名冲突
-DROP FUNCTION IF EXISTS revoke_patient_token(text);
-
-CREATE OR REPLACE FUNCTION revoke_patient_token(
-  p_token        text,
-  p_revoke_reason text DEFAULT NULL
-)
-RETURNS void
-LANGUAGE plpgsql SECURITY DEFINER
-AS $$
-BEGIN
-  UPDATE patient_tokens
-  SET
-    active        = false,
-    revoked_at    = now(),
-    revoke_reason = p_revoke_reason
-  WHERE token = p_token
-    AND EXISTS (
-      SELECT 1 FROM projects p
-      WHERE p.id = patient_tokens.project_id
-        AND p.created_by = auth.uid()
-    );
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'token_not_found_or_not_owner'
-      USING HINT = 'token不存在，或您不是该项目的所有者';
-  END IF;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION revoke_patient_token(text, text) TO authenticated;
+-- MIGRATION 022: 0020_lab_extend_mn_ktx_dkd.sql
 -- =============================================================
--- PR-2 化验项目字典 + 单位字典 + 自动换算
--- 目的：消灭"自由文本单位"乱象，让多中心数据可以直接合并分析
+-- 0020 化验目录扩展：MN / KTX / DKD 专项化验项
 --
--- 背景举例：
---   A中心填 scr=1.2 mg/dL，B中心填 scr=106 μmol/L
---   过去合并时数据会乱掉；启用本 migration 后
---   两者都会自动换算为标准值，可直接比较
+-- 补充：
+--   MN 模块   → PLA2R（抗PLA2R抗体）、CD19（CD19+ B细胞计数）
+--   KTX 模块  → BKV（BK病毒载量）、CMV（巨细胞病毒载量）
+--   GENERAL   → HBA1C（糖化血红蛋白）、UACR（尿白蛋白/肌酐比）
+--
+-- 依赖：0013_pr2_lab_catalog.sql（表结构已存在）
+-- 所有 INSERT 均使用 ON CONFLICT DO NOTHING，可安全重跑
 -- =============================================================
 
--- ─── 1. 化验项目字典：lab_test_catalog ─────────────────────────────────────
--- 每种化验项目在这里登记一次，防止"血肌酐"/"血清肌酐"/"Scr"各写各的
-CREATE TABLE IF NOT EXISTS lab_test_catalog (
-  code           text PRIMARY KEY,   -- 系统内部编码，例：CREAT
-  name_cn        text NOT NULL,      -- 中文名，例：血肌酐
-  name_en        text,               -- 英文名，例：Serum Creatinine
-  module         text NOT NULL DEFAULT 'GENERAL',
-                                     -- 适用模块：GENERAL/IGAN/LN/MN/KTX
-  is_core        boolean NOT NULL DEFAULT false,
-                                     -- 是否"核心指标"（缺失会触发质控警告）
-  loinc_code     text,               -- LOINC 编码（选填，方便与国际数据库对接）
-  standard_unit  text NOT NULL,      -- 标准单位，所有值都会换算到这个单位
-  display_note   text,               -- 前端提示语，例：正常参考范围 0.6-1.2 mg/dL
-  created_at     timestamptz DEFAULT now()
-);
+-- ─── 1. 单位字典扩展 ───────────────────────────────────────────────────────────
+INSERT INTO unit_catalog(symbol, description) VALUES
+  ('RU/mL',     '反应单位每毫升（PLA2R 抗体常用单位）'),
+  ('cells/μL',  '细胞数每微升（B 细胞绝对计数）'),
+  ('%',         '百分比（CD19% 或 HbA1c NGSP%）'),
+  ('copies/mL', '拷贝数每毫升（病毒载量）'),
+  ('mmol/mol',  '毫摩尔每摩尔（HbA1c IFCC 国际标准单位）')
+ON CONFLICT (symbol) DO NOTHING;
 
-COMMENT ON TABLE lab_test_catalog IS
-  '化验项目字典：统一编码，防止多中心录入时名称不一致导致合并失败';
-COMMENT ON COLUMN lab_test_catalog.code IS
-  '系统内部编码，建议全大写+下划线，例：CREAT、UPCR、HGB';
-COMMENT ON COLUMN lab_test_catalog.standard_unit IS
-  '所有中心的数据都换算到这个单位后存储，保证可直接合并分析';
-COMMENT ON COLUMN lab_test_catalog.is_core IS
-  '核心指标缺失会在质控系统中自动生成警告（Issue）';
-
--- ─── 2. 单位字典：unit_catalog ───────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS unit_catalog (
-  symbol      text PRIMARY KEY,    -- 单位符号，例：mg/dL
-  description text,                -- 说明，例：毫克每分升
-  created_at  timestamptz DEFAULT now()
-);
-
-COMMENT ON TABLE unit_catalog IS
-  '允许使用的单位列表，防止"mg/dl"/"mg/dL"/"MG/DL"写法混用';
-
--- ─── 3. 项目-单位对应表：lab_test_unit_map ──────────────────────────────────
--- 每个化验项目只允许特定几个单位，并记录如何换算到标准单位
--- 换算公式：value_standard = value_raw * multiplier + offset_val
--- 举例：血肌酐 μmol/L → mg/dL：multiplier=1/88.4≈0.01131，offset_val=0
-CREATE TABLE IF NOT EXISTS lab_test_unit_map (
-  lab_test_code  text NOT NULL REFERENCES lab_test_catalog(code),
-  unit_symbol    text NOT NULL REFERENCES unit_catalog(symbol),
-  multiplier     numeric NOT NULL DEFAULT 1,   -- 换算系数
-  offset_val     numeric NOT NULL DEFAULT 0,   -- 换算偏移（温度转换用，肾病一般为0）
-  is_standard    boolean NOT NULL DEFAULT false, -- 是否就是标准单位（换算系数=1）
-  PRIMARY KEY (lab_test_code, unit_symbol)
-);
-
-COMMENT ON TABLE lab_test_unit_map IS
-  '每个化验项目允许哪些单位输入，以及如何换算到标准单位';
-COMMENT ON COLUMN lab_test_unit_map.multiplier IS
-  '换算系数：value_standard = value_raw × multiplier + offset_val。
-  例：μmol/L→mg/dL，multiplier=0.01131（即1/88.4）';
-
--- ─── 4. labs_long 扩展列（向后兼容，原有列保留） ────────────────────────────
--- 原有列：lab_name / lab_value / lab_unit（自由文本，旧数据继续可读）
--- 新增列：结构化层，新录入必填，旧数据可为 NULL
-ALTER TABLE labs_long
-  ADD COLUMN IF NOT EXISTS lab_test_code     text REFERENCES lab_test_catalog(code),
-  ADD COLUMN IF NOT EXISTS value_raw         numeric,
-  ADD COLUMN IF NOT EXISTS unit_symbol       text REFERENCES unit_catalog(symbol),
-  ADD COLUMN IF NOT EXISTS value_standard    numeric,
-  ADD COLUMN IF NOT EXISTS standard_unit     text,
-  ADD COLUMN IF NOT EXISTS measured_at       timestamptz;
-  -- measured_at：精确到分钟的采集时间（比 lab_date 更精准）
-
-COMMENT ON COLUMN labs_long.lab_test_code    IS '化验项目编码，对应 lab_test_catalog.code';
-COMMENT ON COLUMN labs_long.value_raw        IS '原始值（录入时的数字，保持用户输入不变）';
-COMMENT ON COLUMN labs_long.unit_symbol      IS '录入时使用的单位，对应 unit_catalog.symbol';
-COMMENT ON COLUMN labs_long.value_standard   IS '已换算到标准单位的值，可直接用于多中心合并分析';
-COMMENT ON COLUMN labs_long.standard_unit    IS '标准单位符号，来自 lab_test_catalog.standard_unit';
-
--- ─── 5. 化验值标准化函数：normalize_lab_value() ──────────────────────────────
--- 输入：化验编码、原始值、录入单位
--- 输出：标准值（已换算）
--- 举例：normalize_lab_value('CREAT', 88.4, 'μmol/L') → 1.00
---       normalize_lab_value('UPCR', 2000, 'mg/g')    → 2.00
-CREATE OR REPLACE FUNCTION normalize_lab_value(
-  p_code    text,
-  p_value   numeric,
-  p_unit    text
-)
-RETURNS numeric
-LANGUAGE plpgsql STABLE
-AS $$
-DECLARE
-  v_multi numeric;
-  v_off   numeric;
-BEGIN
-  SELECT multiplier, offset_val
-    INTO v_multi, v_off
-  FROM lab_test_unit_map
-  WHERE lab_test_code = p_code
-    AND unit_symbol   = p_unit;
-
-  IF NOT FOUND THEN
-    -- 单位不在允许列表中，返回 NULL，触发质控 Issue
-    RETURN NULL;
-  END IF;
-
-  RETURN ROUND(p_value * v_multi + v_off, 4);
-END;
-$$;
-
-COMMENT ON FUNCTION normalize_lab_value IS
-  '将化验原始值换算到标准单位。例：normalize_lab_value(''CREAT'',88.4,''μmol/L'')=1.00';
-
--- ─── 6. 校验并写入化验记录的 RPC：upsert_lab_record() ────────────────────────
--- 这是前端保存化验记录时调用的函数
--- 步骤：① 校验项目存在 ② 校验单位允许 ③ 自动换算 ④ 写入
-CREATE OR REPLACE FUNCTION upsert_lab_record(
-  p_project_id   uuid,
-  p_patient_code text,
-  p_lab_date     date,
-  p_lab_test_code text,
-  p_value_raw    numeric,
-  p_unit_symbol  text,
-  p_measured_at  timestamptz DEFAULT NULL,
-  p_lab_id       uuid        DEFAULT NULL  -- NULL=新增，有值=更新
-)
-RETURNS uuid
-LANGUAGE plpgsql SECURITY DEFINER
-AS $$
-DECLARE
-  v_standard      numeric;
-  v_std_unit      text;
-  v_result_id     uuid;
-  v_map_exists    boolean;
-BEGIN
-  -- ① 校验项目存在
-  IF NOT EXISTS(SELECT 1 FROM lab_test_catalog WHERE code = p_lab_test_code) THEN
-    RAISE EXCEPTION 'lab_test_code_not_found'
-      USING HINT = '化验项目编码 "' || p_lab_test_code || '" 不在字典中，请从下拉列表选择';
-  END IF;
-
-  -- ② 校验单位被允许
-  SELECT EXISTS(
-    SELECT 1 FROM lab_test_unit_map
-    WHERE lab_test_code = p_lab_test_code AND unit_symbol = p_unit_symbol
-  ) INTO v_map_exists;
-
-  IF NOT v_map_exists THEN
-    RAISE EXCEPTION 'unit_not_allowed'
-      USING HINT = '单位 "' || p_unit_symbol || '" 不是 "' || p_lab_test_code
-                 || '" 的允许单位，请从下拉列表选择';
-  END IF;
-
-  -- ③ 自动换算标准值
-  v_standard := normalize_lab_value(p_lab_test_code, p_value_raw, p_unit_symbol);
-  SELECT standard_unit INTO v_std_unit FROM lab_test_catalog WHERE code = p_lab_test_code;
-
-  -- ④ 检查项目写入权限
-  PERFORM assert_project_write_allowed(p_project_id);
-
-  -- ⑤ 新增或更新
-  IF p_lab_id IS NULL THEN
-    INSERT INTO labs_long(
-      project_id, patient_code, lab_date,
-      lab_name,   lab_value,    lab_unit,        -- 保持向后兼容列
-      lab_test_code, value_raw, unit_symbol,
-      value_standard, standard_unit, measured_at
-    ) VALUES (
-      p_project_id, p_patient_code, p_lab_date,
-      p_lab_test_code, p_value_raw, p_unit_symbol,
-      p_lab_test_code, p_value_raw, p_unit_symbol,
-      v_standard, v_std_unit, p_measured_at
-    )
-    RETURNING id INTO v_result_id;
-  ELSE
-    UPDATE labs_long SET
-      lab_date       = p_lab_date,
-      lab_name       = p_lab_test_code,
-      lab_value      = p_value_raw,
-      lab_unit       = p_unit_symbol,
-      lab_test_code  = p_lab_test_code,
-      value_raw      = p_value_raw,
-      unit_symbol    = p_unit_symbol,
-      value_standard = v_standard,
-      standard_unit  = v_std_unit,
-      measured_at    = p_measured_at,
-      updated_at     = now(),
-      updated_by     = auth.uid()
-    WHERE id = p_lab_id
-      AND project_id = p_project_id
-    RETURNING id INTO v_result_id;
-
-    IF NOT FOUND THEN
-      RAISE EXCEPTION 'lab_not_found' USING HINT = '化验记录不存在或无权修改';
-    END IF;
-  END IF;
-
-  RETURN v_result_id;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION upsert_lab_record TO authenticated;
-
--- ─── 7. Seed 数据：常用肾病科化验项目 ─────────────────────────────────────
--- 项目字典
+-- ─── 2. 化验项目字典扩展 ───────────────────────────────────────────────────────
 INSERT INTO lab_test_catalog(code, name_cn, name_en, module, is_core, loinc_code, standard_unit, display_note)
 VALUES
-  -- 核心肾功能
-  ('CREAT',  '血肌酐',             'Serum Creatinine',      'GENERAL', true,  '2160-0', 'mg/dL',
-   '正常参考范围（成人）：男 0.7-1.2 mg/dL，女 0.5-1.0 mg/dL'),
-  ('UPCR',   '尿蛋白/肌酐比',      'Urine PCR',             'GENERAL', true,  '13705-9','g/g',
-   '正常 <0.15 g/g；IgAN缓解目标 <0.3 g/g；大量蛋白尿 >3.5 g/g'),
-  ('EGFR',   'eGFR（实验室报告）', 'eGFR (lab report)',     'GENERAL', false, '62238-1','mL/min/1.73m²',
-   '若有实验室报告的eGFR可录入；系统也会自动用CKD-EPI公式计算'),
+  -- MN 专项：靶抗原抗体 + B 细胞监测
+  ('PLA2R',  '抗PLA2R抗体',
+             'Anti-PLA2R Antibody',
+             'MN',      false, '56741-0', 'RU/mL',
+             '<14 RU/mL 为阴性；≥14 RU/mL 阳性。滴度与疾病活动度相关，可预测缓解与复发。RTX/OBI 治疗后监测滴度下降。'),
 
-  -- 血常规
-  ('HGB',    '血红蛋白',           'Hemoglobin',            'GENERAL', false, '718-7',  'g/dL',
-   '正常参考范围：男 13.5-17.5 g/dL，女 12-16 g/dL'),
-  ('WBC',    '白细胞计数',         'WBC',                   'GENERAL', false, '6690-2', '10^9/L',
-   '正常 4-10×10⁹/L'),
-  ('PLT',    '血小板',             'Platelet',              'GENERAL', false, '777-3',  '10^9/L',
-   '正常 100-300×10⁹/L'),
+  ('CD19',   'CD19+ B细胞计数',
+             'CD19+ B-cell Count',
+             'MN',      false, '8122-7',  'cells/μL',
+             '正常成人约 100–500 cells/μL。RTX/OBI 治疗后 B 细胞耗竭监测，清除标准通常 <5 cells/μL，可用百分比（%）替代。'),
 
-  -- 肝功能
-  ('ALT',    '谷丙转氨酶',         'ALT',                   'GENERAL', false, '1742-6', 'U/L',
-   '正常 <40 U/L'),
-  ('AST',    '谷草转氨酶',         'AST',                   'GENERAL', false, '1920-8', 'U/L',
-   '正常 <40 U/L'),
-  ('ALB',    '血清白蛋白',         'Albumin',               'GENERAL', false, '1751-7', 'g/dL',
-   '正常 3.5-5.0 g/dL；低于3.5提示低蛋白血症'),
+  -- KTX 专项：BK 病毒 + CMV 病毒载量
+  ('BKV',    'BK病毒载量',
+             'BK Virus DNA',
+             'KTX',     false, '72495-5', 'copies/mL',
+             '移植后常规筛查（术后 3 个月内每月 1 次，之后每 3 个月 1 次）。'
+             '≥10,000 copies/mL 考虑减少免疫抑制剂；≥100,000 copies/mL 为高载量，需积极处理。'),
 
-  -- 电解质与代谢
-  ('K',      '血钾',               'Potassium',             'GENERAL', false, '2823-3', 'mmol/L',
-   '正常 3.5-5.0 mmol/L；>5.5为高钾，<3.5为低钾'),
-  ('NA',     '血钠',               'Sodium',                'GENERAL', false, '2951-2', 'mmol/L',
-   '正常 135-145 mmol/L'),
-  ('CA',     '血钙',               'Calcium',               'GENERAL', false, '17861-6','mmol/L',
-   '正常 2.1-2.6 mmol/L'),
-  ('PHOS',   '血磷',               'Phosphorus',            'GENERAL', false, '2777-1', 'mmol/L',
-   '正常 0.8-1.5 mmol/L'),
-  ('UA',     '血尿酸',             'Uric Acid',             'GENERAL', false, '3084-1', 'μmol/L',
-   '正常：男 <420 μmol/L，女 <360 μmol/L'),
-  ('CO2',    '碳酸氢根（HCO3）',   'Bicarbonate',           'GENERAL', false, '1963-8', 'mmol/L',
-   '正常 22-29 mmol/L；低于22提示代谢性酸中毒'),
+  ('CMV',    '巨细胞病毒载量',
+             'CMV DNA',
+             'KTX',     false, '72493-0', 'IU/mL',
+             'WHO 国际标准单位 IU/mL。各中心治疗阈值不同，通常 >1000 IU/mL 考虑抗病毒治疗。'
+             '高危受者（D+/R-）建议前 3–6 个月预防或监测。'),
 
-  -- 血脂
-  ('TCHOL',  '总胆固醇',           'Total Cholesterol',     'GENERAL', false, '2093-3', 'mmol/L',
-   '正常 <5.2 mmol/L'),
-  ('TG',     '甘油三酯',           'Triglycerides',         'GENERAL', false, '2571-8', 'mmol/L',
-   '正常 <1.7 mmol/L'),
-  ('LDL',    '低密度脂蛋白',       'LDL-C',                 'GENERAL', false, '13457-7','mmol/L',
-   '心肾保护目标 <1.8 mmol/L（高危患者）'),
-  ('HDL',    '高密度脂蛋白',       'HDL-C',                 'GENERAL', false, '2085-9', 'mmol/L',
-   '越高越好，男>1.0，女>1.3 mmol/L'),
+  -- DKD / GENERAL 专项：血糖控制 + 尿白蛋白
+  ('HBA1C',  '糖化血红蛋白',
+             'Hemoglobin A1c',
+             'GENERAL', false, '4548-4',  '%',
+             'DKD 血糖控制目标：一般 <7.0%（<53 mmol/mol）；高龄/低血糖风险者可放宽至 <8.0%。'
+             '反映过去 2–3 个月平均血糖水平。'),
 
-  -- 炎症指标
-  ('CRP',    'C反应蛋白',          'CRP',                   'GENERAL', false, '1988-5', 'mg/L',
-   '正常 <5 mg/L'),
-
-  -- IgA 肾病专项
-  ('IGA',    '血清IgA',            'Serum IgA',             'IGAN',    false, '1746-7', 'g/L',
-   '正常成人 0.7-4.0 g/L；IgAN患者常偏高'),
-  ('IGAG',   'IgA/IgG比值',        'IgA/IgG Ratio',         'IGAN',    false, NULL,     'ratio',
-   'IgAN辅助诊断指标'),
-
-  -- 狼疮性肾炎专项
-  ('C3',     '补体C3',             'Complement C3',         'LN',      false, '4532-9', 'g/L',
-   '正常 0.9-1.8 g/L；LN活动期常降低'),
-  ('C4',     '补体C4',             'Complement C4',         'LN',      false, '4533-7', 'g/L',
-   '正常 0.1-0.4 g/L'),
-  ('DSDNA',  '抗dsDNA抗体',        'Anti-dsDNA',            'LN',      false, '11065-0','IU/mL',
-   '<10 IU/mL为阴性；升高提示LN活动'),
-
-  -- 移植专项
-  ('TACRO',  '他克莫司血药浓度',   'Tacrolimus Trough',     'KTX',     false, '35151-0','ng/mL',
-   '目标谷浓度因时期而异，通常术后1-3月：8-12 ng/mL，稳定期：5-8 ng/mL'),
-  ('CSA',    '环孢素血药浓度',      'Cyclosporine Trough',   'KTX',     false, '34533-0','ng/mL',
-   '目标因中心和时期不同，参考各中心方案')
+  ('UACR',   '尿白蛋白/肌酐比',
+             'Urine Albumin-Creatinine Ratio',
+             'GENERAL', false, '9318-7',  'mg/g',
+             '正常 <30 mg/g；微量白蛋白尿 30–300 mg/g；大量白蛋白尿 >300 mg/g。'
+             '注意：UACR（测白蛋白）与 UPCR（测总蛋白）不同，DKD 研究优先用 UACR。')
 
 ON CONFLICT (code) DO NOTHING;
 
--- 单位字典
-INSERT INTO unit_catalog(symbol, description) VALUES
-  ('mg/dL',       '毫克每分升'),
-  ('μmol/L',       '微摩尔每升'),
-  ('umol/L',       '微摩尔每升（ASCII写法）'),
-  ('g/g',          '克每克（尿蛋白/肌酐比）'),
-  ('mg/g',         '毫克每克（尿蛋白/肌酐比）'),
-  ('mg/mmol',      '毫克每毫摩尔（尿蛋白/肌酐比，欧洲常用）'),
-  ('g/L',          '克每升'),
-  ('g/dL',         '克每分升'),
-  ('mmol/L',       '毫摩尔每升'),
-  ('U/L',          '单位每升（酶活性）'),
-  ('mL/min/1.73m²','毫升/分钟/1.73平方米（eGFR标准单位）'),
-  ('10^9/L',       '10的9次方每升（血细胞计数）'),
-  ('mg/L',         '毫克每升'),
-  ('IU/mL',        '国际单位每毫升'),
-  ('ng/mL',        '纳克每毫升（药物浓度）'),
-  ('ratio',        '比值（无量纲）')
-ON CONFLICT (symbol) DO NOTHING;
-
--- 项目-单位对应（换算表）
--- 格式说明：value_standard = value_raw × multiplier
+-- ─── 3. 项目-单位换算表扩展 ───────────────────────────────────────────────────
+-- 格式：value_standard = value_raw × multiplier + offset_val
 INSERT INTO lab_test_unit_map(lab_test_code, unit_symbol, multiplier, offset_val, is_standard)
 VALUES
-  -- 血肌酐
-  ('CREAT', 'mg/dL',  1,          0, true ),  -- 标准单位，直接用
-  ('CREAT', 'μmol/L', 0.01130996, 0, false),  -- ÷88.4
-  ('CREAT', 'umol/L', 0.01130996, 0, false),  -- 同上，ASCII写法
+  -- PLA2R：仅 RU/mL 一种常用单位
+  ('PLA2R', 'RU/mL',     1,       0,    true),
 
-  -- 尿蛋白/肌酐比
-  ('UPCR',  'g/g',    1,          0, true ),  -- 标准单位
-  ('UPCR',  'mg/g',   0.001,      0, false),  -- ÷1000
-  ('UPCR',  'mg/mmol',0.1130996,  0, false),  -- 1 mg/mmol = 0.113 g/g（近似）
+  -- CD19：绝对计数为标准；百分比原值存储（无绝对数无法换算）
+  ('CD19',  'cells/μL',  1,       0,    true),
+  ('CD19',  '%',         1,       0,    false),  -- 存原始%，不换算
 
-  -- eGFR（实验室报告，单位一致，直接用）
-  ('EGFR',  'mL/min/1.73m²', 1,  0, true ),
+  -- BKV：copies/mL 为标准；IU/mL 与 copies/mL 近似 1:1（WHO 标准差异 <5%，直接存）
+  ('BKV',   'copies/mL', 1,       0,    true),
+  ('BKV',   'IU/mL',     1,       0,    false),
 
-  -- 血红蛋白
-  ('HGB',   'g/dL',   1,          0, true ),
-  ('HGB',   'g/L',    0.1,        0, false),  -- ÷10
+  -- CMV：IU/mL 为 WHO 标准；copies/mL 与 IU/mL 近似等价直接记录
+  ('CMV',   'IU/mL',     1,       0,    true),
+  ('CMV',   'copies/mL', 1,       0,    false),
 
-  -- 白细胞/血小板（10^9/L 是标准）
-  ('WBC',   '10^9/L', 1,          0, true ),
-  ('PLT',   '10^9/L', 1,          0, true ),
+  -- HbA1c：% (NGSP) 为标准；mmol/mol (IFCC) 换算公式 % = mmol/mol × 0.0915 + 2.15
+  ('HBA1C', '%',         1,       0,    true),
+  ('HBA1C', 'mmol/mol',  0.0915,  2.15, false),  -- IFCC → NGSP%
 
-  -- 肝功能
-  ('ALT',   'U/L',    1,          0, true ),
-  ('AST',   'U/L',    1,          0, true ),
-
-  -- 白蛋白
-  ('ALB',   'g/dL',   1,          0, true ),
-  ('ALB',   'g/L',    0.1,        0, false),
-
-  -- 电解质（mmol/L 标准）
-  ('K',     'mmol/L', 1,          0, true ),
-  ('NA',    'mmol/L', 1,          0, true ),
-  ('CA',    'mmol/L', 1,          0, true ),
-  ('PHOS',  'mmol/L', 1,          0, true ),
-  ('CO2',   'mmol/L', 1,          0, true ),
-
-  -- 血尿酸（μmol/L 标准）
-  ('UA',    'μmol/L', 1,          0, true ),
-  ('UA',    'umol/L', 1,          0, false), -- ASCII 写法
-  ('UA',    'mg/dL',  59.485,     0, false), -- ×59.485 → μmol/L
-
-  -- 血脂（mmol/L 标准）
-  ('TCHOL', 'mmol/L', 1,          0, true ),
-  ('TCHOL', 'mg/dL',  0.02586,    0, false),
-  ('TG',    'mmol/L', 1,          0, true ),
-  ('TG',    'mg/dL',  0.01129,    0, false),
-  ('LDL',   'mmol/L', 1,          0, true ),
-  ('LDL',   'mg/dL',  0.02586,    0, false),
-  ('HDL',   'mmol/L', 1,          0, true ),
-  ('HDL',   'mg/dL',  0.02586,    0, false),
-
-  -- 炎症
-  ('CRP',   'mg/L',   1,          0, true ),
-
-  -- IgAN 专项
-  ('IGA',   'g/L',    1,          0, true ),
-  ('IGAG',  'ratio',  1,          0, true ),
-
-  -- LN 专项
-  ('C3',    'g/L',    1,          0, true ),
-  ('C4',    'g/L',    1,          0, true ),
-  ('DSDNA', 'IU/mL',  1,          0, true ),
-
-  -- KTX 专项
-  ('TACRO', 'ng/mL',  1,          0, true ),
-  ('CSA',   'ng/mL',  1,          0, true )
+  -- UACR：mg/g 为标准；mg/mmol (欧洲) 换算：1 mg/mmol × 8.842 = mg/g
+  --        (肌酐分子量 113.12 g/mol，∴ 1 mmol = 113.12 mg，1 mg/mmol = 1000/113.12 mg/g ≈ 8.84)
+  ('UACR',  'mg/g',      1,       0,    true),
+  ('UACR',  'mg/mmol',   8.842,   0,    false)   -- 欧洲单位 → mg/g
 
 ON CONFLICT (lab_test_code, unit_symbol) DO NOTHING;
 
--- ─── 8. RLS：字典表只读（所有已登录用户可读，不可修改） ─────────────────────
-ALTER TABLE lab_test_catalog ENABLE ROW LEVEL SECURITY;
-ALTER TABLE unit_catalog      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lab_test_unit_map ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "catalog_select" ON lab_test_catalog;
-CREATE POLICY "catalog_select" ON lab_test_catalog FOR SELECT TO authenticated, anon USING (true);
-DROP POLICY IF EXISTS "unit_select" ON unit_catalog;
-CREATE POLICY "unit_select"    ON unit_catalog      FOR SELECT TO authenticated, anon USING (true);
-DROP POLICY IF EXISTS "map_select" ON lab_test_unit_map;
-CREATE POLICY "map_select"     ON lab_test_unit_map FOR SELECT TO authenticated, anon USING (true);
+-- MIGRATION 023: 0021_project_custom_labs.sql
 -- =============================================================
--- PR-3 核心校验器：日期链 / 重复 / 跳变 / eGFR 版本化
--- 目的：在数据写入时自动拦截明显错误，同时保留"留痕后保存"通道
+-- 0021 项目自定义化验目录
 --
--- 三种处理级别：
---   ERROR   → 直接拒绝，返回 HTTP 400，必须改正
---   WARNING → 弹窗提示 + 必填 reason 后才能保存
---   INFO    → 前端提示，不阻止保存
+-- 每个研究项目可维护自己的化验目录（不在全局 lab_test_catalog 中的项目）。
+-- 首次添加自定义化验时自动保存到本表，后续所有患者可直接从下拉中选用，
+-- 保证同项目多患者、多中心录入时化验名称/单位一致。
 -- =============================================================
 
--- ─── 1. 给需要留痕 reason 的表加 qc_reason 列 ─────────────────────────────
--- visits_long：随访记录留痕原因
-ALTER TABLE visits_long
-  ADD COLUMN IF NOT EXISTS qc_reason text;
+CREATE TABLE IF NOT EXISTS project_custom_labs (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id  uuid NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name        text NOT NULL,          -- 化验名，例如：补体因子H
+  unit        text NOT NULL DEFAULT '',  -- 单位，例如：mg/L
+  sort_order  int  NOT NULL DEFAULT 0,
+  created_by  uuid REFERENCES auth.users(id),
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(project_id, name)            -- 同一项目化验名不重复
+);
 
--- labs_long：化验记录留痕原因
-ALTER TABLE labs_long
-  ADD COLUMN IF NOT EXISTS qc_reason text;
+COMMENT ON TABLE project_custom_labs IS
+  '研究项目自定义化验目录；用户首次录入自定义化验时自动保存，后续同项目可直接选用。';
 
-COMMENT ON COLUMN visits_long.qc_reason IS
-  '质控留痕原因。当数据触发跳变警告或同日重复时，必须填写原因才能保存。
-  例："患者住院期间急性肾损伤，Scr快速升高，已与主治医生确认"';
+-- RLS：只有项目创建者可以读写
+ALTER TABLE project_custom_labs ENABLE ROW LEVEL SECURITY;
 
-COMMENT ON COLUMN labs_long.qc_reason IS
-  '质控留痕原因。例："同日两次检测，第一次采血失误，本次为复查确认值"';
+DROP POLICY IF EXISTS "pcl_select" ON project_custom_labs;
+CREATE POLICY "pcl_select" ON project_custom_labs
+  FOR SELECT TO authenticated
+  USING (project_id IN (
+    SELECT id FROM projects WHERE created_by = auth.uid()
+  ));
 
--- ─── 2. 硬范围限制更新（visits_long）────────────────────────────────────────
--- 原有约束已有 sbp/dbp/scr 范围，补充更明确的说明
--- upcr 单位为 g/g 时最大 50；为 mg/g 时最大 50000（历史数据兼容）
--- 这里先更新 upcr 上限（原来只有 >=0）
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.table_constraints
-    WHERE constraint_name = 'visits_long_upcr_range'
-      AND table_name = 'visits_long'
-  ) THEN
-    ALTER TABLE visits_long
-      ADD CONSTRAINT visits_long_upcr_range CHECK (upcr IS NULL OR (upcr >= 0 AND upcr <= 50000));
-  END IF;
-END $$;
+DROP POLICY IF EXISTS "pcl_insert" ON project_custom_labs;
+CREATE POLICY "pcl_insert" ON project_custom_labs
+  FOR INSERT TO authenticated
+  WITH CHECK (project_id IN (
+    SELECT id FROM projects WHERE created_by = auth.uid()
+  ));
 
--- ─── 3. 日期链校验函数：validate_date_chain() ───────────────────────────────
--- 验证：biopsy_date ≤ baseline_date ≤ visit_date ≤ event_date
--- 返回：错误信息 text，NULL 表示通过
-CREATE OR REPLACE FUNCTION validate_date_chain(
+DROP POLICY IF EXISTS "pcl_update" ON project_custom_labs;
+CREATE POLICY "pcl_update" ON project_custom_labs
+  FOR UPDATE TO authenticated
+  USING (project_id IN (
+    SELECT id FROM projects WHERE created_by = auth.uid()
+  ));
+
+DROP POLICY IF EXISTS "pcl_delete" ON project_custom_labs;
+CREATE POLICY "pcl_delete" ON project_custom_labs
+  FOR DELETE TO authenticated
+  USING (project_id IN (
+    SELECT id FROM projects WHERE created_by = auth.uid()
+  ));
+
+-- MIGRATION 024: 0022_admin_status_permissions.sql
+-- ============================================================
+-- 0022_admin_status_permissions.sql
+-- 管理员状态权限增强
+--
+-- 新增：
+--   1. 管理员永久写入豁免 — assert_project_write_allowed 检查创建者是否为管理员
+--   2. admin_cancel_contract()   — 取消已批准/待审的合同
+--   3. admin_update_contract()   — 修改合同字段（付款状态、到期时间、套餐等）
+--   4. admin_set_expiry()        — 直接设定项目到期日期
+-- ============================================================
+
+-- ──────────────────────────────────────────────────────────
+-- 1. 更新 assert_project_write_allowed：管理员项目永久放行
+-- ──────────────────────────────────────────────────────────
+create or replace function public.assert_project_write_allowed(p_project_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_trial_enabled  boolean;
+  v_trial_expires  timestamptz;
+  v_plan           text;
+  v_sub_until      timestamptz;
+  v_created_by     uuid;
+begin
+  select trial_enabled, trial_expires_at, subscription_plan, subscription_active_until, created_by
+  into   v_trial_enabled, v_trial_expires, v_plan, v_sub_until, v_created_by
+  from   public.projects
+  where  id = p_project_id;
+
+  if not found then
+    raise exception 'project_not_found';
+  end if;
+
+  -- Rule 0: 项目创建者是平台管理员 → 永久放行
+  if exists (
+    select 1 from public.platform_admins pa
+    join auth.users u on u.email = pa.email
+    where u.id = v_created_by
+  ) then
+    return;
+  end if;
+
+  -- Rule A: 管理员已关闭试用限制
+  if not v_trial_enabled then
+    return;
+  end if;
+
+  -- Rule B: 付费订阅或合作伙伴计划有效
+  if v_plan in ('pro', 'institution', 'partner') and
+     (v_sub_until is null or now() <= v_sub_until) then
+    return;
+  end if;
+
+  -- Rule C: 在试用期内
+  if v_trial_expires is not null and now() <= v_trial_expires then
+    return;
+  end if;
+
+  -- 以上均不满足 → 拒绝写入
+  raise exception 'subscription_required';
+end;
+$$;
+
+-- ──────────────────────────────────────────────────────────
+-- 2. admin_cancel_contract() — 取消合同（pending/approved → cancelled）
+--    同时撤销该用户项目的订阅（如果已激活过）
+-- ──────────────────────────────────────────────────────────
+create or replace function public.admin_cancel_contract(
+  p_contract_id uuid,
+  p_admin_note  text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid;
+  v_status  text;
+  v_payment text;
+begin
+  if not public.is_platform_admin() then
+    raise exception 'platform_admin_only';
+  end if;
+
+  select user_id, status, payment_status
+  into   v_user_id, v_status, v_payment
+  from   public.partner_contracts
+  where  id = p_contract_id;
+
+  if not found then
+    raise exception 'contract_not_found';
+  end if;
+
+  if v_status not in ('pending', 'approved') then
+    raise exception 'only_pending_or_approved_can_cancel';
+  end if;
+
+  -- 取消合同
+  update public.partner_contracts
+  set
+    status         = 'cancelled',
+    admin_note     = coalesce(p_admin_note, admin_note),
+    updated_at     = now()
+  where id = p_contract_id;
+
+  -- 如果已经付款激活过，撤销该用户所有项目的订阅 → 回到试用
+  if v_payment = 'paid' then
+    update public.projects
+    set
+      subscription_plan         = 'trial',
+      subscription_active_until = null,
+      trial_expires_at          = now() + interval '30 days',
+      trial_grace_until         = now() + interval '37 days'
+    where created_by = v_user_id;
+  end if;
+end;
+$$;
+
+grant execute on function public.admin_cancel_contract(uuid, text) to authenticated;
+
+-- ──────────────────────────────────────────────────────────
+-- 3. admin_update_contract() — 通用合同更新
+--    可修改：付款状态、到期时间、套餐、年费、折扣、备注
+--    同时同步更新该用户的项目订阅
+-- ──────────────────────────────────────────────────────────
+create or replace function public.admin_update_contract(
+  p_contract_id      uuid,
+  p_payment_status   text         default null,   -- 'unpaid'/'paid'/'overdue'
+  p_expires_at       timestamptz  default null,
+  p_plan             text         default null,   -- 'pro'/'institution'/'partner'
+  p_annual_price     numeric      default null,
+  p_discount_pct     int          default null,
+  p_admin_note       text         default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id  uuid;
+  v_plan     text;
+  v_expires  timestamptz;
+begin
+  if not public.is_platform_admin() then
+    raise exception 'platform_admin_only';
+  end if;
+
+  -- 更新合同字段（只更新传入的非 null 参数）
+  update public.partner_contracts
+  set
+    payment_status   = coalesce(p_payment_status, payment_status),
+    expires_at       = coalesce(p_expires_at, expires_at),
+    plan             = coalesce(p_plan, plan),
+    annual_price_cny = coalesce(p_annual_price, annual_price_cny),
+    discount_pct     = coalesce(p_discount_pct, discount_pct),
+    admin_note       = coalesce(p_admin_note, admin_note),
+    paid_at          = case
+                         when p_payment_status = 'paid' and paid_at is null then now()
+                         else paid_at
+                       end,
+    activated_at     = case
+                         when p_payment_status = 'paid' and activated_at is null then now()
+                         else activated_at
+                       end,
+    updated_at       = now()
+  where id = p_contract_id
+    and status in ('pending', 'approved');
+
+  if not found then
+    raise exception 'contract_not_found_or_not_editable';
+  end if;
+
+  -- 读取更新后的合同数据，同步到用户项目
+  select user_id, coalesce(plan, apply_plan), expires_at
+  into   v_user_id, v_plan, v_expires
+  from   public.partner_contracts
+  where  id = p_contract_id;
+
+  -- 如果付款状态为 paid，同步更新项目订阅
+  if coalesce(p_payment_status, (select payment_status from public.partner_contracts where id = p_contract_id)) = 'paid' then
+    update public.projects
+    set
+      subscription_plan         = v_plan,
+      subscription_active_until = v_expires
+    where created_by = v_user_id;
+  end if;
+end;
+$$;
+
+grant execute on function public.admin_update_contract(uuid, text, timestamptz, text, numeric, int, text) to authenticated;
+
+-- ──────────────────────────────────────────────────────────
+-- 4. admin_set_expiry() — 直接设定项目到期日期
+--    可以同时修改 subscription_plan
+-- ──────────────────────────────────────────────────────────
+create or replace function public.admin_set_expiry(
   p_project_id   uuid,
-  p_patient_code text,
-  p_visit_date   date  DEFAULT NULL,
-  p_event_date   date  DEFAULT NULL
+  p_expires_at   timestamptz,
+  p_plan         text default null  -- 可选：同时修改计划
 )
-RETURNS text   -- NULL=通过；非NULL=错误原因
-LANGUAGE plpgsql STABLE
-AS $$
-DECLARE
-  v_baseline patients_baseline%ROWTYPE;
-BEGIN
-  SELECT * INTO v_baseline
-  FROM patients_baseline
-  WHERE project_id  = p_project_id
-    AND patient_code = p_patient_code;
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_current_plan text;
+begin
+  if not public.is_platform_admin() then
+    raise exception 'platform_admin_only';
+  end if;
 
-  -- 没有基线数据，无法校验，放行
-  IF NOT FOUND THEN RETURN NULL; END IF;
+  select subscription_plan into v_current_plan
+  from public.projects where id = p_project_id;
 
-  -- 随访日期必须 ≥ 基线日期
-  IF p_visit_date IS NOT NULL AND v_baseline.baseline_date IS NOT NULL THEN
-    IF p_visit_date < v_baseline.baseline_date THEN
-      RETURN '随访日期（' || p_visit_date || '）早于基线日期（'
-           || v_baseline.baseline_date || '），请检查。'
-           || '如是基线前检查，请改录入基线数据。';
-    END IF;
-  END IF;
+  if not found then
+    raise exception 'project_not_found';
+  end if;
 
-  -- 终点日期必须 ≥ 基线日期
-  IF p_event_date IS NOT NULL AND v_baseline.baseline_date IS NOT NULL THEN
-    IF p_event_date < v_baseline.baseline_date THEN
-      RETURN '终点日期（' || p_event_date || '）早于基线日期（'
-           || v_baseline.baseline_date || '），请检查。';
-    END IF;
-  END IF;
-
-  RETURN NULL;  -- 通过
-END;
+  -- 根据当前计划更新对应字段
+  if coalesce(p_plan, v_current_plan) = 'trial' then
+    update public.projects
+    set
+      subscription_plan = 'trial',
+      trial_expires_at  = p_expires_at,
+      trial_grace_until = p_expires_at + interval '7 days'
+    where id = p_project_id;
+  else
+    update public.projects
+    set
+      subscription_plan         = coalesce(p_plan, v_current_plan),
+      subscription_active_until = p_expires_at
+    where id = p_project_id;
+  end if;
+end;
 $$;
 
-COMMENT ON FUNCTION validate_date_chain IS
-  '校验日期链：随访/终点日期必须不早于基线日期。返回NULL表示通过，非NULL为错误说明。';
+grant execute on function public.admin_set_expiry(uuid, timestamptz, text) to authenticated;
 
--- ─── 4. 重复录入检测：check_duplicate_lab() ─────────────────────────────────
--- 同一患者、同一日期、同一化验项目已有记录时返回提示
--- 返回：NULL=无重复；非NULL=已有记录信息
-CREATE OR REPLACE FUNCTION check_duplicate_lab(
-  p_project_id    uuid,
-  p_patient_code  text,
-  p_lab_date      date,
-  p_lab_test_code text,
-  p_exclude_id    uuid DEFAULT NULL  -- 编辑时排除自身
-)
-RETURNS text
-LANGUAGE plpgsql STABLE
-AS $$
-DECLARE
-  v_existing labs_long%ROWTYPE;
-BEGIN
-  SELECT * INTO v_existing
-  FROM labs_long
-  WHERE project_id    = p_project_id
-    AND patient_code  = p_patient_code
-    AND lab_date      = p_lab_date
-    AND lab_test_code = p_lab_test_code
-    AND (p_exclude_id IS NULL OR id <> p_exclude_id)
-  ORDER BY created_at DESC
-  LIMIT 1;
-
-  IF FOUND THEN
-    RETURN '该患者在 ' || p_lab_date || ' 已有一条 '
-         || p_lab_test_code || ' 记录（值：'
-         || COALESCE(v_existing.value_raw::text, v_existing.lab_value::text, '?')
-         || ' ' || COALESCE(v_existing.unit_symbol, v_existing.lab_unit, '')
-         || '）。如确需保存，请在"留痕原因"中说明（如：复查确认值）。';
-  END IF;
-
-  RETURN NULL;
-END;
-$$;
-
--- ─── 5. 跳变检测：check_jump_spike() ────────────────────────────────────────
--- 与同患者上一次同化验项目的标准值相比，变化超过阈值则提示
--- 返回：NULL=正常；非NULL=跳变说明
-CREATE OR REPLACE FUNCTION check_jump_spike(
-  p_project_id    uuid,
-  p_patient_code  text,
-  p_lab_test_code text,
-  p_value_std     numeric,  -- 本次标准值
-  p_lab_date      date,
-  p_exclude_id    uuid DEFAULT NULL
-)
-RETURNS text
-LANGUAGE plpgsql STABLE
-AS $$
-DECLARE
-  v_prev_value numeric;
-  v_prev_date  date;
-  v_ratio      numeric;
-  v_threshold  numeric;
-BEGIN
-  -- 找最近一次同项目记录
-  SELECT value_standard, lab_date INTO v_prev_value, v_prev_date
-  FROM labs_long
-  WHERE project_id    = p_project_id
-    AND patient_code  = p_patient_code
-    AND lab_test_code = p_lab_test_code
-    AND value_standard IS NOT NULL
-    AND lab_date < p_lab_date          -- 只和更早的比
-    AND (p_exclude_id IS NULL OR id <> p_exclude_id)
-  ORDER BY lab_date DESC
-  LIMIT 1;
-
-  IF NOT FOUND OR v_prev_value IS NULL OR v_prev_value = 0 THEN
-    RETURN NULL;  -- 没有历史值或历史值为0，无法判断跳变
-  END IF;
-
-  v_ratio := p_value_std / v_prev_value;
-
-  -- 不同项目用不同阈值（倍数）
-  v_threshold := CASE p_lab_test_code
-    WHEN 'CREAT' THEN 3.0   -- 血肌酐：涨3倍触发（AKI可能）
-    WHEN 'UPCR'  THEN 5.0   -- 尿蛋白：涨5倍触发（波动本身大）
-    WHEN 'K'     THEN 2.0   -- 血钾：涨2倍触发（高钾危险）
-    ELSE 4.0                 -- 其他指标默认4倍
-  END;
-
-  IF v_ratio > v_threshold OR v_ratio < (1.0 / v_threshold) THEN
-    RETURN p_lab_test_code || ' 本次值（' || p_value_std || '）与上次（'
-         || v_prev_date || '，' || v_prev_value || '）相差超过 '
-         || ROUND((v_ratio - 1) * 100) || '%，存在异常跳变。'
-         || '如确认无误，请在"留痕原因"中说明（如：患者住院期间AKI，已与上级确认）。';
-  END IF;
-
-  RETURN NULL;
-END;
-$$;
-
--- ─── 6. 随访记录综合校验：validate_visit_record() ──────────────────────────
--- 前端和 RPC 都调用这个函数，返回 errors + warnings
--- errors   → 必须修正，无法保存
--- warnings → 需要填 reason，填完才能保存
-CREATE OR REPLACE FUNCTION validate_visit_record(
-  p_project_id   uuid,
-  p_patient_code text,
-  p_visit_date   date,
-  p_sbp          numeric DEFAULT NULL,
-  p_dbp          numeric DEFAULT NULL,
-  p_scr_umol_l   numeric DEFAULT NULL,
-  p_upcr         numeric DEFAULT NULL,
-  p_egfr         numeric DEFAULT NULL,
-  p_notes        text    DEFAULT NULL,
-  p_exclude_id   uuid    DEFAULT NULL
-)
-RETURNS jsonb   -- { "errors": [...], "warnings": [...] }
-LANGUAGE plpgsql STABLE SECURITY DEFINER
-AS $$
-DECLARE
-  v_errors   text[] := '{}';
-  v_warnings text[] := '{}';
-  v_date_err text;
-  v_prev_scr numeric;
-  v_prev_date date;
-  v_ratio    numeric;
-  v_dup_cnt  int;
-BEGIN
-  -- ① 日期链校验（ERROR）
-  v_date_err := validate_date_chain(p_project_id, p_patient_code, p_visit_date, NULL);
-  IF v_date_err IS NOT NULL THEN
-    v_errors := array_append(v_errors, v_date_err);
-  END IF;
-
-  -- ② 血压范围（ERROR）
-  IF p_sbp IS NOT NULL AND (p_sbp < 30 OR p_sbp > 300) THEN
-    v_errors := array_append(v_errors,
-      '收缩压（SBP）' || p_sbp || ' mmHg 超出合理范围 30–300 mmHg，请检查是否录入有误');
-  END IF;
-  IF p_dbp IS NOT NULL AND (p_dbp < 30 OR p_dbp > 300) THEN
-    v_errors := array_append(v_errors,
-      '舒张压（DBP）' || p_dbp || ' mmHg 超出合理范围 30–300 mmHg');
-  END IF;
-  IF p_sbp IS NOT NULL AND p_dbp IS NOT NULL AND p_dbp >= p_sbp THEN
-    v_errors := array_append(v_errors,
-      '舒张压（' || p_dbp || '）≥ 收缩压（' || p_sbp || '），请检查血压录入顺序');
-  END IF;
-
-  -- ③ 血肌酐范围（单位 μmol/L）（ERROR）
-  IF p_scr_umol_l IS NOT NULL AND (p_scr_umol_l < 10 OR p_scr_umol_l > 5000) THEN
-    v_errors := array_append(v_errors,
-      '血肌酐 ' || p_scr_umol_l || ' μmol/L 超出合理范围 10–5000 μmol/L');
-  END IF;
-
-  -- ④ UPCR 范围（单位 g/g 标准化后；visits_long 存的是原始值，以 mg/g 为主）
-  IF p_upcr IS NOT NULL AND p_upcr < 0 THEN
-    v_errors := array_append(v_errors, 'UPCR 不能为负数');
-  END IF;
-
-  -- ⑤ PII 检测（ERROR）
-  IF _contains_pii(COALESCE(p_notes, '')) THEN
-    v_errors := array_append(v_errors,
-      '备注疑似包含个人身份信息（手机号/身份证/住院号等）。'
-      || '请删除后重新保存，系统拒绝存储任何可识别个人信息（PII）。');
-  END IF;
-
-  -- ⑥ 同日重复随访（WARNING，允许填 reason 后保存）
-  SELECT COUNT(*) INTO v_dup_cnt
-  FROM visits_long
-  WHERE project_id   = p_project_id
-    AND patient_code = p_patient_code
-    AND visit_date   = p_visit_date
-    AND (p_exclude_id IS NULL OR id <> p_exclude_id);
-
-  IF v_dup_cnt > 0 THEN
-    v_warnings := array_append(v_warnings,
-      '该患者在 ' || p_visit_date || ' 已有 ' || v_dup_cnt
-      || ' 条随访记录，请确认是否为重复录入。如为同日多次测量，请在"留痕原因"中说明。');
-  END IF;
-
-  -- ⑦ 血肌酐跳变检测（WARNING）
-  IF p_scr_umol_l IS NOT NULL THEN
-    SELECT v.scr_umol_l, v.visit_date INTO v_prev_scr, v_prev_date
-    FROM visits_long v
-    WHERE v.project_id   = p_project_id
-      AND v.patient_code = p_patient_code
-      AND v.scr_umol_l  IS NOT NULL
-      AND v.visit_date   < p_visit_date
-      AND (p_exclude_id IS NULL OR v.id <> p_exclude_id)
-    ORDER BY v.visit_date DESC
-    LIMIT 1;
-
-    IF FOUND AND v_prev_scr > 0 THEN
-      v_ratio := p_scr_umol_l / v_prev_scr;
-      IF v_ratio > 3.0 OR v_ratio < (1.0/3.0) THEN
-        v_warnings := array_append(v_warnings,
-          '血肌酐本次（' || p_scr_umol_l || ' μmol/L）与上次（'
-          || v_prev_date || '，' || v_prev_scr
-          || ' μmol/L）相差超过 3 倍，请确认是否为急性肾损伤或测量误差。'
-          || '如确认无误，请填写"留痕原因"。');
-      END IF;
-    END IF;
-  END IF;
-
-  RETURN jsonb_build_object(
-    'errors',   to_jsonb(v_errors),
-    'warnings', to_jsonb(v_warnings)
-  );
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION validate_visit_record    TO authenticated, anon;
-GRANT EXECUTE ON FUNCTION validate_date_chain      TO authenticated;
-GRANT EXECUTE ON FUNCTION check_duplicate_lab      TO authenticated;
-GRANT EXECUTE ON FUNCTION check_jump_spike         TO authenticated;
-
-COMMENT ON FUNCTION validate_visit_record IS
-  '随访记录综合校验。返回 {errors:[...], warnings:[...]}。
-  errors 必须修正才能保存；warnings 需要填写 qc_reason 才能保存。
-  例：validate_visit_record(pid, ''P001'', ''2024-01-15'', 160, 95, 150, 1.2)';
-
--- ─── 7. eGFR 计算函数：ckd_epi_2021() ──────────────────────────────────────
--- 公式：CKD-EPI 2021（无种族项，国际主流，可直接引用）
--- 输入：血肌酐（mg/dL）、性别（M/F）、年龄（岁）
--- 输出：eGFR（mL/min/1.73m²）
--- 论文引用：Inker et al., NEJM 2021;385:1737–1749
-CREATE OR REPLACE FUNCTION ckd_epi_2021(
-  p_scr_mg_dl numeric,   -- 血肌酐，单位必须是 mg/dL
-  p_sex       text,      -- 'M' 或 'F'
-  p_age_years numeric    -- 年龄（岁）
-)
-RETURNS numeric
-LANGUAGE plpgsql IMMUTABLE
-AS $$
-DECLARE
-  v_kappa    numeric;
-  v_alpha    numeric;
-  v_sex_mult numeric;
-  v_scr_k    numeric;
-BEGIN
-  IF p_scr_mg_dl IS NULL OR p_sex IS NULL OR p_age_years IS NULL THEN
-    RETURN NULL;
-  END IF;
-
-  -- 按性别设定参数（CKD-EPI 2021 原文参数）
-  IF upper(p_sex) = 'F' THEN
-    v_kappa    := 0.7;
-    v_alpha    := -0.241;
-    v_sex_mult := 1.012;
-  ELSE
-    v_kappa    := 0.9;
-    v_alpha    := -0.302;
-    v_sex_mult := 1.0;
-  END IF;
-
-  v_scr_k := p_scr_mg_dl / v_kappa;
-
-  RETURN ROUND(
-    142.0
-    * POWER(LEAST(v_scr_k, 1.0), v_alpha)
-    * POWER(GREATEST(v_scr_k, 1.0), -1.200)
-    * POWER(0.9938, p_age_years)
-    * v_sex_mult
-  , 1);
-END;
-$$;
-
-COMMENT ON FUNCTION ckd_epi_2021 IS
-  'CKD-EPI 2021 公式计算eGFR（无种族项）。
-  输入：血肌酐mg/dL、性别(M/F)、年龄（岁）。
-  论文：Inker et al., NEJM 2021;385:1737-1749。
-  例：ckd_epi_2021(1.0, ''M'', 50) → 约87 mL/min/1.73m²';
-
--- ─── 8. 自动计算 eGFR 的触发器（visits_long） ────────────────────────────
--- 每次写入/更新 scr_umol_l 时，若有患者年龄和性别，自动计算 eGFR
-CREATE OR REPLACE FUNCTION _auto_compute_egfr()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
-DECLARE
-  v_baseline patients_baseline%ROWTYPE;
-  v_age      numeric;
-  v_scr_mgdl numeric;
-BEGIN
-  -- 只在有 scr_umol_l 时才计算
-  IF NEW.scr_umol_l IS NULL THEN
-    NEW.egfr_formula_version := 'missing_inputs';
-    RETURN NEW;
-  END IF;
-
-  -- 查基线（获取性别和出生年）
-  SELECT * INTO v_baseline
-  FROM patients_baseline
-  WHERE project_id  = NEW.project_id
-    AND patient_code = NEW.patient_code;
-
-  IF NOT FOUND OR v_baseline.sex IS NULL OR v_baseline.birth_year IS NULL THEN
-    -- 缺性别或出生年，无法计算
-    NEW.egfr_formula_version := 'missing_inputs';
-    RETURN NEW;
-  END IF;
-
-  -- 从 μmol/L 换算 mg/dL
-  v_scr_mgdl := NEW.scr_umol_l * 0.01130996;
-
-  -- 计算年龄
-  v_age := EXTRACT(YEAR FROM NEW.visit_date) - v_baseline.birth_year;
-  IF v_age < 18 OR v_age > 120 THEN
-    NEW.egfr_formula_version := 'missing_inputs';
-    RETURN NEW;
-  END IF;
-
-  -- 仅当用户没有手动填 egfr 时，才用公式覆盖
-  -- 若用户手填了 egfr，则 formula_version='manual'
-  IF NEW.egfr IS NOT NULL AND (TG_OP = 'UPDATE' AND OLD.egfr IS NOT NULL AND NEW.egfr = OLD.egfr)
-     OR (TG_OP = 'INSERT' AND NEW.egfr_formula_version = 'manual') THEN
-    -- 手动填写，保留
-    RETURN NEW;
-  END IF;
-
-  NEW.egfr := ckd_epi_2021(v_scr_mgdl, v_baseline.sex, v_age);
-  NEW.egfr_formula_version := 'CKD-EPI-2021-Cr';
-
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS trg_auto_egfr ON visits_long;
-CREATE TRIGGER trg_auto_egfr
-  BEFORE INSERT OR UPDATE OF scr_umol_l ON visits_long
-  FOR EACH ROW EXECUTE FUNCTION _auto_compute_egfr();
-
-COMMENT ON TRIGGER trg_auto_egfr ON visits_long IS
-  '每次录入/更新血肌酐时，自动用 CKD-EPI 2021 公式计算 eGFR 并记录公式版本';
-
-GRANT EXECUTE ON FUNCTION ckd_epi_2021 TO authenticated;
--- =============================================================
--- PR-5 PII 全路径拦截：数据库触发器层
--- 目的：无论从哪个入口（staff录入/patient录入/直接API）写入数据
---       只要包含个人身份信息，数据库就拒绝保存
+-- MIGRATION 025: 0023_billing_orders.sql
+-- ============================================================
+-- 0023_billing_orders.sql
+-- 半自动支付中心：订单、付款凭证、审计日志
 --
--- 什么是 PII（个人可识别信息）？
--- ─────────────────────────────
--- 本系统是科研数据库，严禁录入以下信息：
---   ✗ 手机号：如 13812345678
---   ✗ 身份证号：如 110101199001011234
---   ✗ 住院号/病案号/门诊号：如 住院号:123456、MRN: 789
---   ✗ 姓名：如 患者:张三、姓名:李四
---   ✗ 8位以上连续数字（可能是各种编号）
+-- 流程：
+--   用户下单 → 扫码/转账 → 上传凭证 → 管理员核验 → 开通权益
 --
--- 正确做法：
---   ✓ 用中心分配的患者编码，如 BJ01-2024-001
---   ✓ 备注只写临床事实，如 "血压控制良好，依从性好"
--- =============================================================
+-- 新增：
+--   1. billing_orders          — 订单表
+--   2. billing_payment_proofs  — 付款凭证
+--   3. billing_audit_logs      — 审计日志
+--   4. 用户权益字段扩展（project_quota 等）
+--   5. RPC 函数：下单、上传凭证、管理员审核、开通
+-- ============================================================
 
--- ─── 1. 通用 PII 拦截触发器函数 ─────────────────────────────────────────────
--- 本函数被注册到所有含自由文本字段的表上
--- 检查的字段通过 TG_ARGV 传入
-CREATE OR REPLACE FUNCTION _pii_guard()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
-DECLARE
-  v_field text;
-  v_value text;
-BEGIN
-  -- 遍历需要检查的字段列表（由触发器注册时通过参数指定）
-  FOREACH v_field IN ARRAY TG_ARGV LOOP
-    EXECUTE format('SELECT ($1).%I::text', v_field) INTO v_value USING NEW;
-    IF v_value IS NOT NULL AND _contains_pii(v_value) THEN
-      RAISE EXCEPTION 'pii_detected_blocked'
-        USING HINT = format(
-          '字段 "%s" 中检测到疑似个人身份信息（PII）。'
-          '本系统为科研数据库，禁止录入手机号、身份证、住院号、姓名等可识别信息。'
-          '请检查并修改后重新保存。问题内容片段：%s',
-          v_field,
-          left(v_value, 30) || CASE WHEN length(v_value) > 30 THEN '...' ELSE '' END
-        );
-    END IF;
-  END LOOP;
-  RETURN NEW;
-END;
+-- ──────────────────────────────────────────────────────────
+-- 1. billing_orders 订单表
+-- ──────────────────────────────────────────────────────────
+create table if not exists public.billing_orders (
+  id                  uuid        not null primary key default gen_random_uuid(),
+  order_no            text        not null unique,       -- KS + YYYYMMDD + 6位随机码
+  user_id             uuid        not null references auth.users(id) on delete cascade,
+
+  -- 套餐信息
+  plan_code           text        not null default 'pro'
+                                  check (plan_code in ('pro','institutional')),
+  billing_cycle       text        not null default 'monthly'
+                                  check (billing_cycle in ('monthly','yearly')),
+  project_quota       int         not null default 3,     -- 购买的项目配额
+  extra_projects      int         not null default 0,     -- 超出基础3个的额外项目数
+
+  -- 金额
+  currency            text        not null default 'CNY',
+  amount_due          numeric(10,2) not null,             -- 应付金额
+  amount_paid         numeric(10,2),                      -- 实付金额（凭证上传时填）
+
+  -- 支付
+  payment_method      text        check (payment_method in ('wechat_qr','alipay_qr','bank_transfer')),
+
+  -- 状态
+  status              text        not null default 'unpaid'
+                                  check (status in (
+                                    'unpaid',                  -- 待付款
+                                    'pending_verification',    -- 已提交凭证，待核验
+                                    'paid',                    -- 已确认到账
+                                    'activated',               -- 已开通权益
+                                    'rejected',                -- 凭证驳回
+                                    'cancelled',               -- 已取消
+                                    'expired',                 -- 订单过期未支付
+                                    'refund_pending',          -- 退款处理中
+                                    'refunded'                 -- 已退款
+                                  )),
+
+  -- 付款人信息
+  payer_name          text,
+  payer_email         text,
+  payer_hospital      text,
+  payer_phone         text,
+
+  -- 发票
+  invoice_needed      boolean     not null default false,
+  invoice_title       text,
+  invoice_tax_no      text,
+  invoice_email       text,
+  invoice_status      text        default 'none'
+                                  check (invoice_status in ('none','requested','issued')),
+
+  -- 时间
+  submitted_at        timestamptz,                        -- 凭证提交时间
+  paid_at             timestamptz,                        -- 管理员确认到账时间
+  activated_at        timestamptz,                        -- 权益开通时间
+  start_at            timestamptz,                        -- 权益生效时间
+  end_at              timestamptz,                        -- 权益到期时间
+
+  -- 备注
+  notes               text,                               -- 用户备注
+  admin_notes         text,                               -- 管理员备注
+  reject_reason       text,                               -- 驳回原因
+
+  created_at          timestamptz not null default now(),
+  updated_at          timestamptz not null default now()
+);
+
+alter table public.billing_orders enable row level security;
+
+-- 用户只能读自己的订单
+drop policy if exists "user_own_orders_select" on billing_orders;
+create policy "user_own_orders_select" on public.billing_orders
+  for select using (auth.uid() = user_id);
+
+-- 用户只能 insert 自己的订单（通过 RPC）
+drop policy if exists "user_own_orders_insert" on billing_orders;
+create policy "user_own_orders_insert" on public.billing_orders
+  for insert with check (auth.uid() = user_id);
+
+-- ──────────────────────────────────────────────────────────
+-- 2. billing_payment_proofs 付款凭证表
+-- ──────────────────────────────────────────────────────────
+create table if not exists public.billing_payment_proofs (
+  id            uuid        not null primary key default gen_random_uuid(),
+  order_id      uuid        not null references public.billing_orders(id) on delete cascade,
+  file_url      text        not null,
+  file_name     text,
+  file_type     text,                                     -- image/png, application/pdf 等
+  uploaded_by   uuid        not null references auth.users(id),
+  created_at    timestamptz not null default now()
+);
+
+alter table public.billing_payment_proofs enable row level security;
+
+drop policy if exists "user_own_proofs_select" on billing_payment_proofs;
+create policy "user_own_proofs_select" on public.billing_payment_proofs
+  for select using (auth.uid() = uploaded_by);
+
+drop policy if exists "user_own_proofs_insert" on billing_payment_proofs;
+create policy "user_own_proofs_insert" on public.billing_payment_proofs
+  for insert with check (auth.uid() = uploaded_by);
+
+-- ──────────────────────────────────────────────────────────
+-- 3. billing_audit_logs 审计日志表
+-- ──────────────────────────────────────────────────────────
+create table if not exists public.billing_audit_logs (
+  id                uuid        not null primary key default gen_random_uuid(),
+  order_id          uuid        not null references public.billing_orders(id) on delete cascade,
+  action            text        not null,                 -- created, proof_uploaded, verified, activated, rejected, cancelled, refunded
+  operator_user_id  uuid        references auth.users(id),
+  before_json       jsonb,
+  after_json        jsonb,
+  created_at        timestamptz not null default now()
+);
+
+alter table public.billing_audit_logs enable row level security;
+
+-- 仅管理员可读审计日志（通过 RPC）
+-- 不给普通用户直接 select 权限
+
+-- ──────────────────────────────────────────────────────────
+-- 4. 用户权益扩展：在 user_profiles 加 project_quota
+-- ──────────────────────────────────────────────────────────
+alter table public.user_profiles
+  add column if not exists project_quota int not null default 3;
+
+-- ──────────────────────────────────────────────────────────
+-- 5. 生成订单号的辅助函数
+-- ──────────────────────────────────────────────────────────
+create or replace function public.generate_order_no()
+returns text
+language plpgsql
+as $$
+declare
+  v_date text;
+  v_rand text;
+  v_no   text;
+begin
+  v_date := to_char(now(), 'YYYYMMDD');
+  -- 6位随机十六进制
+  v_rand := upper(substr(md5(gen_random_uuid()::text), 1, 6));
+  v_no   := 'KS' || v_date || v_rand;
+  -- 碰撞检查
+  while exists (select 1 from public.billing_orders where order_no = v_no) loop
+    v_rand := upper(substr(md5(gen_random_uuid()::text), 1, 6));
+    v_no   := 'KS' || v_date || v_rand;
+  end loop;
+  return v_no;
+end;
 $$;
 
-COMMENT ON FUNCTION _pii_guard IS
-  'PII拦截触发器。检测自由文本字段中的个人身份信息并拒绝写入。
-  触发时抛出异常 pii_detected_blocked，前端可捕获并显示友好提示。';
+-- ──────────────────────────────────────────────────────────
+-- 6. create_billing_order() — 用户下单
+-- ──────────────────────────────────────────────────────────
+create or replace function public.create_billing_order(
+  p_plan_code       text,
+  p_billing_cycle   text,
+  p_extra_projects  int       default 0,
+  p_payment_method  text      default null,
+  p_payer_name      text      default null,
+  p_payer_email     text      default null,
+  p_payer_hospital  text      default null,
+  p_payer_phone     text      default null,
+  p_invoice_needed  boolean   default false,
+  p_invoice_title   text      default null,
+  p_invoice_tax_no  text      default null,
+  p_invoice_email   text      default null,
+  p_notes           text      default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_order_no      text;
+  v_amount        numeric(10,2);
+  v_extra         int;
+  v_quota         int;
+  v_order_id      uuid;
+begin
+  -- 验证参数
+  if p_plan_code not in ('pro','institutional') then
+    raise exception 'invalid_plan_code';
+  end if;
+  if p_billing_cycle not in ('monthly','yearly') then
+    raise exception 'invalid_billing_cycle';
+  end if;
 
--- ─── 2. 注册触发器到各个表 ──────────────────────────────────────────────────
+  v_extra := greatest(coalesce(p_extra_projects, 0), 0);
+  v_quota := 3 + v_extra;
 
--- visits_long.notes（随访备注）
-DROP TRIGGER IF EXISTS trg_pii_guard_visits ON visits_long;
-CREATE TRIGGER trg_pii_guard_visits
-  BEFORE INSERT OR UPDATE ON visits_long
-  FOR EACH ROW EXECUTE FUNCTION _pii_guard('notes');
+  -- 价格计算：Pro 含 3 个项目
+  if p_billing_cycle = 'monthly' then
+    v_amount := 499 + v_extra * 99;
+  else
+    v_amount := 4790 + v_extra * 950;
+  end if;
 
--- labs_long.qc_reason（化验留痕原因）
-DROP TRIGGER IF EXISTS trg_pii_guard_labs ON labs_long;
-CREATE TRIGGER trg_pii_guard_labs
-  BEFORE INSERT OR UPDATE ON labs_long
-  FOR EACH ROW EXECUTE FUNCTION _pii_guard('qc_reason');
+  v_order_no := public.generate_order_no();
 
--- meds_long（用药记录：drug_name / drug_class / dose 一般不含PII，但 dose 字段可能有备注）
--- 暂不加 trigger，在前端校验即可（drug 字段结构化，PII风险低）
+  insert into public.billing_orders (
+    order_no, user_id, plan_code, billing_cycle,
+    project_quota, extra_projects, amount_due,
+    payment_method,
+    payer_name, payer_email, payer_hospital, payer_phone,
+    invoice_needed, invoice_title, invoice_tax_no, invoice_email,
+    notes, status
+  ) values (
+    v_order_no, auth.uid(), p_plan_code, p_billing_cycle,
+    v_quota, v_extra, v_amount,
+    p_payment_method,
+    p_payer_name, p_payer_email, p_payer_hospital, p_payer_phone,
+    coalesce(p_invoice_needed, false), p_invoice_title, p_invoice_tax_no, p_invoice_email,
+    p_notes, 'unpaid'
+  )
+  returning id into v_order_id;
 
--- variants_long.notes（基因变异备注）
-DROP TRIGGER IF EXISTS trg_pii_guard_variants ON variants_long;
-CREATE TRIGGER trg_pii_guard_variants
-  BEFORE INSERT OR UPDATE ON variants_long
-  FOR EACH ROW EXECUTE FUNCTION _pii_guard('notes');
+  -- 审计日志
+  insert into public.billing_audit_logs (order_id, action, operator_user_id, after_json)
+  values (v_order_id, 'created', auth.uid(), jsonb_build_object(
+    'order_no', v_order_no, 'plan_code', p_plan_code,
+    'billing_cycle', p_billing_cycle, 'amount_due', v_amount,
+    'project_quota', v_quota
+  ));
 
--- events_long.notes（终点事件备注）
-DROP TRIGGER IF EXISTS trg_pii_guard_events ON events_long;
-CREATE TRIGGER trg_pii_guard_events
-  BEFORE INSERT OR UPDATE ON events_long
-  FOR EACH ROW EXECUTE FUNCTION _pii_guard('notes');
-
--- ─── 3. 增强 _contains_pii 函数（补充更多模式） ─────────────────────────────
--- 原函数已有基础 regex，这里覆盖并补充更多模式
-CREATE OR REPLACE FUNCTION _contains_pii(p_text text)
-RETURNS boolean
-LANGUAGE plpgsql IMMUTABLE
-AS $$
-BEGIN
-  IF p_text IS NULL OR length(trim(p_text)) = 0 THEN
-    RETURN false;
-  END IF;
-
-  RETURN (
-    -- 中国大陆手机号（1[3-9] 开头，11位）
-    p_text ~ '1[3-9][0-9]{9}'
-
-    -- 中国身份证（18位，包含校验位X）
-    OR p_text ~ '[1-9][0-9]{5}(19|20)[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[0-9]{3}[0-9Xx]'
-
-    -- 住院相关关键词 + 数字（如 住院号:123456、MRN: 789、病案号123）
-    OR p_text ~* '(住院号|病案号|门诊号|病历号|床号|mrn|admiss)[^a-z0-9]{0,3}[0-9]{3,}'
-
-    -- 姓名关键词（如 患者:张三、姓名：李四、病人 王五）
-    OR p_text ~* '(姓名|患者姓名|病人|name\s*[:：])\s*[\u4e00-\u9fa5]{2,4}'
-
-    -- 8位以上连续数字（各类编号风险）
-    OR p_text ~ '[0-9]{8,}'
-
-    -- 邮箱（含 @ 符号，且 @ 前后都有字符）
-    OR p_text ~ '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
-
-    -- 身份证关键词
-    OR p_text ~* '(身份证|id\s*card|身份号)[^a-z]{0,5}[0-9]'
+  return jsonb_build_object(
+    'order_id', v_order_id,
+    'order_no', v_order_no,
+    'amount_due', v_amount,
+    'project_quota', v_quota
   );
-END;
+end;
 $$;
 
--- ─── 4. 测试用例（注释说明，实际验证时可执行） ─────────────────────────────
--- 以下 SELECT 均应返回 true（表示检测到PII，会被拦截）：
--- SELECT _contains_pii('患者手机：13812345678');             → true（手机号）
--- SELECT _contains_pii('住院号:20240012345');               → true（住院号）
--- SELECT _contains_pii('身份证：110101199001011234');        → true（身份证）
--- SELECT _contains_pii('患者：张三，血压控制良好');           → true（姓名关键词）
--- SELECT _contains_pii('MRN: 789456，复查正常');             → true（MRN）
--- SELECT _contains_pii('creatinine 1.2 mg/dL, stable');   → false（正常临床描述）
--- SELECT _contains_pii('血压控制良好，依从性佳');             → false（正常中文描述）
--- SELECT _contains_pii('UPCR 1.5 g/g 较前下降');            → false（正常化验描述）
+grant execute on function public.create_billing_order(text,text,int,text,text,text,text,text,boolean,text,text,text,text) to authenticated;
+
+-- ──────────────────────────────────────────────────────────
+-- 7. submit_payment_proof() — 用户上传凭证
+-- ──────────────────────────────────────────────────────────
+create or replace function public.submit_payment_proof(
+  p_order_id      uuid,
+  p_file_url      text,
+  p_file_name     text      default null,
+  p_file_type     text      default null,
+  p_amount_paid   numeric   default null,
+  p_payment_method text     default null,
+  p_payer_name    text      default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- 校验订单归属
+  if not exists (
+    select 1 from public.billing_orders
+    where id = p_order_id and user_id = auth.uid()
+      and status in ('unpaid', 'rejected')
+  ) then
+    raise exception 'order_not_found_or_not_payable';
+  end if;
+
+  -- 保存凭证
+  insert into public.billing_payment_proofs (order_id, file_url, file_name, file_type, uploaded_by)
+  values (p_order_id, p_file_url, p_file_name, p_file_type, auth.uid());
+
+  -- 更新订单状态
+  update public.billing_orders
+  set
+    status          = 'pending_verification',
+    submitted_at    = now(),
+    amount_paid     = coalesce(p_amount_paid, amount_paid),
+    payment_method  = coalesce(p_payment_method, payment_method),
+    payer_name      = coalesce(p_payer_name, payer_name),
+    updated_at      = now()
+  where id = p_order_id;
+
+  -- 审计日志
+  insert into public.billing_audit_logs (order_id, action, operator_user_id)
+  values (p_order_id, 'proof_uploaded', auth.uid());
+end;
+$$;
+
+grant execute on function public.submit_payment_proof(uuid,text,text,text,numeric,text,text) to authenticated;
+
+-- ──────────────────────────────────────────────────────────
+-- 8. get_my_orders() — 用户查看自己的订单列表
+-- ──────────────────────────────────────────────────────────
+create or replace function public.get_my_orders()
+returns table (
+  id              uuid,
+  order_no        text,
+  plan_code       text,
+  billing_cycle   text,
+  project_quota   int,
+  amount_due      numeric,
+  amount_paid     numeric,
+  payment_method  text,
+  status          text,
+  start_at        timestamptz,
+  end_at          timestamptz,
+  created_at      timestamptz,
+  submitted_at    timestamptz,
+  reject_reason   text
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select id, order_no, plan_code, billing_cycle, project_quota,
+         amount_due, amount_paid, payment_method, status,
+         start_at, end_at, created_at, submitted_at, reject_reason
+  from public.billing_orders
+  where user_id = auth.uid()
+  order by created_at desc;
+$$;
+
+grant execute on function public.get_my_orders() to authenticated;
+
+-- ──────────────────────────────────────────────────────────
+-- 9. admin_list_orders() — 管理员查看所有订单
+-- ──────────────────────────────────────────────────────────
+create or replace function public.admin_list_orders(
+  p_status text default null
+)
+returns table (
+  id              uuid,
+  order_no        text,
+  user_id         uuid,
+  owner_email     text,
+  real_name       text,
+  hospital        text,
+  plan_code       text,
+  billing_cycle   text,
+  project_quota   int,
+  amount_due      numeric,
+  amount_paid     numeric,
+  payment_method  text,
+  status          text,
+  payer_name      text,
+  payer_email     text,
+  payer_hospital  text,
+  invoice_needed  boolean,
+  invoice_status  text,
+  submitted_at    timestamptz,
+  paid_at         timestamptz,
+  activated_at    timestamptz,
+  start_at        timestamptz,
+  end_at          timestamptz,
+  notes           text,
+  admin_notes     text,
+  reject_reason   text,
+  created_at      timestamptz,
+  proof_count     bigint
+)
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+begin
+  if not public.is_platform_admin() then
+    raise exception 'platform_admin_only';
+  end if;
+
+  return query
+  select
+    o.id, o.order_no, o.user_id, u.email::text,
+    pr.real_name, pr.hospital,
+    o.plan_code, o.billing_cycle, o.project_quota,
+    o.amount_due, o.amount_paid, o.payment_method,
+    o.status, o.payer_name, o.payer_email, o.payer_hospital,
+    o.invoice_needed, o.invoice_status,
+    o.submitted_at, o.paid_at, o.activated_at,
+    o.start_at, o.end_at,
+    o.notes, o.admin_notes, o.reject_reason,
+    o.created_at,
+    (select count(*) from public.billing_payment_proofs bp where bp.order_id = o.id)
+  from public.billing_orders o
+  join auth.users u on u.id = o.user_id
+  left join public.user_profiles pr on pr.user_id = o.user_id
+  where (p_status is null or o.status = p_status)
+  order by
+    case o.status
+      when 'pending_verification' then 0
+      when 'unpaid' then 1
+      when 'paid' then 2
+      when 'activated' then 3
+      else 4
+    end,
+    o.created_at desc;
+end;
+$$;
+
+grant execute on function public.admin_list_orders(text) to authenticated;
+
+-- ──────────────────────────────────────────────────────────
+-- 10. admin_get_order_proofs() — 管理员查看订单凭证
+-- ──────────────────────────────────────────────────────────
+create or replace function public.admin_get_order_proofs(p_order_id uuid)
+returns table (
+  id          uuid,
+  file_url    text,
+  file_name   text,
+  file_type   text,
+  created_at  timestamptz
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_platform_admin() then
+    raise exception 'platform_admin_only';
+  end if;
+
+  return query
+  select bp.id, bp.file_url, bp.file_name, bp.file_type, bp.created_at
+  from public.billing_payment_proofs bp
+  where bp.order_id = p_order_id
+  order by bp.created_at desc;
+end;
+$$;
+
+grant execute on function public.admin_get_order_proofs(uuid) to authenticated;
+
+-- ──────────────────────────────────────────────────────────
+-- 11. admin_verify_order() — 管理员确认到账并开通
+-- ──────────────────────────────────────────────────────────
+create or replace function public.admin_verify_order(
+  p_order_id    uuid,
+  p_start_at    timestamptz default null,
+  p_end_at      timestamptz default null,
+  p_admin_notes text        default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_order        public.billing_orders%rowtype;
+  v_start        timestamptz;
+  v_end          timestamptz;
+begin
+  if not public.is_platform_admin() then
+    raise exception 'platform_admin_only';
+  end if;
+
+  select * into v_order from public.billing_orders where id = p_order_id;
+  if not found then
+    raise exception 'order_not_found';
+  end if;
+
+  if v_order.status not in ('pending_verification', 'unpaid', 'paid') then
+    raise exception 'order_status_invalid: %', v_order.status;
+  end if;
+
+  -- 计算生效/到期时间
+  -- 如果用户还有剩余订阅，从到期日顺延
+  v_start := coalesce(p_start_at, now());
+  if v_order.billing_cycle = 'monthly' then
+    v_end := coalesce(p_end_at, v_start + interval '1 month');
+  else
+    v_end := coalesce(p_end_at, v_start + interval '1 year');
+  end if;
+
+  -- 更新订单
+  update public.billing_orders
+  set
+    status       = 'activated',
+    paid_at      = coalesce(paid_at, now()),
+    activated_at = now(),
+    start_at     = v_start,
+    end_at       = v_end,
+    admin_notes  = coalesce(p_admin_notes, admin_notes),
+    updated_at   = now()
+  where id = p_order_id;
+
+  -- 更新用户项目配额
+  update public.user_profiles
+  set
+    project_quota = v_order.project_quota,
+    updated_at    = now()
+  where user_id = v_order.user_id;
+
+  -- 升级该用户所有项目的订阅
+  update public.projects
+  set
+    subscription_plan         = v_order.plan_code,
+    subscription_active_until = v_end
+  where created_by = v_order.user_id;
+
+  -- 审计日志
+  insert into public.billing_audit_logs (order_id, action, operator_user_id, after_json)
+  values (p_order_id, 'activated', auth.uid(), jsonb_build_object(
+    'start_at', v_start, 'end_at', v_end,
+    'project_quota', v_order.project_quota,
+    'plan_code', v_order.plan_code
+  ));
+end;
+$$;
+
+grant execute on function public.admin_verify_order(uuid, timestamptz, timestamptz, text) to authenticated;
+
+-- ──────────────────────────────────────────────────────────
+-- 12. admin_reject_order() — 管理员驳回凭证
+-- ──────────────────────────────────────────────────────────
+create or replace function public.admin_reject_order(
+  p_order_id      uuid,
+  p_reject_reason text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_platform_admin() then
+    raise exception 'platform_admin_only';
+  end if;
+
+  update public.billing_orders
+  set
+    status        = 'rejected',
+    reject_reason = p_reject_reason,
+    updated_at    = now()
+  where id = p_order_id
+    and status = 'pending_verification';
+
+  if not found then
+    raise exception 'order_not_found_or_not_pending';
+  end if;
+
+  insert into public.billing_audit_logs (order_id, action, operator_user_id, after_json)
+  values (p_order_id, 'rejected', auth.uid(), jsonb_build_object('reason', p_reject_reason));
+end;
+$$;
+
+grant execute on function public.admin_reject_order(uuid, text) to authenticated;
+
+-- ──────────────────────────────────────────────────────────
+-- 13. 创建凭证上传的 Storage bucket
+-- ──────────────────────────────────────────────────────────
+-- NOTE: Supabase Storage bucket 需要在 Supabase Dashboard 创建：
+--   名称：payment-proofs
+--   公开：否（私有）
+--   允许上传文件类型：image/png, image/jpeg, image/webp, application/pdf
+--   最大文件大小：10MB
+
+-- ──────────────────────────────────────────────────────────
+-- 14. 用户项目配额检查函数
+-- ──────────────────────────────────────────────────────────
+create or replace function public.check_project_quota()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+stable
+as $$
+declare
+  v_quota   int;
+  v_used    int;
+begin
+  select coalesce(project_quota, 3)
+  into v_quota
+  from public.user_profiles
+  where user_id = auth.uid();
+
+  -- 如果没有 profile，默认配额 3
+  if not found then
+    v_quota := 3;
+  end if;
+
+  select count(*)::int into v_used
+  from public.projects
+  where created_by = auth.uid();
+
+  return jsonb_build_object(
+    'quota', v_quota,
+    'used', v_used,
+    'remaining', greatest(v_quota - v_used, 0)
+  );
+end;
+$$;
+
+grant execute on function public.check_project_quota() to authenticated;
+
+-- END

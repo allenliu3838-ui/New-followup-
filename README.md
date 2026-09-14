@@ -1,3 +1,5 @@
+> **登记系统整合修复（恢复分支）**：先阅读 [恢复与验收说明](docs/REGISTRY_RECOVERY.md)。当前源码已恢复并按发布清单核对；尚未部署生产。已有数据库不要照下方历史安装步骤重跑全量 SQL。
+
 # KidneySphere AI · Follow-up Registry (Clean v1)
 
 A **static** (no-build) research registry for nephrology follow-up:

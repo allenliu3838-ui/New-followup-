@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
   <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
-  <link rel="stylesheet" href="/app.css"/>
+  <link rel="stylesheet" href="/app.css?v=registry-20260914-integrated-v1"/>
   <link rel="icon" href="/assets/kidneysphere-ai.png"/>
   <style>
     /* 字段提示气泡 */
@@ -38,6 +38,12 @@
     #authLoading { text-align:center; padding:24px; }
     #authLoading .spinner { display:inline-block; width:20px; height:20px; border:3px solid var(--border); border-top-color:var(--brand); border-radius:50%; animation:spin .6s linear infinite; }
     @keyframes spin { to { transform:rotate(360deg); } }
+
+    #workspaceNav{position:sticky;top:0;z-index:30;background:#102d46;color:#fff;padding:12px 16px;border-radius:12px;margin:0 0 20px;box-shadow:0 4px 18px #102d4620}
+    #workspaceNav strong{display:block;margin-bottom:8px}#workspaceNav a{color:#e8f4ff;text-decoration:none;display:inline-block;padding:6px 10px;border-radius:6px}#workspaceNav a:hover,#workspaceNav a:focus{background:#285473}
+    [id$="Section"]{scroll-margin-top:130px}#baselineUnitHint{min-height:24px;color:#185886}#patientSearch{margin:12px 0}
+    .table{display:block;max-width:100%;overflow:auto}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #60a5fa;outline-offset:2px}
+    @media(max-width:680px){.row{display:block}.col{min-width:0!important;width:100%;margin-bottom:12px}.btnbar{gap:8px}.btnbar .btn{min-height:42px}#workspaceNav{position:static}.container{padding:12px}input,select,textarea{font-size:16px}}
   </style>
 </head>
 <body>
@@ -206,12 +212,12 @@
       </summary>
       <div style="margin-top:12px">
         <div class="infobox" style="margin-bottom:12px">
-          <b>数据存储说明：</b>您的账户和科研数据存储在中国区域的云服务器上。数据传输采用 HTTPS/TLS 加密，数据库实施行级安全策略。
+          <b>数据存储说明：</b>网站页面由阿里云提供，科研数据库另由 Supabase 服务提供。实际数据库地区与数据流向需按项目配置核实；录入真实数据前请完成所在机构授权。
           如需了解详细的安全措施，请查看 <a href="/security">安全合规</a> 页面。
         </div>
         <div class="btnbar">
-          <button class="btn" id="btnExportAccount">导出我的数据</button>
-          <button class="btn danger" id="btnDeleteAccount">注销账户</button>
+          <button class="btn" id="btnExportAccount">导出当前项目完整数据</button>
+          <button class="btn danger" id="btnDeleteAccount">申请注销说明</button>
           <a class="btn" href="mailto:china@kidneysphere.com">联系客服</a>
           <a class="btn" href="/privacy" target="_blank">隐私政策</a>
           <a class="btn" href="/terms" target="_blank">用户协议</a>
@@ -221,10 +227,11 @@
     </details>
 
     <div class="card" id="appCard" data-testid="workspace-card" style="display:none">
+      <nav id="workspaceNav" aria-label="科研工作任务"><strong id="currentProjectLabel">请先选择或创建项目</strong><a href="#projectSection">项目</a><a href="#patientsSection">患者与基线</a><a href="#followupSection">随访</a><a href="#issuePanel">待办与质控</a><a href="#importSection">批量导入</a><a href="#exportSection">导出</a><a href="/user-manual-cn" target="_blank" rel="noopener">帮助</a></nav>
       <div class="row">
         <div class="col">
-          <h2 style="margin:0 0 6px 0">项目</h2>
-          <div class="muted small">每个中心建议先创建一个项目（需填写中心代码），便于多中心数据合并与质量控制。</div>
+          <h2 id="projectSection" style="margin:0 0 6px 0">项目</h2>
+          <div class="muted small">负责人创建项目并邀请同行协作；受邀项目显示在下方列表。独立中心项目请使用不同中心代码。</div>
 
           <div class="hr"></div>
 
@@ -249,13 +256,13 @@
 
           <div class="hr"></div>
 
-          <h3 style="margin:0 0 6px 0;font-size:15px">我的项目列表</h3>
-          <div id="projectsList" class="pills"></div>
-          <div id="projectMeta" class="kv" style="margin-top:8px"></div>
+          <h3 style="margin:0 0 6px 0;font-size:15px">我可访问的项目</h3>
+          <div id="projectsList" class="pills"></div><p id="demoSeedFeedback" class="warnbox" role="status" style="display:none"></p>
+          <div id="projectMeta" class="kv" style="margin-top:8px"></div><p id="projectAccessStatus" class="infobox" role="status">请先选择项目</p><section id="projectMembers" aria-label="项目协作成员"></section>
         </div>
 
         <div class="col">
-          <h2 style="margin:0 0 6px 0">患者（去标识化）</h2>
+          <h2 id="patientsSection" style="margin:0 0 6px 0">患者与基线</h2>
           <div class="muted small">仅录入研究编号；请勿录入姓名/病案号等可识别信息。</div>
 
           <div class="hr"></div>
@@ -290,8 +297,9 @@
               <input id="patBaselineScr" type="number" step="0.1" placeholder="例如：98"/>
             </div>
             <div class="col">
-              <label>基线 UPCR（mg/g 或 g/g，可选）</label>
-              <input id="patBaselineUpcr" type="number" step="0.01" placeholder="例如：800"/>
+              <label for="patBaselineUpcr">基线 UPCR（可选）</label>
+              <input id="patBaselineUpcr" type="number" min="0" step="any" placeholder="按原始化验单填写"/>
+              <label for="patBaselineUpcrUnit">原始化验单单位</label><select id="patBaselineUpcrUnit"><option value="mg/g">mg/g</option><option value="g/g">g/g</option></select><div id="baselineUnitHint" class="small" aria-live="polite">按所选单位输入，保存前显示换算结果。</div>
             </div>
           </div>
 
@@ -412,23 +420,23 @@
           </div>
 
           <div class="btnbar">
-            <button class="btn primary" id="btnCreatePatient">保存基线</button>
+            <button class="btn primary" id="btnCreatePatient">核对并保存基线</button><button class="btn" id="btnResetBaseline">清空本次录入</button>
           </div>
 
           <div class="hr"></div>
 
           <h3 style="margin:0 0 6px 0;font-size:15px">患者列表</h3>
-          <div class="muted small">点击患者行右侧按钮可生成对应随访链接。</div>
-          <div id="patientsList"></div>
+          <div class="muted small">可选择患者录入扩展信息、核对基线，或查看并更正随访记录。</div>
+          <label for="patientSearch">查找研究编号</label><input id="patientSearch" type="search" placeholder="输入研究编号筛选患者"/><div id="patientsList"></div>
 
           <div class="hr"></div>
 
-          <h3 style="margin:0 0 6px 0;font-size:15px">随访链接（Token）
-            <span class="tooltip-icon" title="Token（令牌）= 一串随机字母数字组成的"钥匙"，患者或随访护士用这个链接填随访数据，不需要登录账号。每条链接只绑定一个患者。Token 泄露也没关系，随时可以撤销。">?</span>
+          <h3 style="margin:0 0 6px 0;font-size:15px" id="followupSection">随访链接（Token）
+            <span class="tooltip-icon" title="随访链接是访问凭证，仅向经授权的患者或随访人员发送；如有泄露请立即撤销。">?</span>
           </h3>
           <div class="muted small">
             患者端/随访人员<b>无需登录</b>，用链接直接填写随访，每条链接仅对应特定患者。<br>
-            <b>Token 是什么？</b> 一串随机码（如 <code>a3f8…</code>），是访问患者随访页的"一次性钥匙"，不含任何个人信息，泄露可随时撤销。
+            <b>Token 是什么？</b> 一串随机码，是访问该患者随访页的凭证。默认提交一次后失效；请仅向经授权的填写人发送，泄露时立即撤销。
           </div>
           <div class="row" style="align-items:flex-end;margin-top:8px">
             <div class="col">
@@ -439,15 +447,15 @@
             </div>
             <div class="col">
               <label>链接有效期（天）
-                <span class="tooltip-icon" title="链接过期后自动失效，患者无法再提交。建议长期随访用 365 天，单次填写用 7 天。">?</span>
+                <span class="tooltip-icon" title="链接过期后自动失效，患者无法再提交。请选择完成本次随访所需的最短有效期，默认 30 天。">?</span>
               </label>
-              <input id="tokenDays" type="number" value="365"/>
+              <input id="tokenDays" type="number" value="30"/>
             </div>
           </div>
           <div class="row" style="margin-top:6px">
             <div class="col">
               <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-                <input type="checkbox" id="tokenSingleUse" style="width:auto;margin:0"/>
+                <input type="checkbox" id="tokenSingleUse" checked style="width:auto;margin:0"/>
                 单次使用（提交一次后自动失效）
                 <span class="tooltip-icon" title="勾选后：患者提交一次随访数据，链接立刻失效，再次点击会提示已使用。适合一次性调查或防止重复提交。不勾选：链接可反复使用，适合长期随访。">?</span>
               </label>
@@ -456,7 +464,7 @@
           <div class="btnbar" style="margin-top:8px">
             <button class="btn primary" id="btnGenToken">生成随访链接</button>
           </div>
-          <div id="tokenOut" class="infobox" style="margin-top:10px;display:none"></div>
+          <div id="tokenOut" class="infobox" style="margin-top:10px;display:none"></div><div id="existingTokens" class="muted small" style="margin-top:14px"></div>
         </div>
       </div>
 
@@ -467,10 +475,10 @@
         <h2 style="margin:0 0 6px 0">质控 Issue
           <span class="tooltip-icon" title="系统自动检测数据问题（如日期冲突、超范围、单位不对），每个问题生成一个Issue。修正数据后Issue自动关闭；无法修正时可标记为「不修复」并说明原因。">?</span>
         </h2>
-        <div id="issueSummary" class="muted small">加载中…</div>
+        <div id="issueSummary" aria-live="polite" class="muted small">加载中…</div>
         <div id="issueList" style="margin-top:8px"></div>
         <div class="btnbar" style="margin-top:8px">
-          <button class="btn" id="btnLoadIssues">查看所有 Issue</button>
+          <button class="btn" id="btnLoadIssues">刷新质控列表</button>
         </div>
       </div>
 
@@ -478,7 +486,7 @@
 
       <div class="row">
         <div class="col">
-          <h2 style="margin:0 0 6px 0">导出（科研长表）</h2>
+          <h2 id="exportSection" style="margin:0 0 6px 0">导出当前项目数据</h2>
           <div class="muted small">导出 CSV 默认带 UTF‑8 BOM，Excel 直接打开一般不乱码。</div>
           <div class="btnbar">
             <button class="btn" id="btnExportBaseline">导出基线数据</button>
@@ -491,12 +499,12 @@
         </div>
 
         <div class="col">
-          <h2 style="margin:0 0 6px 0">🧾 论文包（NEJM 级材料）</h2>
+          <h2 style="margin:0 0 6px 0">科研数据与分析脚本包</h2>
           <div class="muted small">
-            一键生成 zip：去标识化数据长表 + Starter Kit（Table1/QC/趋势图/12m结局/Methods 草稿）。
+            打包当前项目的完整长表、质控报告、可运行分析脚本和文件校验值。统计结果需要下载后按说明运行。
           </div>
           <div class="btnbar">
-            <button class="btn primary" id="btnPaperPack">一键生成论文包（zip）</button>
+            <button class="btn primary" id="btnPaperPack">导出分析脚本包（ZIP）</button>
           </div>
           <div class="warnbox" style="margin-top:10px">
             <b>提醒：</b>Methods 草稿为自动生成模板，投稿前需由 PI 最终审阅；系统不提供诊疗建议。
@@ -505,12 +513,12 @@
 
           <div class="hr"></div>
 
-          <h3 style="margin:0 0 6px 0;font-size:15px">🧷 数据快照（可复现版本）</h3>
-          <div class="muted small">生成快照后会得到快照编号，可用于论文方法学部分引用；可锁定用于投稿。</div>
+          <h3 style="margin:0 0 6px 0;font-size:15px">冻结的数据版本</h3>
+          <div class="muted small">新版本保存一次数据库一致性读取的完整数据，并可通过哈希核对或重新下载。旧元数据批次没有历史数据内容，列表会明确区分。</div>
           <div class="btnbar" style="margin-top:8px">
-            <button class="btn" id="btnCreateSnapshot">生成数据快照</button>
-            <button class="btn primary" id="btnPaperPackWithSnapshot">生成论文包（含快照）</button>
-            <button class="btn" id="btnRefreshSnapshots">刷新快照列表</button>
+            <button class="btn" id="btnCreateSnapshot">冻结当前数据版本</button>
+            <button class="btn primary" id="btnPaperPackWithSnapshot">冻结并导出完整分析包</button>
+            <button class="btn" id="btnRefreshSnapshots">刷新数据版本</button>
           </div>
           <div id="snapshotOut" class="infobox" style="margin-top:10px;display:none"></div>
           <div id="snapshotsList" style="margin-top:10px"></div>
@@ -518,13 +526,14 @@
       <div class="hr"></div>
 
       <!-- ===== 批量导入 ===== -->
-      <h2 style="margin:0 0 6px 0">📥 批量导入（CSV）</h2>
-      <div class="muted small">把您已有的 Excel / SPSS 数据整理成 CSV 后上传，系统自动解析并写入当前项目，无需逐条手录。</div>
+      <h2 id="importSection" style="margin:0 0 6px 0">批量导入（CSV）</h2>
+      <div class="muted small">先下载模板、预览单位和变更，再确认提交到当前项目。一次最多500行，服务器整批校验；失败可保留同一批次重试。</div>
       <div class="warnbox" style="margin-top:8px">
-        <b>使用前请注意：</b>①先选好目标项目；②先下载模板、按列名填写（多余列会被忽略）；③基线数据重复导入会<b>覆盖</b>同编号患者；随访记录<b>不去重</b>，请勿重复上传同一份文件。
+        <b>导入规则：</b>基线只更新文件提供的非空字段，缺失列及空格保持现有值；清空数据请通过“核对 / 更正”并填写原因。随访按服务器规则去重。未知列、重复表头及有错误的行会阻止整批导入。
       </div>
       <div class="row" style="margin-top:10px;align-items:flex-end;flex-wrap:wrap;gap:8px">
         <div class="col" style="min-width:180px">
+          <label>CSV未标注的基线UPCR单位</label><select id="importBaselineUnit"><option value="">请明确选择（有UPCR时必需）</option><option value="mg/g">mg/g</option><option value="g/g">g/g</option></select>
           <label>导入类型</label>
           <select id="importType">
             <option value="baseline">患者基线（patients_baseline）</option>
@@ -539,6 +548,7 @@
           </label>
         </div>
       </div>
+      <label style="display:flex;gap:8px;align-items:flex-start"><input id="importUnitsConfirm" type="checkbox" style="width:auto;margin-top:5px"/>我已核对：肌酐列为 μmol/L，随访 UPCR 为 mg/g；基线 UPCR 按文件列或页面所选单位换算。</label>
       <div id="importPreview" style="margin-top:12px;display:none">
         <div id="importSummary" class="muted small" style="margin-bottom:6px"></div>
         <div id="importTable" style="overflow-x:auto;max-height:260px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px"></div>
@@ -730,7 +740,7 @@
       <div class="hr" style="margin-top:14px"></div>
 
       <h3 style="margin:0 0 8px 0;font-size:15px">🏁 临床终点事件</h3>
-      <div class="muted small" style="margin-bottom:10px">手动录入终点事件（ESRD/死亡/缓解等）；eGFR 下降终点在论文包中自动计算并合并。</div>
+      <div class="muted small" style="margin-bottom:10px">手动录入终点事件（ESRD/死亡/缓解等）；eGFR 下降候选终点需导出分析包后运行脚本，并按方案核对与确认。</div>
       <div class="row">
         <div class="col">
           <label>研究编号</label>
@@ -773,10 +783,10 @@
 
     </template><!-- /authGatedTpl -->
 
-  <script src="/lib/error-logger.js"></script>
-  <script src="/config.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script type="module" src="/staff.js"></script>
+  <script src="/lib/error-logger.js?v=registry-20260914-integrated-v1"></script>
+  <script src="/config.js?v=registry-20260914-integrated-v1"></script>
+  <script src="/lib/vendor/jszip.min.js?v=registry-20260914-integrated-v1"></script>
+  <script type="module" src="/staff.js?v=registry-20260914-integrated-v1"></script>
   <footer class="site-footer">
     <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
     <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener">鲁公网安备37091102000922号</a></div>
