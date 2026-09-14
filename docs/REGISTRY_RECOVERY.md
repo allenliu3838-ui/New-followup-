@@ -1,5 +1,7 @@
 # 整合修复分支恢复说明
 
+> 当前构建已切换到 PostgreSQL 17 v2，见 [REGISTRY_PG17_RELEASE.md](REGISTRY_PG17_RELEASE.md)。下述恢复字节与旧测试数量描述属于历史恢复阶段；原证据保持不变。新构建不会复用旧 v1 数据库报告。
+
 临时工作目录被系统清理后，本分支从已保存的 `registry-integrated-release-20260914.zip` 恢复。原本地提交 `2f0a341ce670d67b79f1f53902c5e1a06cac1ec1` 未推送成功，远端不存在该对象；本次会产生新的提交。
 
 ## 恢复与验证范围

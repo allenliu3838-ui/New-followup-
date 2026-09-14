@@ -1,14 +1,14 @@
 {
   "name": "new-followup-",
   "version": "1.0.0",
-  "description": "A **static** (no-build) research registry for nephrology follow-up: - `/staff` admin portal (magic-link login) - `/p/<token>` follow-up entry page (no login) - `/guide` world-class training + FAQ (for all trial users) - `/pricing` progressive pricing details + FAQ - `/security` security/compliance overview - `/deployment` SaaS/private deployment options - Supabase Postgres schema includes:   - multicenter merge key: **center_code + patient_code**   - IgAN pathology: **Oxford MEST\u2011C**   - genetics: `variants_long` long-table   - trial write lock (post-expiry read-only)   - CN-friendly concept layer: `concept_dictionary` + `abbreviation_dictionary`   - CN/EN export mapping: `v_concept_export_mapping`",
+  "description": "A **static** (no-build) research registry for nephrology follow-up: - `/staff` admin portal (magic-link login) - `/p/<token>` follow-up entry page (no login) - `/guide` world-class training + FAQ (for all trial users) - `/pricing` progressive pricing details + FAQ - `/security` security/compliance overview - `/deployment` SaaS/private deployment options - Supabase Postgres schema includes:   - multicenter merge key: **center_code + patient_code**   - IgAN pathology: **Oxford MEST‑C**   - genetics: `variants_long` long-table   - trial write lock (post-expiry read-only)   - CN-friendly concept layer: `concept_dictionary` + `abbreviation_dictionary`   - CN/EN export mapping: `v_concept_export_mapping`",
   "main": "index.js",
   "directories": {
     "doc": "docs",
     "test": "tests"
   },
   "scripts": {
-    "test": "python3 tests/verify_recovered_release.py && node tests/recovered-database.mjs",
+    "test": "python3 tests/verify_recovered_release.py && python3 -m unittest discover -s tests -p test_pg17_release_contract.py && node tests/recovered-database.mjs && node tests/pg17-upgrade.mjs && node scripts/build_database_contract_pg17.mjs --check && node tests/pg17-preflight.mjs",
     "test:e2e": "node scripts/refuse_unconfigured_e2e.cjs",
     "smoke": "bash scripts/smoke-test.sh",
     "lighthouse": "bash scripts/lighthouse-ci.sh",
@@ -23,6 +23,8 @@
   "license": "ISC",
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
-    "@playwright/test": "^1.58.2"
+    "@embedded-postgres/linux-x64": "17.6.0-beta.15",
+    "@playwright/test": "^1.58.2",
+    "pg": "8.16.3"
   }
 }

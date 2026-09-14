@@ -1,4 +1,4 @@
-> 本恢复分支的可用构建和测试命令见 [REGISTRY_RECOVERY.md](REGISTRY_RECOVERY.md)。下列旧开发构建链有部分源码未恢复；生产核验、备份与发布边界仍适用。
+> 当前可用构建和测试命令以 [REGISTRY_PG17_RELEASE.md](REGISTRY_PG17_RELEASE.md) 为准。下列旧开发构建链有部分源码未恢复；生产核验、备份与发布边界仍适用。旧 v1 包不适用于当前 PG17 发布校验。
 
 # 登记系统整合修复发布说明
 

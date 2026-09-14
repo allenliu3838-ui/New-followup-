@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import stat
@@ -16,7 +17,11 @@ import registry_visual_release as visual
 TARGET=Path('/var/www/kidneysphere-registry')
 BACKUPS=Path('/root/registry-integrated-releases')
 PROJECT_REF='etsyglgpiutflethgirs'
-VERSION='registry-20260914-integrated-v1'
+VERSION='registry-20260914-integrated-pg17-v2'
+CONTRACT_PROTOCOL='registry-contract-v2-pg17'
+CONTRACT_SERVER_MAJOR=17
+CONTRACT_CATEGORIES=('functions','triggers','policies','tables','columns','indexes','schema_privileges','buckets')
+CONTRACT_PROFILE_NAMES={'canonical','historical_crlf'}
 ALLOWED=set('''index.html staff.html staff.js patient.html patient.js signup.html login.html auth-callback.html checkout.html checkout.js pricing.html pricing-config.js app.css analytics.js demo.html privacy.html security.html deployment.html terms.html disclaimer.html collaboration.html collaboration-components.js collaboration-data.js slides.html guide.html guide.js guide.css guide-steps.css user-manual-cn.html 404.html robots.txt sitemap.xml _redirects
 lib/supabase-client.js lib/utils.js lib/error-logger.js lib/rate-limit.js lib/password-strength.js lib/registry-data.js lib/patient-workflow.js lib/project-members.js lib/auth-navigation.js lib/vendor/supabase.js lib/vendor/jszip.min.js lib/vendor/LICENSES.txt lib/vendor/versions.json
 assets/sql/batch1_core.sql assets/sql/batch2_features.sql assets/sql/batch3_admin.sql assets/sql/batch4_pr.sql assets/sql/batch5_qc.sql assets/sql/batch6_latest.sql
@@ -57,6 +62,7 @@ def load_bundle(archive):
         expected={'__main__.py','registry_integrated_release.py','registry_pages_release.py','registry_visual_release.py','release-manifest.json','database-preflight.sql'}|{'payload/'+n for n in names}
         if set(z.namelist())!=expected:raise Error('Unexpected package members')
         if manifest.get('release')!=VERSION or manifest.get('project_ref')!=PROJECT_REF:raise Error('Wrong release or project')
+        contract_profiles(manifest)
         payload={}
         for name in names:
             info=z.getinfo('payload/'+name)
@@ -67,30 +73,66 @@ def load_bundle(archive):
     return manifest,payload
 
 
+def contract_profiles(manifest):
+    """Only complete, independently reviewed PG17 profiles are accepted."""
+    if manifest.get('database_contract_protocol')!=CONTRACT_PROTOCOL:
+        raise Error('Unsupported database contract protocol; use the matching release')
+    major=manifest.get('database_server_major')
+    if type(major) is not int or major!=CONTRACT_SERVER_MAJOR:
+        raise Error('This release requires a reviewed PostgreSQL 17 contract')
+    query_hash=manifest.get('database_contract_sha256')
+    if not isinstance(query_hash,str) or not re.fullmatch(r'[0-9a-f]{64}',query_hash):
+        raise Error('Missing or invalid reviewed database contract query hash')
+    profiles=manifest.get('database_contract_profiles')
+    if not isinstance(profiles,dict) or set(profiles)!=CONTRACT_PROFILE_NAMES:
+        raise Error('Expected both reviewed canonical and historical CRLF contract profiles')
+    for profile in profiles.values():
+        if not isinstance(profile,dict) or set(profile)!=set(CONTRACT_CATEGORIES):
+            raise Error('Incomplete database contract profile')
+        for category in CONTRACT_CATEGORIES:
+            rows=profile[category]
+            if not isinstance(rows,list) or not rows or any(not isinstance(row,dict) for row in rows):
+                raise Error('Missing or malformed database contract category: '+category)
+    return profiles
+
+
 def verify_db(report, manifest, now=None):
     now=now or datetime.now(timezone.utc)
+    if not isinstance(report,dict):raise Error('Malformed database report')
     if report.get('database')!='postgres' or report.get('project_ref')!=PROJECT_REF or report.get('release')!=VERSION or report.get('migration_manifest_sha256')!=manifest['migration_manifest_sha256']:
         raise Error('Database report does not match this project/release/migration manifest')
+    profiles=contract_profiles(manifest)
+    if report.get('contract_protocol')!=CONTRACT_PROTOCOL or report.get('database_contract_sha256')!=manifest['database_contract_sha256']:
+        raise Error('Database report protocol/query does not match this reviewed release')
+    version=report.get('server_version_num')
+    major=report.get('database_server_major')
+    if type(version) is not int or type(major) is not int or version//10000!=CONTRACT_SERVER_MAJOR or major!=CONTRACT_SERVER_MAJOR:
+        raise Error('Database report must come from PostgreSQL 17; other versions require review')
+    if report.get('transaction_read_only')!='on' or report.get('render_timezone')!='UTC' or report.get('render_search_path')!='pg_catalog, public':
+        raise Error('Database contract must be captured read-only with the reviewed UTC/search_path settings')
     try:age=(now-datetime.fromisoformat(report['checked_at'].replace('Z','+00:00'))).total_seconds()
     except Exception as exc:raise Error('Invalid database check timestamp') from exc
     if age< -300 or age>86400:raise Error('Database report must be from the last 24 hours')
     checks=report.get('checks',{})
     required=manifest['required_db_checks']
-    if not required or any(checks.get(name) is not True for name in required):
+    if not isinstance(checks,dict) or not required or any(checks.get(name) is not True for name in required):
         raise Error('Database schema/permission validation incomplete or failed')
     if report.get('identity_source')!='verified_connection_host':
         raise Error('Database project identity must be verified from connection host/user; use capture_registry_database.py')
     if set(report.get('schema_versions',[]))!=set(manifest['required_schema_versions']):
         raise Error('Unexpected database schema version set; re-review before frontend deployment')
-    # Extra overloads/permissive policies can be as unsafe as missing guards.
-    # Require the complete audited application catalog, including private helper
-    # definitions, trigger attachments/enabled state, policy expressions and ACLs.
-    for category in ('functions','triggers','policies','tables'):
-        expected=manifest.get('database_'+category,[])
-        actual=report.get(category,[])
-        normalize=lambda rows:sorted(json.dumps(row,sort_keys=True) for row in rows)
-        if not expected or normalize(actual)!=normalize(expected):
-            raise Error('Database '+category+' differ from the reviewed schema contract; re-review before deployment')
+    # Profiles describe whole reviewed upgrade paths. Never select a convenient
+    # hash per function: that would accept a hybrid nobody built or reviewed.
+    actual={}
+    for category in CONTRACT_CATEGORIES:
+        rows=report.get(category)
+        if not isinstance(rows,list) or not rows or any(not isinstance(row,dict) for row in rows):
+            raise Error('Missing or malformed database report category: '+category)
+        actual[category]=sorted(json.dumps(row,sort_keys=True) for row in rows)
+    for name,profile in profiles.items():
+        if all(actual[category]==sorted(json.dumps(row,sort_keys=True) for row in profile[category]) for category in CONTRACT_CATEGORIES):
+            return name
+    raise Error('Database catalog differs from every complete reviewed PostgreSQL 17 profile; re-review before deployment')
 
 
 def capture(manifest,target=TARGET,backups=BACKUPS,paths=SENTINELS):
