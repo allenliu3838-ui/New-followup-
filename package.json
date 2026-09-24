@@ -11,7 +11,8 @@
     "test": "npx playwright test",
     "test:e2e": "npx playwright test",
     "smoke": "bash scripts/smoke-test.sh",
-    "lighthouse": "bash scripts/lighthouse-ci.sh"
+    "lighthouse": "bash scripts/lighthouse-ci.sh",
+    "test:signup": "node --experimental-vm-modules --test tests/signup-flow.test.cjs"
   },
   "repository": {
     "type": "git",
@@ -21,6 +22,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@playwright/test": "^1.58.2"
+    "@playwright/test": "^1.58.2",
+    "jsdom": "26.1.0"
   }
 }
