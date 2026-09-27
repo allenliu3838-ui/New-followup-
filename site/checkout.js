@@ -4,6 +4,21 @@ import { throttle } from "/lib/rate-limit.js";
 
 const sb = supabase();
 const B = () => window.CONFIG?.BILLING || {};
+const track = (name, props) => { try { window.KSTrack?.track(name, props); } catch (_) { /* never block checkout */ } };
+
+const CONTACT_EMAIL = () => B().CONTACT_EMAIL || "china@kidneysphere.com";
+const CONTACT_WECHAT = () => B().CONTACT_WECHAT || "GlomConChina1";
+
+// Which config keys each payment method needs to render
+const METHOD_CONFIG_KEYS = {
+  wechat_qr: ["WECHAT_QR_IMG"],
+  alipay_qr: ["ALIPAY_QR_IMG"],
+  bank_transfer: ["BANK_NAME", "BANK_ACCOUNT", "BANK_BRANCH"],
+};
+function missingConfig(method) {
+  const b = B();
+  return METHOD_CONFIG_KEYS[method].filter(k => !String(b[k] || "").trim());
+}
 
 const rlOrder  = throttle("order",  { maxAttempts: 5,  windowMs: 15 * 60_000, message: "下单请求过于频繁" });
 const rlUpload = throttle("upload", { maxAttempts: 10, windowMs: 15 * 60_000, message: "凭证上传过于频繁" });
@@ -12,6 +27,8 @@ const rlUpload = throttle("upload", { maxAttempts: 10, windowMs: 15 * 60_000, me
 const el = {
   loginPrompt:    qs("#loginPrompt"),
   checkoutMain:   qs("#checkoutMain"),
+  stepper:        qs("#coStepper"),
+  stepLabel:      qs("#stepLabel"),
 };
 
 // Auth-gated checkout element refs — populated after template injection
@@ -23,8 +40,7 @@ function injectCheckoutContent() {
 
   // Now capture all element references
   el.step1 = qs("#step1"); el.step2 = qs("#step2"); el.step3 = qs("#step3"); el.step4 = qs("#step4");
-  el.dot1 = qs("#dot1"); el.dot2 = qs("#dot2"); el.dot3 = qs("#dot3"); el.dot4 = qs("#dot4");
-  el.stepLabel = qs("#stepLabel");
+  el.payPreview = qs("#payPreview");
   el.planCode = qs("#planCode");
   el.billingCycle = qs("#billingCycle");
   el.projectCount = qs("#projectCount");
@@ -63,6 +79,8 @@ let user = null;
 let currentOrder = null;   // after order created
 let currentStep = 1;
 let selectedMethod = "wechat_qr";
+let proofSubmitted = false;
+let isAdminCache = null;
 
 // ── Price Calculation ────────────────────────────────────
 function calcPrice() {
@@ -95,19 +113,45 @@ function calcPrice() {
 const stepLabels = {
   1: "第 1 步：选择方案",
   2: "第 2 步：填写订单信息",
-  3: "第 3 步：付款并上传凭证",
+  3: "第 3 步：选择付款方式并付款，然后上传凭证",
   4: "第 4 步：等待核验开通",
 };
+const lockedHints = {
+  2: "完成第 1 步后解锁",
+  3: "填写订单信息后解锁",
+  4: "付款后上传凭证",
+};
+
+// n = 0 means guest: every step locked until login
+function renderStepper(n) {
+  if (!el.stepper) return;
+  el.stepper.querySelectorAll("li").forEach(li => {
+    const i = Number(li.dataset.step);
+    const num = li.querySelector(".s-num");
+    const hint = li.querySelector(".s-hint");
+    if (!li.dataset.defaultHint) li.dataset.defaultHint = hint.textContent;
+    li.classList.toggle("is-done", n > 0 && i < n);
+    li.classList.toggle("is-active", i === n);
+    li.classList.toggle("is-locked", n === 0 || i > n);
+    li.setAttribute("aria-current", i === n ? "step" : "false");
+    num.textContent = n > 0 && i < n ? "✓" : String(i);
+    hint.textContent = n === 0 ? "登录后开始"
+      : i > n ? (lockedHints[i] || li.dataset.defaultHint)
+      : li.dataset.defaultHint;
+  });
+  if (n > 0) {
+    const active = el.stepper.querySelector("li.is-active");
+    active?.scrollIntoView?.({ block: "nearest", inline: "center" });
+  }
+}
 
 function goToStep(n) {
   currentStep = n;
   [el.step1, el.step2, el.step3, el.step4].forEach((s, i) => {
     s.classList.toggle("active", i + 1 === n);
   });
-  [el.dot1, el.dot2, el.dot3, el.dot4].forEach((d, i) => {
-    d.className = i + 1 < n ? "step-dot done" : i + 1 === n ? "step-dot active" : "step-dot";
-    if (i + 1 < n) d.textContent = "✓";
-  });
+  if (el.payPreview) el.payPreview.style.display = n < 3 ? "" : "none";
+  renderStepper(n);
   el.stepLabel.textContent = stepLabels[n] || "";
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -133,11 +177,91 @@ function fallbackCopy(text, label) {
 }
 
 // ── Build Step 3 payment DOM dynamically (only after order created) ──
+async function isPlatformAdmin() {
+  if (isAdminCache !== null) return isAdminCache;
+  try {
+    const { data, error } = await sb.rpc("is_platform_admin");
+    isAdminCache = !error && data === true;
+  } catch (_) {
+    isAdminCache = false;
+  }
+  return isAdminCache;
+}
+
+// Users only ever see the friendly fallback; admins additionally see which key is missing
+async function reportPaymentConfigIssue(method, detail) {
+  window.ErrorLogger?.log("checkout.paymentConfig", `payment config missing: ${method} ${detail}`);
+  if (!(await isPlatformAdmin())) return;
+  const dbg = el.step3Content?.querySelector(`[data-debug-for="${method}"]`);
+  if (dbg) {
+    dbg.hidden = false;
+    dbg.textContent = `[admin] payment config missing: ${detail}`;
+  }
+}
+
+function paymentFallbackHtml(method, label, orderNo) {
+  return `
+    <div class="pay-fallback" data-testid="pay-fallback-${method}">
+      <b>${escapeHtml(label)}付款信息暂时无法显示。</b><br/>
+      可以切换其他付款方式，或联系我们获取付款信息（请注明订单号 <code>${escapeHtml(orderNo)}</code>）：<br/>
+      邮箱 <a href="mailto:${escapeHtml(CONTACT_EMAIL())}">${escapeHtml(CONTACT_EMAIL())}</a> · 微信 ${escapeHtml(CONTACT_WECHAT())}
+      <div class="pay-debug" data-debug-for="${method}" hidden></div>
+    </div>`;
+}
+
+function qrPanelHtml(method, label, imgUrl, caption, memo, memoId, copyId, orderNo) {
+  if (missingConfig(method).length) return paymentFallbackHtml(method, label, orderNo);
+  return `
+      <div class="qr-box" data-qr-for="${method}">
+        <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(label)}收款码"/>
+        <div class="muted small" style="margin-top:6px">${escapeHtml(caption || "")}</div>
+      </div>
+      <div class="infobox small">
+        <b>付款说明：</b><br/>
+        1. 请打开${escapeHtml(label)}扫一扫，扫描上方二维码<br/>
+        2. 付款金额请与页面显示金额一致<br/>
+        3. 付款备注请填写：<code id="${memoId}">${escapeHtml(memo)}</code> <span class="copy-btn" id="${copyId}">复制</span><br/>
+        4. 支付完成后在下方"上传付款凭证"
+      </div>`;
+}
+
 function buildStep3(orderNo, amount) {
   const b = B();
   const memo = orderNo;
   const container = el.step3Content;
   if (!container) return;
+
+  const methodLabels = { wechat_qr: "微信", alipay_qr: "支付宝", bank_transfer: "对公转账" };
+  const available = Object.keys(METHOD_CONFIG_KEYS).filter(m => !missingConfig(m).length);
+  if (!available.includes(selectedMethod)) selectedMethod = available[0] || "wechat_qr";
+
+  const bankHtml = missingConfig("bank_transfer").length
+    ? paymentFallbackHtml("bank_transfer", "对公转账", orderNo)
+    : `
+      <div class="bank-info">
+        <div class="kv">
+          <div class="muted small">公司名称</div><div>${escapeHtml(b.BANK_NAME)}</div>
+          <div class="muted small">开户行</div><div>${escapeHtml(b.BANK_BRANCH)}</div>
+          <div class="muted small">银行账号</div>
+          <div><code id="bankAccount">${escapeHtml(b.BANK_ACCOUNT)}</code> <span class="copy-btn" id="copyBankAccount">复制</span></div>
+          <div class="muted small">转账金额</div><div style="font-weight:700;color:var(--brand)">&yen;${escapeHtml(String(amount))}</div>
+        </div>
+      </div>
+      <div class="infobox small" style="margin-top:10px">
+        <b>转账说明：</b><br/>
+        1. 转账备注请填写：<code id="bankMemo">KS${escapeHtml(orderNo)}</code> <span class="copy-btn" id="copyBankMemo">复制</span><br/>
+        2. 转账完成后请上传转账回单或凭证截图
+      </div>`;
+
+  const allMissingNotice = available.length ? "" : `
+    <div class="pay-fallback" style="margin-bottom:10px" data-testid="pay-fallback-all">
+      <b>付款信息暂时无法加载。</b>订单已保留，请通过邮箱 <a href="mailto:${escapeHtml(CONTACT_EMAIL())}">${escapeHtml(CONTACT_EMAIL())}</a>
+      或微信 ${escapeHtml(CONTACT_WECHAT())} 联系我们获取付款方式（请注明订单号），付款后仍可在本页上传凭证。
+    </div>`;
+
+  const tab = (m, icon) =>
+    `<div class="pay-tab${m === selectedMethod ? " active" : ""}" data-method="${m}"><span class="tab-icon">${icon}</span>${m === "bank_transfer" ? "对公转账" : methodLabels[m] + (m === "wechat_qr" ? "支付" : "")}</div>`;
+  const panelCls = m => `pay-panel${m === selectedMethod ? " active" : ""}`;
 
   container.innerHTML = `
     <h2 style="margin:0 0 4px">付款</h2>
@@ -151,52 +275,20 @@ function buildStep3(orderNo, amount) {
       <span class="amount-big" id="amountDisplay">&yen;${escapeHtml(String(amount))}</span>
       <span class="copy-btn" id="copyAmount">复制</span>
     </div>
+    ${allMissingNotice}
     <div class="pay-tabs">
-      <div class="pay-tab active" data-method="wechat_qr"><span class="tab-icon">&#128154;</span>微信支付</div>
-      <div class="pay-tab" data-method="alipay_qr"><span class="tab-icon">&#128153;</span>支付宝</div>
-      <div class="pay-tab" data-method="bank_transfer"><span class="tab-icon">&#127974;</span>对公转账</div>
+      ${tab("wechat_qr", "&#128154;")}
+      ${tab("alipay_qr", "&#128153;")}
+      ${tab("bank_transfer", "&#127974;")}
     </div>
-    <div class="pay-panel active" id="panel_wechat_qr">
-      <div class="qr-box">
-        <img src="${escapeHtml(b.WECHAT_QR_IMG || "")}" alt="微信收款码" style="max-width:260px;border-radius:14px;border:1px solid var(--border)"/>
-        <div class="muted small" style="margin-top:6px">${escapeHtml(b.WECHAT_LABEL || "")}</div>
-      </div>
-      <div class="infobox small">
-        <b>付款说明：</b><br/>
-        1. 请打开微信扫一扫，扫描上方二维码<br/>
-        2. 付款金额请与页面显示金额一致<br/>
-        3. 付款备注请填写：<code id="wechatMemo">${escapeHtml(memo)}</code> <span class="copy-btn" id="copyWechatMemo">复制</span><br/>
-        4. 支付完成后点击下方"上传付款凭证"
-      </div>
+    <div class="${panelCls("wechat_qr")}" id="panel_wechat_qr">
+      ${qrPanelHtml("wechat_qr", "微信", b.WECHAT_QR_IMG, b.WECHAT_LABEL, memo, "wechatMemo", "copyWechatMemo", orderNo)}
     </div>
-    <div class="pay-panel" id="panel_alipay_qr">
-      <div class="qr-box">
-        <img src="${escapeHtml(b.ALIPAY_QR_IMG || "")}" alt="支付宝收款码" style="max-width:260px;border-radius:14px;border:1px solid var(--border)"/>
-        <div class="muted small" style="margin-top:6px">${escapeHtml(b.ALIPAY_LABEL || "")}</div>
-      </div>
-      <div class="infobox small">
-        <b>付款说明：</b><br/>
-        1. 请打开支付宝扫一扫，扫描上方二维码<br/>
-        2. 付款金额请与页面显示金额一致<br/>
-        3. 付款备注请填写：<code id="alipayMemo">${escapeHtml(memo)}</code> <span class="copy-btn" id="copyAlipayMemo">复制</span><br/>
-        4. 支付完成后点击下方"上传付款凭证"
-      </div>
+    <div class="${panelCls("alipay_qr")}" id="panel_alipay_qr">
+      ${qrPanelHtml("alipay_qr", "支付宝", b.ALIPAY_QR_IMG, b.ALIPAY_LABEL, memo, "alipayMemo", "copyAlipayMemo", orderNo)}
     </div>
-    <div class="pay-panel" id="panel_bank_transfer">
-      <div class="bank-info">
-        <div class="kv">
-          <div class="muted small">公司名称</div><div>${escapeHtml(b.BANK_NAME || "")}</div>
-          <div class="muted small">开户行</div><div>${escapeHtml(b.BANK_BRANCH || "")}</div>
-          <div class="muted small">银行账号</div>
-          <div><code id="bankAccount">${escapeHtml(b.BANK_ACCOUNT || "")}</code> <span class="copy-btn" id="copyBankAccount">复制</span></div>
-          <div class="muted small">转账金额</div><div style="font-weight:700;color:var(--brand)">&yen;${escapeHtml(String(amount))}</div>
-        </div>
-      </div>
-      <div class="infobox small" style="margin-top:10px">
-        <b>转账说明：</b><br/>
-        1. 转账备注请填写：<code id="bankMemo">KS${escapeHtml(orderNo)}</code> <span class="copy-btn" id="copyBankMemo">复制</span><br/>
-        2. 转账完成后请上传转账回单或凭证截图
-      </div>
+    <div class="${panelCls("bank_transfer")}" id="panel_bank_transfer">
+      ${bankHtml}
     </div>
     <div class="hr"></div>
     <h3 style="margin:0 0 8px;font-size:15px">上传付款凭证</h3>
@@ -248,14 +340,32 @@ function buildStep3(orderNo, amount) {
   qs("#copyBankAccount")?.addEventListener("click", () => copyText(b.BANK_ACCOUNT || "", "银行账号"));
 
   // Payment method tabs
-  container.querySelectorAll(".pay-tab").forEach(tab => {
-    tab.addEventListener("click", () => {
-      const method = tab.dataset.method;
+  container.querySelectorAll(".pay-tab").forEach(tabEl => {
+    tabEl.addEventListener("click", () => {
+      const method = tabEl.dataset.method;
+      if (method === selectedMethod) return;
       selectedMethod = method;
-      container.querySelectorAll(".pay-tab").forEach(t => t.classList.toggle("active", t === tab));
+      container.querySelectorAll(".pay-tab").forEach(t => t.classList.toggle("active", t === tabEl));
       container.querySelectorAll(".pay-panel").forEach(p => p.classList.toggle("active", p.id === `panel_${method}`));
+      track("payment_method_view", { method, trigger: "tab" });
     });
   });
+
+  // Config missing → fallback already rendered; QR image failing to load → swap to fallback
+  Object.keys(METHOD_CONFIG_KEYS).forEach(m => {
+    const missing = missingConfig(m);
+    if (missing.length) reportPaymentConfigIssue(m, missing.join(","));
+  });
+  container.querySelectorAll(".qr-box[data-qr-for] img").forEach(img => {
+    img.addEventListener("error", () => {
+      const m = img.closest(".qr-box").dataset.qrFor;
+      const panel = qs(`#panel_${m}`);
+      if (panel) panel.innerHTML = paymentFallbackHtml(m, methodLabels[m], orderNo);
+      reportPaymentConfigIssue(m, `QR image failed to load (${m === "wechat_qr" ? "WECHAT_QR_IMG" : "ALIPAY_QR_IMG"})`);
+    }, { once: true });
+  });
+
+  track("payment_method_view", { method: selectedMethod, trigger: "default", methods_available: available.length });
 
   // Upload handlers
   setupUploadHandlers();
@@ -335,6 +445,12 @@ async function createOrder() {
     if (error) throw error;
 
     currentOrder = data;
+    track("checkout_step_2_complete", {
+      plan: el.planCode.value,
+      cycle: el.billingCycle.value,
+      projects: count,
+      invoice: el.invoiceNeeded.value === "yes" ? 1 : 0,
+    });
     // Log consent for checkout
     try {
       await sb.rpc("log_consent", {
@@ -411,6 +527,9 @@ async function submitProof() {
 
     if (error) throw error;
 
+    proofSubmitted = true;
+    track("voucher_submit", { method: selectedMethod, file_type: file.type });
+
     // Go to step 4
     fillStep4();
     goToStep(4);
@@ -435,7 +554,7 @@ function fillStep4() {
   el.s4Amount.textContent = `¥${currentOrder.amount_due}`;
   el.s4Method.textContent = methodMap[selectedMethod] || selectedMethod;
   el.s4Status.innerHTML = `<span class="badge warn">待核验</span>`;
-  el.s4Contact.innerHTML = `${b.CONTACT_EMAIL || ""} · 微信 ${b.CONTACT_WECHAT || ""}`;
+  el.s4Contact.textContent = `${CONTACT_EMAIL()} · 微信 ${CONTACT_WECHAT()}`;
 }
 
 // ── My Orders ────────────────────────────────────────────
@@ -516,9 +635,12 @@ async function init() {
   session = s;
   user = s?.user || null;
 
+  track("checkout_view", { logged_in: user ? 1 : 0 });
+
   if (!user) {
     el.loginPrompt.style.display = "block";
     el.checkoutMain.style.display = "none";
+    renderStepper(0);
     return;
   }
 
@@ -527,6 +649,8 @@ async function init() {
 
   el.loginPrompt.style.display = "none";
   el.checkoutMain.style.display = "block";
+  renderStepper(1);
+  el.stepLabel.textContent = stepLabels[1];
 
   // Show loading state for orders now that we know user is logged in
   el.myOrdersList.textContent = "加载中…";
@@ -549,7 +673,9 @@ async function init() {
 
   // Invoice toggle
   el.invoiceNeeded.addEventListener("change", () => {
-    el.invoiceFields.style.display = el.invoiceNeeded.value === "yes" ? "block" : "none";
+    const needed = el.invoiceNeeded.value === "yes";
+    el.invoiceFields.style.display = needed ? "block" : "none";
+    track("invoice_toggle", { needed: needed ? 1 : 0 });
   });
 
   // Invoice type toggle: personal hides tax ID field
@@ -565,9 +691,22 @@ async function init() {
   });
 
   // Step navigation (step 1 & 2 only; step 3 buttons bound dynamically in buildStep3)
-  el.btnToStep2.addEventListener("click", () => goToStep(2));
+  el.btnToStep2.addEventListener("click", () => {
+    track("checkout_step_1_complete", {
+      plan: el.planCode.value,
+      cycle: el.billingCycle.value,
+      projects: Math.max(3, parseInt(el.projectCount.value) || 3),
+    });
+    goToStep(2);
+  });
   el.btnBackTo1.addEventListener("click", () => goToStep(1));
   el.btnToStep3.addEventListener("click", createOrder);
+
+  // Abandon = leaving the page after starting checkout but before submitting a voucher
+  window.addEventListener("pagehide", () => {
+    if (proofSubmitted) return;
+    track("checkout_abandon", { last_step: currentStep, order_created: currentOrder ? 1 : 0 });
+  }, { once: true });
 
   // My orders
   el.btnRefreshOrders.addEventListener("click", loadMyOrders);

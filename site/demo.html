@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>研究合作咨询 · 肾域·科研</title>
-  <meta name="description" content="预约演示、加入现有研究项目、发起新项目或咨询机构合作。肾脏专科多中心研究登记系统，科研用途，30 天免费试用。"/>
+  <meta name="description" content="预约演示或方法学咨询、数据导入与 QC 支持、统计与投稿支持，加入现有研究项目、发起新项目或咨询机构合作。肾脏科研基础设施，科研用途，不承诺发表。"/>
   <meta property="og:title" content="研究合作咨询 · 肾域·科研"/>
   <meta property="og:description" content="预约演示或申请加入多中心研究项目，联系 china@kidneysphere.com。"/>
   <meta property="og:type" content="website"/>
@@ -31,7 +31,7 @@
         <img src="/assets/kidneysphere-ai.png" alt="肾域·科研"/>
         <div>
           <h1 class="brand-title">研究合作咨询 · 肾域·科研</h1>
-          <div class="brand-sub">填写后我们将在 1 个工作日内联系您：可按“预约演示 / 加入现有项目 / 发起新项目 / 机构合作咨询”对接。</div>
+          <div class="brand-sub">填写后我们将在 1 个工作日内联系您：可按“预约演示 / 方法学咨询 / 数据与统计支持 / 加入或发起项目 / 机构合作”对接。</div>
         </div>
       </div>
 
@@ -76,6 +76,9 @@
             <select id="f_inquiry_type" required>
               <option value="">请选择</option>
               <option value="预约演示">预约演示</option>
+              <option value="方法学咨询">方法学咨询（方法学启动包）</option>
+              <option value="数据导入与QC支持">数据导入与 QC 支持</option>
+              <option value="统计与投稿支持">统计与投稿支持</option>
               <option value="加入现有项目">加入现有项目</option>
               <option value="发起新项目">发起新项目</option>
               <option value="机构合作咨询">机构合作咨询</option>
@@ -173,7 +176,7 @@
       <div class="kv" style="margin-top:8px">
         <div>演示时长</div><div>约 30 分钟（含 Q&amp;A）</div>
         <div>演示形式</div><div>腾讯会议 / 飞书 / Zoom（按您偏好）</div>
-        <div>演示内容</div><div>后台录入演示 + 一键生成论文包 + 多中心合并 + 定价方案</div>
+        <div>演示内容</div><div>后台录入演示 + 首版表格 / 图与 Methods 草稿导出 + 多中心合并 + 方法学 / 统计支持路径</div>
         <div>适合人群</div><div>PI / 研究生 / 数据管理员 / 医院科研管理人员</div>
       </div>
 
@@ -183,17 +186,28 @@
     </div>
   </div>
 
+  <!-- Prefill runs as a classic script so it still works if the CDN module below fails to load -->
+  <script>
+    (function(){
+      var qs = new URLSearchParams(location.search);
+      var type = qs.get('type');
+      if (type) {
+        var sel = document.getElementById('f_inquiry_type');
+        for (var i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].value === type) { sel.value = type; break; }
+        }
+      }
+      var project = qs.get('project');
+      if (project) {
+        var msg = document.getElementById('f_message');
+        if (!msg.value) msg.value = '意向项目：' + project.slice(0, 80) + '\n';
+      }
+    })();
+  </script>
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-    // Auto-select inquiry type from URL param (e.g. ?type=预约演示)
-    const _urlType = new URLSearchParams(location.search).get('type');
-    if (_urlType) {
-      const sel = document.getElementById('f_inquiry_type');
-      for (const opt of sel.options) {
-        if (opt.value === _urlType) { sel.value = _urlType; break; }
-      }
-    }
+    const _urlProject = new URLSearchParams(location.search).get('project');
 
     // Tag multi-select
     const tagRow = document.getElementById('tagRow');
@@ -269,6 +283,10 @@
         successEl.appendChild(tpl.content.cloneNode(true));
         successEl.style.display = 'block';
         successEl.setAttribute('aria-hidden', 'false');
+        window.KSTrack?.track('demo_submit', {
+          inquiry_type: document.getElementById('f_inquiry_type').value,
+          has_project: _urlProject ? 1 : 0
+        });
       }
     });
 

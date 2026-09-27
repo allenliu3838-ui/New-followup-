@@ -32,6 +32,9 @@ window.CollabData = {
   projectCards: [
     {
       slug: 'igan-cohort',
+      targetCenters: '10–20 家',
+      sampleSize: '800–1500 例',
+      roles: '参与',
       name: 'IgAN 动态风险重分层多中心双向队列',
       shortTitle: 'IgAN 双向队列',
       status: '招募中',
@@ -46,6 +49,7 @@ window.CollabData = {
     },
     {
       slug: 'speed-igan',
+      roles: '参与',
       name: 'SPEED-IgAN · 靶向布地奈德 vs 口服甲泼尼龙 RCT',
       shortTitle: 'SPEED-IgAN RCT',
       status: '招募中',
@@ -60,6 +64,8 @@ window.CollabData = {
     },
     {
       slug: 'c3g-cohort',
+      sampleSize: '≥150 例',
+      roles: '参与 / 申请牵头',
       name: 'C3G 多中心前瞻性队列',
       shortTitle: 'C3G 队列',
       status: '招募中',
@@ -74,6 +80,8 @@ window.CollabData = {
     },
     {
       slug: 'mgrs-registry',
+      sampleSize: '≥200 例',
+      roles: '参与',
       name: 'MGRS 单克隆免疫球蛋白相关肾损害多中心前瞻性登记',
       shortTitle: 'MGRS 登记',
       status: '招募中',
@@ -88,6 +96,7 @@ window.CollabData = {
     },
     {
       slug: 'mn-rtx-obi',
+      roles: '参与',
       name: '高危膜性肾病 RTX vs OBI 多中心观察性比较研究',
       shortTitle: 'MN RTX vs OBI',
       status: '招募中',
@@ -102,6 +111,8 @@ window.CollabData = {
     },
     {
       slug: 'hd-registry',
+      sampleSize: '≥300 例',
+      roles: '参与',
       name: 'HD 透析起始频次真实世界登记',
       shortTitle: 'HD 起始频次',
       status: '招募中',
@@ -116,6 +127,8 @@ window.CollabData = {
     },
     {
       slug: 'regain-pa',
+      sampleSize: '≥150 例',
+      roles: '参与',
       name: 'REGAIN-PA · CKD / 透析患者体力活动干预实施研究',
       shortTitle: 'REGAIN-PA',
       status: '招募中',
@@ -130,6 +143,7 @@ window.CollabData = {
     },
     {
       slug: 'dkd-access',
+      roles: '牵头 / 参与',
       name: 'DKD-ACCESS 糖尿病合并 CKD 平台队列',
       shortTitle: 'DKD-ACCESS',
       status: '牵头招募',
@@ -165,6 +179,7 @@ window.CollabData = {
     },
     {
       slug: 'ktr-care-china',
+      roles: '参与 / 子课题牵头',
       name: 'KTR-CARE China · 肾移植受者多中心真实世界长期随访队列',
       shortTitle: 'KTR-CARE China',
       status: '招募中',
@@ -199,6 +214,7 @@ window.CollabData = {
     },
     {
       slug: 'pd-open-china',
+      roles: '牵头 / 参与',
       name: 'PD-OPEN China · 中国腹膜透析开放协作平台研究',
       shortTitle: 'PD-OPEN China',
       status: '牵头招募',

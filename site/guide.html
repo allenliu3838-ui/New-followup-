@@ -4,10 +4,10 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>使用说明 · 肾域·科研 — KidneySphere Research</title>
-  <meta name="description" content="肾域·科研使用说明：PI 建队列、CRC 录入质控、多中心数据合并、可复现论文包导出。IgAN / LN / MN / CKD 场景操作手册，10 分钟跑通首版 Table 1。"/>
+  <meta name="description" content="肾域·科研使用说明：10 分钟看懂如何拿到首版研究输出。PI 建队列、CRC 录入质控、已有 Excel 数据导入、多中心合并、首版表格 / 图与 Methods 草稿导出；不熟悉 Python 也有协助路径。"/>
   <meta property="og:type" content="website"/>
   <meta property="og:title" content="使用说明 · 肾域·科研"/>
-  <meta property="og:description" content="PI、CRC、多中心团队必读：建队列、录入质控、可复现论文包导出全流程操作说明。"/>
+  <meta property="og:description" content="PI、CRC、多中心团队必读：建队列、录入质控、QC → 补录 → 复跑的可复现流程；非技术用户可走协助路径。"/>
   <meta property="og:url" content="https://kidneysphereregistry.cn/guide"/>
   <link rel="canonical" href="https://kidneysphereregistry.cn/guide"/>
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
@@ -34,14 +34,57 @@
         <b>请勿</b>录入姓名/电话/病案号/身份证等可识别个人信息（PII）。
       </div>
 
+      <!-- 非技术用户先看这里 -->
+      <div class="okbox" id="non-tech" style="margin-top:12px;scroll-margin-top:16px">
+        <b>非技术用户先看这里：</b>不会 Python 也能用。下面两条路径任选其一，都能拿到首版研究输出。
+        <div class="path-split">
+          <div class="compact-card">
+            <div class="price-title">🛠 自助路径</div>
+            <div class="small" style="line-height:1.6">
+              后台导出分析包 → 本地安装 Python / Anaconda → <code>pip install -r requirements.txt</code> → 运行 <code>run_analysis.py</code>。
+              适合有统计或编程基础的同学，约 10 分钟跑通。
+            </div>
+            <div class="btnbar" style="margin-top:8px">
+              <a class="btn small" href="#research" data-track="click_guide_path" data-track-path="self">看自助教程</a>
+            </div>
+          </div>
+          <div class="compact-card">
+            <div class="price-title">🤝 协助路径</div>
+            <div class="small" style="line-height:1.6">
+              不熟悉 Python？可以先预约演示或方法学咨询，我们帮你确定字段、检查 QC 路径和首版结果输出方式，不需要你自己配环境。
+            </div>
+            <div class="btnbar" style="margin-top:8px">
+              <a class="btn small primary" href="/demo?type=方法学咨询" data-track="click_guide_path" data-track-path="assisted">预约方法学咨询</a>
+              <a class="btn small" href="/demo?type=预约演示" data-track="click_book_demo" data-track-source="guide_non_tech">预约演示</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 已有 Excel 数据怎么办 -->
+      <div class="infobox" id="excel" style="margin-top:10px;scroll-margin-top:16px">
+        <b>已有 Excel 数据怎么办？</b>
+        <ul class="small" style="margin:6px 0 0;padding-left:18px;line-height:1.8">
+          <li>已有 Excel / 历史表<b>不需要从零录入</b>。</li>
+          <li>可以先做字段梳理、导入映射和 QC，再决定哪些字段需要补录。</li>
+          <li>导入前请先去标识化（删除姓名 / 电话 / 病案号 / 身份证等 PII 列）。</li>
+        </ul>
+        <div class="btnbar" style="margin-top:8px">
+          <a class="btn small" href="/demo?type=数据导入与QC支持" data-track="click_service_consult" data-track-service="data" data-track-source="guide_excel">获取数据导入与治理支持</a>
+          <a class="btn small" href="/pricing#service-data">查看服务说明</a>
+        </div>
+      </div>
+
       <div class="guide-hero" style="margin-top:12px">
-        <div class="guide-hero-title">🎯 10 分钟拿到论文核心材料（科研小白也能跑通）</div>
+        <div class="guide-hero-title">🎯 10 分钟看懂如何拿到首版研究输出</div>
         <div class="guide-hero-sub">
-          最短路径：<b>后台导出论文包 zip → 本地一键运行 → 自动生成 Table 1 / QC / 趋势图 / 12m 结局 / Methods 草稿</b>。
-          多中心合并键为 <code>center_code + patient_code</code>。
+          自助路径：<b>后台导出分析包 zip → 本地运行分析脚本 → 生成首版 Table 1 / QC / 趋势图 / 12m 结局 / Methods 草稿</b>。
+          支持 <b>QC → 补录 → 复跑</b> 的可复现流程；多中心合并键为 <code>center_code + patient_code</code>。
         </div>
         <div class="guide-hero-actions">
           <a class="linkbtn primary" href="/login" target="_blank">登录后台</a>
+          <a class="linkbtn" href="#non-tech">非技术用户路径</a>
+          <a class="linkbtn" href="#excel">已有 Excel 数据</a>
           <a class="linkbtn" href="/">← 首页</a>
           <a class="linkbtn" href="#scenarios">科研场景举例</a>
           <a class="linkbtn" href="#rct">RCT随机化说明</a>
@@ -113,7 +156,7 @@
             <b>研究目的：</b>评估 Oxford MEST-C 病理积分与 5 年肾功能进展（eGFR 下降 ≥ 40%）的关联。<br/>
             <b>参与方：</b>北京/上海/广州 3 家中心，合计 280 例。<br/>
             <b>做法：</b>各中心用同一 center_code 录入基线（含 MEST-C）+ 每季度随访（BP/Scr/UPCR）；后台导出合并包 → 一键跑出 Kaplan-Meier 曲线 + Table 1 + Cox 回归 draft。<br/>
-            <b>投稿方向：</b>JASN / KI / AJKD
+            <b>可参考期刊方向：</b>JASN / KI / AJKD
           </div>
         </div>
 
@@ -124,7 +167,7 @@
             <b>研究目的：</b>比较他克莫司 vs. MMF 在 III/IV 型 LN 的 12 个月完全缓解率。<br/>
             <b>参与方：</b>单中心，120 例。<br/>
             <b>做法：</b>录入基线用药方案 + 每月随访 UPCR/补体/dsDNA；12 个月时后台一键生成结局表（完全缓解 = UPCR < 0.5 + Scr 稳定）。<br/>
-            <b>投稿方向：</b>ARD / Rheumatology
+            <b>可参考期刊方向：</b>ARD / Rheumatology
           </div>
         </div>
 
@@ -135,7 +178,7 @@
             <b>研究目的：</b>分析基线 PLA2R 抗体滴度与 24 个月自发缓解率的关系。<br/>
             <b>参与方：</b>单中心，80 例。<br/>
             <b>做法：</b>基线录入 PLA2R 滴度（labs_long 表）+ 每 3 月随访 UPCR；系统自动判断缓解（UPCR < 0.5）并输出缓解时间分布。<br/>
-            <b>投稿方向：</b>JASN / KI
+            <b>可参考期刊方向：</b>JASN / KI
           </div>
         </div>
 
@@ -146,7 +189,7 @@
             <b>研究目的：</b>描述活体肾移植术后 12 个月内急性排斥发生率及其危险因素。<br/>
             <b>参与方：</b>单中心移植科，60 例。<br/>
             <b>做法：</b>使用 KTX 模块，记录供体信息、免疫诱导方案、术后随访 Scr/他克莫司谷浓度；系统自动计算 eGFR 趋势。<br/>
-            <b>投稿方向：</b>Transplantation / AJT
+            <b>可参考期刊方向：</b>Transplantation / AJT
           </div>
         </div>
 
@@ -157,7 +200,7 @@
             <b>研究目的：</b>例如：评估 FSGS 患者使用 sparsentan 治疗后 UPCR 变化（真实世界观察性研究）。<br/>
             <b>参与方：</b>1–5 家中心，任意规模。<br/>
             <b>做法：</b>选 GENERAL 模块 → 录入任何肾病患者的核心四项（日期/BP/Scr/UPCR）+可选药物/检验 → 导出分析。无需适配特定病种字段。<br/>
-            <b>投稿方向：</b>任意肾病/内科期刊
+            <b>可参考期刊方向：</b>任意肾病/内科期刊
           </div>
         </div>
 
@@ -178,7 +221,7 @@
             <b>研究目的：</b>比较干预组 vs. 对照组在 12 个月主要终点（UPCR 下降 ≥ 50% 或 eGFR 稳定）的差异。<br/>
             <b>参与方：</b>单中心或多中心，例如 120 例（干预组 60 例、对照组 60 例）。<br/>
             <b>做法：</b>创建患者基线时填写"RCT 随机化信息"（干预组别 / 随机号 / 随机化日期）→ 每季度随访 BP / Scr / UPCR → 后台导出论文包，CSV 中含 <code>treatment_arm</code> 分组列，一键出组间比较表 + KM 曲线草稿。<br/>
-            <b>投稿方向：</b>NEJM / Lancet / JASN
+            <b>可参考期刊方向：</b>NEJM / Lancet / JASN
           </div>
         </div>
 
@@ -462,9 +505,12 @@ t.test(baseline_upcr ~ treatment_arm, data=df)</code></pre>
 
       <section class="role-section" data-role="stats all" id="research">
         <div class="hr"></div>
-        <h2>统计者：科研统计 & 论文 Starter Kit（交互教程）</h2>
+        <h2>统计者：科研统计 Starter Kit（自助路径 · 交互教程）</h2>
         <div class="muted">
-          目标：让科研小白“点一下按钮就能写论文”。按步骤推进：<b>生成论文包 → 本地运行 → 看 QC → 补数据 → 复现输出</b>。
+          目标：导出首版表格 / 图和 Methods 草稿，并跑通 <b>生成分析包 → 本地运行 → 看 QC → 补数据 → 复现输出</b> 的可复现流程。
+        </div>
+        <div class="small muted" style="margin-top:6px">
+          不熟悉 Python？可以先走 <a href="#non-tech">协助路径</a>，由我们帮你确定字段、检查 QC 路径和首版结果输出方式。
         </div>
 
         <div class="stepper" id="stepper">

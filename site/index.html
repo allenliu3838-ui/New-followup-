@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>肾域·科研 — 肾脏专科多中心研究登记系统</title>
-  <meta name="description" content="面向肾脏专科科研团队的多中心随访登记系统，支持 IgAN / LN / MN / CKD 等场景，标准化字段、可复现导出、数据质量治理。30 天免费试用，科研用途，不录入 PII。"/>
+  <title>肾域·科研 — 肾脏科研基础设施与标准化科研支持</title>
+  <meta name="description" content="肾脏科研基础设施：从课题启动到可复现首版结果。适用于 IgAN / LN / MN / C3G / MGRS / DKD / KTR 等肾脏专科研究，支持标准化 CRF、数据质量治理、多中心合并，以及方法学与统计支持。科研用途，不录入 PII。"/>
   <meta property="og:type" content="website"/>
-  <meta property="og:title" content="肾域·科研 — 肾脏专科多中心研究登记"/>
-  <meta property="og:description" content="肾脏专科科研团队的多中心随访登记系统，可复现导出，30 天免费试用。"/>
+  <meta property="og:title" content="肾域·科研 — 肾脏科研基础设施与标准化科研支持"/>
+  <meta property="og:description" content="从课题启动到可复现首版结果。标准化 CRF、数据质量治理、多中心合并，方法学与统计支持。"/>
   <meta property="og:url" content="https://kidneysphereregistry.cn/"/>
   <meta name="twitter:card" content="summary"/>
   <meta name="twitter:title" content="肾域·科研"/>
-  <meta name="twitter:description" content="肾脏专科科研团队的多中心随访登记系统，可复现导出，30 天免费试用。"/>
+  <meta name="twitter:description" content="肾脏科研基础设施：标准化 CRF、数据质量治理、多中心合并，方法学与统计支持。"/>
   <link rel="canonical" href="https://kidneysphereregistry.cn/"/>
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
@@ -40,17 +40,10 @@
     .hero-sub{font-size:14px;line-height:1.65;color:var(--muted);margin:0 0 16px;}
     .hero-ctas{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
     .hero-ctas .btn{padding:10px 20px;font-size:14px;font-weight:700;}
-    /* Role cards */
-    .role-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:10px;}
-    @media(max-width:680px){.role-grid{grid-template-columns:1fr;}}
-    .role-card{border:1px solid var(--border);border-radius:14px;padding:16px;background:#fff;cursor:pointer;transition:border-color .15s,box-shadow .15s;text-decoration:none;color:var(--text);display:block;}
-    .role-card:hover{border-color:rgba(47,111,235,.4);box-shadow:0 4px 16px rgba(47,111,235,.10);}
-    .role-icon{font-size:1.5rem;margin-bottom:8px;}
-    .role-title{font-weight:700;font-size:14px;margin-bottom:4px;}
-    .role-desc{font-size:12px;color:var(--muted);line-height:1.55;}
+    @media(max-width:520px){.hero-ctas .btn{flex:1 1 100%;justify-content:center;}}
     /* Onboarding steps */
     .steps-track{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:12px;}
-    @media(max-width:700px){.steps-track{grid-template-columns:1fr;}}
+    @media(max-width:820px){.steps-track{grid-template-columns:1fr;}}
     .step-card{border:1px solid var(--border);border-radius:12px;padding:12px 10px;background:#fff;position:relative;}
     .step-num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--brand);color:#fff;font-size:11px;font-weight:800;margin-bottom:7px;}
     .step-title{font-size:12px;font-weight:700;margin-bottom:4px;line-height:1.35;}
@@ -70,65 +63,62 @@
         <img src="/assets/kidneysphere-ai.png" alt="肾域·科研"/>
         <div>
           <h1 class="brand-title">肾域·科研</h1>
-          <div class="brand-sub">KidneySphere Research · 肾脏专科多中心研究登记系统</div>
+          <div class="brand-sub">KidneySphere Research · 肾脏科研基础设施 + 标准化科研支持</div>
         </div>
       </div>
 
       <div style="margin-top:18px">
-        <p class="hero-headline">肾脏专科科研团队<br/>30 天内跑通首版论文包</p>
+        <p class="hero-headline">肾脏科研基础设施：<br/>从课题启动到可复现首版结果</p>
         <p class="hero-sub">
-          多中心随访登记 · 可复现导出 · 数据质量治理。适合 IgAN / LN / MN / CKD 等场景的 PI、CRC 及多中心协作团队。<br/>
-          <b>科研用途，不录入 PII，不提供诊断建议。</b>30 天免费试用，核心功能可用（含 1 个项目）。
+          适用于 IgAN / LN / MN / CKD 等肾脏专科研究。支持标准化 CRF、数据质量治理、多中心合并，以及方法学 / 统计支持。<br/>
+          <b>30 天试用即可跑通首版 Table / Figure 与 Methods 草稿。</b>科研用途，不录入 PII，不提供诊断建议。
         </p>
         <div class="hero-ctas">
           <a class="btn primary" href="/signup?trial=1"
              data-track="click_start_trial" data-track-source="hero">开始 30 天试用</a>
-          <a class="btn" href="/login"
+          <a class="btn" href="/demo?type=方法学咨询"
              style="border-color:var(--brand);color:var(--brand)"
-             data-track="click_login" data-track-source="hero">登录后台</a>
+             data-track="click_book_consult" data-track-source="hero">预约方法学咨询</a>
         </div>
-        <div class="small muted">试用无需信用卡 · 到期后 7 天只读宽限 · 随时导出数据</div>
+        <div class="small muted">试用无需信用卡 · 到期后 7 天只读宽限 · 随时导出数据 · 已有账号？<a href="/login" data-track="click_login" data-track-source="hero">登录后台</a></div>
       </div>
 
-      <!-- Secondary nav -->
+      <!-- Secondary nav：非主操作入口统一收在这里 -->
       <nav class="sec-nav" aria-label="次级导航">
-        <a href="/demo" data-track="click_book_demo" data-track-source="sec_nav">预约演示</a>
         <a href="/collaboration" data-track="click_view_projects" data-track-source="sec_nav">合作项目</a>
+        <a href="/pricing" data-track="click_view_pricing" data-track-source="sec_nav">价格与服务</a>
         <a href="/guide">使用说明</a>
+        <a href="/demo" data-track="click_book_demo" data-track-source="sec_nav">预约演示</a>
         <a href="/user-manual-cn">详细手册</a>
         <a href="/slides">介绍PPT</a>
-        <a href="/pricing">价格方案</a>
         <a href="/security">安全合规</a>
         <a href="/deployment">部署方式</a>
       </nav>
     </div>
 
-    <!-- ===== ROLE CARDS ===== -->
+    <!-- ===== STAGE ENTRY：按研究阶段进入 ===== -->
     <div class="card">
-      <h2 style="margin:0 0 4px">选择最适合你的路径</h2>
-      <div class="small muted">不同角色关心的问题不一样，找到你最快能跑通的那一条。</div>
-      <div class="role-grid">
-        <a class="role-card" href="/guide#research"
-           data-track="click_role_card" data-track-role="pi">
-          <div class="role-icon">🔬</div>
-          <div class="role-title">PI / 课题负责人</div>
-          <div class="role-desc">建立队列、设计字段、导出可复现论文包。我想知道多久能拿到首版 Table 1。</div>
-          <div style="margin-top:8px;font-size:12px;color:var(--brand);font-weight:600">查看研究流程 →</div>
-        </a>
-        <a class="role-card" href="/guide#entry-qc"
-           data-track="click_role_card" data-track-role="crc">
-          <div class="role-icon">📋</div>
-          <div class="role-title">CRC / 录入员 / 随访护士</div>
-          <div class="role-desc">标准化录入、自动质控、补录提醒。我想知道哪些字段最关键，怎么避免 QC 报错。</div>
-          <div style="margin-top:8px;font-size:12px;color:var(--brand);font-weight:600">查看录入质控指南 →</div>
-        </a>
-        <a class="role-card" href="/collaboration"
-           data-track="click_role_card" data-track-role="institution">
-          <div class="role-icon">🏥</div>
-          <div class="role-title">多中心牵头 / 机构合作</div>
-          <div class="role-desc">统一 CRF、合并分析、管理多中心数据质量。我想了解机构合作与私有化部署方案。</div>
-          <div style="margin-top:8px;font-size:12px;color:var(--brand);font-weight:600">查看合作路径 →</div>
-        </a>
+      <h2 style="margin:0 0 4px">你现在处在哪个阶段？</h2>
+      <div class="small muted">按研究进度找入口，比按角色更快找到下一步。</div>
+      <div class="stage-grid" id="stageGrid" data-testid="stage-grid"></div>
+    </div>
+
+    <!-- ===== SERVICE PACKAGES：标准化服务包 ===== -->
+    <div class="card" id="services">
+      <h2 style="margin:0 0 4px">标准化科研支持服务包</h2>
+      <div class="small muted">软件之外的可选增值服务：把研究流程中最容易卡住的三段，做成交付物明确的标准产品。</div>
+      <div class="svc-grid" id="serviceGrid" data-testid="service-grid"></div>
+      <div class="compliance-note" data-compliance-note></div>
+    </div>
+
+    <!-- ===== TRUST：信任建立 ===== -->
+    <div class="card">
+      <h2 style="margin:0 0 4px">为什么可以放心把研究流程放在这里</h2>
+      <div class="small muted">以下为平台能力与覆盖范围，不含任何未授权的医院 / 用户数据。</div>
+      <div class="metric-strip" id="metricStrip" data-testid="metric-strip"></div>
+      <div style="margin-top:14px">
+        <div class="small" style="font-weight:700;margin-bottom:6px">典型使用场景</div>
+        <div class="chip-row" id="scenarioChips"></div>
       </div>
     </div>
 
@@ -144,12 +134,12 @@
         </div>
         <div class="step-card">
           <div class="step-num">2</div>
-          <div class="step-title">录入 3–5 例患者</div>
-          <div class="step-output">→ 录入核心四项：日期 / BP / Scr / UPCR</div>
+          <div class="step-title">录入或导入已有数据</div>
+          <div class="step-output">→ 核心四项：日期 / BP / Scr / UPCR；已有 Excel 可先做字段映射</div>
         </div>
         <div class="step-card">
           <div class="step-num">3</div>
-          <div class="step-title">一键导出首版数据包</div>
+          <div class="step-title">导出首版数据包</div>
           <div class="step-output">→ 结构化 CSV + 字段说明 + 示例分析脚本</div>
         </div>
         <div class="step-card">
@@ -166,32 +156,10 @@
       <div class="btnbar" style="margin-top:14px">
         <a class="btn primary" href="/signup?trial=1"
            data-track="click_start_trial" data-track-source="onboarding">立即开始试用</a>
-        <a class="btn" href="/guide#research"
-           data-track="click_guide" data-track-source="onboarding">查看完整操作说明</a>
+        <a class="btn" href="/guide#non-tech"
+           data-track="click_guide" data-track-source="onboarding">不熟悉 Python？先看这里</a>
       </div>
       <div class="small muted" style="margin-top:6px">试用成功标准：能稳定导出分析包并完成至少 1 轮 QC → 补录 → 复跑。</div>
-    </div>
-
-    <!-- ===== CORE CAPABILITIES ===== -->
-    <div class="card">
-      <h2 style="margin:0 0 8px">为什么选择肾域·科研</h2>
-      <div class="value-grid">
-        <div class="value-card">
-          <div class="price-title">可复现论文包导出</div>
-          <div class="small">结构化数据 + 字段说明 + 分析脚本打包导出，同一版本任意时间重跑结果一致，可审计。</div>
-        </div>
-        <div class="value-card">
-          <div class="price-title">多中心合并零冲突</div>
-          <div class="small"><code>center_code + patient_code</code> 全局唯一，跨中心合并稳定，支持 IgAN / MN / LN / CKD 等场景。</div>
-        </div>
-        <div class="value-card">
-          <div class="price-title">质控闭环，数据可信</div>
-          <div class="small">核心字段完整率可见，QC → 补录 → 复跑闭环，确保每一批导出结果可追溯。</div>
-        </div>
-      </div>
-      <div class="warnbox" style="margin-top:10px">
-        <b>合规边界：</b>仅用于随访数据登记与研究汇总，不提供诊断/处方/急救指导；<b>禁止录入</b>姓名/电话/病案号/身份证等个人信息（PII）。
-      </div>
     </div>
 
     <!-- ===== PRICING SUMMARY ===== -->
@@ -201,7 +169,7 @@
         <div class="price-card">
           <div class="price-title">试用（30 天）</div>
           <div class="price-main" style="font-size:1.5rem">免费</div>
-          <div class="small muted">完整功能 · 到期后 7 天只读宽限</div>
+          <div class="small muted">核心功能 · 1 个项目 · 到期后 7 天只读宽限</div>
           <div class="btnbar" style="margin-top:10px">
             <a class="btn small primary" href="/signup?trial=1"
                data-track="click_start_trial" data-track-source="pricing">开始试用</a>
@@ -213,9 +181,9 @@
           <div class="small muted">年付 <span data-pricing="proYearlyBase">¥4,790</span> · 支持微信 / 支付宝 / 对公转账</div>
           <div class="btnbar" style="margin-top:10px">
             <a class="btn small primary" href="/checkout"
-               data-track="click_upgrade" data-track-source="pricing">立即升级</a>
+               data-track="pricing_upgrade_click" data-track-source="index_pricing">立即升级</a>
             <a class="btn small" href="/pricing"
-               data-track="click_view_pricing" data-track-source="pricing">查看详情</a>
+               data-track="click_view_pricing" data-track-source="index_pricing">查看详情</a>
           </div>
         </div>
         <div class="price-card">
@@ -223,24 +191,33 @@
           <div class="price-main">联系报价</div>
           <div class="small muted">多中心协作、数据治理与合规支持</div>
           <div class="btnbar" style="margin-top:10px">
-            <a class="btn small" href="/demo"
-               data-track="click_institution_inquiry" data-track-source="pricing">咨询机构合作</a>
+            <a class="btn small" href="/demo?type=机构合作咨询"
+               data-track="click_institution_inquiry" data-track-source="index_pricing">咨询机构合作</a>
           </div>
         </div>
       </div>
+      <div class="small muted" style="margin-top:10px">科研支持服务包为可选增值，与软件订阅分开计价，详见 <a href="/pricing#services">价格页 · 科研支持服务</a>。</div>
     </div>
 
     <!-- ===== PROJECTS ===== -->
     <div class="card">
       <h2 style="margin:0 0 4px" id="projectHeading" data-testid="project-heading">正在招募合作中心 · <span id="projectCount" data-testid="project-count">10</span> 个研究项目</h2>
-      <div class="small muted">IgAN / MN / C3G / MGRS / DKD / HD / CKD 康复 / 肾移植 / 腹膜透析，均为真实启动或招募阶段研究，欢迎符合条件的中心联系加入。</div>
+      <div class="small muted" id="projectSub">IgAN / MN / C3G / MGRS / DKD / HD / CKD 康复 / 肾移植 / 腹膜透析，均为真实启动或招募阶段研究，欢迎符合条件的中心联系加入。</div>
       <div id="indexProjects" class="projects-grid" style="margin-top:10px"></div>
       <div class="btnbar" style="margin-top:12px">
-        <a class="btn primary" href="mailto:china@kidneysphere.com"
-           data-track="click_join_project" data-track-source="index_projects">联系加入</a>
-        <a class="btn" href="/collaboration"
+        <a class="btn primary" href="/collaboration"
            data-track="click_view_projects" data-track-source="index_projects">查看全部项目</a>
+        <a class="btn" href="mailto:china@kidneysphere.com"
+           data-track="click_join_project" data-track-source="index_projects">邮件咨询加入</a>
       </div>
+    </div>
+
+    <!-- ===== COMPLIANCE ===== -->
+    <div class="card">
+      <div class="warnbox">
+        <b>合规边界：</b>科研用途；仅用于随访数据登记与研究汇总，不提供诊断 / 处方 / 急救指导；<b>禁止录入</b>姓名 / 电话 / 病案号 / 身份证等个人信息（PII），全程去标识化。
+      </div>
+      <div class="compliance-note" data-compliance-note style="margin-top:8px"></div>
     </div>
 
   </div>
@@ -249,30 +226,51 @@
   <script src="/config.js"></script>
   <script src="/pricing-config.js"></script>
   <script src="/analytics.js"></script>
+  <script src="/data/marketing.js"></script>
+  <script src="/marketing-components.js"></script>
   <script src="/collaboration-data.js"></script>
   <script src="/collaboration-components.js"></script>
   <script>
     (function(){
+      var M = window.MarketingData || {};
+      var UI = window.MarketingUI;
+      var cd = window.CollabData;
+      var live = cd && cd.projectCards && cd.projectCards.length ? cd.projectCards : null;
+
+      if (UI) {
+        var metrics = (M.metricsStrip || []).filter(function(m){
+          return m.source !== 'projects' || live;
+        }).map(function(m){
+          return m.source === 'projects' ? Object.assign({}, m, { value: String(live.length) }) : m;
+        });
+        UI.renderStageEntries(document.getElementById('stageGrid'), M.stageEntries);
+        UI.renderServicePackages(document.getElementById('serviceGrid'), M.servicePackages, { compact: true });
+        UI.renderMetricStrip(document.getElementById('metricStrip'), metrics);
+        UI.renderChips(document.getElementById('scenarioChips'), M.scenarioChips);
+        UI.renderComplianceNotes(M.complianceNote);
+      }
+
+      var headingEl = document.getElementById('projectHeading');
+      var subEl = document.getElementById('projectSub');
+      var gridEl = document.getElementById('indexProjects');
       try {
-        var idxData = window.CollabData;
-        var idxC = window.CollabComponents;
-        var countEl = document.getElementById('projectCount');
-        var headingEl = document.getElementById('projectHeading');
-        if (!idxData || !idxData.projectCards || !idxData.projectCards.length) {
-          // Hide the entire heading if no data available
-          if (headingEl) headingEl.textContent = '正在招募合作中心';
+        if (live) {
+          window.CollabComponents.renderProjects(gridEl, live.slice(0, 4), { compact: true });
+          document.getElementById('projectCount').textContent = live.length;
           return;
         }
-        idxC.renderProjects(
-          document.getElementById('indexProjects'),
-          idxData.projectCards
-        );
-        if (countEl) countEl.textContent = idxData.projectCards.length;
-      } catch(e) {
-        // Graceful degradation: hide count on error
-        var h = document.getElementById('projectHeading');
-        if (h) h.textContent = '正在招募合作中心';
+        // TODO: 接入后端项目数据源后移除 fallback
+        headingEl.textContent = '典型研究方向（方向性示例）';
+        subEl.textContent = '以下为可合作的研究方向示例，具体立项以双方确认为准。';
+        window.CollabComponents.renderProjects(gridEl, M.fallbackProjects || [], { compact: true });
+      } catch (e) {
         console.error('[index] project render error:', e);
+        headingEl.textContent = '正在招募合作中心';
+        if (UI) UI.renderFallback(gridEl, {
+          title: '项目列表暂时无法加载',
+          text: '请前往合作页查看，或直接邮件咨询 china@kidneysphere.com。',
+          ctaLabel: '前往合作页', ctaHref: '/collaboration'
+        });
       }
     })();
   </script>

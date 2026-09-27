@@ -3,10 +3,11 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>价格与方案 · 肾域·科研</title>
-  <meta name="description" content="肾域·科研价格方案：30天免费试用、个人科研版 ¥499/月起、机构科研合作版定制报价。支持 SaaS 与私有化部署。"/>
-  <meta property="og:title" content="价格与方案 · 肾域·科研"/>
-  <meta property="og:description" content="30天免费试用、个人科研版、机构科研合作版。支持 SaaS 与私有化部署。"/>
+  <title>价格与服务 · 肾域·科研</title>
+  <meta name="description" content="肾域·科研价格：软件订阅（30 天免费试用、个人科研版 ¥499/月起、机构版定制报价）与可选科研支持服务（方法学启动包、数据导入与 QC、统计与投稿支持，不承诺发表）。"/>
+  <meta property="og:title" content="价格与服务 · 肾域·科研"/>
+  <meta property="og:description" content="软件订阅 + 可选科研支持服务：方法学、数据治理、统计与投稿支持。支持 SaaS 与私有化部署。"/>
+  <meta property="og:url" content="https://kidneysphereregistry.cn/pricing"/>
   <meta property="og:type" content="website"/>
   <link rel="canonical" href="https://kidneysphereregistry.cn/pricing"/>
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
@@ -63,26 +64,29 @@
     <div class="brand">
       <img src="/assets/kidneysphere-ai.png" alt="肾域·科研"/>
       <div>
-        <h1 class="brand-title">价格与方案</h1>
-        <div class="brand-sub">科研优先 · 多中心合并 · IgAN MEST‑C · 数据标准化与质量治理</div>
+        <h1 class="brand-title">价格与服务</h1>
+        <div class="brand-sub">软件订阅 + 可选科研支持服务 · 两者分开计价，按需组合</div>
       </div>
     </div>
     <div class="btnbar" style="margin-top:12px">
-      <a class="btn" href="/">返回首页</a>
-      <a class="btn" href="/guide#trial">试用说明</a>
-      <a class="btn" href="/slides">系统介绍PPT</a>
-      <a class="btn" href="/demo">预约演示</a>
-      <a class="btn" href="/collaboration">合作项目</a>
-      <a class="btn primary" href="/signup?trial=1">开始试用</a>
+      <a class="btn primary" href="/signup?trial=1" data-track="click_start_trial" data-track-source="pricing_header">开始 30 天试用</a>
+      <a class="btn" href="/demo?type=方法学咨询" data-track="click_book_consult" data-track-source="pricing_header">预约方法学咨询</a>
     </div>
+    <nav class="small muted" style="margin-top:10px;display:flex;gap:12px;flex-wrap:wrap" aria-label="页内导航">
+      <a href="#plans">软件订阅</a>
+      <a href="#services">科研支持服务</a>
+      <a href="#boundary">服务边界</a>
+      <a href="#faq">FAQ</a>
+      <a href="/">返回首页</a>
+    </nav>
   </div>
 
-  <!-- ── Step 2: 定位 + 核心能力（合并） ── -->
+  <!-- ── 定位 + 核心能力 ── -->
   <div class="card" style="background:rgba(37,99,235,.04);border:1.5px solid rgba(37,99,235,.15);">
-    <h2 style="margin:0 0 6px">我们提供的不是软件，而是科研基础设施</h2>
+    <h2 style="margin:0 0 6px">肾脏科研基础设施 + 标准化科研支持</h2>
     <p class="small" style="margin:0 0 10px">
-      肾域·科研（KidneySphere Research）用于肾内专科科研登记与多中心协作的数据标准化与质量治理。
-      面向科研与质量改进场景，帮助中心建立统一 CRF / 数据字典、质控闭环与可复现数据导出流程。
+      软件订阅提供统一 CRF / 数据字典、质控闭环、多中心合并与可复现导出；
+      科研支持服务则在方法学、数据治理、统计与投稿三个环节提供交付物明确的标准化支持，可单独选购。
     </p>
     <div class="capability-row">
       <div class="cap-item">
@@ -104,9 +108,10 @@
     <div class="muted small" style="margin-top:10px">不提供诊断 / 处方建议；请勿录入姓名 / 电话 / 病案号 / 身份证等可识别个人信息（PII）。</div>
   </div>
 
-  <!-- ── Step 1: 定价主体 ── -->
-  <div class="card">
-    <h2 style="margin:0 0 4px">定价与试用</h2>
+  <!-- ── 软件订阅 ── -->
+  <div class="card" id="plans">
+    <h2 style="margin:0 0 4px">软件订阅</h2>
+    <div class="small muted">研究数据平台本身：录入、质控、多中心合并、可复现导出。</div>
 
     <!-- 年付/月付切换 -->
     <div class="billing-toggle">
@@ -162,7 +167,7 @@
         </ul>
         <div class="small muted" style="margin-top:8px">支持微信、支付宝、公司对公转账</div>
         <div class="btnbar" style="margin-top:12px;flex-direction:column;gap:8px">
-          <a class="btn primary small" href="/checkout" style="justify-content:center" data-track="click_upgrade" data-track-source="pricing_card">立即升级 Pro</a>
+          <a class="btn primary small" href="/checkout" style="justify-content:center" data-track="pricing_upgrade_click" data-track-source="pricing_card">立即升级 Pro</a>
           <a class="btn small" href="/signup?trial=1" style="justify-content:center">先免费试用</a>
         </div>
       </div>
@@ -188,6 +193,16 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- 服务边界：Pro / 机构版附近 -->
+    <div class="infobox" id="boundary" style="margin-top:14px">
+      <b>我们的定位：研究基础设施 + 标准化支持，而不是 CRO 外包或代写服务</b>
+      <ul class="small" style="margin:6px 0 0;padding-left:18px;line-height:1.8">
+        <li>我们提供的是研究流程基础设施（CRF、QC、多中心合并、可复现导出）和交付物明确的标准化支持。</li>
+        <li>研究者本人对研究内容、结论与稿件署名负责；我们不代写全文、不代投、不承诺发表。</li>
+        <li>平台不替代伦理审批，也不替代研究者及所在机构的学术责任。</li>
+      </ul>
     </div>
 
     <!-- 功能对比表 -->
@@ -254,9 +269,9 @@
             </tr>
             <tr>
               <td>方法学 / 统计分析支持</td>
-              <td><span class="cross">—</span></td>
-              <td class="col-pro"><span class="cross">—</span></td>
-              <td><span class="check">✓</span></td>
+              <td><span class="partial">可选购</span></td>
+              <td class="col-pro"><span class="partial">可选购</span></td>
+              <td><span class="check">✓ 含基础支持</span></td>
             </tr>
             <tr>
               <td>合规材料模板（伦理 / 脱敏）</td>
@@ -276,7 +291,15 @@
     </div>
   </div>
 
-  <!-- ── Step 2: 机构合作模式与交付物 ── -->
+  <!-- ── 科研支持服务（可选增值） ── -->
+  <div class="card" id="services">
+    <h2 style="margin:0 0 4px">科研支持服务（可选增值）</h2>
+    <div class="small muted">与软件订阅分开计价，可单独购买，也可与 Pro / 机构版组合。按项目范围报价，咨询后给出书面交付清单。</div>
+    <div class="svc-grid" id="servicePkgGrid" data-testid="pricing-service-grid"></div>
+    <div class="compliance-note" data-compliance-note></div>
+  </div>
+
+  <!-- ── 机构合作模式与交付物 ── -->
   <div class="card" style="background:rgba(37,99,235,.03);border:1.5px solid rgba(37,99,235,.12)">
     <h2 style="margin:0 0 10px">机构合作模式与交付物</h2>
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
@@ -306,9 +329,19 @@
     </div>
   </div>
 
-  <!-- ── Step 3: FAQ ── -->
-  <div class="card">
+  <!-- ── FAQ ── -->
+  <div class="card" id="faq">
     <h2 style="margin:0 0 8px">FAQ</h2>
+
+    <details class="faq">
+      <summary>软件订阅和科研支持服务是什么关系？</summary>
+      <div class="small">两者独立计价。软件订阅提供研究数据平台；科研支持服务（方法学启动包 / 数据导入与 QC / 统计与投稿支持）按项目范围单独报价，可只买其中一项，也可与 Pro 或机构版组合。</div>
+    </details>
+
+    <details class="faq">
+      <summary>统计与投稿支持具体包含什么？会帮忙写论文吗？</summary>
+      <div class="small">提供 editorial &amp; statistical support：统计分析支持、图表与结果整理、英文润色建议、投稿策略与返修回复辅导。研究者本人负责研究内容、结论与署名；我们不代写全文、不代投，也不承诺发表或录用。</div>
+    </details>
 
     <details class="faq" open>
       <summary>Pro 包含几个项目，超出怎么算？</summary>
@@ -369,9 +402,9 @@
       <div style="font-weight:800;font-size:16px;margin-bottom:6px">准备好了？选择最适合你的方案</div>
       <div class="small muted" style="margin-bottom:14px">30 天免费试用，无需信用卡；随时可退款</div>
       <div class="btnbar" style="justify-content:center">
-        <a class="btn primary" href="/signup?trial=1" data-track="click_trial" data-track-source="pricing_cta">免费试用 30 天</a>
-        <a class="btn primary" href="/checkout" data-track="click_upgrade" data-track-source="pricing_cta">立即升级 Pro</a>
-        <a class="btn" href="/demo" data-track="click_book_demo" data-track-source="pricing_cta">预约演示（机构版）</a>
+        <a class="btn primary" href="/signup?trial=1" data-track="click_start_trial" data-track-source="pricing_cta">免费试用 30 天</a>
+        <a class="btn" href="/checkout" data-track="pricing_upgrade_click" data-track-source="pricing_cta">立即升级 Pro</a>
+        <a class="btn" href="/demo?type=方法学咨询" data-track="click_book_consult" data-track-source="pricing_cta">预约方法学咨询</a>
       </div>
     </div>
 
@@ -387,7 +420,22 @@
 <script src="/config.js"></script>
 <script src="/pricing-config.js"></script>
 <script src="/analytics.js"></script>
+<script src="/data/marketing.js"></script>
+<script src="/marketing-components.js"></script>
 <script>
+(function(){
+  var M = window.MarketingData || {};
+  var UI = window.MarketingUI;
+  if (UI) {
+    UI.renderServicePackages(document.getElementById("servicePkgGrid"), M.servicePackages);
+    UI.renderComplianceNotes(M.complianceNote);
+  }
+  // 服务卡是动态渲染的，带锚点进入时需要重新定位
+  if (location.hash && location.hash.indexOf("#service-") === 0) {
+    var target = document.getElementById(location.hash.slice(1));
+    if (target) target.scrollIntoView();
+  }
+})();
 (function(){
   var toggle = document.getElementById("billingToggle");
   var grid   = document.getElementById("pricingGrid");

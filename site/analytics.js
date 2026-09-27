@@ -9,6 +9,13 @@
 (function () {
   var ENABLED = true; // set false to silence all tracking
 
+  if (window.KSTrack) return;
+
+  // Queue stub: events fired before the Plausible script loads are replayed instead of dropped
+  window.plausible = window.plausible || function () {
+    (window.plausible.q = window.plausible.q || []).push(arguments);
+  };
+
   // Load Plausible script dynamically (production only)
   if (ENABLED && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
     var s = document.createElement('script');
@@ -22,10 +29,7 @@
     if (!ENABLED) return;
     var data = Object.assign({ path: location.pathname, ts: Date.now() }, props || {});
 
-    // Plausible custom events
-    if (typeof window.plausible === 'function') {
-      window.plausible(eventName, { props: data });
-    }
+    window.plausible(eventName, { props: data });
 
     // GA4 (optional — add GA4 Measurement ID and uncomment)
     // if (typeof gtag === 'function') { gtag('event', eventName, data); }
@@ -37,25 +41,24 @@
   }
 
   /**
-   * Auto-attach click listeners to elements with data-track attribute.
+   * Delegated click tracking for any element with data-track (including ones rendered later).
    * Usage in HTML: <a data-track="click_book_demo" data-track-source="hero">
    */
   function attachAutoTracking() {
-    document.querySelectorAll('[data-track]').forEach(function (el) {
-      el.addEventListener('click', function () {
-        var props = {};
-        // collect all data-track-* attributes as properties
-        Array.prototype.forEach.call(el.attributes, function (attr) {
-          if (attr.name.startsWith('data-track-')) {
-            var key = attr.name.replace('data-track-', '').replace(/-/g, '_');
-            props[key] = attr.value;
-          }
-        });
-        props.label = el.textContent.trim().slice(0, 60);
-        props.href = el.getAttribute('href') || '';
-        track(el.getAttribute('data-track'), props);
+    document.addEventListener('click', function (e) {
+      var el = e.target && e.target.closest ? e.target.closest('[data-track]') : null;
+      if (!el) return;
+      var props = {};
+      Array.prototype.forEach.call(el.attributes, function (attr) {
+        if (attr.name.indexOf('data-track-') === 0) {
+          var key = attr.name.replace('data-track-', '').replace(/-/g, '_');
+          props[key] = attr.value;
+        }
       });
-    });
+      props.label = el.textContent.trim().slice(0, 60);
+      props.href = el.getAttribute('href') || '';
+      track(el.getAttribute('data-track'), props);
+    }, true);
   }
 
   // Events fired on page load

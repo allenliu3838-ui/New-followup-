@@ -13,13 +13,12 @@
   <style>
     .step { display:none; }
     .step.active { display:block; }
-    .step-indicator { display:flex; gap:6px; margin-bottom:14px; }
-    .step-dot { width:28px; height:28px; border-radius:50%; border:2px solid var(--border);
-                display:flex; align-items:center; justify-content:center;
-                font-size:13px; font-weight:700; color:var(--muted); }
-    .step-dot.active { border-color:var(--brand); color:var(--brand); background:rgba(47,111,235,.08); }
-    .step-dot.done { border-color:var(--ok); color:#fff; background:var(--ok); }
-    .step-line { flex:1; height:2px; background:var(--border); align-self:center; }
+
+    .pay-intro { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-top:12px; }
+    @media (max-width:820px){ .pay-intro { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width:420px){ .pay-intro { grid-template-columns:1fr; } }
+    .pay-intro div { border:1px solid rgba(37,99,235,.15); background:rgba(37,99,235,.04); border-radius:12px; padding:10px; font-size:12.5px; line-height:1.5; }
+    .pay-intro b { display:block; font-size:13px; margin-bottom:2px; }
 
     .pay-tabs { display:flex; gap:0; margin:12px 0; border-radius:12px; overflow:hidden; border:1px solid var(--border); }
     .pay-tab { flex:1; padding:10px; text-align:center; cursor:pointer; font-size:14px; font-weight:600;
@@ -28,12 +27,13 @@
     .pay-tab:hover { background:rgba(47,111,235,.04); }
     .pay-tab.active { background:rgba(47,111,235,.08); color:var(--brand); }
     .pay-tab .tab-icon { font-size:20px; display:block; margin-bottom:2px; }
+    @media (max-width:420px){ .pay-tab { font-size:12.5px; padding:8px 4px; } }
 
     .pay-panel { display:none; }
     .pay-panel.active { display:block; }
 
     .qr-box { text-align:center; padding:16px; }
-    .qr-box img { max-width:260px; border-radius:14px; border:1px solid var(--border); }
+    .qr-box img { max-width:260px; width:100%; border-radius:14px; border:1px solid var(--border); }
 
     .amount-big { font-size:28px; font-weight:900; color:var(--brand); margin:8px 0; }
     .copy-btn { display:inline-flex; align-items:center; gap:4px; font-size:12px; cursor:pointer;
@@ -54,6 +54,16 @@
                    text-align:center; cursor:pointer; transition:border-color .2s; }
     .upload-zone:hover { border-color:rgba(47,111,235,.4); }
     .upload-zone.has-file { border-color:var(--ok); background:rgba(22,163,74,.04); }
+
+    .pay-preview-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:10px; }
+    @media (max-width:520px){ .pay-preview-grid { grid-template-columns:1fr; } }
+    .pay-preview-item { border:1px dashed rgba(15,23,42,.18); border-radius:12px; padding:10px; background:rgba(2,6,23,.02); }
+    .pay-preview-item .pi-icon { font-size:18px; }
+    .pay-preview-item .pi-label { font-weight:700; font-size:13px; margin-top:2px; }
+    .pay-preview-item .pi-hint { font-size:11.5px; color:var(--muted); margin-top:2px; }
+
+    .pay-fallback { border:1px dashed rgba(217,119,6,.45); background:rgba(217,119,6,.06); border-radius:12px; padding:12px; font-size:13px; line-height:1.6; color:#7c2d12; }
+    .pay-debug { margin-top:6px; font-family:ui-monospace,Menlo,monospace; font-size:11px; color:#991b1b; }
   </style>
 </head>
 <body>
@@ -64,42 +74,51 @@
         <img src="/assets/kidneysphere-ai.png" alt="肾域·科研"/>
         <div>
           <h1 class="brand-title">支付中心</h1>
-          <div class="brand-sub">升级 Pro · 支持微信 / 支付宝 / 对公转账</div>
+          <div class="brand-sub">升级个人科研版（Pro）· 人工核验 · 支持电子发票</div>
         </div>
       </div>
+
+      <!-- 静态说明：所有人可见，先让用户知道支付路径是通的 -->
+      <div class="pay-intro" data-testid="checkout-intro">
+        <div><b>💳 付款方式</b>支持微信扫码、支付宝扫码、公司对公转账</div>
+        <div><b>🔐 何时显示付款信息</b>登录并填写完订单信息后，显示二维码与转账账户</div>
+        <div><b>⏱ 核验时效</b>付款凭证提交后 1–2 个工作日人工核验，通过后自动开通并邮件通知</div>
+        <div><b>🧾 发票</b>支持增值税电子发票（个人 / 单位），在第 2 步填写开票信息</div>
+      </div>
+
       <div class="btnbar" style="margin-top:12px">
-        <a class="btn" href="/">返回首页</a>
         <a class="btn" href="/pricing">价格方案</a>
         <a class="btn" href="/staff">工作台</a>
+        <a class="btn" href="/">返回首页</a>
       </div>
     </div>
 
     <!-- 未登录提示 -->
     <div class="card" id="loginPrompt" data-testid="checkout-login-prompt" style="display:none">
       <div class="warnbox">
-        请先 <a href="/login?returnTo=/checkout" data-testid="checkout-login-link">登录</a> 后再进行升级购买。
-        <div class="small muted" style="margin-top:6px">登录后将自动返回此页面。</div>
+        请先 <a href="/login?returnTo=/checkout" data-testid="checkout-login-link" data-track="click_login" data-track-source="checkout_guest">登录</a> 后再进行升级购买。
+        <div class="small muted" style="margin-top:6px">登录后将自动返回此页面。还没有账号？<a href="/signup?trial=1" data-track="click_start_trial" data-track-source="checkout_guest">先免费试用 30 天</a>。</div>
       </div>
+      <div class="small muted" style="margin-top:10px">
+        机构采购或需要先确认合同 / 发票流程？请联系 <a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a> · 微信 GlomConChina1。
+      </div>
+    </div>
+
+    <!-- Stepper：放在登录模板之外，游客也能看到完整路径 -->
+    <div class="card">
+      <ol class="co-stepper" id="coStepper" aria-label="支付步骤">
+        <li data-step="1"><span class="s-num">1</span><div class="s-title">选择方案</div><div class="s-hint">套餐 / 计费周期 / 项目数</div></li>
+        <li data-step="2"><span class="s-num">2</span><div class="s-title">填写订单信息</div><div class="s-hint">联系人与开票信息（选填）</div></li>
+        <li data-step="3"><span class="s-num">3</span><div class="s-title">选择付款方式</div><div class="s-hint">微信 / 支付宝 / 对公转账</div></li>
+        <li data-step="4"><span class="s-num">4</span><div class="s-title">上传凭证并等待核验</div><div class="s-hint">1–2 个工作日内核验</div></li>
+      </ol>
+      <div id="stepLabel" class="muted small" style="margin-top:8px">登录后即可开始第 1 步。</div>
     </div>
 
     <!-- 主内容容器（content injected from template after auth） -->
     <div id="checkoutMain" data-testid="checkout-main" style="display:none"></div>
 
     <template id="checkoutTpl">
-      <!-- Step Indicator -->
-      <div class="card">
-        <div class="step-indicator">
-          <div class="step-dot active" id="dot1">1</div>
-          <div class="step-line"></div>
-          <div class="step-dot" id="dot2">2</div>
-          <div class="step-line"></div>
-          <div class="step-dot" id="dot3">3</div>
-          <div class="step-line"></div>
-          <div class="step-dot" id="dot4">4</div>
-        </div>
-        <div id="stepLabel" class="muted small">第 1 步：选择方案</div>
-      </div>
-
       <!-- ===== Step 1: 选择方案 ===== -->
       <div class="card step active" id="step1">
         <h2 style="margin:0 0 8px">选择方案</h2>
@@ -139,8 +158,10 @@
           <div class="small" id="priceBreakdown">基础 ¥499 + 额外 0 个项目 × ¥99 = ¥499</div>
         </div>
 
+        <div class="small muted" style="margin-top:8px">机构版请 <a href="/demo?type=机构合作咨询">提交机构合作咨询</a>，支持对公合同与专票。</div>
+
         <div class="btnbar">
-          <button class="btn primary" id="btnToStep2">下一步：填写信息</button>
+          <button class="btn primary" id="btnToStep2">下一步：填写订单信息</button>
         </div>
       </div>
 
@@ -166,16 +187,17 @@
 
         <div class="hr"></div>
 
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
           <label style="margin:0">需要发票吗？</label>
           <select id="invoiceNeeded" style="width:100px">
             <option value="no">不需要</option>
             <option value="yes">需要</option>
           </select>
+          <span class="muted small">如需开票，请在付款前填写，便于核验后直接开具。</span>
         </div>
 
         <div id="invoiceFields" style="display:none">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
             <label style="margin:0;white-space:nowrap">发票类型</label>
             <select id="invoiceType" style="width:140px">
               <option value="personal">个人</option>
@@ -213,6 +235,24 @@
           <button class="btn" id="btnBackTo1">上一步</button>
           <button class="btn primary" id="btnToStep3">下一步：选择付款方式</button>
         </div>
+      </div>
+
+      <!-- ===== 付款方式预告（第 1–2 步可见，只读） ===== -->
+      <div class="card" id="payPreview" data-testid="pay-preview">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <h2 style="margin:0;font-size:16px">第 3 步预告：付款方式</h2>
+          <span class="badge">🔒 完成前两步后解锁</span>
+        </div>
+        <div class="pay-preview-grid">
+          <div class="pay-preview-item"><div class="pi-icon">💚</div><div class="pi-label">微信扫码</div><div class="pi-hint">个人 / 小团队推荐</div></div>
+          <div class="pay-preview-item"><div class="pi-icon">💙</div><div class="pi-label">支付宝扫码</div><div class="pi-hint">个人 / 小团队推荐</div></div>
+          <div class="pay-preview-item"><div class="pi-icon">🏦</div><div class="pi-label">对公转账</div><div class="pi-hint">医院 / 机构推荐</div></div>
+        </div>
+        <ul class="small muted" style="margin:10px 0 0;padding-left:18px;line-height:1.8">
+          <li>二维码和转账账户信息将在填写完成后显示，并附带专属付款备注，便于核验。</li>
+          <li>如需开票，请先在第 2 步填写开票信息。</li>
+          <li>付款后在第 4 步上传截图或回单，1–2 个工作日内完成核验。</li>
+        </ul>
       </div>
 
       <!-- ===== Step 3: Payment info injected dynamically after order creation ===== -->
