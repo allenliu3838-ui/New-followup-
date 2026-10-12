@@ -3,9 +3,9 @@
   "database_server_major": 17,
   "reference_server_version": "17.6",
   "runtime": "@embedded-postgres/linux-x64@17.6.0-beta.15",
-  "migration_manifest_sha256": "e7c88dc4acfb111ab878219f67b217f8ad81f8aeca72bc612880de05564cd6ee",
+  "migration_manifest_sha256": "8438e469b86012b654e214793670822802ac0f743da26454292c69cc5dcf07e9",
   "database_contract_sha256": "aca7000205680905a853fc72280ff60a2f99af32d8b2807bb761de7769ed6b29",
-  "profile_definition": "canonical: all reviewed LF SQL; historical_crlf: first 33 reviewed SQL files encoded CRLF, then six new LF migrations. UTC and fixed search_path. Synthetic Auth/Storage only.",
+  "profile_definition": "canonical: all reviewed LF SQL; historical_crlf: first 33 reviewed SQL files encoded CRLF, then eight new LF migrations. UTC and fixed search_path. Synthetic Auth/Storage only.",
   "database_contract_profiles": {
     "canonical": {
       "views": [
@@ -82,6 +82,396 @@
           "auth_select": true,
           "auth_update": false,
           "definition_md5": "c35b40b658453ba18418d6955694782b"
+        },
+        {
+          "name": "v_patient_followup_status",
+          "owner": "postgres",
+          "schema": "public",
+          "columns": [
+            {
+              "name": "project_id",
+              "type": "uuid",
+              "position": 1,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "patient_id",
+              "type": "uuid",
+              "position": 2,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "center_code",
+              "type": "text",
+              "position": 3,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "patient_code",
+              "type": "text",
+              "position": 4,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "baseline_date",
+              "type": "date",
+              "position": 5,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "consent_status",
+              "type": "text",
+              "position": 6,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "followup_status",
+              "type": "text",
+              "position": 7,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "visit_count",
+              "type": "integer",
+              "position": 8,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "first_visit_date",
+              "type": "date",
+              "position": 9,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "last_visit_date",
+              "type": "date",
+              "position": 10,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "days_since_last_visit",
+              "type": "integer",
+              "position": 11,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "next_due_date",
+              "type": "date",
+              "position": 12,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "followup_state",
+              "type": "text",
+              "position": 13,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "active_link_count",
+              "type": "integer",
+              "position": 14,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "last_link_created_at",
+              "type": "timestamp with time zone",
+              "position": 15,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "last_link_expires_at",
+              "type": "timestamp with time zone",
+              "position": 16,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "last_patient_submission_at",
+              "type": "timestamp with time zone",
+              "position": 17,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            }
+          ],
+          "options": [
+            "security_invoker=true"
+          ],
+          "anon_delete": false,
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_delete": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "definition_md5": "c1d3a0986f7f59d76f71a453ae91e7e1"
+        },
+        {
+          "name": "v_project_overview",
+          "owner": "postgres",
+          "schema": "public",
+          "columns": [
+            {
+              "name": "project_id",
+              "type": "uuid",
+              "position": 1,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "followup_interval_days",
+              "type": "integer",
+              "position": 2,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_patients",
+              "type": "integer",
+              "position": 3,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_active",
+              "type": "integer",
+              "position": 4,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_visits",
+              "type": "integer",
+              "position": 5,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_visits_30d",
+              "type": "integer",
+              "position": 6,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_core_complete_visits",
+              "type": "integer",
+              "position": 7,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "core_completeness",
+              "type": "numeric",
+              "position": 8,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_overdue",
+              "type": "integer",
+              "position": 9,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_due_soon",
+              "type": "integer",
+              "position": 10,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_no_visit",
+              "type": "integer",
+              "position": 11,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "last_visit_date",
+              "type": "date",
+              "position": 12,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_consent_confirmed",
+              "type": "integer",
+              "position": 13,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_consent_unconfirmed",
+              "type": "integer",
+              "position": 14,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_open_issues",
+              "type": "integer",
+              "position": 15,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            }
+          ],
+          "options": [
+            "security_invoker=true"
+          ],
+          "anon_delete": false,
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_delete": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "definition_md5": "903b0bf77a35e5692bf832bebd1ff930"
         }
       ],
       "tables": [
@@ -896,16 +1286,28 @@
               "definition_md5": "4c6419b3704337bbfe50f018842a9ad3"
             },
             {
+              "name": "patient_tokens_plaintext_not_stored",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "09460a7756f3f73f5810c4e9096c32fa"
+            },
+            {
               "name": "patient_tokens_project_id_fkey",
               "type": "f",
               "validated": true,
               "definition_md5": "07f3414b4de8691ee7edea30c01f758f"
             },
             {
-              "name": "patient_tokens_token_key",
+              "name": "patient_tokens_token_hash_format",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "61f22fd9526d8c93a6f6c31a6350d06a"
+            },
+            {
+              "name": "patient_tokens_token_hash_key",
               "type": "u",
               "validated": true,
-              "definition_md5": "fa62bcb1c4fbdd8cb0e433bffb56c693"
+              "definition_md5": "0f830df04bb663b6de1300c0f33de671"
             }
           ]
         },
@@ -988,6 +1390,24 @@
               "type": "c",
               "validated": true,
               "definition_md5": "d83983440cfc1d5522a751778c66c1ba"
+            },
+            {
+              "name": "patients_baseline_consent_status_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "bfba36f57de7e394f9fdae406f0b8f8b"
+            },
+            {
+              "name": "patients_baseline_consent_version_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "cf7b4c42e9776a533c9c35bb66bc54c0"
+            },
+            {
+              "name": "patients_baseline_followup_status_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "6c1c9f8905100113ca2f8baa4cb1e444"
             },
             {
               "name": "patients_baseline_pkey",
@@ -1178,10 +1598,40 @@
           "auth_update": false,
           "constraints": [
             {
+              "name": "projects_contact_display_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "81b70d44498696d30ef344c49c2f9e20"
+            },
+            {
+              "name": "projects_ethics_approval_no_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "8d36fea7ac6dd439ddd06c61e2a4078a"
+            },
+            {
+              "name": "projects_followup_interval_days_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "134e0c6549874e11254ec099d45b0056"
+            },
+            {
+              "name": "projects_institution_name_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "15dc068246a9bdfa45411ec0e24f1dbb"
+            },
+            {
               "name": "projects_pkey",
               "type": "p",
               "validated": true,
               "definition_md5": "4c6419b3704337bbfe50f018842a9ad3"
+            },
+            {
+              "name": "projects_public_title_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "cc2329e43869dfa4482187491a868524"
             },
             {
               "name": "projects_trial_grace_ge_expires",
@@ -6835,6 +7285,25 @@
           "table": "patient_tokens",
           "schema": "public",
           "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "token_hash",
+          "type": "text",
+          "table": "patient_tokens",
+          "schema": "public",
+          "identity": "",
           "not_null": true,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
@@ -7058,12 +7527,12 @@
           "array_dimensions": 0
         },
         {
-          "name": "consent_research",
-          "type": "boolean",
+          "name": "consent_date",
+          "type": "date",
           "table": "patients_baseline",
           "schema": "public",
           "identity": "",
-          "not_null": true,
+          "not_null": false,
           "collation": null,
           "generated": "",
           "anon_insert": true,
@@ -7072,8 +7541,65 @@
           "auth_insert": true,
           "auth_select": true,
           "auth_update": true,
-          "default_md5": "b326b5062b2f0e69046810717534cb09",
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "consent_research",
+          "type": "boolean",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "consent_status",
+          "type": "text",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "5b19fa75fdd7f76e2de2b1a28705e0e7",
           "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "consent_version",
+          "type": "text",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
           "array_dimensions": 0
         },
         {
@@ -7098,6 +7624,44 @@
         {
           "name": "created_by",
           "type": "uuid",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "followup_status",
+          "type": "text",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "cfaf8d9e8ae4be644c6e743d4de4ac24",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "followup_status_date",
+          "type": "date",
           "table": "patients_baseline",
           "schema": "public",
           "identity": "",
@@ -8122,6 +8686,25 @@
           "array_dimensions": 0
         },
         {
+          "name": "contact_display",
+          "type": "text",
+          "table": "projects",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "created_at",
           "type": "timestamp with time zone",
           "table": "projects",
@@ -8179,6 +8762,44 @@
           "array_dimensions": 0
         },
         {
+          "name": "ethics_approval_no",
+          "type": "text",
+          "table": "projects",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "followup_interval_days",
+          "type": "integer",
+          "table": "projects",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": "8613985ec49eb8f757ae6439e879bb2a",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
           "name": "id",
           "type": "uuid",
           "table": "projects",
@@ -8195,6 +8816,25 @@
           "auth_update": false,
           "default_md5": "f3b72bb359a50b640590970a2ab8e514",
           "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "institution_name",
+          "type": "text",
+          "table": "projects",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
           "array_dimensions": 0
         },
         {
@@ -8231,6 +8871,25 @@
           "auth_insert": true,
           "auth_select": true,
           "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "public_title",
+          "type": "text",
+          "table": "projects",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -11585,32 +12244,7 @@
         },
         {
           "live": true,
-          "name": "patient_tokens_token_idx",
-          "ready": true,
-          "table": "patient_tokens",
-          "valid": true,
-          "schema": "public",
-          "unique": false,
-          "columns": [
-            {
-              "column": "token",
-              "included": false,
-              "position": 1,
-              "expression": false
-            }
-          ],
-          "primary": false,
-          "immediate": true,
-          "key_count": 1,
-          "predicate_md5": null,
-          "definition_md5": "1ad1636b3935d9a2cc9c61ebf3019d41",
-          "attribute_count": 1,
-          "expressions_md5": null,
-          "nulls_not_distinct": false
-        },
-        {
-          "live": true,
-          "name": "patient_tokens_token_key",
+          "name": "patient_tokens_token_hash_key",
           "ready": true,
           "table": "patient_tokens",
           "valid": true,
@@ -11618,7 +12252,7 @@
           "unique": true,
           "columns": [
             {
-              "column": "token",
+              "column": "token_hash",
               "included": false,
               "position": 1,
               "expression": false
@@ -11628,7 +12262,7 @@
           "immediate": true,
           "key_count": 1,
           "predicate_md5": null,
-          "definition_md5": "6aa22287a5b60e981ca146a13b5bbc76",
+          "definition_md5": "93f07fca59a19750e6ca3634ec79892a",
           "attribute_count": 1,
           "expressions_md5": null,
           "nulls_not_distinct": false
@@ -13775,6 +14409,20 @@
           "table": "patients_baseline",
           "schema": "public",
           "enabled": "O",
+          "trigger": "registry_consent_research_derived",
+          "definition_md5": "81a990a6b0629d6cd765eda70a5f8024"
+        },
+        {
+          "table": "patients_baseline",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "registry_study_exit_links",
+          "definition_md5": "f64826011c589e30866cfb0d7bd39929"
+        },
+        {
+          "table": "patients_baseline",
+          "schema": "public",
+          "enabled": "O",
           "trigger": "tr_patients_created_by",
           "definition_md5": "fe4a3242262b5b9893b4d08655cb8ffe"
         },
@@ -14143,7 +14791,7 @@
           "signature": "_registry_input_columns(text)",
           "volatility": "i",
           "anon_execute": false,
-          "definition_md5": "c4d372f74f274d4d05ebb54898843f92",
+          "definition_md5": "e9efa32a4592c092d04737c4cb2506f7",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -14155,7 +14803,7 @@
           "signature": "_registry_validate_input(text,jsonb)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "e883d1c1a1bf48fc66a1c115dabaac75",
+          "definition_md5": "e0a29a2c8451edc5f739aea82ba41e15",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -14623,7 +15271,7 @@
           "signature": "create_patient_token_v2(uuid,text,integer,boolean)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "cf6f8fc5f5cb0ff9e8764fbec1308f0d",
+          "definition_md5": "788866672afa2b66708686ea64e714ab",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -14659,7 +15307,7 @@
           "signature": "create_registry_export(uuid,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "e0f74080aadfa646d6d155be51c4bab1",
+          "definition_md5": "60b50b36d1c40379d716747529e6415a",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -14887,7 +15535,7 @@
           "signature": "patient_get_context(text)",
           "volatility": "v",
           "anon_execute": true,
-          "definition_md5": "5328830557535df78b03dab47ac26c25",
+          "definition_md5": "63f1b0332c90bc12fcea283bfef799be",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -14899,7 +15547,7 @@
           "signature": "patient_list_events(text,integer)",
           "volatility": "v",
           "anon_execute": true,
-          "definition_md5": "f86a93160f669ef0d0f27b14ebf0a003",
+          "definition_md5": "fff2e523ef17a7f4b411e5c91403dc05",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -14911,7 +15559,7 @@
           "signature": "patient_list_labs(text,integer)",
           "volatility": "v",
           "anon_execute": true,
-          "definition_md5": "0cd68655cf989dd89025f5652e971892",
+          "definition_md5": "6aefebcdc909f56db6dd9728b19bbfef",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -14923,7 +15571,7 @@
           "signature": "patient_list_meds(text,integer)",
           "volatility": "v",
           "anon_execute": true,
-          "definition_md5": "5c28d2f45cf32b82569549b252ef6788",
+          "definition_md5": "9304c6aad553f631ab11461e21c0a4ae",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -14935,7 +15583,7 @@
           "signature": "patient_list_variants(text,integer)",
           "volatility": "v",
           "anon_execute": true,
-          "definition_md5": "19302180b3e7a966aa5e3e01a391ff14",
+          "definition_md5": "bce76cd828bbb6a71b756e7931d2c69e",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -14947,7 +15595,7 @@
           "signature": "patient_list_visits(text,integer)",
           "volatility": "v",
           "anon_execute": true,
-          "definition_md5": "2df3f6bf7254a8965d9c0576e8f2894b",
+          "definition_md5": "7e2cd9c8db3caecb464bb6933a7f1fee",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -14959,7 +15607,7 @@
           "signature": "patient_submit_visit_v2(text,date,numeric,numeric,numeric,numeric,numeric,text,uuid)",
           "volatility": "v",
           "anon_execute": true,
-          "definition_md5": "c3bbbc7a3d3b55dfd8b64f5baa2f9b04",
+          "definition_md5": "fd8c359092d9865fa85c60671befb646",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -14996,6 +15644,18 @@
           "volatility": "v",
           "anon_execute": false,
           "definition_md5": "ae2329b99b28c7f8e6e4bd1158f1e41d",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "registry_private.derive_consent_research()",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "0c5738cc7084aef1c95808846349f008",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -15043,7 +15703,7 @@
           "signature": "registry_private.patient_token(text)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "1d0cb98f86da6adf00c375acbb50392e",
+          "definition_md5": "cf8d82e32d4a0dbcb39b61015c31734b",
           "security_definer": true,
           "authenticated_execute": false
         },
@@ -15100,11 +15760,35 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "registry_private.revoke_links_on_study_exit()",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "76018531a633551d697e45376c7e9969",
+          "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "registry_private.revoke_member_access_tokens(uuid,uuid)",
           "volatility": "v",
           "anon_execute": false,
           "definition_md5": "66144556e8ee3ec6e2979ebfb95fb0a0",
           "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "signature": "registry_private.token_digest(text)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "4c170d5c031b73e1869c6af9c63f3847",
+          "security_definer": false,
           "authenticated_execute": false
         },
         {
@@ -15139,7 +15823,19 @@
           "signature": "revoke_patient_token(text,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "5e1b4f1036a75042c3a2036dfe2050d5",
+          "definition_md5": "517d9dc726a29241b854c263b915c3d1",
+          "security_definer": true,
+          "authenticated_execute": true
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "revoke_patient_token_by_id(uuid,uuid,text)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "9772738ffa5e96a0b9bcae27b1743336",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -15165,6 +15861,30 @@
           "anon_execute": false,
           "definition_md5": "0c17a34d86f0aa5efc29491b79d82448",
           "security_definer": false,
+          "authenticated_execute": true
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "set_patient_study_status(uuid,text,jsonb,text)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "4adaa4c44d4e756573233c0ebece0a45",
+          "security_definer": true,
+          "authenticated_execute": true
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "set_project_settings(uuid,jsonb)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "8cd06acd06d62d32addc996c93b9f1b7",
+          "security_definer": true,
           "authenticated_execute": true
         },
         {
@@ -15320,6 +16040,396 @@
           "auth_select": true,
           "auth_update": false,
           "definition_md5": "c35b40b658453ba18418d6955694782b"
+        },
+        {
+          "name": "v_patient_followup_status",
+          "owner": "postgres",
+          "schema": "public",
+          "columns": [
+            {
+              "name": "project_id",
+              "type": "uuid",
+              "position": 1,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "patient_id",
+              "type": "uuid",
+              "position": 2,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "center_code",
+              "type": "text",
+              "position": 3,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "patient_code",
+              "type": "text",
+              "position": 4,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "baseline_date",
+              "type": "date",
+              "position": 5,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "consent_status",
+              "type": "text",
+              "position": 6,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "followup_status",
+              "type": "text",
+              "position": 7,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "visit_count",
+              "type": "integer",
+              "position": 8,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "first_visit_date",
+              "type": "date",
+              "position": 9,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "last_visit_date",
+              "type": "date",
+              "position": 10,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "days_since_last_visit",
+              "type": "integer",
+              "position": 11,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "next_due_date",
+              "type": "date",
+              "position": 12,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "followup_state",
+              "type": "text",
+              "position": 13,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "active_link_count",
+              "type": "integer",
+              "position": 14,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "last_link_created_at",
+              "type": "timestamp with time zone",
+              "position": 15,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "last_link_expires_at",
+              "type": "timestamp with time zone",
+              "position": 16,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "last_patient_submission_at",
+              "type": "timestamp with time zone",
+              "position": 17,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            }
+          ],
+          "options": [
+            "security_invoker=true"
+          ],
+          "anon_delete": false,
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_delete": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "definition_md5": "c1d3a0986f7f59d76f71a453ae91e7e1"
+        },
+        {
+          "name": "v_project_overview",
+          "owner": "postgres",
+          "schema": "public",
+          "columns": [
+            {
+              "name": "project_id",
+              "type": "uuid",
+              "position": 1,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "followup_interval_days",
+              "type": "integer",
+              "position": 2,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_patients",
+              "type": "integer",
+              "position": 3,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_active",
+              "type": "integer",
+              "position": 4,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_visits",
+              "type": "integer",
+              "position": 5,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_visits_30d",
+              "type": "integer",
+              "position": 6,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_core_complete_visits",
+              "type": "integer",
+              "position": 7,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "core_completeness",
+              "type": "numeric",
+              "position": 8,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_overdue",
+              "type": "integer",
+              "position": 9,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_due_soon",
+              "type": "integer",
+              "position": 10,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_no_visit",
+              "type": "integer",
+              "position": 11,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "last_visit_date",
+              "type": "date",
+              "position": 12,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_consent_confirmed",
+              "type": "integer",
+              "position": 13,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_consent_unconfirmed",
+              "type": "integer",
+              "position": 14,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            },
+            {
+              "name": "n_open_issues",
+              "type": "integer",
+              "position": 15,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
+            }
+          ],
+          "options": [
+            "security_invoker=true"
+          ],
+          "anon_delete": false,
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_delete": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "definition_md5": "903b0bf77a35e5692bf832bebd1ff930"
         }
       ],
       "tables": [
@@ -16134,16 +17244,28 @@
               "definition_md5": "4c6419b3704337bbfe50f018842a9ad3"
             },
             {
+              "name": "patient_tokens_plaintext_not_stored",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "09460a7756f3f73f5810c4e9096c32fa"
+            },
+            {
               "name": "patient_tokens_project_id_fkey",
               "type": "f",
               "validated": true,
               "definition_md5": "07f3414b4de8691ee7edea30c01f758f"
             },
             {
-              "name": "patient_tokens_token_key",
+              "name": "patient_tokens_token_hash_format",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "61f22fd9526d8c93a6f6c31a6350d06a"
+            },
+            {
+              "name": "patient_tokens_token_hash_key",
               "type": "u",
               "validated": true,
-              "definition_md5": "fa62bcb1c4fbdd8cb0e433bffb56c693"
+              "definition_md5": "0f830df04bb663b6de1300c0f33de671"
             }
           ]
         },
@@ -16226,6 +17348,24 @@
               "type": "c",
               "validated": true,
               "definition_md5": "d83983440cfc1d5522a751778c66c1ba"
+            },
+            {
+              "name": "patients_baseline_consent_status_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "bfba36f57de7e394f9fdae406f0b8f8b"
+            },
+            {
+              "name": "patients_baseline_consent_version_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "cf7b4c42e9776a533c9c35bb66bc54c0"
+            },
+            {
+              "name": "patients_baseline_followup_status_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "6c1c9f8905100113ca2f8baa4cb1e444"
             },
             {
               "name": "patients_baseline_pkey",
@@ -16416,10 +17556,40 @@
           "auth_update": false,
           "constraints": [
             {
+              "name": "projects_contact_display_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "81b70d44498696d30ef344c49c2f9e20"
+            },
+            {
+              "name": "projects_ethics_approval_no_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "8d36fea7ac6dd439ddd06c61e2a4078a"
+            },
+            {
+              "name": "projects_followup_interval_days_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "134e0c6549874e11254ec099d45b0056"
+            },
+            {
+              "name": "projects_institution_name_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "15dc068246a9bdfa45411ec0e24f1dbb"
+            },
+            {
               "name": "projects_pkey",
               "type": "p",
               "validated": true,
               "definition_md5": "4c6419b3704337bbfe50f018842a9ad3"
+            },
+            {
+              "name": "projects_public_title_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "cc2329e43869dfa4482187491a868524"
             },
             {
               "name": "projects_trial_grace_ge_expires",
@@ -22073,6 +23243,25 @@
           "table": "patient_tokens",
           "schema": "public",
           "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "token_hash",
+          "type": "text",
+          "table": "patient_tokens",
+          "schema": "public",
+          "identity": "",
           "not_null": true,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
@@ -22296,12 +23485,12 @@
           "array_dimensions": 0
         },
         {
-          "name": "consent_research",
-          "type": "boolean",
+          "name": "consent_date",
+          "type": "date",
           "table": "patients_baseline",
           "schema": "public",
           "identity": "",
-          "not_null": true,
+          "not_null": false,
           "collation": null,
           "generated": "",
           "anon_insert": true,
@@ -22310,8 +23499,65 @@
           "auth_insert": true,
           "auth_select": true,
           "auth_update": true,
-          "default_md5": "b326b5062b2f0e69046810717534cb09",
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "consent_research",
+          "type": "boolean",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "consent_status",
+          "type": "text",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "5b19fa75fdd7f76e2de2b1a28705e0e7",
           "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "consent_version",
+          "type": "text",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
           "array_dimensions": 0
         },
         {
@@ -22336,6 +23582,44 @@
         {
           "name": "created_by",
           "type": "uuid",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "followup_status",
+          "type": "text",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "cfaf8d9e8ae4be644c6e743d4de4ac24",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "followup_status_date",
+          "type": "date",
           "table": "patients_baseline",
           "schema": "public",
           "identity": "",
@@ -23360,6 +24644,25 @@
           "array_dimensions": 0
         },
         {
+          "name": "contact_display",
+          "type": "text",
+          "table": "projects",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "created_at",
           "type": "timestamp with time zone",
           "table": "projects",
@@ -23417,6 +24720,44 @@
           "array_dimensions": 0
         },
         {
+          "name": "ethics_approval_no",
+          "type": "text",
+          "table": "projects",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "followup_interval_days",
+          "type": "integer",
+          "table": "projects",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": "8613985ec49eb8f757ae6439e879bb2a",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
           "name": "id",
           "type": "uuid",
           "table": "projects",
@@ -23433,6 +24774,25 @@
           "auth_update": false,
           "default_md5": "f3b72bb359a50b640590970a2ab8e514",
           "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "institution_name",
+          "type": "text",
+          "table": "projects",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
           "array_dimensions": 0
         },
         {
@@ -23469,6 +24829,25 @@
           "auth_insert": true,
           "auth_select": true,
           "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "public_title",
+          "type": "text",
+          "table": "projects",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -26823,32 +28202,7 @@
         },
         {
           "live": true,
-          "name": "patient_tokens_token_idx",
-          "ready": true,
-          "table": "patient_tokens",
-          "valid": true,
-          "schema": "public",
-          "unique": false,
-          "columns": [
-            {
-              "column": "token",
-              "included": false,
-              "position": 1,
-              "expression": false
-            }
-          ],
-          "primary": false,
-          "immediate": true,
-          "key_count": 1,
-          "predicate_md5": null,
-          "definition_md5": "1ad1636b3935d9a2cc9c61ebf3019d41",
-          "attribute_count": 1,
-          "expressions_md5": null,
-          "nulls_not_distinct": false
-        },
-        {
-          "live": true,
-          "name": "patient_tokens_token_key",
+          "name": "patient_tokens_token_hash_key",
           "ready": true,
           "table": "patient_tokens",
           "valid": true,
@@ -26856,7 +28210,7 @@
           "unique": true,
           "columns": [
             {
-              "column": "token",
+              "column": "token_hash",
               "included": false,
               "position": 1,
               "expression": false
@@ -26866,7 +28220,7 @@
           "immediate": true,
           "key_count": 1,
           "predicate_md5": null,
-          "definition_md5": "6aa22287a5b60e981ca146a13b5bbc76",
+          "definition_md5": "93f07fca59a19750e6ca3634ec79892a",
           "attribute_count": 1,
           "expressions_md5": null,
           "nulls_not_distinct": false
@@ -29013,6 +30367,20 @@
           "table": "patients_baseline",
           "schema": "public",
           "enabled": "O",
+          "trigger": "registry_consent_research_derived",
+          "definition_md5": "81a990a6b0629d6cd765eda70a5f8024"
+        },
+        {
+          "table": "patients_baseline",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "registry_study_exit_links",
+          "definition_md5": "f64826011c589e30866cfb0d7bd39929"
+        },
+        {
+          "table": "patients_baseline",
+          "schema": "public",
+          "enabled": "O",
           "trigger": "tr_patients_created_by",
           "definition_md5": "fe4a3242262b5b9893b4d08655cb8ffe"
         },
@@ -29381,7 +30749,7 @@
           "signature": "_registry_input_columns(text)",
           "volatility": "i",
           "anon_execute": false,
-          "definition_md5": "c4d372f74f274d4d05ebb54898843f92",
+          "definition_md5": "e9efa32a4592c092d04737c4cb2506f7",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -29393,7 +30761,7 @@
           "signature": "_registry_validate_input(text,jsonb)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "e883d1c1a1bf48fc66a1c115dabaac75",
+          "definition_md5": "e0a29a2c8451edc5f739aea82ba41e15",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -29861,7 +31229,7 @@
           "signature": "create_patient_token_v2(uuid,text,integer,boolean)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "cf6f8fc5f5cb0ff9e8764fbec1308f0d",
+          "definition_md5": "788866672afa2b66708686ea64e714ab",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -29897,7 +31265,7 @@
           "signature": "create_registry_export(uuid,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "e0f74080aadfa646d6d155be51c4bab1",
+          "definition_md5": "60b50b36d1c40379d716747529e6415a",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -30125,7 +31493,7 @@
           "signature": "patient_get_context(text)",
           "volatility": "v",
           "anon_execute": true,
-          "definition_md5": "5328830557535df78b03dab47ac26c25",
+          "definition_md5": "63f1b0332c90bc12fcea283bfef799be",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -30137,7 +31505,7 @@
           "signature": "patient_list_events(text,integer)",
           "volatility": "v",
           "anon_execute": true,
-          "definition_md5": "f86a93160f669ef0d0f27b14ebf0a003",
+          "definition_md5": "fff2e523ef17a7f4b411e5c91403dc05",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -30149,7 +31517,7 @@
           "signature": "patient_list_labs(text,integer)",
           "volatility": "v",
           "anon_execute": true,
-          "definition_md5": "0cd68655cf989dd89025f5652e971892",
+          "definition_md5": "6aefebcdc909f56db6dd9728b19bbfef",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -30161,7 +31529,7 @@
           "signature": "patient_list_meds(text,integer)",
           "volatility": "v",
           "anon_execute": true,
-          "definition_md5": "5c28d2f45cf32b82569549b252ef6788",
+          "definition_md5": "9304c6aad553f631ab11461e21c0a4ae",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -30173,7 +31541,7 @@
           "signature": "patient_list_variants(text,integer)",
           "volatility": "v",
           "anon_execute": true,
-          "definition_md5": "19302180b3e7a966aa5e3e01a391ff14",
+          "definition_md5": "bce76cd828bbb6a71b756e7931d2c69e",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -30185,7 +31553,7 @@
           "signature": "patient_list_visits(text,integer)",
           "volatility": "v",
           "anon_execute": true,
-          "definition_md5": "2df3f6bf7254a8965d9c0576e8f2894b",
+          "definition_md5": "7e2cd9c8db3caecb464bb6933a7f1fee",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -30197,7 +31565,7 @@
           "signature": "patient_submit_visit_v2(text,date,numeric,numeric,numeric,numeric,numeric,text,uuid)",
           "volatility": "v",
           "anon_execute": true,
-          "definition_md5": "c3bbbc7a3d3b55dfd8b64f5baa2f9b04",
+          "definition_md5": "fd8c359092d9865fa85c60671befb646",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -30234,6 +31602,18 @@
           "volatility": "v",
           "anon_execute": false,
           "definition_md5": "ae2329b99b28c7f8e6e4bd1158f1e41d",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "registry_private.derive_consent_research()",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "0c5738cc7084aef1c95808846349f008",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -30281,7 +31661,7 @@
           "signature": "registry_private.patient_token(text)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "1d0cb98f86da6adf00c375acbb50392e",
+          "definition_md5": "cf8d82e32d4a0dbcb39b61015c31734b",
           "security_definer": true,
           "authenticated_execute": false
         },
@@ -30338,11 +31718,35 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "registry_private.revoke_links_on_study_exit()",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "76018531a633551d697e45376c7e9969",
+          "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "registry_private.revoke_member_access_tokens(uuid,uuid)",
           "volatility": "v",
           "anon_execute": false,
           "definition_md5": "66144556e8ee3ec6e2979ebfb95fb0a0",
           "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "signature": "registry_private.token_digest(text)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "4c170d5c031b73e1869c6af9c63f3847",
+          "security_definer": false,
           "authenticated_execute": false
         },
         {
@@ -30377,7 +31781,19 @@
           "signature": "revoke_patient_token(text,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "5e1b4f1036a75042c3a2036dfe2050d5",
+          "definition_md5": "517d9dc726a29241b854c263b915c3d1",
+          "security_definer": true,
+          "authenticated_execute": true
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "revoke_patient_token_by_id(uuid,uuid,text)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "9772738ffa5e96a0b9bcae27b1743336",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -30403,6 +31819,30 @@
           "anon_execute": false,
           "definition_md5": "f3fbdf756ede04b34f2bc583caf9aed3",
           "security_definer": false,
+          "authenticated_execute": true
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "set_patient_study_status(uuid,text,jsonb,text)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "4adaa4c44d4e756573233c0ebece0a45",
+          "security_definer": true,
+          "authenticated_execute": true
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "set_project_settings(uuid,jsonb)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "8cd06acd06d62d32addc996c93b9f1b7",
+          "security_definer": true,
           "authenticated_execute": true
         },
         {
