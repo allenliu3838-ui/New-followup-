@@ -475,8 +475,9 @@ BEGIN
   RETURN v_token;
 END $$;
 
--- Kept for links still held in a browser session; looks the link up by digest.
--- A repeated revocation keeps the first revocation time and reason.
+-- Kept for links still held in a browser session; looks the link up by digest. Same
+-- rules as revoke_patient_token_by_id: a link revoked before keeps its first revocation
+-- time and reason and is not audited again; a deactivated link keeps its reason.
 CREATE OR REPLACE FUNCTION public.revoke_patient_token(p_token text,p_revoke_reason text DEFAULT NULL)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, public, pg_temp AS $$
@@ -484,9 +485,9 @@ DECLARE v_token public.patient_tokens%ROWTYPE; v_digest text := registry_private
 BEGIN
   SELECT * INTO v_token FROM public.patient_tokens WHERE token_hash=v_digest FOR UPDATE;
   PERFORM public.assert_project_permission(v_token.project_id,'tokens');
-  UPDATE public.patient_tokens SET active=false,revoked_at=coalesce(revoked_at,now()),
-    revoke_reason=CASE WHEN revoked_at IS NULL THEN left(p_revoke_reason,500)
-      ELSE coalesce(revoke_reason,left(p_revoke_reason,500)) END
+  IF v_token.revoked_at IS NOT NULL THEN RETURN; END IF;
+  UPDATE public.patient_tokens SET active=false,revoked_at=now(),
+    revoke_reason=coalesce(revoke_reason,left(p_revoke_reason,500))
     WHERE id=v_token.id;
   INSERT INTO public.security_audit_logs(project_id,patient_code,token_hash,actor_uid,event_type,severity,details)
     VALUES(v_token.project_id,v_token.patient_code,v_token.token_hash,

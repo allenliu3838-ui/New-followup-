@@ -7,8 +7,24 @@
 --    The clearing refuses to run if any row or audit entry shows a value that may have
 --    been entered by a person: that needs a manual review first.
 --  * Follow-up status per patient. Declined/withdrawn consent or a withdrawn/deceased
---    follow-up status revokes that patient's usable links on every write path, needs a
---    stated reason, and is allowed after the account trial ends (a compliance action).
+--    follow-up status ("left the study") revokes that patient's usable links and is
+--    allowed after the account trial ends (a compliance action).
+--  * Entering or leaving "left the study", and any change to the study status fields of a
+--    participant who left, happens only through set_patient_study_status, with a stated
+--    reason (at least 2 characters, no identifying information). CSV import, audited
+--    correction and plain table writes are refused (study_status_requires_dedicated_action).
+--    The function marks the one row it updates in a private table for the duration of
+--    its own UPDATE; no session setting can stand in for that mark. Other status values
+--    (unconfirmed/consented/waiver, active/lost/transferred/kidney_failure) may still be
+--    imported. Study status given when a patient row is created is field-audited too.
+--  * After the trial ends, the exemption covers only a move from "not left" to "left"
+--    (consent declined/withdrawn, follow-up stopped) and the first entry of the matching
+--    date; never a move between exit statuses or a change to a recorded exit date.
+--  * Design choice, deliberately unchanged: after a participant leaves the study, staff may
+--    still enter that participant's clinical data (visit import, direct medication, event
+--    and variant writes, the lab RPC, corrections), and the data dates are not compared
+--    with the exit date. Data collected before the exit is often entered later; only the
+--    participant's own link-based collection stops.
 --  * "Today" for research dates is the Beijing calendar date (registry_private.local_today),
 --    independent of the database or session time zone.
 --  * Per-project follow-up interval and the study details shown to patients
@@ -16,9 +32,17 @@
 --  * Caller-privilege (security_invoker) views for "who is due / who has not
 --    submitted", relying on the base tables' RLS. No clinical threshold is defined
 --    here: the interval is a project setting the study team confirms.
+--  * Row-level security asks "which projects may this user read / write / manage links
+--    of" once per query (registry_private.project_ids_with_permission) instead of calling
+--    has_project_permission for every row; the answers are the same.
 -- Lock order on every write path for one patient: projects row, then the patient's
 -- baseline row, then that patient's link rows (patient submissions use the same order).
+-- A direct visit insert takes the project row (KEY SHARE) before the baseline row as well.
 BEGIN;
+
+-- No consent value can be written between the precondition check below and the clearing
+-- step: writers to the baseline table wait for this transaction; plain reads continue.
+LOCK TABLE public.patients_baseline IN EXCLUSIVE MODE;
 
 -- Preconditions. Nothing below runs unless the objects it relies on are present and
 -- the never-entered consent default is the only consent information in the database.
@@ -123,20 +147,54 @@ CREATE TRIGGER registry_consent_research_derived
   BEFORE INSERT OR UPDATE OF consent_status,consent_research ON public.patients_baseline
   FOR EACH ROW EXECUTE FUNCTION registry_private.derive_consent_research();
 
+-- The one baseline row set_patient_study_status is updating, for the duration of that
+-- UPDATE only (inserted and deleted by the function inside the same transaction; empty
+-- otherwise). The study status trigger and the account write guard accept an exit-related
+-- change only for a row marked here in the current transaction. Nobody but the function
+-- owner can write it, so no session setting or direct write can imitate the function.
+CREATE TABLE IF NOT EXISTS registry_private.study_status_rpc_rows (
+  xact_id xid8 NOT NULL,
+  record_id uuid NOT NULL,
+  PRIMARY KEY (xact_id,record_id)
+);
+ALTER TABLE registry_private.study_status_rpc_rows ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON registry_private.study_status_rpc_rows FROM PUBLIC,anon,authenticated;
+COMMENT ON TABLE registry_private.study_status_rpc_rows IS
+  '仅在 set_patient_study_status 执行其 UPDATE 期间存在一行（同一事务内写入并删除），平时为空。研究状态触发器与账户写入检查据此确认修改来自专用入口。';
+
+-- True for a baseline row marked by set_patient_study_status in the current transaction.
+CREATE OR REPLACE FUNCTION registry_private.study_status_rpc_active(p_record_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp AS $$
+  SELECT EXISTS (SELECT 1 FROM registry_private.study_status_rpc_rows r
+    WHERE r.xact_id = pg_current_xact_id() AND r.record_id = p_record_id);
+$$;
+REVOKE ALL ON FUNCTION registry_private.study_status_rpc_active(uuid) FROM PUBLIC,anon,authenticated;
+
 -- True when the only change between two baseline rows records that the participant
--- left the study: consent declined/withdrawn, follow-up stopped (any status other than
--- active), and the dates of those statuses. Derived and metadata columns are ignored.
+-- left the study, which the account write guard allows after the trial ends:
+--  * consent moves from not declined/withdrawn to declined/withdrawn;
+--  * follow-up moves from active to a stopped status (lost, withdrawn, deceased,
+--    kidney failure, transferred);
+--  * a status date changes together with that move, or is entered for the first time
+--    (empty before) for a status that already records the exit.
+-- A move between exit statuses (deceased -> lost) or a change to a recorded exit date is
+-- not covered. Derived and metadata columns are ignored.
 CREATE OR REPLACE FUNCTION registry_private.study_exit_only_change(p_old jsonb,p_new jsonb)
 RETURNS boolean LANGUAGE sql IMMUTABLE SET search_path = pg_catalog AS $$
   SELECT (p_old - k) = (p_new - k)
     AND (p_new->'consent_status' IS NOT DISTINCT FROM p_old->'consent_status'
-      OR p_new->>'consent_status' IN ('declined','withdrawn'))
+      OR (p_old->>'consent_status' NOT IN ('declined','withdrawn')
+        AND p_new->>'consent_status' IN ('declined','withdrawn')))
     AND (p_new->'followup_status' IS NOT DISTINCT FROM p_old->'followup_status'
-      OR p_new->>'followup_status' IN ('lost','withdrawn','deceased','kidney_failure','transferred'))
+      OR (p_old->>'followup_status' = 'active'
+        AND p_new->>'followup_status' IN ('lost','withdrawn','deceased','kidney_failure','transferred')))
     AND (p_new->'consent_date' IS NOT DISTINCT FROM p_old->'consent_date'
-      OR p_new->>'consent_status' IN ('declined','withdrawn'))
+      OR p_new->'consent_status' IS DISTINCT FROM p_old->'consent_status'
+      OR (p_old->>'consent_date' IS NULL AND p_new->>'consent_status' IN ('declined','withdrawn')))
     AND (p_new->'followup_status_date' IS NOT DISTINCT FROM p_old->'followup_status_date'
-      OR p_new->>'followup_status' IN ('lost','withdrawn','deceased','kidney_failure','transferred'))
+      OR p_new->'followup_status' IS DISTINCT FROM p_old->'followup_status'
+      OR (p_old->>'followup_status_date' IS NULL AND p_new->>'followup_status' <> 'active'))
     AND (p_new->'consent_status' IS DISTINCT FROM p_old->'consent_status'
       OR p_new->'followup_status' IS DISTINCT FROM p_old->'followup_status'
       OR p_new->'consent_date' IS DISTINCT FROM p_old->'consent_date'
@@ -147,19 +205,21 @@ $$;
 REVOKE ALL ON FUNCTION registry_private.study_exit_only_change(jsonb,jsonb) FROM PUBLIC,anon,authenticated;
 
 -- Account write guard. Recording that a participant left the study is a compliance
--- action and, like revoking a link, must not depend on the account entitlement. Only
--- set_patient_study_status sets registry.study_exit_only (transaction-local), and the
--- guard itself re-checks that nothing but the exit fields changed.
+-- action and, like revoking a link, must not depend on the account entitlement. The
+-- exemption applies only to the row set_patient_study_status is updating (marked in
+-- registry_private.study_status_rpc_rows), and the guard itself re-checks that the
+-- change is an exit as defined by study_exit_only_change.
 CREATE OR REPLACE FUNCTION public._trial_block_write()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, public, pg_temp AS $$
 DECLARE pid uuid;
 BEGIN
   IF TG_OP = 'DELETE' THEN pid := OLD.project_id; ELSE pid := NEW.project_id; END IF;
-  IF TG_OP = 'UPDATE' AND TG_TABLE_SCHEMA = 'public' AND TG_TABLE_NAME = 'patients_baseline'
-    AND current_setting('registry.study_exit_only',true) = 'on'
-    AND registry_private.study_exit_only_change(to_jsonb(OLD),to_jsonb(NEW)) THEN
-    RETURN NEW;
+  IF TG_OP = 'UPDATE' AND TG_TABLE_SCHEMA = 'public' AND TG_TABLE_NAME = 'patients_baseline' THEN
+    IF registry_private.study_status_rpc_active(NEW.id)
+      AND registry_private.study_exit_only_change(to_jsonb(OLD),to_jsonb(NEW)) THEN
+      RETURN NEW;
+    END IF;
   END IF;
   PERFORM public.assert_project_write_allowed(pid);
   IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
@@ -168,13 +228,16 @@ END $$;
 REVOKE ALL ON FUNCTION public._trial_block_write() FROM PUBLIC,anon,authenticated;
 
 -- Study status rules on every write path (RPC, CSV import, correction, direct table write):
--- dates not after today (Beijing), a trimmed non-empty consent form version, and a stated
--- reason when a participant leaves the study. The reason is the audit reason of the
--- transaction (app.registry_change_reason); a plain table write has none and is refused.
+-- dates not after today (Beijing) and a trimmed non-empty consent form version. A change
+-- that enters or leaves "left the study" (consent declined/withdrawn, follow-up withdrawn/
+-- deceased), or changes these fields while the participant has left, is accepted only from
+-- set_patient_study_status, which requires and records the reason. Creating a patient row
+-- that has already left is refused: create the patient, then record the exit.
 CREATE OR REPLACE FUNCTION registry_private.check_study_status()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, public, pg_temp AS $$
 DECLARE is_insert boolean := TG_OP = 'INSERT'; today date := registry_private.local_today();
+  left_before boolean := false; left_after boolean; changed boolean := true;
 BEGIN
   IF NEW.consent_date > today AND (is_insert OR NEW.consent_date IS DISTINCT FROM OLD.consent_date) THEN
     RAISE EXCEPTION 'invalid_or_future_date: consent_date';
@@ -188,13 +251,16 @@ BEGIN
       OR char_length(NEW.consent_version) > 100 OR NEW.consent_version ~ '[[:cntrl:]]') THEN
     RAISE EXCEPTION 'invalid_consent_version';
   END IF;
-  IF ((NEW.consent_status IN ('declined','withdrawn')
-        AND (is_insert OR NEW.consent_status IS DISTINCT FROM OLD.consent_status))
-      OR (NEW.followup_status IN ('withdrawn','deceased')
-        AND (is_insert OR NEW.followup_status IS DISTINCT FROM OLD.followup_status)))
-    AND coalesce(btrim(current_setting('app.registry_change_reason',true)),'') = '' THEN
-    RAISE EXCEPTION 'study_exit_reason_required'
-      USING HINT='登记拒绝或撤回同意、退出研究、死亡须说明原因，请在工作台“研究状态”中填写原因后保存。';
+  left_after := NEW.consent_status IN ('declined','withdrawn') OR NEW.followup_status IN ('withdrawn','deceased');
+  IF NOT is_insert THEN
+    left_before := OLD.consent_status IN ('declined','withdrawn') OR OLD.followup_status IN ('withdrawn','deceased');
+    changed := ROW(NEW.consent_status,NEW.consent_date,NEW.consent_version,NEW.followup_status,NEW.followup_status_date)
+      IS DISTINCT FROM ROW(OLD.consent_status,OLD.consent_date,OLD.consent_version,OLD.followup_status,OLD.followup_status_date);
+  END IF;
+  IF changed AND (left_before OR left_after)
+    AND (is_insert OR NOT registry_private.study_status_rpc_active(NEW.id)) THEN
+    RAISE EXCEPTION 'study_status_requires_dedicated_action'
+      USING HINT='登记或撤销拒绝/撤回同意、退出研究、死亡，以及修改已退出患者的研究状态，只能在工作台该患者的“研究状态”中操作并填写原因；导入、更正或直接写表不能修改。新患者请先建档，再登记研究状态。';
   END IF;
   RETURN NEW;
 END $$;
@@ -203,6 +269,32 @@ DROP TRIGGER IF EXISTS registry_study_status_checks ON public.patients_baseline;
 CREATE TRIGGER registry_study_status_checks
   BEFORE INSERT OR UPDATE OF consent_status,consent_date,consent_version,followup_status,followup_status_date
   ON public.patients_baseline FOR EACH ROW EXECUTE FUNCTION registry_private.check_study_status();
+
+-- Updates are field-audited by _registry_audit_changes (0034), which does not run on
+-- INSERT. Study status given when the patient row is created (CSV import of a new
+-- patient, direct insert) is audited here, field by field, with the transaction's reason.
+CREATE OR REPLACE FUNCTION registry_private.audit_study_status_on_insert()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp AS $$
+DECLARE r jsonb := to_jsonb(NEW);
+  reason text := coalesce(nullif(btrim(current_setting('app.registry_change_reason',true)),''),
+    '新建患者时登记的研究状态（未填写原因）');
+BEGIN
+  INSERT INTO public.field_audit_log(table_name,record_id,project_id,patient_code,field_name,old_value,new_value,changed_by,change_reason)
+    SELECT 'patients_baseline',NEW.id,NEW.project_id,NEW.patient_code,f.k,NULL,r->>f.k,auth.uid(),reason
+    FROM unnest(ARRAY['consent_status','consent_date','consent_version','consent_research',
+      'followup_status','followup_status_date']) WITH ORDINALITY AS f(k,n)
+    WHERE CASE f.k WHEN 'consent_status' THEN r->>f.k <> 'unconfirmed'
+      WHEN 'followup_status' THEN r->>f.k <> 'active' ELSE r->>f.k IS NOT NULL END
+    ORDER BY f.n;
+  RETURN NULL;
+END $$;
+REVOKE ALL ON FUNCTION registry_private.audit_study_status_on_insert() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS registry_study_status_insert_audit ON public.patients_baseline;
+CREATE TRIGGER registry_study_status_insert_audit AFTER INSERT ON public.patients_baseline
+  FOR EACH ROW WHEN (NEW.consent_status <> 'unconfirmed' OR NEW.followup_status <> 'active'
+    OR NEW.consent_date IS NOT NULL OR NEW.consent_version IS NOT NULL OR NEW.followup_status_date IS NOT NULL)
+  EXECUTE FUNCTION registry_private.audit_study_status_on_insert();
 
 -- Leaving the study stops link-based data collection on every write path: consent
 -- declined/withdrawn or follow-up withdrawn/deceased revokes the patient's usable links.
@@ -264,17 +356,19 @@ DROP TRIGGER IF EXISTS registry_visit_date_future ON public.visits_long;
 CREATE TRIGGER registry_visit_date_future BEFORE INSERT OR UPDATE OF visit_date ON public.visits_long
   FOR EACH ROW EXECUTE FUNCTION registry_private.reject_future_research_dates();
 
--- The server calculates eGFR from creatinine (trg_auto_egfr). A result above the visit
--- table's 0–200 range means the creatinine value or unit is wrong; say so instead of the
+-- The server calculates eGFR from creatinine, birth year and sex (trg_auto_egfr, and
+-- trg_baseline_refresh_egfr when birth year or sex is corrected). A result outside the
+-- visit table's 0–200 range means one of those inputs is wrong; say so instead of the
 -- bare CHECK violation, on every path (CSV import, correction, direct write). The error
--- keeps SQLSTATE 23514 and names scr_umol_l, so patient_submit_visit_v2 reports it as
--- invalid_values. Fires after trg_auto_egfr (trigger names run in alphabetical order).
+-- code is unchanged; it keeps SQLSTATE 23514 and names scr_umol_l, so
+-- patient_submit_visit_v2 reports it as invalid_values. Fires after trg_auto_egfr
+-- (trigger names run in alphabetical order).
 CREATE OR REPLACE FUNCTION registry_private.check_calculated_egfr()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog AS $$
 BEGIN
   IF NEW.egfr_formula_version = 'CKD-EPI-2021-Cr' AND NEW.egfr NOT BETWEEN 0 AND 200 THEN
     RAISE EXCEPTION 'egfr_out_of_range_check_scr' USING ERRCODE = 'check_violation', COLUMN = 'scr_umol_l',
-      HINT = '由血肌酐自动计算的 eGFR 超过 200，超出允许范围。请核对血肌酐数值与单位（μmol/L 或 mg/dL）。';
+      HINT ='由血肌酐、出生年份和性别计算的 eGFR 超出范围，请核对这几项（血肌酐数值与单位 μmol/L 或 mg/dL、出生年份、性别）。';
   END IF;
   RETURN NEW;
 END $$;
@@ -320,6 +414,27 @@ BEGIN
   RETURN NEW;
 END $$;
 REVOKE ALL ON FUNCTION registry_private.check_research_dates() FROM PUBLIC,anon,authenticated;
+
+-- A direct visit insert locks the patient's baseline row (registry_visit_dates, FOR SHARE)
+-- and later, in the foreign key check, the project row (KEY SHARE). CSV import and
+-- correction lock the project row first (FOR UPDATE) and then the baseline row, so a
+-- multi-row insert could deadlock with them. Taking the project row first here gives
+-- every path the same order: project, then baseline. Runs before the other visit
+-- triggers (alphabetical order) and only for a caller who may write to the project (or a
+-- server-side caller without a user), so a refused insert never holds another project's row.
+CREATE OR REPLACE FUNCTION registry_private.lock_visit_project()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp AS $$
+BEGIN
+  IF auth.uid() IS NULL OR public.has_project_permission(NEW.project_id,'write') THEN
+    PERFORM 1 FROM public.projects WHERE id=NEW.project_id FOR KEY SHARE;
+  END IF;
+  RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION registry_private.lock_visit_project() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS a_registry_project_lock ON public.visits_long;
+CREATE TRIGGER a_registry_project_lock BEFORE INSERT ON public.visits_long
+  FOR EACH ROW EXECUTE FUNCTION registry_private.lock_visit_project();
 
 COMMENT ON COLUMN public.patients_baseline.consent_status IS
   '研究同意状态：unconfirmed 未确认；consented 已签署知情同意；waiver 伦理委员会批准免除知情同意；declined 拒绝；withdrawn 撤回同意。';
@@ -412,17 +527,228 @@ END $$;
 REVOKE ALL ON FUNCTION public._registry_input_columns(text),public._registry_validate_input(text,jsonb)
   FROM PUBLIC,anon,authenticated;
 
--- Consent and follow-up status changes for one patient, with a reason (required when
--- the participant leaves the study). Every changed field is written to field_audit_log
--- by _registry_audit_changes. Recording an exit is allowed after the account trial ends;
+-- 0036's CSV import, unchanged except for study status. A row may create a patient with,
+-- or move a patient to, unconfirmed/consented/waiver consent and an active/lost/
+-- transferred/kidney_failure follow-up status. It may not create a patient who has left
+-- the study (declined/withdrawn consent, withdrawn/deceased follow-up), move a patient
+-- into or out of that state, or change the study status fields of a patient who has
+-- left: those need set_patient_study_status and a stated reason. The whole batch is
+-- refused (row_<n>_study_status_requires_dedicated_action: <field>); identical values are
+-- not a change. Other columns of a patient who has left may still be imported.
+CREATE OR REPLACE FUNCTION public.import_registry_rows(p_project_id uuid,p_kind text,p_rows jsonb,p_batch_id uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
+DECLARE r jsonb; clean jsonb; old_row jsonb; previous public.registry_import_batches%ROWTYPE;
+  payload_hash text; row_hash text; tbl text; cols text; exprs text; assignments text; rec_id uuid;
+  added int := 0; changed int := 0; skipped int := 0; row_no int := 0; result jsonb; old_reason text; k text;
+  study_keys text[] := ARRAY['consent_status','followup_status','consent_date','consent_version','followup_status_date'];
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication_required'; END IF;
+  PERFORM public.assert_project_permission(p_project_id,'write');
+  PERFORM 1 FROM public.projects WHERE id=p_project_id FOR UPDATE;
+  PERFORM public.assert_project_permission(p_project_id,'write');
+  PERFORM public.assert_project_write_allowed(p_project_id);
+  IF p_kind IS NULL OR p_kind NOT IN ('baseline','visits') OR p_batch_id IS NULL THEN RAISE EXCEPTION 'invalid_import_request'; END IF;
+  IF jsonb_typeof(p_rows) IS DISTINCT FROM 'array' OR jsonb_array_length(p_rows) NOT BETWEEN 1 AND 500 THEN
+    RAISE EXCEPTION 'import_requires_1_to_500_rows';
+  END IF;
+  IF p_kind='baseline' AND EXISTS (
+    SELECT 1 FROM jsonb_array_elements(p_rows) AS batch_rows(value) GROUP BY batch_rows.value->>'patient_code' HAVING count(*)>1
+  ) THEN RAISE EXCEPTION 'duplicate_patient_code_in_batch'
+    USING HINT='同一基线批次每位患者只能出现一行，请先核对重复编号。'; END IF;
+  payload_hash := encode(sha256(convert_to(p_kind || ':' || p_rows::text,'UTF8')),'hex');
+  SELECT * INTO previous FROM public.registry_import_batches WHERE project_id=p_project_id AND batch_id=p_batch_id;
+  IF FOUND THEN
+    IF previous.content_sha256 <> payload_hash OR previous.kind <> p_kind THEN RAISE EXCEPTION 'batch_id_content_conflict'; END IF;
+    RETURN previous.result || jsonb_build_object('replayed',true);
+  END IF;
+  tbl := CASE p_kind WHEN 'baseline' THEN 'patients_baseline' ELSE 'visits_long' END;
+  old_reason := current_setting('app.registry_change_reason',true);
+  PERFORM set_config('app.registry_change_reason','CSV导入批次 ' || p_batch_id::text,true);
+  FOR r IN SELECT value FROM jsonb_array_elements(p_rows) LOOP
+    row_no := row_no+1;
+    IF jsonb_typeof(r) IS DISTINCT FROM 'object' THEN RAISE EXCEPTION 'row_%_must_be_object',row_no; END IF;
+    IF r ? 'project_id' AND r->>'project_id' IS DISTINCT FROM p_project_id::text THEN RAISE EXCEPTION 'row_%_project_mismatch',row_no; END IF;
+    r := r - 'project_id';
+    -- Reject unknown headers even if their cell is empty. Blank cells preserve existing values.
+    FOR k IN SELECT jsonb_object_keys(r) LOOP
+      IF NOT k = ANY(public._registry_input_columns(p_kind)) THEN RAISE EXCEPTION 'unsupported_column: %',k; END IF;
+    END LOOP;
+    SELECT coalesce(jsonb_object_agg(key,value),'{}'::jsonb) INTO clean
+      FROM jsonb_each(r) WHERE value <> 'null'::jsonb AND value <> '""'::jsonb;
+    PERFORM public._registry_validate_input(p_kind,clean);
+    IF coalesce(clean->>'patient_code','') = '' THEN RAISE EXCEPTION 'row_%_patient_code_required',row_no; END IF;
+    rec_id := NULL; old_row := NULL;
+    IF p_kind = 'baseline' THEN
+      SELECT id,to_jsonb(b) INTO rec_id,old_row FROM public.patients_baseline b
+        WHERE project_id=p_project_id AND patient_code=clean->>'patient_code' FOR UPDATE;
+      IF rec_id IS NULL AND coalesce(clean->>'baseline_date','') = '' THEN RAISE EXCEPTION 'row_%_baseline_date_required',row_no; END IF;
+      IF rec_id IS NULL THEN
+        k := CASE WHEN clean->>'consent_status' IN ('declined','withdrawn') THEN 'consent_status'
+          WHEN clean->>'followup_status' IN ('withdrawn','deceased') THEN 'followup_status' END;
+        IF k IS NOT NULL THEN
+          RAISE EXCEPTION 'row_%_study_status_requires_dedicated_action: %',row_no,k
+            USING HINT='新患者不能通过导入直接登记为拒绝/撤回同意、退出研究或死亡。请先导入或建立患者，再在该患者的“研究状态”中登记并填写原因；本批次未写入。';
+        END IF;
+      END IF;
+      IF rec_id IS NOT NULL THEN
+        IF clean ? 'baseline_date' AND EXISTS (
+          SELECT 1 FROM public.visits_long WHERE project_id=p_project_id AND patient_code=clean->>'patient_code'
+            AND visit_date < (clean->>'baseline_date')::date
+        ) THEN RAISE EXCEPTION 'row_%_baseline_date_after_existing_visit',row_no; END IF;
+        clean := (SELECT jsonb_object_agg(key,(to_jsonb(jsonb_populate_record(NULL::public.patients_baseline,clean)))->key)
+                  FROM jsonb_object_keys(clean) AS keys(key));
+        SELECT s.key INTO k FROM unnest(study_keys) WITH ORDINALITY AS s(key,n)
+          WHERE clean ? s.key AND clean->s.key IS DISTINCT FROM old_row->s.key ORDER BY s.n LIMIT 1;
+        IF k IS NOT NULL AND (old_row->>'consent_status' IN ('declined','withdrawn')
+            OR old_row->>'followup_status' IN ('withdrawn','deceased')
+            OR (old_row || clean)->>'consent_status' IN ('declined','withdrawn')
+            OR (old_row || clean)->>'followup_status' IN ('withdrawn','deceased')) THEN
+          RAISE EXCEPTION 'row_%_study_status_requires_dedicated_action: %',row_no,k
+            USING HINT='登记或撤销拒绝/撤回同意、退出研究、死亡，以及修改已退出患者的研究状态，只能在该患者的“研究状态”中操作并填写原因；本批次未写入。';
+        END IF;
+        IF old_row @> clean THEN skipped := skipped+1; CONTINUE; END IF;
+        SELECT string_agg(format('%I=(jsonb_populate_record(NULL::public.patients_baseline,$1)).%I',key,key),',' ORDER BY key)
+          INTO assignments FROM jsonb_object_keys(clean) AS keys(key) WHERE key <> 'patient_code';
+        EXECUTE format('UPDATE public.patients_baseline SET %s WHERE id=$2 AND project_id=$3',assignments)
+          USING clean,rec_id,p_project_id;
+        changed := changed+1;
+        CONTINUE;
+      END IF;
+    ELSE
+      IF coalesce(clean->>'visit_date','') = '' THEN RAISE EXCEPTION 'row_%_visit_date_required',row_no; END IF;
+      IF NOT clean ?| ARRAY['sbp','dbp','scr_umol_l','upcr','egfr'] THEN RAISE EXCEPTION 'row_%_core_measurement_required',row_no; END IF;
+      IF NOT EXISTS(SELECT 1 FROM public.patients_baseline WHERE project_id=p_project_id AND patient_code=clean->>'patient_code') THEN
+        RAISE EXCEPTION 'row_%_patient_not_registered',row_no;
+      END IF;
+      PERFORM public._registry_validate_visit_payload(p_project_id,clean);
+      clean := (SELECT jsonb_object_agg(key,(to_jsonb(jsonb_populate_record(NULL::public.visits_long,clean)))->key)
+                FROM jsonb_object_keys(clean) AS keys(key));
+      row_hash := encode(sha256(convert_to(clean::text,'UTF8')),'hex');
+      SELECT record_id INTO rec_id FROM public.registry_import_records
+        WHERE project_id=p_project_id AND kind=p_kind AND content_sha256=row_hash;
+      IF rec_id IS NOT NULL THEN
+        IF NOT EXISTS(SELECT 1 FROM public.visits_long WHERE id=rec_id AND project_id=p_project_id) THEN
+          RAISE EXCEPTION 'row_%_previously_imported_record_deleted_requires_review',row_no;
+        END IF;
+        IF NOT EXISTS(SELECT 1 FROM public.visits_long v WHERE id=rec_id AND project_id=p_project_id AND to_jsonb(v) @> clean) THEN
+          RAISE EXCEPTION 'row_%_record_changed_since_import',row_no
+            USING HINT = '记录已在导入后更正，请核对当前记录；不会覆盖更正或默默跳过差异。';
+        END IF;
+        skipped := skipped+1; CONTINUE;
+      END IF;
+      SELECT id INTO rec_id FROM public.visits_long v WHERE project_id=p_project_id
+        AND patient_code=clean->>'patient_code' AND visit_date=(clean->>'visit_date')::date
+        AND to_jsonb(v) @> clean ORDER BY id LIMIT 1;
+      IF rec_id IS NOT NULL THEN
+        INSERT INTO public.registry_import_records(project_id,kind,content_sha256,record_id)
+          VALUES(p_project_id,p_kind,row_hash,rec_id);
+        skipped := skipped+1; CONTINUE;
+      END IF;
+      IF EXISTS(SELECT 1 FROM public.visits_long WHERE project_id=p_project_id
+        AND patient_code=clean->>'patient_code' AND visit_date=(clean->>'visit_date')::date) THEN
+        RAISE EXCEPTION 'row_%_same_day_record_conflict',row_no
+          USING HINT = '同一患者同日已有不同数据，请先在记录纠错中核实；本批次未写入。';
+      END IF;
+      IF clean ? 'egfr' THEN clean := clean || jsonb_build_object('egfr_formula_version','manual'); END IF;
+    END IF;
+    clean := clean || jsonb_build_object('project_id',p_project_id,'created_by',auth.uid());
+    SELECT string_agg(format('%I',key),',' ORDER BY key),
+           string_agg(format('(jsonb_populate_record(NULL::public.%I,$1)).%I',tbl,key),',' ORDER BY key)
+      INTO cols,exprs FROM jsonb_object_keys(clean) AS keys(key);
+    EXECUTE format('INSERT INTO public.%I(%s) SELECT %s RETURNING id',tbl,cols,exprs) INTO rec_id USING clean;
+    IF p_kind = 'visits' THEN
+      INSERT INTO public.registry_import_records(project_id,kind,content_sha256,record_id)
+        VALUES(p_project_id,p_kind,row_hash,rec_id);
+    END IF;
+    added := added+1;
+  END LOOP;
+  result := jsonb_build_object('inserted',added,'updated',changed,'skipped',skipped,'total',row_no,'replayed',false);
+  INSERT INTO public.registry_import_batches(project_id,batch_id,kind,content_sha256,actor_id,result)
+    VALUES(p_project_id,p_batch_id,p_kind,payload_hash,auth.uid(),result);
+  PERFORM set_config('app.registry_change_reason',coalesce(old_reason,''),true);
+  RETURN result;
+END $$;
+
+-- 0036's audited correction, unchanged except that the study status fields (consent
+-- status, date and form version, follow-up status and date) are refused for every
+-- patient: they are changed in set_patient_study_status. Other baseline fields of a
+-- patient who has left the study may still be corrected.
+CREATE OR REPLACE FUNCTION public.correct_registry_record(p_project_id uuid,p_table text,p_record_id uuid,p_changes jsonb,p_reason text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
+DECLARE kind text; before_row jsonb; after_row jsonb; assignments text; changes jsonb := p_changes; old_reason text; k text;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication_required'; END IF;
+  PERFORM public.assert_project_permission(p_project_id,'write');
+  PERFORM 1 FROM public.projects WHERE id=p_project_id FOR UPDATE;
+  PERFORM public.assert_project_permission(p_project_id,'write');
+  PERFORM public.assert_project_write_allowed(p_project_id);
+  IF p_reason IS NULL OR length(btrim(p_reason)) NOT BETWEEN 3 AND 500 THEN RAISE EXCEPTION 'correction_reason_required'; END IF;
+  kind := CASE p_table WHEN 'patients_baseline' THEN 'baseline' WHEN 'visits_long' THEN 'visits' WHEN 'labs_long' THEN 'labs' END;
+  IF kind IS NULL THEN RAISE EXCEPTION 'unsupported_record_type'; END IF;
+  IF jsonb_typeof(changes) IS DISTINCT FROM 'object' OR changes='{}'::jsonb THEN RAISE EXCEPTION 'correction_changes_required'; END IF;
+  IF changes ? 'patient_code' THEN RAISE EXCEPTION 'patient_identity_is_immutable'; END IF;
+  PERFORM public._registry_validate_input(kind,changes);
+  IF kind = 'baseline' THEN
+    SELECT s.key INTO k FROM unnest(ARRAY['consent_status','followup_status','consent_date','consent_version',
+      'followup_status_date']) WITH ORDINALITY AS s(key,n) WHERE changes ? s.key ORDER BY s.n LIMIT 1;
+    IF k IS NOT NULL THEN
+      RAISE EXCEPTION 'study_status_requires_dedicated_action: %',k
+        USING HINT='研究状态（知情同意、随访状态及其日期、同意书版本）请在该患者的“研究状态”中修改，不能通过更正修改。';
+    END IF;
+  END IF;
+  EXECUTE format('SELECT to_jsonb(t) FROM public.%I t WHERE id=$1 AND project_id=$2 FOR UPDATE',p_table)
+    INTO before_row USING p_record_id,p_project_id;
+  IF before_row IS NULL THEN RAISE EXCEPTION 'record_not_found'; END IF;
+  IF kind = 'baseline' AND changes ? 'baseline_date' AND changes->>'baseline_date' IS NULL THEN RAISE EXCEPTION 'baseline_date_required'; END IF;
+  IF kind = 'baseline' AND changes ? 'baseline_date' AND EXISTS (
+    SELECT 1 FROM public.visits_long WHERE project_id=p_project_id AND patient_code=before_row->>'patient_code'
+      AND visit_date < (changes->>'baseline_date')::date
+  ) THEN RAISE EXCEPTION 'baseline_date_after_existing_visit'; END IF;
+  IF kind = 'visits' THEN
+    IF changes ? 'egfr' THEN
+      changes := changes || jsonb_build_object('egfr_formula_version',CASE WHEN changes->>'egfr' IS NULL THEN NULL ELSE 'manual' END);
+    END IF;
+    IF changes ? 'visit_date' AND changes->>'visit_date' IS NULL THEN RAISE EXCEPTION 'visit_date_required'; END IF;
+    PERFORM public._registry_validate_visit_payload(p_project_id,before_row || changes,p_record_id);
+  END IF;
+  old_reason := current_setting('app.registry_change_reason',true);
+  PERFORM set_config('app.registry_change_reason',btrim(p_reason),true);
+  IF kind = 'labs' THEN
+    after_row := before_row || changes;
+    PERFORM public.upsert_lab_record(p_project_id,before_row->>'patient_code',(after_row->>'lab_date')::date,
+      after_row->>'lab_test_code',(after_row->>'value_raw')::numeric,after_row->>'unit_symbol',
+      (after_row->>'measured_at')::timestamptz,p_record_id);
+  ELSE
+    changes := changes || jsonb_build_object('qc_reason',btrim(p_reason));
+    SELECT string_agg(format('%I=(jsonb_populate_record(NULL::public.%I,$1)).%I',key,p_table,key),',' ORDER BY key)
+      INTO assignments FROM jsonb_object_keys(changes) AS keys(key);
+    EXECUTE format('UPDATE public.%I SET %s WHERE id=$2 AND project_id=$3',p_table,assignments)
+      USING changes,p_record_id,p_project_id;
+  END IF;
+  EXECUTE format('SELECT to_jsonb(t) FROM public.%I t WHERE id=$1 AND project_id=$2',p_table)
+    INTO after_row USING p_record_id,p_project_id;
+  PERFORM set_config('app.registry_change_reason',coalesce(old_reason,''),true);
+  RETURN jsonb_build_object('record',after_row,'changed',before_row IS DISTINCT FROM after_row);
+END $$;
+REVOKE ALL ON FUNCTION public.import_registry_rows(uuid,text,jsonb,uuid),
+  public.correct_registry_record(uuid,text,uuid,jsonb,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.import_registry_rows(uuid,text,jsonb,uuid),
+  public.correct_registry_record(uuid,text,uuid,jsonb,text) TO authenticated;
+
+-- Consent and follow-up status changes for one patient: the only way to record that a
+-- participant left the study (consent declined/withdrawn, follow-up withdrawn/deceased),
+-- to undo it (e.g. consent given again) or to change the status fields of a participant
+-- who has left. Those changes need a reason of at least 2 characters without identifying
+-- information. Every changed field is written to field_audit_log by _registry_audit_changes.
+-- Recording an exit is allowed after the account trial ends (study_exit_only_change);
 -- every other change needs write entitlement.
 CREATE OR REPLACE FUNCTION public.set_patient_study_status(
   p_project_id uuid,p_patient_code text,p_changes jsonb,p_reason text DEFAULT NULL
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, public, pg_temp AS $$
 DECLARE k text; changes jsonb := p_changes; clean jsonb; before_row jsonb; rec_id uuid; assignments text;
-  reason text := nullif(btrim(p_reason),''); old_reason text; old_exit_flag text; changed boolean := false;
-  leaving boolean; exit_only boolean;
+  reason text := nullif(btrim(p_reason),''); old_reason text; changed boolean := false;
+  left_before boolean; left_after boolean; exit_only boolean;
   after_row public.patients_baseline%ROWTYPE;
 BEGIN
   PERFORM public.assert_project_permission(p_project_id,'write');
@@ -459,13 +785,13 @@ BEGIN
   IF rec_id IS NULL THEN RAISE EXCEPTION 'patient_not_found'; END IF;
   clean := (SELECT jsonb_object_agg(key,(to_jsonb(jsonb_populate_record(NULL::public.patients_baseline,changes)))->key)
             FROM jsonb_object_keys(changes) AS keys(key));
-  leaving := (clean->>'consent_status' IN ('declined','withdrawn')
-      AND clean->'consent_status' IS DISTINCT FROM before_row->'consent_status')
-    OR (clean->>'followup_status' IN ('withdrawn','deceased')
-      AND clean->'followup_status' IS DISTINCT FROM before_row->'followup_status');
-  IF leaving AND coalesce(char_length(reason),0) < 2 THEN
+  left_before := before_row->>'consent_status' IN ('declined','withdrawn')
+    OR before_row->>'followup_status' IN ('withdrawn','deceased');
+  left_after := (before_row || clean)->>'consent_status' IN ('declined','withdrawn')
+    OR (before_row || clean)->>'followup_status' IN ('withdrawn','deceased');
+  IF NOT (before_row @> clean) AND (left_before OR left_after) AND coalesce(char_length(reason),0) < 2 THEN
     RAISE EXCEPTION 'study_exit_reason_required'
-      USING HINT='登记拒绝或撤回同意、退出研究、死亡须说明原因（不含身份信息）。';
+      USING HINT='登记或撤销拒绝/撤回同意、退出研究、死亡，以及修改已退出患者的研究状态，须说明原因（至少 2 个字，不含身份信息）。';
   END IF;
   exit_only := registry_private.study_exit_only_change(before_row,before_row || clean);
   IF NOT exit_only THEN PERFORM public.assert_project_write_allowed(p_project_id); END IF;
@@ -473,12 +799,13 @@ BEGIN
     SELECT string_agg(format('%I=(jsonb_populate_record(NULL::public.patients_baseline,$1)).%I',key,key),',' ORDER BY key)
       INTO assignments FROM jsonb_object_keys(clean) AS keys(key);
     old_reason := current_setting('app.registry_change_reason',true);
-    old_exit_flag := current_setting('registry.study_exit_only',true);
     PERFORM set_config('app.registry_change_reason',coalesce(reason,'研究同意或随访状态更新（未填写原因）'),true);
-    PERFORM set_config('registry.study_exit_only',CASE WHEN exit_only THEN 'on' ELSE '' END,true);
+    -- The mark lives only for this UPDATE; the status trigger and the account write guard
+    -- accept an exit-related change for this row because of it.
+    INSERT INTO registry_private.study_status_rpc_rows(xact_id,record_id) VALUES(pg_current_xact_id(),rec_id);
     EXECUTE format('UPDATE public.patients_baseline SET %s WHERE id=$2 AND project_id=$3',assignments)
       USING clean,rec_id,p_project_id;
-    PERFORM set_config('registry.study_exit_only',coalesce(old_exit_flag,''),true);
+    DELETE FROM registry_private.study_status_rpc_rows WHERE xact_id=pg_current_xact_id() AND record_id=rec_id;
     PERFORM set_config('app.registry_change_reason',coalesce(old_reason,''),true);
     changed := true;
   END IF;
@@ -545,6 +872,77 @@ REVOKE ALL ON FUNCTION public.set_patient_study_status(uuid,text,jsonb,text),
   public.set_project_settings(uuid,jsonb) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.set_patient_study_status(uuid,text,jsonb,text),
   public.set_project_settings(uuid,jsonb) TO authenticated;
+
+-- The projects in which the signed-in user holds a permission, computed once per query.
+-- Exactly has_project_permission (0036): the project creator is 'owner' (every
+-- permission); otherwise the project_members role decides: read = editor/analyst/viewer,
+-- write and tokens = editor, export = analyst, manage = owner only; anything else and an
+-- anonymous caller get no project. Executable by signed-in users only, like local_today:
+-- policies and views reference it, but without USAGE on registry_private it cannot be
+-- called by name or through the API.
+CREATE OR REPLACE FUNCTION registry_private.project_ids_with_permission(p_permission text)
+RETURNS SETOF uuid LANGUAGE sql STABLE SECURITY DEFINER ROWS 10
+SET search_path = pg_catalog, public, pg_temp AS $$
+  SELECT p.id FROM public.projects p
+   WHERE p.created_by = auth.uid() AND p_permission IN ('read','write','tokens','export','manage')
+  UNION
+  SELECT m.project_id FROM public.project_members m
+   WHERE m.user_id = auth.uid()
+     AND m.role = ANY (CASE p_permission
+       WHEN 'read' THEN ARRAY['editor','analyst','viewer']
+       WHEN 'write' THEN ARRAY['editor']
+       WHEN 'tokens' THEN ARRAY['editor']
+       WHEN 'export' THEN ARRAY['analyst']
+       ELSE ARRAY[]::text[] END);
+$$;
+REVOKE ALL ON FUNCTION registry_private.project_ids_with_permission(text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION registry_private.project_ids_with_permission(text) TO authenticated;
+COMMENT ON FUNCTION registry_private.project_ids_with_permission(text) IS
+  '当前登录用户具有某项权限（read/write/tokens/export/manage）的项目集合，与 has_project_permission 判断完全一致；供行级安全策略每次查询只计算一次。';
+
+-- 0036's policies, with the same permission per command, now set-based. Each policy asked
+-- has_project_permission(project_id, ...) for every row, so a board of 5,000 patients and
+-- 50,000 visits exceeded the API statement timeout; a set lookup is evaluated once per query.
+DO $$
+DECLARE t text; rd text := 'project_id IN (SELECT registry_private.project_ids_with_permission(''read''))';
+  wr text := 'project_id IN (SELECT registry_private.project_ids_with_permission(''write''))';
+BEGIN
+  FOREACH t IN ARRAY ARRAY['patients_baseline','visits_long','labs_long','meds_long','variants_long','events_long',
+    'ktx_baseline_ext','ktx_visits_ext','project_custom_labs'] LOOP
+    EXECUTE format('ALTER POLICY member_read ON public.%I USING (%s)',t,rd);
+    EXECUTE format('ALTER POLICY member_insert ON public.%I WITH CHECK (%s)',t,wr);
+    EXECUTE format('ALTER POLICY member_update ON public.%I USING (%s) WITH CHECK (%s)',t,wr,wr);
+    EXECUTE format('ALTER POLICY member_delete ON public.%I USING (%s)',t,wr);
+  END LOOP;
+  FOREACH t IN ARRAY ARRAY['data_issues','field_audit_log','visits_long_history','audit_log','project_snapshots'] LOOP
+    EXECUTE format('ALTER POLICY member_read ON public.%I USING (%s)',t,rd);
+  END LOOP;
+END $$;
+ALTER POLICY projects_select_members ON public.projects
+  USING (id IN (SELECT registry_private.project_ids_with_permission('read')));
+ALTER POLICY tokens_read_editors ON public.patient_tokens
+  USING (project_id IN (SELECT registry_private.project_ids_with_permission('tokens')));
+ALTER POLICY security_read_editors ON public.security_audit_logs
+  USING (project_id IN (SELECT registry_private.project_ids_with_permission('tokens')));
+ALTER POLICY comment_read_members ON public.data_issue_comments
+  USING (EXISTS (SELECT 1 FROM public.data_issues i WHERE i.id = data_issue_comments.issue_id
+    AND i.project_id IN (SELECT registry_private.project_ids_with_permission('read'))));
+ALTER POLICY comment_insert_editors ON public.data_issue_comments
+  WITH CHECK (created_by = auth.uid() AND EXISTS (SELECT 1 FROM public.data_issues i
+    WHERE i.id = data_issue_comments.issue_id
+      AND i.project_id IN (SELECT registry_private.project_ids_with_permission('write'))));
+ALTER POLICY comment_update_editors ON public.data_issue_comments
+  USING (EXISTS (SELECT 1 FROM public.data_issues i WHERE i.id = data_issue_comments.issue_id
+    AND i.project_id IN (SELECT registry_private.project_ids_with_permission('write'))
+    AND (data_issue_comments.created_by = auth.uid()
+      OR i.project_id IN (SELECT registry_private.project_ids_with_permission('manage')))))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.data_issues i WHERE i.id = data_issue_comments.issue_id
+    AND i.project_id IN (SELECT registry_private.project_ids_with_permission('write'))));
+ALTER POLICY comment_delete_editors ON public.data_issue_comments
+  USING (EXISTS (SELECT 1 FROM public.data_issues i WHERE i.id = data_issue_comments.issue_id
+    AND i.project_id IN (SELECT registry_private.project_ids_with_permission('write'))
+    AND (data_issue_comments.created_by = auth.uid()
+      OR i.project_id IN (SELECT registry_private.project_ids_with_permission('manage')))));
 
 -- Workbench views. security_invoker: every base table is read with the caller's
 -- privileges and RLS, so another project's rows never appear and link columns are
