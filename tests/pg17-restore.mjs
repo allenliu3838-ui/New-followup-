@@ -17,7 +17,7 @@ const preservedTables=[
  'public.concept_alias_dictionary','public.abbreviation_dictionary',
  'storage.buckets','storage.objects'
 ];
-let source,restored,groups=0;
+let source,restored,second,groups=0;
 const pass=label=>{groups++;console.log(`PASS ${label}`);};
 const quote=name=>`"${name.replaceAll('"','""')}"`;
 const permissionDenied=error=>error.code==='42501';
@@ -123,20 +123,30 @@ try{
  await assert.rejects(restored.restoreCustom(backup.archive),/existing application objects/);
  pass('actual pg_restore reproduces every dumped table, value, sequence and reviewed catalog/ACL');
 
- assert.equal(await applyMigrations(restored,{phase:'upgrade'}),6);
+ assert.equal(await applyMigrations(restored,{phase:'upgrade'}),8);
  const upgradedRows=await captureRows(restored);
+ // Two reviewed value changes are asserted exactly below; every other historical value must survive.
+ const reviewedChange={
+  'public.patients_baseline':record=>({...record,consent_research:null}),
+  'public.patient_tokens':record=>({...record,token:null})
+ };
  for(const table of preservedTables){
   const old=beforeRows[table],current=upgradedRows[table];
   assert.equal(current.length,old.length,`${table}: historical row count survives upgrade`);
   const columns=Object.keys(old[0]);
   const projection=records=>records.map(record=>JSON.stringify(
    Object.fromEntries(columns.map(column=>[column,record[column]])))).sort();
-  assert.deepEqual(projection(current),projection(old),`${table}: every historical field value survives upgrade`);
+  assert.deepEqual(projection(current),projection(old.map(reviewedChange[table]??(record=>record))),
+   `${table}: every other historical field value survives upgrade`);
  }
+ assert.ok(beforeRows['public.patients_baseline'].every(r=>r.consent_research===true),'historical consent was only the default');
+ assert.ok(upgradedRows['public.patients_baseline'].every(r=>r.consent_research===null&&r.consent_status==='unconfirmed'&&r.followup_status==='active'));
+ const digests=new Map(upgradedRows['public.patient_tokens'].map(r=>[r.id,r.token_hash]));
+ for(const r of beforeRows['public.patient_tokens'])assert.equal(digests.get(r.id),createHash('sha256').update(r.token,'utf8').digest('hex'));
  const reference=JSON.parse(fs.readFileSync(path.join(root,'supabase/database-contract-pg17.json'),'utf8'));
  assert.deepEqual(await readContract(restored),reference.database_contract_profiles.canonical,
   'Restored then upgraded database must match one complete reviewed canonical profile');
- pass('0032–0037 upgrade preserves 15 populated tables and matches the complete approved PG17 profile');
+ pass('0032–0039 upgrade preserves 15 populated tables (consent default and plaintext links replaced exactly as reviewed) and matches the approved PG17 profile');
 
  await asRole(restored,null,async()=>{
   await assert.rejects(restored.query('SELECT * FROM public.visit_receipts'),permissionDenied);
@@ -150,9 +160,33 @@ try{
  });
  pass('restored application retains authorized reads and rejects public writes and invalid follow-up tokens');
 
+ // The upgraded schema itself (digest-only links, consent trigger, caller-privilege views)
+ // must survive the same native backup/restore that a hosting move relies on.
+ const upgradedBackup=await restored.dumpCustom();
+ const finalRows=await captureRows(restored),finalSequences=await captureSequences(restored);
+ const finalContract=await readContract(restored),finalAccess=await captureAccess(restored);
+ await restored.close();restored=undefined;
+ second=await createDatabase({bootstrap:false});
+ await second.restoreCustom(upgradedBackup.archive);
+ assert.deepEqual(await captureRows(second),finalRows,'Every upgraded row and column restored exactly');
+ assert.deepEqual(await captureSequences(second),finalSequences);
+ assert.deepEqual(await readContract(second),finalContract);
+ assert.deepEqual(finalContract,reference.database_contract_profiles.canonical);
+ assert.deepEqual(await captureAccess(second),finalAccess);
+ assert.equal(Number((await second.query('SELECT count(*) AS n FROM public.patient_tokens WHERE token IS NOT NULL')).rows[0].n),0);
+ await asRole(second,null,async()=>{
+  assert.equal((await second.query('SELECT * FROM public.patient_list_labs($1,30)',[token])).rows.length,1);
+  await assert.rejects(second.query('SELECT * FROM public.v_patient_followup_status'),permissionDenied);
+ });
+ await asRole(second,owner,async()=>{
+  assert.equal((await second.query('SELECT followup_state FROM public.v_patient_followup_status WHERE project_id=$1',[project])).rows.length,1);
+ });
+ pass('backup and restore of the upgraded database keeps every row, digest-only links, views and the approved PG17 profile');
+
  console.log(`PG17_RESTORE_OK ${groups} groups; native database backup/restore of synthetic records only.`);
  console.log('LIMITATION: Storage metadata restored, but no Storage file bytes, real Auth sessions or production backup were tested.');
 }finally{
  if(source)await source.close();
  if(restored)await restored.close();
+ if(second)await second.close();
 }
