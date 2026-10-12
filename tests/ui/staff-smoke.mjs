@@ -1,0 +1,538 @@
+// 科研工作台浏览器冒烟测试（合成数据，不连接任何真实数据库）。
+// 运行：node tests/ui/staff-smoke.mjs   成功时打印 STAFF_UI_OK。
+//  - 用 Node 自带 http 模块在 127.0.0.1 随机端口提供 site/ 静态文件；
+//  - 用 Playwright（@playwright/test，Chromium）打开 staff.html；不下载浏览器，优先使用
+//    PLAYWRIGHT_BROWSERS_PATH（默认 /opt/pw-browsers）下已安装的 Chromium；
+//  - 会话：在 localStorage 写入一个合成登录会话，由 supabase-js 按正常流程恢复，生产代码无任何测试后门；
+//  - 对 config.js 中 Supabase 域名的全部请求用 page.route 返回固定的合成数据；
+//    任何发往其他外部主机的请求都会被拦截并记为失败。
+import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
+import { chromium } from '@playwright/test';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../site');
+const CONFIG_SOURCE = fs.readFileSync(path.join(ROOT, 'config.js'), 'utf8');
+const SUPABASE_URL = CONFIG_SOURCE.match(/SUPABASE_URL:\s*["']([^"']+)["']/)?.[1];
+assert.ok(SUPABASE_URL, 'config.js 中没有 SUPABASE_URL');
+const SUPABASE_HOST = new URL(SUPABASE_URL).host;
+const STORAGE_KEY = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`;
+const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+// ── 合成数据 ────────────────────────────────────────────────
+const pad = n => String(n).padStart(2, '0');
+const isoDay = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const dayOffset = days => { const d = new Date(); d.setDate(d.getDate() + days); return isoDay(d); };
+const tsOffset = days => new Date(Date.now() + days * 86400000).toISOString();
+
+const USER = { id: '00000000-0000-4000-8000-0000000000a1', aud: 'authenticated', role: 'authenticated', email: 'pi.synthetic@example.test', app_metadata: { provider: 'email' }, user_metadata: {}, created_at: '2026-01-01T00:00:00Z' };
+const PROJECT = { id: '10000000-0000-4000-8000-000000000001', name: '合成测试队列', center_code: 'TST01', module: 'IGAN', registry_type: 'igan', description: null, created_by: USER.id, created_at: '2026-02-01T00:00:00Z', followup_interval_days: 90, public_title: '合成随访研究', institution_name: '测试医院肾内科', ethics_approval_no: 'TEST-2026-001', contact_display: '研究护士 测试老师' };
+const EMPTY_PROJECT = { ...PROJECT, id: '10000000-0000-4000-8000-000000000002', name: '空白合成项目', center_code: 'TST02', created_at: '2026-01-01T00:00:00Z' };
+const ACCESS = { role: 'owner', can_read: true, can_write: true, can_export: true, can_manage_tokens: true, can_manage_members: true, can_manage_project: true, write_block_reason: null };
+const OVERVIEWS = {
+  [PROJECT.id]: { project_id: PROJECT.id, followup_interval_days: 90, n_patients: 6, n_active: 5, n_visits: 12, n_visits_30d: 3, n_core_complete_visits: 9, core_completeness: 0.75, n_overdue: 2, n_due_soon: 1, n_no_visit: 1, last_visit_date: dayOffset(-11), n_consent_confirmed: 2, n_consent_unconfirmed: 4, n_open_issues: 3 },
+  [EMPTY_PROJECT.id]: { project_id: EMPTY_PROJECT.id, followup_interval_days: 90, n_patients: 0, n_active: 0, n_visits: 0, n_visits_30d: 0, n_core_complete_visits: 0, core_completeness: null, n_overdue: 0, n_due_soon: 0, n_no_visit: 0, last_visit_date: null, n_consent_confirmed: 0, n_consent_unconfirmed: 0, n_open_issues: 0 },
+};
+const boardRow = (n, state, extra) => ({ project_id: PROJECT.id, patient_id: `20000000-0000-4000-8000-00000000000${n}`, center_code: 'TST01', patient_code: `P00${n}`, baseline_date: dayOffset(-400), consent_status: 'unconfirmed', followup_status: 'active', visit_count: 2, first_visit_date: dayOffset(-380), active_link_count: 0, last_link_created_at: null, last_link_expires_at: null, last_patient_submission_at: null, followup_state: state, ...extra });
+// 故意乱序返回，验证前端按“逾期优先”排序。
+const BOARD = [
+  boardRow(3, 'ok', { last_visit_date: dayOffset(-20), days_since_last_visit: 20, next_due_date: dayOffset(70), consent_status: 'consented' }),
+  boardRow(1, 'overdue', { last_visit_date: dayOffset(-160), days_since_last_visit: 160, next_due_date: dayOffset(-70), active_link_count: 1, last_link_created_at: tsOffset(-3), last_link_expires_at: tsOffset(27) }),
+  boardRow(5, 'inactive', { followup_status: 'lost', last_visit_date: dayOffset(-300), days_since_last_visit: 300, next_due_date: dayOffset(-210) }),
+  boardRow(2, 'due_soon', { last_visit_date: dayOffset(-80), days_since_last_visit: 80, next_due_date: dayOffset(10), consent_status: 'waiver', active_link_count: 2 }),
+  boardRow(6, 'overdue', { last_visit_date: dayOffset(-100), days_since_last_visit: 100, next_due_date: dayOffset(-10) }),
+  boardRow(4, 'no_visit', { visit_count: 0, first_visit_date: null, last_visit_date: null, days_since_last_visit: null, baseline_date: dayOffset(-30), next_due_date: dayOffset(60) }),
+];
+const EXPECTED_ORDER = ['P001', 'P006', 'P002', 'P004', 'P003', 'P005'];
+const EXPECTED_BADGES = ['逾期', '逾期', '即将到期', '尚无随访', '正常', '已停止随访'];
+// 链接行里故意带上明文与摘要：页面绝不能显示它们。
+const SECRET_TEXT = 'PLAINTEXT-LINK-SHOULD-NEVER-RENDER-7f3a';
+const SECRET_HASH = 'c0ffee'.repeat(10) + 'beef';
+const tokenRow = (n, extra) => ({ id: `30000000-0000-4000-8000-00000000000${n}`, project_id: PROJECT.id, patient_code: 'P001', token: SECRET_TEXT, token_hash: SECRET_HASH, active: true, single_use: true, used_at: null, revoked_at: null, revoke_reason: null, created_by: USER.id, created_at: tsOffset(-n), expires_at: tsOffset(30 - n), ...extra });
+const TOKENS = [
+  tokenRow(1, {}),
+  tokenRow(2, { expires_at: tsOffset(-1) }),
+  tokenRow(3, { active: false, revoked_at: tsOffset(-2), revoke_reason: '发错对象' }),
+  tokenRow(4, { used_at: tsOffset(-3) }),
+];
+const NEW_TOKEN = 'a1b2c3d4e5f60718293a4b5c6d7e8f90';
+const LAST_VISIT = { id: '40000000-0000-4000-8000-000000000001', project_id: PROJECT.id, patient_code: 'P001', visit_date: dayOffset(-160), sbp: 128, dbp: 82, scr_umol_l: 101, upcr: 520, egfr: 72, notes: null, submitted_via_token_id: null };
+const STUDY_STATUS = { id: '20000000-0000-4000-8000-000000000006', patient_code: 'P006', consent_status: 'unconfirmed', consent_date: null, consent_version: null, followup_status: 'active', followup_status_date: null };
+
+// ── 本地静态服务器 ──────────────────────────────────────────
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.json': 'application/json', '.txt': 'text/plain; charset=utf-8', '.svg': 'image/svg+xml' };
+function startServer() {
+  const server = http.createServer((req, res) => {
+    let rel = decodeURIComponent(new URL(req.url, 'http://127.0.0.1').pathname);
+    if (rel === '/') rel = '/index.html';
+    if (rel === '/staff' || rel.startsWith('/staff/')) rel = '/staff.html';
+    if (rel === '/followup' || rel.startsWith('/p/')) rel = '/patient.html';
+    const file = path.normalize(path.join(ROOT, rel));
+    if (!file.startsWith(ROOT + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); res.end('not found'); return; }
+    res.writeHead(200, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' });
+    fs.createReadStream(file).pipe(res);
+  });
+  return new Promise(resolve => server.listen(0, '127.0.0.1', () => resolve(server)));
+}
+
+function chromiumExecutable() {
+  if (process.env.STAFF_UI_CHROMIUM) return process.env.STAFF_UI_CHROMIUM;
+  try { if (fs.existsSync(chromium.executablePath())) return undefined; } catch { /* 使用本机已安装的版本 */ }
+  const root = process.env.PLAYWRIGHT_BROWSERS_PATH || '/opt/pw-browsers';
+  const found = (fs.existsSync(root) ? fs.readdirSync(root) : [])
+    .filter(name => /^chromium-\d+$/.test(name))
+    .sort((a, b) => Number(b.split('-')[1]) - Number(a.split('-')[1]))
+    .map(name => path.join(root, name, 'chrome-linux', 'chrome'))
+    .find(file => fs.existsSync(file));
+  if (!found) throw new Error('未找到已安装的 Chromium。请设置 PLAYWRIGHT_BROWSERS_PATH 或 STAFF_UI_CHROMIUM；本测试不会下载浏览器。');
+  return found;
+}
+
+async function eventually(check, message, timeout = 8000) {
+  const started = Date.now();
+  let last;
+  while (Date.now() - started < timeout) {
+    try { const value = await check(); if (value) return value; } catch (error) { last = error; }
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  throw new Error(`${message}${last ? '：' + last.message : ''}`);
+}
+
+// ── Supabase 模拟 ───────────────────────────────────────────
+function createMock({ access = ACCESS } = {}) {
+  const requests = [];
+  const external = [];
+  const unknown = [];
+  const importReplies = [];
+  const cors = origin => ({ 'access-control-allow-origin': origin || '*', 'access-control-allow-credentials': 'true', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,PATCH,PUT,DELETE,OPTIONS', 'access-control-expose-headers': 'content-range,x-total-count' });
+  const filters = url => Object.fromEntries([...url.searchParams].filter(([, v]) => /^eq\./.test(v)).map(([k, v]) => [k, v.slice(3)]));
+
+  function restRows(table, url) {
+    const f = filters(url);
+    switch (table) {
+      case 'projects': return [PROJECT, EMPTY_PROJECT];
+      case 'v_project_overview': return OVERVIEWS[f.project_id] ? [OVERVIEWS[f.project_id]] : [];
+      case 'v_patient_followup_status': return f.project_id === PROJECT.id ? BOARD : [];
+      case 'patient_tokens': return TOKENS.filter(t => t.project_id === f.project_id && (!f.patient_code || t.patient_code === f.patient_code));
+      case 'visits_long': return f.project_id === PROJECT.id && f.patient_code === 'P001' ? [LAST_VISIT] : [];
+      case 'patients_baseline': return f.patient_code === 'P006' ? [STUDY_STATUS] : f.patient_code === 'P003' ? [{ ...STUDY_STATUS, id: BOARD[0].patient_id, patient_code: 'P003', consent_status: 'consented', consent_date: dayOffset(-390), consent_version: 'V1.0' }] : [];
+      case 'user_profiles': case 'lab_test_catalog': case 'lab_test_unit_map': case 'project_custom_labs':
+      case 'labs_long': case 'meds_long': case 'events_long': case 'variants_long': case 'data_issues':
+        return [];
+      default: unknown.push(`GET ${table}`); return [];
+    }
+  }
+
+  function rpc(name, body) {
+    switch (name) {
+      case 'get_project_access': return access;
+      case 'check_project_quota': return { plan: 'trial', can_write: true, ends_at: tsOffset(60), quota: 3, used: 2 };
+      case 'is_platform_admin': return false;
+      case 'get_my_contract': return [];
+      case 'list_project_members': return [{ user_id: USER.id, email: USER.email, display_name: null, role: 'owner', created_at: '2026-01-01T00:00:00Z', is_owner: true }];
+      case 'list_project_snapshots': return [];
+      case 'get_issue_summary': return { total_open: 3, total_in_prog: 0, total_resolved: 1, total_wontfix: 0 };
+      case 'import_registry_rows': return importReplies.shift() ?? { inserted: 1, updated: 0, skipped: 0, total: 1, replayed: false };
+      case 'create_patient_token_v2': return NEW_TOKEN;
+      case 'revoke_patient_token_by_id': return null;
+      case 'set_patient_study_status': return { patient_code: body.p_patient_code, consent_status: 'unconfirmed', consent_date: null, consent_version: null, followup_status: body.p_changes?.followup_status ?? 'active', followup_status_date: null, changed: true };
+      case 'set_project_settings': return { followup_interval_days: body.p_settings?.followup_interval_days ?? 90, public_title: PROJECT.public_title, institution_name: PROJECT.institution_name, ethics_approval_no: PROJECT.ethics_approval_no, contact_display: PROJECT.contact_display, changed: true };
+      default: unknown.push(`RPC ${name}`); return null;
+    }
+  }
+
+  async function handle(route, localOrigin, configOverride) {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (url.origin === localOrigin) {
+      if (configOverride && url.pathname === '/config.js') {
+        return route.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', body: `${CONFIG_SOURCE}\n${configOverride}\n` });
+      }
+      return route.continue();
+    }
+    if (url.host !== SUPABASE_HOST) { external.push(request.url()); return route.abort('blockedbyclient'); }
+    const headers = cors(request.headers().origin);
+    if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+    let body = null;
+    try { body = request.postData() ? JSON.parse(request.postData()) : null; } catch { body = request.postData(); }
+    requests.push({ method: request.method(), path: url.pathname, search: url.search, params: url.searchParams, body });
+    const json = (status, value, extra = {}) => route.fulfill({ status, headers: { ...headers, 'content-type': 'application/json; charset=utf-8', ...extra }, body: JSON.stringify(value) });
+    if (url.pathname.startsWith('/auth/v1/')) {
+      if (url.pathname.endsWith('/user')) return json(200, USER);
+      if (url.pathname.endsWith('/token')) return json(200, sessionFor());
+      if (url.pathname.endsWith('/logout')) return route.fulfill({ status: 204, headers });
+      unknown.push(`AUTH ${url.pathname}`);
+      return json(200, {});
+    }
+    const rpcName = url.pathname.match(/^\/rest\/v1\/rpc\/([a-z0-9_]+)$/)?.[1];
+    if (rpcName) {
+      // 测试可预置数据库错误（PostgREST 错误格式）。
+      if (rpcName === 'import_registry_rows' && importReplies[0]?.postgrestError) return json(400, importReplies.shift().postgrestError);
+      const value = rpc(rpcName, body || {});
+      return value === null && rpcName === 'revoke_patient_token_by_id' ? route.fulfill({ status: 204, headers }) : json(200, value);
+    }
+    const table = url.pathname.match(/^\/rest\/v1\/([a-z0-9_]+)$/)?.[1];
+    if (table && request.method() === 'GET') {
+      const rows = restRows(table, url);
+      const offset = Number(url.searchParams.get('offset') || 0);
+      const limit = url.searchParams.get('limit') ? Number(url.searchParams.get('limit')) : rows.length;
+      const page = rows.slice(offset, offset + limit);
+      const range = page.length ? `${offset}-${offset + page.length - 1}/${rows.length}` : `*/${rows.length}`;
+      return json(200, page, { 'content-range': range });
+    }
+    unknown.push(`${request.method()} ${url.pathname}`);
+    return json(200, null);
+  }
+
+  return { requests, external, unknown, importReplies, handle, rpcCalls: name => requests.filter(r => r.path === `/rest/v1/rpc/${name}`) };
+}
+
+function sessionFor() {
+  const now = Math.floor(Date.now() / 1000);
+  const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
+  const accessToken = `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({ sub: USER.id, role: 'authenticated', aud: 'authenticated', email: USER.email, exp: now + 86400, iat: now })}.synthetic-signature`;
+  return { access_token: accessToken, token_type: 'bearer', expires_in: 86400, expires_at: now + 86400, refresh_token: 'synthetic-refresh-token', user: USER };
+}
+
+async function openWorkspace(browser, origin, { configOverride = '', viewport = { width: 1280, height: 900 }, access = ACCESS } = {}) {
+  const mock = createMock({ access });
+  const context = await browser.newContext({ viewport, serviceWorkers: 'block', locale: 'zh-CN' });
+  await context.addInitScript(([key, value]) => { try { localStorage.setItem(key, value); } catch { /* 隐私模式时忽略 */ } }, [STORAGE_KEY, JSON.stringify(sessionFor())]);
+  await context.route('**/*', route => mock.handle(route, origin, configOverride));
+  const page = await context.newPage();
+  const pageErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+  page.on('console', message => { if (message.type() === 'error' && process.env.STAFF_UI_DEBUG) console.log('[console.error]', message.text()); });
+  const dialogs = [];
+  page.on('dialog', dialog => { dialogs.push(dialog.message()); dialog.accept(); });
+  await page.goto(`${origin}/staff.html`);
+  await page.locator('#patientsList tbody tr[data-patient-code]').first().waitFor({ timeout: 15000 });
+  return { context, page, mock, pageErrors, dialogs };
+}
+
+const text = async locator => (await locator.textContent())?.replace(/\s+/g, ' ').trim();
+// 可选：设置 STAFF_UI_SCREENSHOT_DIR 时在关键步骤保存截图，便于人工审阅界面。
+const SHOT_DIR = process.env.STAFF_UI_SCREENSHOT_DIR;
+const shot = async (page, name, options = {}) => { if (SHOT_DIR) { fs.mkdirSync(SHOT_DIR, { recursive: true }); await page.screenshot({ path: path.join(SHOT_DIR, `${name}.png`), ...options }); } };
+const boardCodes = page => page.locator('#patientsList tbody tr[data-patient-code]').evaluateAll(rows => rows.map(r => r.dataset.patientCode));
+
+// 纯函数检查：直接加载 site/lib 下的 ES 模块（data: URL 避免依赖 package.json 的模块类型）。
+const loadModule = async file => import(`data:text/javascript;base64,${fs.readFileSync(path.join(ROOT, file)).toString('base64')}`);
+async function checkPureHelpers() {
+  const data = await loadModule('lib/registry-data.js');
+  const board = await loadModule('lib/followup-board.js');
+  const raw = ['row_1_same_day_record_conflict', 'visit_validation_failed', 'subscription_required', 'project_access_denied', 'revoke_reason_required',
+    'invalid_followup_interval', 'setting_too_long: public_title', 'unsupported_column: foo', 'new row violates check constraint "x"',
+    'relation "public.v_patient_followup_status" does not exist', 'Failed to fetch', 'JWT expired', 'Something unexpected happened'];
+  const warn = console.warn;
+  console.warn = () => {}; // 未翻译的原始错误只写入浏览器控制台，这里不需要输出
+  for (const message of raw) {
+    const translated = data.registryErrorMessage({ message }, { rowPrefix: false });
+    assert.match(translated, /[\u4e00-\u9fa5]/, `错误应翻译为中文：${message}`);
+    assert.ok(!translated.includes(message) && !/[a-z]+_[a-z]+/.test(translated), `不得显示英文原文或代码：${translated}`);
+  }
+  console.warn = warn;
+  assert.equal(data.registryErrorMessage({ message: 'row_2_same_day_record_conflict' }).startsWith('第 3 行：'), true, 'CSV 行号前缀');
+  assert.ok(data.registryErrorMessage({ message: 'invalid_iso_date: consent_date' }).startsWith('知情同意日期：'), '带字段名的错误应显示中文字段名');
+  assert.ok(data.registryErrorMessage({ message: 'baseline_date_required_with_visits' }).includes('不能清空'), '较长的错误代码应优先匹配');
+  assert.ok(board.newLinkBlockReason({ consent_status: 'withdrawn', followup_status: 'active' }).includes('不能再发放随访链接'), '撤回同意后不发放新链接');
+  assert.ok(board.newLinkBlockReason({ consent_status: 'consented', followup_status: 'deceased' }).includes('不能再发放随访链接'));
+  assert.equal(board.newLinkBlockReason({ consent_status: 'unconfirmed', followup_status: 'lost' }), '', '失访患者仍可发放链接');
+  assert.deepEqual(board.splitBloodPressure('130/80'), { sbp: '130', dbp: '80' });
+  assert.deepEqual(board.splitBloodPressure('１３０／８０'), { sbp: '130', dbp: '80' });
+  assert.equal(board.splitBloodPressure('130/8'), null, '输入未完成时不拆分');
+  assert.equal(board.creatinineToUmol(1.2, 'mgdl'), 106.08);
+  assert.equal(board.upcrToMgG(1.2, 'gg'), 1200);
+  assert.equal(board.formatPercent(null), '—');
+  assert.equal(board.visitSaveMessage({ inserted: 0, updated: 0, skipped: 1, total: 1 }, { patientCode: 'P1', visitDate: '2026-01-01' }).tone, 'info');
+  assert.equal(board.visitSaveMessage({ added: 1 }, {}).saved, true, '兼容 added/changed 命名');
+  assert.equal(board.visitSaveMessage({ inserted: 1, replayed: true }, {}).tone, 'info');
+  const future = board.buildVisitRow({ patientCode: 'P1', visitDate: '2099-01-01', sbp: '120', dbp: '80' }, { today: '2026-01-01' });
+  assert.ok(future.errors.some(e => e.field === 'date'), '不接受未来日期');
+  const pii = board.buildVisitRow({ patientCode: 'P1', visitDate: '2026-01-01', sbp: '120', dbp: '80', notes: '电话13812345678' }, { today: '2026-01-01', containsPII: data.containsPII });
+  assert.ok(pii.errors.some(e => e.field === 'notes'), '备注中的手机号应被拦截');
+  assert.deepEqual(board.sortBoardRows(BOARD).map(r => r.patient_code), EXPECTED_ORDER);
+}
+
+async function main() {
+  await checkPureHelpers();
+  const server = await startServer();
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const browser = await chromium.launch({ executablePath: chromiumExecutable(), headless: true });
+  try {
+    // 0. 未登录：只显示登录卡片，工作台内容不进入页面，也不访问外部主机。
+    {
+      const mock = createMock();
+      const context = await browser.newContext({ serviceWorkers: 'block' });
+      await context.route('**/*', route => mock.handle(route, origin, ''));
+      const page = await context.newPage();
+      const errors = [];
+      page.on('pageerror', error => errors.push(error.message));
+      await page.goto(`${origin}/staff.html`);
+      await page.locator('#loginCard').waitFor({ state: 'visible' });
+      await eventually(async () => (await page.locator('#authLoading').isHidden()), '登录状态检查未结束');
+      assert.equal(await page.evaluate(() => document.getElementById('authGatedContainer').innerHTML.trim()), '', '未登录时不注入工作台');
+      assert.equal(await page.locator('#appCard').count(), 0);
+      assert.deepEqual(errors, []);
+      assert.deepEqual(mock.external, [], '未登录页面不应请求外部主机');
+      await context.close();
+    }
+
+    const { context, page, mock, pageErrors, dialogs } = await openWorkspace(browser, origin);
+
+    // 1. 首屏：项目与工作台在前，资料与账户设置折叠在页面底部。
+    assert.equal(await page.locator('#loginCard').isVisible(), false, '登录后不应显示登录卡片');
+    assert.equal(await page.locator('#appCard').isVisible(), true, '工作台应可见');
+    const layout = await page.evaluate(() => {
+      const app = document.getElementById('appCard');
+      const account = document.getElementById('accountDetails');
+      const top = id => document.getElementById(id).getBoundingClientRect().top;
+      return {
+        accountIsDetails: account?.tagName === 'DETAILS', accountOpen: account?.open,
+        accountAfterApp: !!(app.compareDocumentPosition(account) & Node.DOCUMENT_POSITION_FOLLOWING),
+        projectTop: top('projectSection'), overviewTop: top('overviewSection'), boardTop: top('boardSection'), viewport: innerHeight,
+        accountTop: top('accountDetails'),
+      };
+    });
+    assert.ok(layout.accountIsDetails && layout.accountOpen === false, '“账户与资料”应为默认折叠的 <details>');
+    assert.ok(layout.accountAfterApp && layout.accountTop > layout.overviewTop, '“账户与资料”应位于工作台之后');
+    assert.ok(layout.projectTop < layout.viewport && layout.overviewTop < layout.viewport && layout.boardTop < layout.viewport, '项目、概览与随访看板应出现在首屏');
+    assert.equal(await page.locator('#profName').isVisible(), false, '首屏不应出现研究者资料表单');
+    assert.equal(await page.locator('#btnSaveProfile').isVisible(), false, '首屏不应出现资料保存按钮');
+    await shot(page, '01-first-screen');
+    await shot(page, '02-full-page', { fullPage: true });
+
+    // 2. 项目概览数字。
+    const metric = name => text(page.locator(`#projectOverview [data-metric="${name}"] .fu-tile-num`));
+    await eventually(async () => (await metric('n_patients')) === '6', '概览未显示入组人数');
+    const expectedMetrics = { n_patients: '6', n_active: '5', n_visits: '12', n_visits_30d: '3', core_completeness: '75%', n_overdue: '2', n_due_soon: '1', n_no_visit: '1', n_consent_confirmed: '2', n_consent_unconfirmed: '4', n_open_issues: '3' };
+    for (const [name, value] of Object.entries(expectedMetrics)) assert.equal(await metric(name), value, `概览 ${name}`);
+
+    // 3. 随访看板：逾期优先排序、状态徽章、筛选与搜索。
+    assert.deepEqual(await boardCodes(page), EXPECTED_ORDER, '看板应按逾期优先排序');
+    const badges = await page.locator('#patientsList tbody tr[data-patient-code] td:nth-child(6) .fu-badge').allTextContents();
+    assert.deepEqual(badges, EXPECTED_BADGES, '状态徽章');
+    assert.equal((await text(page.locator('tr[data-patient-code="P002"] td:nth-child(8)'))), '伦理批准豁免', '同意状态列');
+    assert.equal((await text(page.locator('tr[data-patient-code="P001"] td:nth-child(7)'))), '1', '有效链接数');
+    await page.click('#boardFilters [data-board-filter="overdue"]');
+    assert.deepEqual(await boardCodes(page), ['P001', 'P006'], '逾期筛选');
+    await page.click('#boardFilters [data-board-filter="all"]');
+    await page.fill('#patientSearch', '4');
+    assert.deepEqual(await boardCodes(page), ['P004'], '按研究编号搜索');
+    await page.fill('#patientSearch', '');
+    await page.click('#projectOverview [data-metric="n_due_soon"]');
+    assert.deepEqual(await boardCodes(page), ['P002'], '点击概览数字应跳到对应筛选');
+    assert.equal(await page.getAttribute('#boardFilters [data-board-filter="due_soon"]', 'aria-pressed'), 'true');
+    await page.click('#projectOverview [data-metric="n_patients"]');
+    assert.deepEqual(await boardCodes(page), EXPECTED_ORDER);
+
+    // 4. 录入随访：130/80 自动拆分、mg/dL 换算、单行 import_registry_rows、skipped 中文提示。
+    const today = await page.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
+    await page.click('tr[data-patient-code="P001"] [data-act="visit"]');
+    const visitModal = page.locator('[data-registry-modal="visitEntry"]');
+    await visitModal.waitFor();
+    assert.equal(await page.inputValue('#veCode'), 'P001');
+    assert.equal(await page.getAttribute('#veCode', 'readonly'), '', '从看板进入时研究编号只读');
+    assert.equal(await page.inputValue('#veDate'), today, '随访日期默认今天');
+    await eventually(async () => (await text(page.locator('#veContext')))?.includes('上次记录'), '应显示上次随访记录供核对单位');
+    await page.fill('#veDate', BOARD[1].baseline_date.replace(/^(\d{4})/, y => String(Number(y) - 1)));
+    await page.fill('#veSbp', '120');
+    await page.click('#veSave');
+    assert.ok((await text(page.locator('#veFeedback'))).includes('早于该患者的基线日期'), '随访日期早于基线时应在提交前提示');
+    assert.equal(mock.rpcCalls('import_registry_rows').length, 0, '前端校验未通过时不提交');
+    await page.fill('#veDate', today);
+    await page.fill('#veSbp', '');
+    await page.fill('#veSbp', '130/80');
+    await page.press('#veSbp', 'Tab');
+    assert.equal(await page.inputValue('#veSbp'), '130', '收缩压应拆分为 130');
+    assert.equal(await page.inputValue('#veDbp'), '80', '舒张压应拆分为 80');
+    await page.selectOption('#veScrUnit', 'mgdl');
+    await page.fill('#veScr', '1.2');
+    assert.ok((await text(page.locator('#veScrHint'))).includes('106.08 μmol/L'), 'mg/dL 应提示换算结果');
+    await page.fill('#veUpcr', '450');
+    await page.fill('#veNotes', '外院复查结果补录');
+    mock.importReplies.push({ inserted: 0, updated: 0, skipped: 1, total: 1, replayed: false });
+    await page.click('#veSave');
+    await eventually(() => mock.rpcCalls('import_registry_rows').length === 1, '没有发出 import_registry_rows 请求');
+    const first = mock.rpcCalls('import_registry_rows')[0].body;
+    assert.equal(first.p_project_id, PROJECT.id);
+    assert.equal(first.p_kind, 'visits');
+    assert.ok(Array.isArray(first.p_rows) && first.p_rows.length === 1, '一次录入应只提交一行');
+    assert.deepEqual(first.p_rows[0], { patient_code: 'P001', visit_date: today, sbp: 130, dbp: 80, scr_umol_l: 106.08, upcr: 450, notes: '外院复查结果补录' });
+    assert.match(first.p_batch_id, UUID_V4, 'p_batch_id 应为 UUID');
+    await eventually(async () => (await text(page.locator('#veFeedback')))?.includes('没有重复保存'), 'skipped 结果应显示中文提示');
+    await shot(page, '03-visit-entry-skipped');
+    assert.equal(await visitModal.isVisible(), true, '重复提交提示后对话框保持打开，便于核对');
+    // 数据库校验失败：显示数据库给出的中文原因；同日冲突：提供查看随访记录的入口。
+    mock.importReplies.push({ postgrestError: { code: 'P0001', message: 'visit_validation_failed', details: JSON.stringify(['随访日期早于基线日期，请核对']), hint: null } });
+    await page.fill('#veNotes', '外院复查结果补录（核对后）');
+    await page.click('#veSave');
+    await eventually(async () => (await text(page.locator('#veFeedback')))?.includes('随访日期早于基线日期，请核对'), '应显示数据库校验的中文原因');
+    assert.ok((await text(page.locator('#veFeedback'))).includes('随访数据未通过系统校验'));
+    mock.importReplies.push({ postgrestError: { code: 'P0001', message: 'row_1_same_day_record_conflict', details: null, hint: '同一患者同日已有不同数据，请先在记录纠错中核实；本批次未写入。' } });
+    await page.click('#veSave');
+    await eventually(async () => (await text(page.locator('#veFeedback')))?.includes('同一天只保留一条'), '同日冲突应显示中文提示');
+    assert.ok(!(await text(page.locator('#veFeedback'))).includes('第 2 行'), '单条录入不显示 CSV 行号');
+    assert.equal(await page.locator('#veFeedback button', { hasText: '查看该患者随访记录' }).count(), 1, '同日冲突应提供查看随访记录的入口');
+    assert.equal(await visitModal.isVisible(), true);
+    // 保存并录下一位：新内容使用新的提交编号，保存后清空表单等待下一位。
+    await page.fill('#veUpcr', '460');
+    await page.click('#veSaveNext');
+    await eventually(() => mock.rpcCalls('import_registry_rows').length === 4, '“保存并录下一位”没有提交');
+    const second = mock.rpcCalls('import_registry_rows')[3].body;
+    assert.match(second.p_batch_id, UUID_V4);
+    assert.notEqual(second.p_batch_id, first.p_batch_id, '内容不同应使用新的提交编号');
+    await eventually(async () => (await page.inputValue('#veCode')) === '' && (await page.inputValue('#veSbp')) === '', '保存后应清空表单');
+    assert.equal(await page.getAttribute('#veCode', 'readonly'), null, '录下一位时研究编号可编辑');
+    assert.equal(await page.inputValue('#veDate'), today, '录下一位时保留随访日期');
+    assert.ok((await text(page.locator('#veFeedback'))).includes('已保存'), '应提示已保存');
+    await page.click('[data-registry-modal="visitEntry"] .fu-modal-close');
+    await visitModal.waitFor({ state: 'detached' });
+
+    // 5. 随访链接：列表不含任何链接文本；新链接只显示一次；撤销按 id 并要求原因。
+    await page.click('tr[data-patient-code="P001"] [data-act="links"]');
+    const linkRows = page.locator('#lkList tbody tr');
+    await eventually(async () => (await linkRows.count()) === 4, '链接列表应有 4 行');
+    const states = (await page.locator('#lkList tbody .fu-badge').allTextContents()).sort();
+    assert.deepEqual(states, ['已使用', '已撤销', '已过期', '有效'].sort(), '链接状态');
+    const tokenQuery = mock.requests.find(r => r.path === '/rest/v1/patient_tokens');
+    const columns = (tokenQuery.params.get('select') || '').split(',');
+    assert.ok(columns.length > 1 && !columns.includes('token') && !columns.includes('token_hash') && !columns.includes('*'), '读取链接时不得请求 token/token_hash 列');
+    let html = await page.content();
+    assert.ok(!html.includes(SECRET_TEXT) && !html.includes(SECRET_HASH), '页面不得显示链接文本或摘要');
+    await page.fill('#lkDays', '14');
+    await page.click('#lkCreate');
+    await eventually(() => mock.rpcCalls('create_patient_token_v2').length === 1, '没有调用 create_patient_token_v2');
+    assert.deepEqual(mock.rpcCalls('create_patient_token_v2')[0].body, { p_project_id: PROJECT.id, p_patient_code: 'P001', p_expires_in_days: 14, p_single_use: true });
+    await eventually(async () => (await page.inputValue('#lkOnceLink')).endsWith(`/followup#${NEW_TOKEN}`), '新链接应在生成后显示一次');
+    await eventually(() => mock.requests.filter(r => r.path === '/rest/v1/patient_tokens').length >= 2, '生成后应刷新链接列表');
+    assert.ok(!(await text(page.locator('#lkList'))).includes(NEW_TOKEN), '链接列表不得显示新链接全文');
+    await shot(page, '04-links');
+    await page.click(`#lkList [data-revoke-id="${TOKENS[0].id}"]`);
+    await page.click('#lkRevokeConfirm');
+    assert.ok((await text(page.locator('#lkFeedback'))).includes('请填写撤销原因'), '撤销应要求原因');
+    assert.equal(mock.rpcCalls('revoke_patient_token_by_id').length, 0);
+    await page.fill('#lkReason', '发错对象，已重新生成');
+    await page.click('#lkRevokeConfirm');
+    await eventually(() => mock.rpcCalls('revoke_patient_token_by_id').length === 1, '没有调用 revoke_patient_token_by_id');
+    assert.deepEqual(mock.rpcCalls('revoke_patient_token_by_id')[0].body, { p_project_id: PROJECT.id, p_token_id: TOKENS[0].id, p_reason: '发错对象，已重新生成' });
+    assert.equal(mock.rpcCalls('revoke_patient_token').length, 0, '不得再使用按明文撤销的旧接口');
+    await eventually(async () => (await text(page.locator('#lkFeedback')))?.includes('链接已撤销'), '撤销后应提示已撤销');
+    html = await page.content();
+    assert.ok(!html.includes(SECRET_TEXT) && !html.includes(SECRET_HASH), '页面不得显示链接文本或摘要');
+    await page.keyboard.press('Escape');
+    await page.locator('[data-registry-modal="links"]').waitFor({ state: 'detached' });
+
+    // 6. 研究状态：改为失访须填写原因，调用 set_patient_study_status。
+    await page.click('tr[data-patient-code="P006"] [data-act="status"]');
+    await page.locator('#ssFollowup').waitFor();
+    await page.selectOption('#ssFollowup', 'lost');
+    await page.click('#ssSave');
+    assert.ok((await text(page.locator('#ssFeedback'))).includes('请填写修改原因'), '停止随访应要求原因');
+    await page.fill('#ssReason', '多次电话联系未果');
+    await shot(page, '05-study-status');
+    await page.click('#ssSave');
+    await eventually(() => mock.rpcCalls('set_patient_study_status').length === 1, '没有调用 set_patient_study_status');
+    assert.deepEqual(mock.rpcCalls('set_patient_study_status')[0].body, { p_project_id: PROJECT.id, p_patient_code: 'P006', p_changes: { followup_status: 'lost' }, p_reason: '多次电话联系未果' });
+    await page.locator('[data-registry-modal="studyStatus"]').waitFor({ state: 'detached' });
+    // 撤回同意：提示链接将被自动撤销，并建议同时改为“退出研究”；清空的版本按接口约定传空字符串。
+    await page.click('tr[data-patient-code="P003"] [data-act="status"]');
+    await page.locator('#ssConsent').waitFor();
+    assert.equal(await page.inputValue('#ssConsentVersion'), 'V1.0');
+    assert.equal(await page.locator('#ssExitHint').isVisible(), false);
+    await page.selectOption('#ssConsent', 'withdrawn');
+    assert.equal(await page.locator('#ssLinkNote').isVisible(), true, '撤回同意应提示链接将被自动撤销');
+    assert.ok((await text(page.locator('#ssLinkNote'))).includes('该患者的有效随访链接将被自动撤销'));
+    assert.equal(await page.locator('#ssExitHint').isVisible(), true, '撤回同意时建议同时改为退出研究');
+    await page.click('#ssExitApply');
+    assert.equal(await page.inputValue('#ssFollowup'), 'withdrawn');
+    await page.fill('#ssConsentVersion', '');
+    await page.fill('#ssReason', '患者书面撤回同意');
+    const dialogCount = dialogs.length;
+    await page.click('#ssSave');
+    await eventually(() => mock.rpcCalls('set_patient_study_status').length === 2, '撤回同意没有提交');
+    assert.ok(dialogs.slice(dialogCount).some(m => m.includes('有效随访链接将被自动撤销')), '提交前应再次确认链接将被撤销');
+    assert.deepEqual(mock.rpcCalls('set_patient_study_status')[1].body, { p_project_id: PROJECT.id, p_patient_code: 'P003', p_changes: { consent_status: 'withdrawn', consent_version: '', followup_status: 'withdrawn' }, p_reason: '患者书面撤回同意' });
+    await page.locator('[data-registry-modal="studyStatus"]').waitFor({ state: 'detached' });
+
+    // 7. 项目设置（负责人）。
+    assert.equal(await page.locator('#projectSettingsDetails').isHidden(), false, '负责人应能看到项目设置');
+    await page.click('#projectSettingsDetails > summary');
+    assert.equal(await page.inputValue('#setInterval'), '90');
+    await page.click('#projectInfoDetails > summary');
+    await page.locator('#projectSettingsDetails').scrollIntoViewIfNeeded();
+    await shot(page, '08-project-folds');
+    await page.fill('#setInterval', '60');
+    await page.click('#btnSaveSettings');
+    await eventually(() => mock.rpcCalls('set_project_settings').length === 1, '没有调用 set_project_settings');
+    assert.deepEqual(mock.rpcCalls('set_project_settings')[0].body, { p_project_id: PROJECT.id, p_settings: { followup_interval_days: 60 } });
+
+    // 8. 基因数据默认隐藏，且不读取基因表。
+    assert.equal(await page.locator('#geneticsSection').isVisible(), false, '基因录入默认隐藏');
+    assert.equal(await page.locator('#btnExportVariants').isVisible(), false, '“导出基因变异”默认隐藏');
+    assert.equal(await text(page.locator('#geneticsDisabledNote')), '基因数据涉及人类遗传资源管理，迁至境内并完成合规评估后由管理员开启。');
+    assert.equal(mock.requests.filter(r => r.path === '/rest/v1/variants_long').length, 0, '未开启时不应读取基因数据');
+
+    // 9. 无随访的项目：完整率显示“—”。
+    await page.click(`#projectsList .pill:has-text("${EMPTY_PROJECT.name}")`);
+    await eventually(async () => (await metric('core_completeness')) === '—', '无随访时完整率应显示“—”');
+    assert.ok((await text(page.locator('#patientsList'))).includes('还没有患者'));
+
+    // 10. 页面文字不出现表名或旧术语。
+    const visible = await page.evaluate(() => document.body.innerText);
+    for (const banned of ['patients_baseline', 'visits_long', 'patient_tokens', 'Token', '令牌', 'NEJM', '后台', '质控 Issue', 'patient_code']) assert.ok(!visible.includes(banned), `页面不应出现“${banned}”`);
+
+    assert.deepEqual(pageErrors, [], '页面不应有未捕获异常');
+    assert.deepEqual(mock.external, [], '不应请求 Supabase 以外的外部主机');
+    assert.deepEqual(mock.unknown, [], '不应调用未模拟的接口');
+    await context.close();
+
+    // 11. 开启 CONFIG.FEATURES.GENETICS 后显示基因数据（只修改测试中返回的 config.js）。
+    const genetic = await openWorkspace(browser, origin, { configOverride: 'window.CONFIG.FEATURES = Object.assign({}, window.CONFIG.FEATURES, { GENETICS: true });' });
+    await eventually(() => genetic.page.locator('#geneticsSection').isVisible(), '开启后应显示基因录入');
+    assert.equal(await genetic.page.locator('#btnExportVariants').isVisible(), true, '开启后应显示“导出基因变异”');
+    assert.equal(await genetic.page.locator('#geneticsDisabledNote').isVisible(), false);
+    await eventually(() => genetic.mock.requests.some(r => r.path === '/rest/v1/variants_long'), '开启后应读取基因数据');
+    assert.deepEqual(genetic.pageErrors, []);
+    assert.deepEqual(genetic.mock.external, []);
+    await genetic.context.close();
+
+    // 12. 只读协作人：不显示随访链接，写操作不可用，项目设置隐藏，也不读取链接表。
+    const viewer = await openWorkspace(browser, origin, { access: { role: 'viewer', can_read: true, can_write: false, can_export: false, can_manage_tokens: false, can_manage_members: false, can_manage_project: false, write_block_reason: 'role_read_only' } });
+    const headers = await viewer.page.locator('#patientsList thead th').allTextContents();
+    assert.ok(!headers.includes('有效链接'), '只读协作人不显示有效链接列');
+    assert.equal(await viewer.page.locator('#patientsList [data-act="links"]').count(), 0, '只读协作人不显示随访链接操作');
+    assert.ok(await viewer.page.locator('#patientsList [data-act="visit"]').evaluateAll(nodes => nodes.length > 0 && nodes.every(n => n.disabled)), '只读协作人不能录入随访');
+    assert.ok(await viewer.page.locator('#patientsList [data-act="status"]').evaluateAll(nodes => nodes.every(n => n.disabled)), '只读协作人不能修改研究状态');
+    assert.equal(await viewer.page.locator('#patientsList [data-act="history"]').first().isEnabled(), true, '只读协作人可以查看随访记录');
+    assert.equal(await viewer.page.locator('#btnOpenVisitEntry').isDisabled(), true);
+    assert.equal(await viewer.page.locator('#projectSettingsDetails').isHidden(), true, '非负责人不显示项目设置');
+    assert.equal(viewer.mock.requests.filter(r => r.path === '/rest/v1/patient_tokens').length, 0, '只读协作人不读取链接表');
+    assert.ok((await text(viewer.page.locator('#projectAccessStatus'))).includes('只读协作人'));
+    assert.deepEqual(viewer.pageErrors, []);
+    await viewer.context.close();
+
+    // 13. 手机宽度：页面无横向滚动。
+    const phone = await openWorkspace(browser, origin, { viewport: { width: 390, height: 844 } });
+    await shot(phone.page, '06-phone-top');
+    await phone.page.locator('#boardSection').scrollIntoViewIfNeeded();
+    await phone.page.evaluate(() => document.getElementById('boardSection').scrollIntoView());
+    await shot(phone.page, '06-phone-board');
+    await phone.page.click('tr[data-patient-code="P001"] [data-act="visit"]');
+    await phone.page.locator('#veSbp').waitFor();
+    await shot(phone.page, '07-phone-visit-entry');
+    await phone.page.keyboard.press('Escape');
+    const overflow = await phone.page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    assert.ok(overflow <= 0, `手机宽度下页面不应横向滚动（溢出 ${overflow}px）`);
+    assert.deepEqual(phone.pageErrors, []);
+    await phone.context.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+  console.log('STAFF_UI_OK');
+}
+
+main().catch(error => { console.error(error); process.exit(1); });
