@@ -4,9 +4,9 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>安全与合规 · 肾域·科研</title>
-  <meta name="description" content="肾域·科研安全与合规说明：RLS 权限隔离、审计日志、去标识化、私有化部署支持。适合院内伦理评估。"/>
+  <meta name="description" content="肾域·科研安全与合规说明：数据存储位置、项目角色与访问控制、审计记录、随访链接保护与支持方式。"/>
   <meta property="og:title" content="安全与合规 · 肾域·科研"/>
-  <meta property="og:description" content="RLS 权限隔离、审计日志、去标识化设计，支持院内私有化部署与伦理评估。"/>
+  <meta property="og:description" content="数据存储位置、项目角色与访问控制、审计记录与支持方式的如实说明。"/>
   <meta property="og:type" content="website"/>
   <link rel="canonical" href="https://kidneysphereregistry.cn/security"/>
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
@@ -17,38 +17,63 @@
 <body>
   <div class="container">
     <div class="card">
-      <h1 class="brand-title">安全与合规 / Security & Compliance</h1>
+      <h1 class="brand-title">安全与合规</h1>
+      <div class="small muted" style="margin-top:4px">本页只列出系统已经实现、可以核验的措施；没有证据的事项写明“以实际部署配置为准”。更新：2026 年 10 月 12 日</div>
       <div class="btnbar" style="margin-top:10px">
-        <a class="btn" href="/">首页</a><a class="btn" href="/pricing">价格</a><a class="btn" href="/collaboration">合作项目</a><a class="btn" href="/deployment">部署方式</a><a class="btn" href="/slides">系统PPT</a><a class="btn" href="/login">登录</a>
+        <a class="btn" href="/">首页</a><a class="btn" href="/pricing">价格</a><a class="btn" href="/privacy">隐私政策</a><a class="btn" href="/deployment">部署方式</a><a class="btn" href="/login">登录</a>
       </div>
       <div class="hr"></div>
-      <h2>1) 数据最小化</h2>
-      <div class="small">研究数据以项目、中心和研究编号区分；请勿上传患者姓名、联系方式、病案号及身份映射表。编码数据仍可能关联个人，应按研究方案与敏感个人信息保护要求管理。</div>
-      <h2>2) 权限与 RLS</h2>
-      <div class="small">权限按项目分配：项目负责人管理成员和项目；录入员可录入、更正和管理随访链接；分析员可阅读并生成分析包；只读成员可查阅数据。成员使用各自已验证邮箱的账户，由负责人授权与撤销。随访链接仅授权指定患者的有限操作。</div>
-      <p class="small">各中心以独立项目管理，可授权同一研究者访问多个项目，再按中心与研究编号合并分析。专用导出权限与阅读权限分别控制，但阅读授权不能阻止手工复制或截图；机构仍需约定数据使用范围。</p>
-      <p class="small">录入员可能已读取随访链接。移除录入员或将其降为分析员、只读成员时，系统会使该项目现有有效随访链接失效，操作前会提示；负责人应安排重新生成与发放。</p>
-      <h2>3) 审计日志</h2>
-      <div class="small">记录纠错保留修改前后值、操作者和原因；删除核心记录留下删除指纹。研究导出保存同一时点的数据副本与 SHA256 校验值，可重新下载核对；旧版本的元数据记录会单独标识。审计和导出记录也需要纳入机构的保留与删除规则。</div>
-      <h2>4) 加密与备份</h2>
-      <div class="small">网站通过 HTTPS 访问。数据库、附件与备份所在区域及恢复能力，须分别核验实际服务配置。页面代码备份不能替代数据库备份；RPO（可接受数据损失时间）与 RTO（恢复服务时间）由机构和运维方明确后验收。</div>
-      <h2>5) 伦理支持</h2>
-      <div class="small">机构评估应核对研究授权、数据处理协议、实际部署与副处理商清单、备份恢复记录和事件响应联系人。本页没有宣称已取得等保定级备案、渗透测试认证或伦理批准；所需证明应在合作前以可核验文件提供。</div>
 
-          <div class="hr"></div>
-      <h2>院内评估常见材料</h2>
+      <h2>1) 数据存在哪里</h2>
+      <div class="small">网站页面部署于阿里云（中国境内）。账户认证、登记数据库与附件目前使用 Supabase 云服务，数据库位于美国西部区域，即<b>目前登记数据存储在中国境外</b>。我们正在将全部系统迁移至中国境内（阿里云），完成后会更新本页与<a href="/privacy">隐私政策</a>。迁移完成前，计划录入真实研究数据的机构请先按<a href="/privacy">隐私政策</a>第六部分完成评估，或先使用模拟数据。</div>
+
+      <h2>2) 数据最小化</h2>
+      <div class="small">研究数据以项目、中心代码和研究编号区分；请勿录入患者姓名、联系方式、病案号、身份证号或身份对照表。系统对常见的直接身份信息格式做录入检查，但检查只能减少误录，不能替代研究团队的管理。以研究编号登记的数据仍可能与个人关联，应按研究方案与敏感个人信息保护要求管理。</div>
+
+      <h2>3) 项目角色与访问控制</h2>
+      <div class="small">权限按项目分配，数据库对每一次读取和写入都按行检查项目归属与角色：</div>
+      <ul class="small" style="line-height:1.8">
+        <li><b>负责人</b>：管理项目设置与成员，录入、更正，发放和撤销随访链接，生成冻结数据版本并导出。</li>
+        <li><b>录入协作人</b>：录入、批量导入、带原因更正，发放和撤销随访链接；不能导出。</li>
+        <li><b>分析协作人</b>：查看数据，生成冻结数据版本并导出；不能修改数据。</li>
+        <li><b>只读协作人</b>：只能查看。</li>
+      </ul>
+      <p class="small">不同项目之间的数据互相隔离；同一研究者可被授权访问多个项目。成员使用各自已验证邮箱的账户，由负责人添加和移除。导出权限与查看权限分开控制，但查看权限无法阻止手工抄录或截图，机构仍需约定数据使用范围。移除录入协作人或把其改为其他角色时，系统会让该项目现有的有效随访链接失效，操作前会提示。</p>
+
+      <h2>4) 随访链接</h2>
+      <div class="small">每条随访链接只对应一个研究编号，只能提交该研究编号的随访；链接有有效期，可随时撤销。数据库只保存链接的不可逆校验摘要，不保存链接原文；链接原文只在生成时显示一次，丢失后需要重新生成。</div>
+
+      <h2>5) 审计记录</h2>
+      <div class="small">基线、随访和检验记录的每次修改由数据库逐字段写入审计记录，包含修改前后的值、操作者和时间；删除时记录操作者、时间和原记录的校验指纹；通过更正功能修改时必须填写原因。成员变更、随访链接的发放与撤销、导出都留有记录。冻结数据版本保存同一时点的数据副本及 SHA-256 校验值，可以重新下载核对。审计和导出记录也应纳入机构的保留与删除规则。</div>
+
+      <h2>6) 传输、加密与备份</h2>
+      <div class="small">全站通过 HTTPS 访问。存储层静态加密、数据库与附件的备份频率、保留期、可接受数据损失时间和恢复服务时间，<b>以实际部署配置为准</b>，本页不作具体承诺；机构评估时可向我们索取对应项目的配置与恢复演练记录。网页文件的备份不能替代数据库备份。</div>
+
+      <h2>7) 我们没有声明的事项</h2>
+      <div class="small">本页没有声明已完成网络安全等级保护定级备案、第三方渗透测试、临床试验电子数据系统相关的合规验证，也没有声明已取得任何伦理批准。机构需要的证明材料，应在合作前以可核验的文件提供；没有文件的，以“尚未提供”对待。</div>
+
+      <div class="hr"></div>
+      <h2 id="support">支持与服务</h2>
       <ul class="small" style="line-height:1.9">
-        <li>数据最小化说明（去标识化与 PII 禁录入）</li>
-        <li>权限与 RLS 说明</li>
-        <li>审计日志说明</li>
-        <li>备份范围、频率、保留期、恢复演练记录及 RPO/RTO</li>
-        <li>私有化部署边界说明</li>
-        <li>数据处理协议、影响评估、事件响应与所需检测证明的核验清单</li>
+        <li>联系方式：邮箱 <a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a>，微信 GlomConChina1。</li>
+        <li>响应：工作日内回复；问题需要排查时，我们会在回复中说明处理进度。我们目前不提供书面的服务等级承诺（SLA），机构如有要求请在合同中约定。</li>
+        <li>报告安全问题或疑似数据泄露：请发邮件并在标题注明“安全问题”，写明发现时间、涉及的项目和现象，<b>不要在邮件中附带患者数据</b>。</li>
+        <li>数据导出与删除：负责人和分析协作人可在工作台随时导出；删除账户或项目数据请发邮件申请，核验身份与权限后处理并反馈结果。</li>
+      </ul>
+
+      <div class="hr"></div>
+      <h2>院内评估常用材料</h2>
+      <ul class="small" style="line-height:1.9">
+        <li>数据最小化说明（研究编号登记，不录入直接身份信息）</li>
+        <li>项目角色与访问控制说明</li>
+        <li>审计记录说明</li>
+        <li>数据存储位置、备份范围与恢复安排（以实际部署配置为准）</li>
+        <li>私有化或院内部署边界说明</li>
+        <li>数据处理协议、个人信息保护影响评估、事件响应联系人等核验清单</li>
       </ul>
       <div class="btnbar" style="margin-top:10px">
-        <a class="btn primary" href="/demo">预约演示</a>
-        <a class="btn" href="/demo">机构合作咨询</a>
-        <a class="btn" href="/collaboration">查看合作项目</a>
+        <a class="btn primary" href="/demo?type=机构合作咨询">合作咨询</a>
+        <a class="btn" href="/deployment">部署方式</a>
       </div>
     </div>
   </div>
@@ -56,6 +81,6 @@
     <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
     <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener">鲁公网安备37091102000922号</a></div>
   </footer>
-  <script src="/analytics.js?v=registry-20260914-integrated-v1"></script>
+  <script src="/analytics.js?v=registry-20261012-adoption-v4"></script>
 </body>
 </html>
