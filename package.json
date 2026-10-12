@@ -14,7 +14,7 @@
     "smoke": "bash scripts/smoke-test.sh",
     "lighthouse": "bash scripts/lighthouse-ci.sh",
     "build:release": "python3 scripts/build_registry_integrated.py",
-    "test:ui": "node tests/ui/staff-smoke.mjs && node tests/ui/patient-smoke.mjs && node tests/ui/public-a-smoke.mjs",
+    "test:ui": "node tests/ui/staff-smoke.mjs && node tests/ui/patient-smoke.mjs && node tests/ui/public-a-smoke.mjs && node tests/ui/public-b-smoke.mjs",
     "test:analysis": "python3 -I -m unittest discover -s tests -p test_analysis_protocol.py"
   },
   "repository": {
