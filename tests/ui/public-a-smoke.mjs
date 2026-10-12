@@ -92,8 +92,23 @@ async function openPage(browser, urlPath, { overrides = {}, onRequest } = {}) {
 
 function commonChecks(name, r) {
   check(r.errors.length === 0, `${name}: 页面错误 ${JSON.stringify(r.errors)}`);
+  // 本站与工作台同源，外站脚本可读取浏览器中的登录会话：不允许任何跨源脚本。
+  const foreignScripts = r.requested.filter(u => {
+    const url = new URL(u);
+    return url.hostname !== HOST && /\.m?js(\?|$)/.test(url.pathname + url.search);
+  });
+  check(foreignScripts.length === 0, `${name}: 加载了外站脚本 ${JSON.stringify(foreignScripts)}`);
   check(r.external.length === 0, `${name}: 请求了外部主机 ${JSON.stringify(r.external)}`);
   check(!r.requested.some(u => /plausible/i.test(u)), `${name}: 默认加载了 plausible`);
+}
+
+async function productNav(name, page) {
+  const st = await page.evaluate(() => {
+    const nav = document.getElementById('ks-product-nav');
+    return nav ? { links: nav.querySelectorAll('a').length, current: (nav.querySelector('a[aria-current=page]') || {}).textContent || '' } : null;
+  });
+  check(st && st.links === 6, `${name}: 产品导航未渲染 ${JSON.stringify(st)}`);
+  if (st) check(st.current.includes('科研'), `${name}: 产品导航未高亮“科研” ${st.current}`);
 }
 
 async function noPlausible(name, page) {
@@ -197,6 +212,7 @@ try {
     const r = await openPage(browser, '/');
     commonChecks('index', r);
     await noPlausible('index', r.page);
+    await productNav('index', r.page);
     await bannedWords('index', r.page);
     await trialSummaryConsistent('index', r.page, 2);
     await projectStatuses('index', r.page, '#indexProjects');
@@ -220,6 +236,7 @@ try {
     const r = await openPage(browser, '/pricing');
     commonChecks('pricing', r);
     await noPlausible('pricing', r.page);
+    await productNav('pricing', r.page);
     await bannedWords('pricing', r.page);
     await trialSummaryConsistent('pricing', r.page, 3);
     const text = await r.page.evaluate(() => document.body.innerText);
@@ -235,6 +252,7 @@ try {
     const r = await openPage(browser, p);
     commonChecks(name, r);
     await noPlausible(name, r.page);
+    await productNav(name, r.page);
     await bannedWords(name, r.page);
     const text = await r.page.evaluate(() => document.body.innerText);
     check(text.includes('境外') && text.includes('迁移'), `${name}: 未如实说明数据存储地与迁移`);
@@ -248,6 +266,7 @@ try {
     const r = await openPage(browser, '/collaboration');
     commonChecks('collaboration', r);
     await noPlausible('collaboration', r.page);
+    await productNav('collaboration', r.page);
     await bannedWords('collaboration', r.page);
     await projectStatuses('collaboration', r.page, '#projectsGrid');
     await r.context.close();
@@ -323,6 +342,7 @@ try {
     const r = await openPage(browser, '/no-such-page-for-smoke');
     commonChecks('404', r);
     await noPlausible('404', r.page);
+    await productNav('404', r.page);
     await bannedWords('404', r.page);
     check(r.response && r.response.status() === 404, `404: 状态码 ${r.response && r.response.status()}`);
     const text = await r.page.evaluate(() => document.body.innerText);
@@ -333,7 +353,8 @@ try {
 
   // 显式开启统计时才加载统计脚本（用本地假脚本，不访问外部）
   {
-    const fakeSrc = `${ORIGIN}/__fake_analytics.js`;
+    // 统计脚本地址必须是 https（analytics.js 拒绝其他协议）；路由按主机名拦截，不会真正访问网络。
+    const fakeSrc = `https://${HOST}/__fake_analytics.js`;
     const r = await openPage(browser, '/pricing', {
       overrides: {
         '/config.js': t => `${t}\n;window.CONFIG.FEATURES={ANALYTICS:true,ANALYTICS_SRC:${JSON.stringify(fakeSrc)},ANALYTICS_DOMAIN:'kidneysphereregistry.cn'};`,
@@ -366,6 +387,20 @@ try {
   failures.push(`测试执行异常：${err && err.message}`);
 } finally {
   await browser.close();
+}
+
+// 全站静态扫描（含本单元以外的页面）：任何页面都不得引用外站脚本；对外文字不得出现已核实不实或夸大的说法。
+{
+  const CLAIMS = ['NEJM', '顶刊', '科研小白', '零风险', '无隐私风险', '宽限期', '7 天宽限', '中国区域', '核心功能可用', '核心功能试用'];
+  for (const file of fs.readdirSync(SITE).filter(f => f.endsWith('.html'))) {
+    const html = fs.readFileSync(path.join(SITE, file), 'utf8');
+    for (const m of html.matchAll(/<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi)) {
+      check(!/^(https?:)?\/\//i.test(m[1]), `${file}: 引用外站脚本 ${m[1]}`);
+    }
+    const visible = html.replace(/<script\b[\s\S]*?<\/script>/gi, '').replace(/<style\b[\s\S]*?<\/style>/gi, '')
+      .replace(/<!--[\s\S]*?-->/g, '').replace(/<[^>]+>/g, ' ');
+    for (const w of CLAIMS) check(!visible.includes(w), `${file}: 对外文字含「${w}」`);
+  }
 }
 
 if (failures.length) {

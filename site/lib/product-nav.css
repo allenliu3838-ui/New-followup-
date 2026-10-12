@@ -1,0 +1,45 @@
+/* 肾域跨产品导航条（与 product-nav.js 配套） */
+#ks-product-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  padding: 6px 12px;
+  background: #0b1530;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font: 500 14px/1.4 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+#ks-product-nav a {
+  color: #dbe4f3;
+  text-decoration: none;
+  padding: 5px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+#ks-product-nav a:hover,
+#ks-product-nav a:focus-visible {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  outline: none;
+}
+#ks-product-nav .ks-nav-brand {
+  font-weight: 700;
+  color: #ffffff;
+  margin-right: 6px;
+  padding-right: 14px;
+  border-right: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 0;
+}
+#ks-product-nav a[aria-current="page"] {
+  background: rgba(56, 189, 248, 0.18);
+  color: #e0f2fe;
+}
+@media (max-width: 420px) {
+  #ks-product-nav { font-size: 13px; padding: 4px 6px; }
+  #ks-product-nav a { padding: 4px 7px; }
+  #ks-product-nav .ks-nav-brand { padding-right: 9px; margin-right: 2px; }
+}
+@media print {
+  #ks-product-nav { display: none; }
+}

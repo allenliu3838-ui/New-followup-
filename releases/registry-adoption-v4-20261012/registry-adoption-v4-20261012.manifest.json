@@ -31925,7 +31925,7 @@
   "database_server_major": 17,
   "files": {
     "404.html": {
-      "new_sha256": "362708e382acbad162f6aa2393c28db50f3844b2c1db15b8c4f060e8c4d61047",
+      "new_sha256": "b28591173f50ec1a016f623e449eb0fd003c966c7fa1bc568680f82d30c4461c",
       "old_sha256": "277e3ecc62e608127a45ec2b1ffc6264b621d0fac56e49f03847a178500239c4"
     },
     "_redirects": {
@@ -31933,7 +31933,7 @@
       "old_sha256": "e3750e09bae28e66628957533f2c61d19b940284e3df1bb7dec54aae62921e66"
     },
     "analytics.js": {
-      "new_sha256": "37719a22b943d42c5c1f0a1aedec8270ba94fed5242d9349a9fddf57c330f0e3",
+      "new_sha256": "7eaeb413cfea13b715a4ce81969a84500971097c33cd1d8f05e93ce09a5bf6ab",
       "old_sha256": "b6df123beb0fda02b77455762cab1cc5065aa7d31f1ca2f08e0f33ede98c3924"
     },
     "app.css": {
@@ -31993,11 +31993,11 @@
       "old_sha256": "fe506fb678dac9da052f34a7504d69e18cd131dbb3a7a79a4f305472400857eb"
     },
     "auth-callback.html": {
-      "new_sha256": "e273a0d8497929a1764e575f4d65083a2d6272dc6bbe1ca16fc30092caff620b",
+      "new_sha256": "f55b6be7c35ab17782134f0a505d139ef6dd92f09d3f4560debb8b53fbd95afe",
       "old_sha256": "0c884977ebe11215f5819bbc115e536273ed2fe851c996db6437bf63864da00f"
     },
     "checkout.html": {
-      "new_sha256": "d6c625ea68a75c62b0d8396db5b3b9c768ba4112d20a6e162048c92b99efe33f",
+      "new_sha256": "3f38170ec8652ce213d676a3bdb3163056643ee6ace5d1fff5216db81e403de8",
       "old_sha256": "0362e7ea30d40e996abde676a6f1fe8fa326aa90ac483fa0833976aa9661cf44"
     },
     "checkout.js": {
@@ -32013,19 +32013,19 @@
       "old_sha256": "cc477eda268f8fe3e7aa27cffc6a118df06a536d7514976336a1702ddba10ad8"
     },
     "collaboration.html": {
-      "new_sha256": "2e44d3d3f3787cef51c86990c006b11d5295b374e77eae9b90cff24603eece15",
+      "new_sha256": "697f491a294cbdbfdf2e96f9399f2b16cdb5125c795bbbe8708e3ef3bf31f740",
       "old_sha256": "da84f9e46a193fde9d4defb285cb03a605bee0a78258adbce464c4e238a857db"
     },
     "demo.html": {
-      "new_sha256": "09755fbc0b25ebda8328867ccbbcca0f219864ade09ae12c4fd0477e12a8a2de",
+      "new_sha256": "c62901e2041e6abfa66388377e759ce20bc80ca11e06ef4d350bcaf72e362e2c",
       "old_sha256": "f13376c435c8abe1ed992d87e55ee8fd93be50ed837d9fe20993c8bb7726114c"
     },
     "deployment.html": {
-      "new_sha256": "8fd4b6ae015bf2f669cb690eb01cb4eb76c090220f3476bf7410a05b8a3932ae",
+      "new_sha256": "0e4142b3fcddbad4f635eb79eda93d53867d24b848e4f6f48b55ae3910eb22fb",
       "old_sha256": "3c75c098e8dbe282212106afb30a7179d8822553d17a0feb469924fdbb452879"
     },
     "disclaimer.html": {
-      "new_sha256": "0cdebbcd81cba9f1fac34f06b947a4e5ec289be47b99ed21fa1dce67c33a1fb2",
+      "new_sha256": "af12e2f2c9471dcd99d77c34f595c39328d3081f3f40055f9a4d162fe2ff32bf",
       "old_sha256": "713c05624a73be5cb55f4f5d87ba59a4b58b92f42c1590a8ee8475afd3ab21de"
     },
     "guide-steps.css": {
@@ -32037,7 +32037,7 @@
       "old_sha256": "cc2e8edeb0b23118f4124dc5d5e42c559abdf0fa6f30fe3e436196b71c1aadd1"
     },
     "guide.html": {
-      "new_sha256": "64dffd515b1d67a066506cdb2db70fe400840fa7834899810f2bc7719b04723f",
+      "new_sha256": "613fc58dce6f3db11399f7b2ec7103566e093ddd4de0b6285aee310360242e08",
       "old_sha256": "917f8c09cab8d7ef0ac006aaa459f7abc0889a09fcaad4ce6c3cf4d08305d010"
     },
     "guide.js": {
@@ -32045,7 +32045,7 @@
       "old_sha256": "fb92448724ce65bbedb21e450c1ce8a8ff79b5a63ba93ed369d7e2e658a856da"
     },
     "index.html": {
-      "new_sha256": "850b44b8501a9b85b066f1019438e629b82e053dcc957208ca42a55c80a2a5f4",
+      "new_sha256": "f40210b7c38b15cd7f50132f0ee9b4e68c172e447775bb957e97d8149c2eba2f",
       "old_sha256": "68a3492147c3495d071d2c3b79c42dfcdb464b894042ac6b60ab3f2c99ebcd06"
     },
     "lib/auth-navigation.js": {
@@ -32070,6 +32070,14 @@
     },
     "lib/patient-workflow.js": {
       "new_sha256": "338f5d4440f30001d142a109cfd72e35df383f639fc50d2d46d336dad59a7ce8",
+      "old_sha256": null
+    },
+    "lib/product-nav.css": {
+      "new_sha256": "fc2b50c53d888625f3ce206c26e8e9f2a240296bc9e2dbf7a7570177d6e41c8a",
+      "old_sha256": null
+    },
+    "lib/product-nav.js": {
+      "new_sha256": "b79d15726490c3f85dff919149e08d802ede3b1246cd64eb3fcaba99d142786e",
       "old_sha256": null
     },
     "lib/project-members.js": {
@@ -32109,7 +32117,7 @@
       "old_sha256": null
     },
     "login.html": {
-      "new_sha256": "f401cdd372cc35a6879f611578400c82cda322d6b263fcb557c446cd2c0bb462",
+      "new_sha256": "937b392965960ab552949bd5f265f6bfaa4751ad115484061bf3550807e05539",
       "old_sha256": "5fca455c8552312a74a67e84b2fe10d896d64c42407a89fa11eeb2c3dbf67f30"
     },
     "patient.html": {
@@ -32125,11 +32133,11 @@
       "old_sha256": "164d17fd68f297e041098180afd06fd4fa45fca0fc1498cdfbe7d2f8d0af9513"
     },
     "pricing.html": {
-      "new_sha256": "b9f477fa479f20e1647160d9b7c570b5a8f802593db2a1e9d27b8024af7a81f7",
+      "new_sha256": "a4f116e94ef4bf6c2cdde991c36cc7f0d716f6bb2afb997306dd93065e31038b",
       "old_sha256": "86c004b14bcff993d742b252a320dfd614d8fca397c7080b1043b7ee1f66247c"
     },
     "privacy.html": {
-      "new_sha256": "1f141eb00b83688898b9a388f792197f2d81d0dcb4a78de856a60df5950fd924",
+      "new_sha256": "f8ada37ff7074a68dac9bf42a200ad08d93daeed08391ba8a5c14a73b2731e1f",
       "old_sha256": "5e94c2874df07f11ba9a19a5190b13a4f558ebb21bf12f674aae80c1282dfe3e"
     },
     "robots.txt": {
@@ -32137,11 +32145,11 @@
       "old_sha256": "98293d51934a665893162c8f473d0d77f08df4d17912adf0a10046f364ff56a2"
     },
     "security.html": {
-      "new_sha256": "cd9f1c4deb875a70176d0535469a48ab7ac793abc2969086701674466ad95a74",
+      "new_sha256": "11d08d75f6d71bd7a954c4fe0c06d5ef7ec04ead9026871ad21e617014a61e43",
       "old_sha256": "4f168c89ff07355a4bf2c80b665cc5d43e6596ae4ca75c339df145ee11ec485a"
     },
     "signup.html": {
-      "new_sha256": "5ddcef391ded3f30bc7be9d42434b8775d45831cad2ee8d08daa1864bd1fcaf1",
+      "new_sha256": "4af1125d64bd03c2270789f99eab362dd7d68348f7033bce6007b390b186a962",
       "old_sha256": "c6fd9df8042f61afd9c809e3521fc74af628cfa5c9388a88d454cd3661cb56f0"
     },
     "sitemap.xml": {
@@ -32153,7 +32161,7 @@
       "old_sha256": "77c7306a7e1ad8bdf091cb51240a1646427bcbd80df9847f5b2e3d1ed8b345f4"
     },
     "staff.html": {
-      "new_sha256": "4d8e49316f71592b5a4b2ded40468ca7fe054e589f28fed2f0b39a8716c4b1d1",
+      "new_sha256": "46b38df173fe5ef28c7e1c4aa5a12a6b8212dafa8de44aa1047312bf0b8b14ce",
       "old_sha256": "2a26a4bc8cb72208bff88ed9b3f80b9e58f2b6703624cc2f74f65afee5ce0184"
     },
     "staff.js": {
@@ -32161,11 +32169,11 @@
       "old_sha256": "9b4565b86046393bf2526281d3ebdb50925a93234ff28e7c15224e43273c2201"
     },
     "terms.html": {
-      "new_sha256": "a09c7dddf99457e54637673298397ecc0e03245d2f70c240122035b640db9f42",
+      "new_sha256": "1ad35d7ada81f3b07cddc877f095a142de87774dc948b8c9a75ed1baf1abae9b",
       "old_sha256": "664a8e556ea4fa8d7bc22ac56dc5a447c3c4bb3779a2db56de91b30cbcb365bf"
     },
     "user-manual-cn.html": {
-      "new_sha256": "d8fe12c0dc9275ec89b3ba1dd3b5f370ae0a506cbbf095d9dd3e736ba9c3ed7e",
+      "new_sha256": "7a9adf2c06ff178141e34394db1cbee23045813ebf3c487e8eae443e149af34e",
       "old_sha256": "d8cc3fbf03e49cec75cfe89e02356e41888769c322e2ac3eedac58b255162152"
     }
   },

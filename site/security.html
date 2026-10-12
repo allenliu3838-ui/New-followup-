@@ -9,9 +9,9 @@
   <meta property="og:description" content="数据存储位置、项目角色与访问控制、审计记录与支持方式的如实说明。"/>
   <meta property="og:type" content="website"/>
   <link rel="canonical" href="https://kidneysphereregistry.cn/security"/>
-  <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
+  <link rel="stylesheet" href="/lib/product-nav.css?v=registry-20261012-adoption-v4">
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
-  <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
+  <script src="/lib/product-nav.js?v=registry-20261012-adoption-v4" defer></script>
   <link rel="stylesheet" href="/app.css?v=registry-20260914-integrated-v1"/>
 </head>
 <body>
@@ -41,7 +41,7 @@
       <p class="small">不同项目之间的数据互相隔离；同一研究者可被授权访问多个项目。成员使用各自已验证邮箱的账户，由负责人添加和移除。导出权限与查看权限分开控制，但查看权限无法阻止手工抄录或截图，机构仍需约定数据使用范围。移除录入协作人或把其改为其他角色时，系统会让该项目现有的有效随访链接失效，操作前会提示。</p>
 
       <h2>4) 随访链接</h2>
-      <div class="small">每条随访链接只对应一个研究编号，只能提交该研究编号的随访；链接有有效期，可随时撤销。数据库只保存链接的不可逆校验摘要，不保存链接原文；链接原文只在生成时显示一次，丢失后需要重新生成。</div>
+      <div class="small">每条随访链接只对应一个研究编号，只能提交该研究编号的随访；链接有有效期，可随时撤销。自本次升级起，数据库只保存链接的不可逆校验摘要，不保存链接原文；链接原文只在生成时显示一次，丢失后需要重新生成。升级前生成的链接继续有效（摘要一致），升级前的数据库备份仍含旧链接原文，按迁移规程限期销毁。</div>
 
       <h2>5) 审计记录</h2>
       <div class="small">基线、随访和检验记录的每次修改由数据库逐字段写入审计记录，包含修改前后的值、操作者和时间；删除时记录操作者、时间和原记录的校验指纹；通过更正功能修改时必须填写原因。成员变更、随访链接的发放与撤销、导出都留有记录。冻结数据版本保存同一时点的数据副本及 SHA-256 校验值，可以重新下载核对。审计和导出记录也应纳入机构的保留与删除规则。</div>
