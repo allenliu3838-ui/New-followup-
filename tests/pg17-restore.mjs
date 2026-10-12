@@ -9,7 +9,8 @@ import {root,createDatabase,applyMigrations,readContract} from './helpers/pg17-f
 
 assert.equal(process.argv.length,2,'Synthetic restore rehearsal accepts no external input');
 const owner=randomUUID(), project=randomUUID(), visit=randomUUID();
-const patient='SYNTHETIC-RESTORE-001', token=`synthetic-restore-${randomUUID()}`;
+// Production link format (32 lowercase hex); 0039 revokes any other stored format.
+const patient='SYNTHETIC-RESTORE-001', token=randomUUID().replaceAll('-','');
 const preservedTables=[
  'auth.users','public.projects','public.patients_baseline','public.visits_long',
  'public.labs_long','public.meds_long','public.variants_long','public.events_long',

@@ -37,6 +37,34 @@ export const FOLLOWUP_STATUS_OPTIONS = Object.freeze({ ...FOLLOWUP_STATUSES, wit
 export const REASON_REQUIRED_CONSENT = Object.freeze(['declined', 'withdrawn']);
 export const REASON_REQUIRED_FOLLOWUP = Object.freeze(['lost', 'withdrawn', 'deceased', 'kidney_failure', 'transferred']);
 
+/**
+ * 账户只读（试用到期等）时仍可登记的“退出类”状态：拒绝或撤回同意、停止随访，及对应日期。
+ * 与数据库 registry_private.study_exit_only_change 一致；数据库仍是最终校验。
+ */
+export const EXIT_CONSENT_STATUSES = REASON_REQUIRED_CONSENT;
+export const EXIT_FOLLOWUP_STATUSES = REASON_REQUIRED_FOLLOWUP;
+
+/** 同意日期记录“当前同意状态”对应的日期，标签随所选状态变化。 */
+export function consentDateLabel(status) {
+  return ({ consented: '签署日期', waiver: '伦理批准日期', declined: '拒绝日期', withdrawn: '撤回日期' })[status] || '同意状态日期';
+}
+
+/** 看板不再提醒随访的原因：随访状态优先，其次是拒绝或撤回同意。 */
+export function inactiveReason(row) {
+  if (row?.followup_status && row.followup_status !== 'active' && FOLLOWUP_STATUSES[row.followup_status]) return FOLLOWUP_STATUSES[row.followup_status];
+  if (row?.consent_status === 'declined') return '拒绝同意';
+  if (row?.consent_status === 'withdrawn') return '撤回同意';
+  return '';
+}
+
+/** 状态徽章文字：尚无随访的患者到期或逾期时注明“尚无随访”，排序仍按逾期优先。 */
+export function stateBadgeLabel(row) {
+  const state = FOLLOWUP_STATES[row?.followup_state];
+  if (!state) return '—';
+  if (Number(row.visit_count) === 0 && (row.followup_state === 'overdue' || row.followup_state === 'due_soon')) return `尚无随访·${state.label}`;
+  return state.label;
+}
+
 export const STATE_FILTERS = Object.freeze([
   ['all', '全部'], ['active', '在访'], ['overdue', '逾期'], ['due_soon', '即将到期'],
   ['no_visit', '尚无随访'], ['ok', '正常'], ['inactive', '已停止随访'],
@@ -163,7 +191,7 @@ export function renderOverviewHtml(o) {
     ['谁该随访', [
       tile({ metric: 'n_overdue', value: formatCount(o.n_overdue), label: '逾期', tone: Number(o.n_overdue) > 0 ? 'bad' : '', filter: 'overdue' }),
       tile({ metric: 'n_due_soon', value: formatCount(o.n_due_soon), label: '14 天内到期', tone: Number(o.n_due_soon) > 0 ? 'warn' : '', filter: 'due_soon' }),
-      tile({ metric: 'n_no_visit', value: formatCount(o.n_no_visit), label: '尚无随访', filter: 'no_visit' }),
+      tile({ metric: 'n_no_visit', value: formatCount(o.n_no_visit), label: '尚无随访', hint: '未到首次随访日期', filter: 'no_visit' }),
     ]],
     ['数据质量与知情同意', [
       tile({ metric: 'core_completeness', value: formatPercent(o.core_completeness), label: '核心四项完整率', hint: o.n_visits ? `${formatCount(o.n_core_complete_visits)} / ${formatCount(o.n_visits)} 条随访` : '尚无随访' }),
@@ -173,7 +201,7 @@ export function renderOverviewHtml(o) {
     ]],
   ];
   const notes = [
-    Number.isFinite(interval) ? `随访间隔按项目设置为 ${interval} 天，“下次应随访日期”= 最近一次随访（无随访时为基线日期）+ 随访间隔。` : '',
+    Number.isFinite(interval) ? `随访间隔按项目设置为 ${interval} 天，“下次应随访日期”= 最近一次随访（无随访时为基线日期）+ 随访间隔；尚无随访的患者到期后同样计入“逾期”或“14 天内到期”。拒绝或撤回知情同意、或已停止随访的患者不再提醒。日期按北京时间计算。` : '',
     o.last_visit_date ? `最近一次随访：${escapeHtml(o.last_visit_date)}。` : '',
     '核心四项指收缩压、舒张压、血肌酐、尿蛋白肌酐比均已填写（且有随访日期）的随访。点击数字可在下方看板中筛选。',
   ].filter(Boolean).join('');
@@ -203,8 +231,8 @@ function dueText(row, today) {
 export function renderBoardRow(row, { showLinks = false, today = localToday() } = {}) {
   const state = FOLLOWUP_STATES[row.followup_state];
   const consent = CONSENT_STATUSES[row.consent_status] || { label: '—', tone: 'muted' };
-  const stopped = row.followup_state === 'inactive' && FOLLOWUP_STATUSES[row.followup_status]
-    ? `<span class="fu-sub">（${escapeHtml(FOLLOWUP_STATUSES[row.followup_status])}）</span>` : '';
+  const why = row.followup_state === 'inactive' ? inactiveReason(row) : '';
+  const stopped = why ? `<span class="fu-sub">（${escapeHtml(why)}）</span>` : '';
   const code = escapeHtml(row.patient_code);
   const days = row.days_since_last_visit === null || row.days_since_last_visit === undefined ? '—' : `${escapeHtml(row.days_since_last_visit)} 天`;
   const linkTitle = row.last_link_created_at ? `最近生成：${formatLocalDate(row.last_link_created_at)}${row.last_link_expires_at ? '，到期：' + formatLocalDate(row.last_link_expires_at) : ''}` : '尚未生成随访链接';
@@ -215,14 +243,15 @@ export function renderBoardRow(row, { showLinks = false, today = localToday() } 
     + `<td class="fu-date" data-label="最近随访">${escapeHtml(row.last_visit_date || '—')}</td>`
     + `<td class="fu-num" data-label="距今">${days}</td>`
     + `<td class="fu-date" data-label="下次应随访">${dueText(row, today)}</td>`
-    + `<td data-label="状态">${state ? badge(state.label, state.tone) : badge('—', 'muted')}${stopped}</td>`
+    + `<td data-label="状态">${state ? badge(stateBadgeLabel(row), state.tone) : badge('—', 'muted')}${stopped}</td>`
     + linkCell
     + `<td data-label="知情同意">${badge(consent.label, consent.tone)}</td>`
     + `<td class="fu-actions">`
     + `<button type="button" class="btn small primary" data-act="visit" data-code="${code}" data-project-capability="can_write">录入随访</button>`
     + `<button type="button" class="btn small" data-act="history" data-code="${code}">随访记录</button>`
     + (showLinks ? `<button type="button" class="btn small" data-act="links" data-code="${code}">随访链接</button>` : '')
-    + `<button type="button" class="btn small" data-act="status" data-code="${code}" data-project-capability="can_write">研究状态</button>`
+    // 账户只读时负责人和录入协作人仍可登记拒绝/撤回同意或停止随访（对话框内只开放这些选项）。
+    + `<button type="button" class="btn small" data-act="status" data-code="${code}" data-project-capability="can_record_study_exit">研究状态</button>`
     + `</td></tr>`;
 }
 
@@ -393,6 +422,8 @@ const SYSTEM_REVOKE_REASONS = Object.freeze({
   consent_withdrawn: '知情同意改为“撤回”，系统自动撤销',
   followup_withdrawn: '随访状态改为“退出研究”，系统自动撤销',
   followup_deceased: '随访状态改为“死亡”，系统自动撤销',
+  patient_exited: '患者已拒绝或撤回同意、或已退出研究，系统自动停用',
+  legacy_token_format: '旧版链接格式异常，升级时系统停用',
 });
 
 /** 这些研究状态变更会让数据库自动撤销该患者仍有效的随访链接（见迁移 0038）。 */

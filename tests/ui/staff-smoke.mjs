@@ -32,7 +32,7 @@ const PROJECT = { id: '10000000-0000-4000-8000-000000000001', name: '合成测�
 const EMPTY_PROJECT = { ...PROJECT, id: '10000000-0000-4000-8000-000000000002', name: '空白合成项目', center_code: 'TST02', created_at: '2026-01-01T00:00:00Z' };
 const ACCESS = { role: 'owner', can_read: true, can_write: true, can_export: true, can_manage_tokens: true, can_manage_members: true, can_manage_project: true, write_block_reason: null };
 const OVERVIEWS = {
-  [PROJECT.id]: { project_id: PROJECT.id, followup_interval_days: 90, n_patients: 6, n_active: 5, n_visits: 12, n_visits_30d: 3, n_core_complete_visits: 9, core_completeness: 0.75, n_overdue: 2, n_due_soon: 1, n_no_visit: 1, last_visit_date: dayOffset(-11), n_consent_confirmed: 2, n_consent_unconfirmed: 4, n_open_issues: 3 },
+  [PROJECT.id]: { project_id: PROJECT.id, followup_interval_days: 90, n_patients: 9, n_active: 7, n_visits: 13, n_visits_30d: 3, n_core_complete_visits: 9, core_completeness: 0.6923, n_overdue: 3, n_due_soon: 2, n_no_visit: 1, last_visit_date: dayOffset(-11), n_consent_confirmed: 2, n_consent_unconfirmed: 6, n_open_issues: 3 },
   [EMPTY_PROJECT.id]: { project_id: EMPTY_PROJECT.id, followup_interval_days: 90, n_patients: 0, n_active: 0, n_visits: 0, n_visits_30d: 0, n_core_complete_visits: 0, core_completeness: null, n_overdue: 0, n_due_soon: 0, n_no_visit: 0, last_visit_date: null, n_consent_confirmed: 0, n_consent_unconfirmed: 0, n_open_issues: 0 },
 };
 const boardRow = (n, state, extra) => ({ project_id: PROJECT.id, patient_id: `20000000-0000-4000-8000-00000000000${n}`, center_code: 'TST01', patient_code: `P00${n}`, baseline_date: dayOffset(-400), consent_status: 'unconfirmed', followup_status: 'active', visit_count: 2, first_visit_date: dayOffset(-380), active_link_count: 0, last_link_created_at: null, last_link_expires_at: null, last_patient_submission_at: null, followup_state: state, ...extra });
@@ -44,9 +44,14 @@ const BOARD = [
   boardRow(2, 'due_soon', { last_visit_date: dayOffset(-80), days_since_last_visit: 80, next_due_date: dayOffset(10), consent_status: 'waiver', active_link_count: 2 }),
   boardRow(6, 'overdue', { last_visit_date: dayOffset(-100), days_since_last_visit: 100, next_due_date: dayOffset(-10) }),
   boardRow(4, 'no_visit', { visit_count: 0, first_visit_date: null, last_visit_date: null, days_since_last_visit: null, baseline_date: dayOffset(-30), next_due_date: dayOffset(60) }),
+  // 从未随访、按“基线日期 + 间隔”已逾期 / 即将到期：数据库视图（0038）计为 overdue / due_soon。
+  boardRow(7, 'overdue', { visit_count: 0, first_visit_date: null, last_visit_date: null, days_since_last_visit: null, baseline_date: dayOffset(-200), next_due_date: dayOffset(-110) }),
+  boardRow(8, 'due_soon', { visit_count: 0, first_visit_date: null, last_visit_date: null, days_since_last_visit: null, baseline_date: dayOffset(-85), next_due_date: dayOffset(5) }),
+  // 撤回知情同意（随访状态仍为“在访”）：不再提醒随访。
+  boardRow(9, 'inactive', { consent_status: 'withdrawn', last_visit_date: dayOffset(-110), days_since_last_visit: 110, next_due_date: dayOffset(-20) }),
 ];
-const EXPECTED_ORDER = ['P001', 'P006', 'P002', 'P004', 'P003', 'P005'];
-const EXPECTED_BADGES = ['逾期', '逾期', '即将到期', '尚无随访', '正常', '已停止随访'];
+const EXPECTED_ORDER = ['P007', 'P001', 'P006', 'P008', 'P002', 'P004', 'P003', 'P005', 'P009'];
+const EXPECTED_BADGES = ['尚无随访·逾期', '逾期', '逾期', '尚无随访·即将到期', '即将到期', '尚无随访', '正常', '已停止随访', '已停止随访'];
 // 链接行里故意带上明文与摘要：页面绝不能显示它们。
 const SECRET_TEXT = 'PLAINTEXT-LINK-SHOULD-NEVER-RENDER-7f3a';
 const SECRET_HASH = 'c0ffee'.repeat(10) + 'beef';
@@ -137,7 +142,7 @@ function createMock({ access = ACCESS } = {}) {
       case 'import_registry_rows': return importReplies.shift() ?? { inserted: 1, updated: 0, skipped: 0, total: 1, replayed: false };
       case 'create_patient_token_v2': return NEW_TOKEN;
       case 'revoke_patient_token_by_id': return null;
-      case 'set_patient_study_status': return { patient_code: body.p_patient_code, consent_status: 'unconfirmed', consent_date: null, consent_version: null, followup_status: body.p_changes?.followup_status ?? 'active', followup_status_date: null, changed: true };
+      case 'set_patient_study_status': return { patient_code: body.p_patient_code, consent_status: body.p_changes?.consent_status ?? 'unconfirmed', consent_date: body.p_changes?.consent_date || null, consent_version: null, followup_status: body.p_changes?.followup_status ?? 'active', followup_status_date: body.p_changes?.followup_status_date || null, changed: true };
       case 'set_project_settings': return { followup_interval_days: body.p_settings?.followup_interval_days ?? 90, public_title: PROJECT.public_title, institution_name: PROJECT.institution_name, ethics_approval_no: PROJECT.ethics_approval_no, contact_display: PROJECT.contact_display, changed: true };
       default: unknown.push(`RPC ${name}`); return null;
     }
@@ -224,6 +229,7 @@ async function checkPureHelpers() {
   const data = await loadModule('lib/registry-data.js');
   const board = await loadModule('lib/followup-board.js');
   const raw = ['row_1_same_day_record_conflict', 'visit_validation_failed', 'subscription_required', 'project_access_denied', 'revoke_reason_required',
+    'study_exit_reason_required', 'patient_not_eligible_for_links', 'egfr_out_of_range_check_scr', 'invalid_or_future_date: followup_status_date',
     'invalid_followup_interval', 'setting_too_long: public_title', 'unsupported_column: foo', 'new row violates check constraint "x"',
     'relation "public.v_patient_followup_status" does not exist', 'Failed to fetch', 'JWT expired', 'Something unexpected happened'];
   const warn = console.warn;
@@ -237,6 +243,17 @@ async function checkPureHelpers() {
   assert.equal(data.registryErrorMessage({ message: 'row_2_same_day_record_conflict' }).startsWith('第 3 行：'), true, 'CSV 行号前缀');
   assert.ok(data.registryErrorMessage({ message: 'invalid_iso_date: consent_date' }).startsWith('知情同意日期：'), '带字段名的错误应显示中文字段名');
   assert.ok(data.registryErrorMessage({ message: 'baseline_date_required_with_visits' }).includes('不能清空'), '较长的错误代码应优先匹配');
+  assert.ok(data.registryErrorMessage({ message: 'study_exit_reason_required' }).includes('退出研究'), '退出类修改缺少原因有专门提示');
+  assert.ok(data.registryErrorMessage({ message: 'patient_not_eligible_for_links' }).includes('不能再发放随访链接'));
+  assert.ok(data.registryErrorMessage({ message: 'egfr_out_of_range_check_scr', code: '23514' }).includes('血肌酐'), 'eGFR 超限提示核对血肌酐，而不是笼统的约束错误');
+  assert.equal(board.consentDateLabel('withdrawn'), '撤回日期');
+  assert.equal(board.consentDateLabel('consented'), '签署日期');
+  assert.equal(board.consentDateLabel('unconfirmed'), '同意状态日期');
+  assert.equal(board.stateBadgeLabel({ followup_state: 'overdue', visit_count: 0 }), '尚无随访·逾期');
+  assert.equal(board.stateBadgeLabel({ followup_state: 'overdue', visit_count: 3 }), '逾期');
+  assert.equal(board.inactiveReason({ followup_status: 'active', consent_status: 'declined' }), '拒绝同意');
+  assert.equal(board.inactiveReason({ followup_status: 'deceased', consent_status: 'withdrawn' }), '死亡');
+  assert.equal(board.revokeReasonLabel('patient_exited'), '患者已拒绝或撤回同意、或已退出研究，系统自动停用');
   assert.ok(board.newLinkBlockReason({ consent_status: 'withdrawn', followup_status: 'active' }).includes('不能再发放随访链接'), '撤回同意后不发放新链接');
   assert.ok(board.newLinkBlockReason({ consent_status: 'consented', followup_status: 'deceased' }).includes('不能再发放随访链接'));
   assert.equal(board.newLinkBlockReason({ consent_status: 'unconfirmed', followup_status: 'lost' }), '', '失访患者仍可发放链接');
@@ -306,24 +323,27 @@ async function main() {
 
     // 2. 项目概览数字。
     const metric = name => text(page.locator(`#projectOverview [data-metric="${name}"] .fu-tile-num`));
-    await eventually(async () => (await metric('n_patients')) === '6', '概览未显示入组人数');
-    const expectedMetrics = { n_patients: '6', n_active: '5', n_visits: '12', n_visits_30d: '3', core_completeness: '75%', n_overdue: '2', n_due_soon: '1', n_no_visit: '1', n_consent_confirmed: '2', n_consent_unconfirmed: '4', n_open_issues: '3' };
+    await eventually(async () => (await metric('n_patients')) === '9', '概览未显示入组人数');
+    const expectedMetrics = { n_patients: '9', n_active: '7', n_visits: '13', n_visits_30d: '3', core_completeness: '69.2%', n_overdue: '3', n_due_soon: '2', n_no_visit: '1', n_consent_confirmed: '2', n_consent_unconfirmed: '6', n_open_issues: '3' };
     for (const [name, value] of Object.entries(expectedMetrics)) assert.equal(await metric(name), value, `概览 ${name}`);
 
     // 3. 随访看板：逾期优先排序、状态徽章、筛选与搜索。
     assert.deepEqual(await boardCodes(page), EXPECTED_ORDER, '看板应按逾期优先排序');
     const badges = await page.locator('#patientsList tbody tr[data-patient-code] td:nth-child(6) .fu-badge').allTextContents();
     assert.deepEqual(badges, EXPECTED_BADGES, '状态徽章');
+    assert.equal(await text(page.locator('tr[data-patient-code="P009"] td:nth-child(6)')), '已停止随访（撤回同意）', '撤回同意的患者注明原因');
+    assert.equal(await text(page.locator('tr[data-patient-code="P005"] td:nth-child(6)')), '已停止随访（失访）');
+    assert.ok((await text(page.locator('tr[data-patient-code="P007"] td:nth-child(5)'))).includes('已过 110 天'), '从未随访的逾期患者显示已过天数');
     assert.equal((await text(page.locator('tr[data-patient-code="P002"] td:nth-child(8)'))), '伦理批准豁免', '同意状态列');
     assert.equal((await text(page.locator('tr[data-patient-code="P001"] td:nth-child(7)'))), '1', '有效链接数');
     await page.click('#boardFilters [data-board-filter="overdue"]');
-    assert.deepEqual(await boardCodes(page), ['P001', 'P006'], '逾期筛选');
+    assert.deepEqual(await boardCodes(page), ['P007', 'P001', 'P006'], '逾期筛选（含从未随访但已逾期的患者）');
     await page.click('#boardFilters [data-board-filter="all"]');
     await page.fill('#patientSearch', '4');
     assert.deepEqual(await boardCodes(page), ['P004'], '按研究编号搜索');
     await page.fill('#patientSearch', '');
     await page.click('#projectOverview [data-metric="n_due_soon"]');
-    assert.deepEqual(await boardCodes(page), ['P002'], '点击概览数字应跳到对应筛选');
+    assert.deepEqual(await boardCodes(page), ['P008', 'P002'], '点击概览数字应跳到对应筛选');
     assert.equal(await page.getAttribute('#boardFilters [data-board-filter="due_soon"]', 'aria-pressed'), 'true');
     await page.click('#projectOverview [data-metric="n_patients"]');
     assert.deepEqual(await boardCodes(page), EXPECTED_ORDER);
@@ -442,7 +462,12 @@ async function main() {
     await page.locator('#ssConsent').waitFor();
     assert.equal(await page.inputValue('#ssConsentVersion'), 'V1.0');
     assert.equal(await page.locator('#ssExitHint').isVisible(), false);
+    assert.equal(await text(page.locator('#ssConsentDateLabel')), '签署日期');
+    assert.equal(await page.inputValue('#ssConsentDate'), dayOffset(-390));
     await page.selectOption('#ssConsent', 'withdrawn');
+    assert.equal(await text(page.locator('#ssConsentDateLabel')), '撤回日期', '日期标签随同意状态变化');
+    assert.equal(await page.inputValue('#ssConsentDate'), '', '改选状态后清空原签署日期，等待填写撤回日期');
+    await page.fill('#ssConsentDate', today);
     assert.equal(await page.locator('#ssLinkNote').isVisible(), true, '撤回同意应提示链接将被自动撤销');
     assert.ok((await text(page.locator('#ssLinkNote'))).includes('该患者的有效随访链接将被自动撤销'));
     assert.equal(await page.locator('#ssExitHint').isVisible(), true, '撤回同意时建议同时改为退出研究');
@@ -454,7 +479,7 @@ async function main() {
     await page.click('#ssSave');
     await eventually(() => mock.rpcCalls('set_patient_study_status').length === 2, '撤回同意没有提交');
     assert.ok(dialogs.slice(dialogCount).some(m => m.includes('有效随访链接将被自动撤销')), '提交前应再次确认链接将被撤销');
-    assert.deepEqual(mock.rpcCalls('set_patient_study_status')[1].body, { p_project_id: PROJECT.id, p_patient_code: 'P003', p_changes: { consent_status: 'withdrawn', consent_version: '', followup_status: 'withdrawn' }, p_reason: '患者书面撤回同意' });
+    assert.deepEqual(mock.rpcCalls('set_patient_study_status')[1].body, { p_project_id: PROJECT.id, p_patient_code: 'P003', p_changes: { consent_status: 'withdrawn', consent_date: today, consent_version: '', followup_status: 'withdrawn' }, p_reason: '患者书面撤回同意' });
     await page.locator('[data-registry-modal="studyStatus"]').waitFor({ state: 'detached' });
 
     // 7. 项目设置（负责人）。
@@ -513,6 +538,30 @@ async function main() {
     assert.ok((await text(viewer.page.locator('#projectAccessStatus'))).includes('只读协作人'));
     assert.deepEqual(viewer.pageErrors, []);
     await viewer.context.close();
+
+    // 12b. 账户只读（试用到期）：负责人仍可登记撤回同意或停止随访，其他研究状态修改不开放。
+    const expired = await openWorkspace(browser, origin, { access: { ...ACCESS, can_write: false, can_manage_tokens: false, write_block_reason: 'subscription_required' } });
+    assert.ok(await expired.page.locator('#patientsList [data-act="visit"]').evaluateAll(nodes => nodes.length > 0 && nodes.every(n => n.disabled)), '只读期间不能录入随访');
+    assert.ok(await expired.page.locator('#patientsList [data-act="status"]').evaluateAll(nodes => nodes.length > 0 && nodes.every(n => !n.disabled)), '只读期间负责人仍可打开研究状态');
+    await expired.page.click('tr[data-patient-code="P006"] [data-act="status"]');
+    await expired.page.locator('#ssExitOnly').waitFor();
+    const optionValues = selector => expired.page.locator(`${selector} option`).evaluateAll(nodes => nodes.map(n => n.value));
+    assert.deepEqual(await optionValues('#ssConsent'), ['unconfirmed', 'declined', 'withdrawn'], '只读期间同意状态只能改为拒绝或撤回');
+    assert.deepEqual(await optionValues('#ssFollowup'), ['active', 'lost', 'withdrawn', 'deceased', 'kidney_failure', 'transferred']);
+    assert.equal(await expired.page.locator('#ssConsentVersion').isDisabled(), true, '只读期间不能修改同意书版本');
+    assert.equal(await expired.page.locator('#ssConsentDate').isDisabled(), true, '未改为拒绝/撤回时不能单独修改同意日期');
+    assert.equal(await expired.page.locator('#ssFollowupDate').isDisabled(), true);
+    await expired.page.selectOption('#ssFollowup', 'withdrawn');
+    assert.equal(await expired.page.locator('#ssFollowupDate').isDisabled(), false);
+    await expired.page.fill('#ssFollowupDate', today);
+    await expired.page.fill('#ssReason', '患者要求退出研究');
+    await expired.page.click('#ssSave');
+    await eventually(() => expired.mock.rpcCalls('set_patient_study_status').length === 1, '只读期间没有提交退出登记');
+    assert.deepEqual(expired.mock.rpcCalls('set_patient_study_status')[0].body, { p_project_id: PROJECT.id, p_patient_code: 'P006', p_changes: { followup_status: 'withdrawn', followup_status_date: today }, p_reason: '患者要求退出研究' });
+    await expired.page.locator('[data-registry-modal="studyStatus"]').waitFor({ state: 'detached' });
+    assert.deepEqual(expired.pageErrors, []);
+    assert.deepEqual(expired.mock.unknown, []);
+    await expired.context.close();
 
     // 13. 手机宽度：页面无横向滚动。
     const phone = await openWorkspace(browser, origin, { viewport: { width: 390, height: 844 } });
