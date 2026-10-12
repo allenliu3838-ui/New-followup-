@@ -31925,7 +31925,7 @@
   "database_server_major": 17,
   "files": {
     "404.html": {
-      "new_sha256": "107863fc3709c6326ba5e995b24e70085718eec00a3998b84bfd5212e1be9bf4",
+      "new_sha256": "362708e382acbad162f6aa2393c28db50f3844b2c1db15b8c4f060e8c4d61047",
       "old_sha256": "277e3ecc62e608127a45ec2b1ffc6264b621d0fac56e49f03847a178500239c4"
     },
     "_redirects": {
@@ -31933,7 +31933,7 @@
       "old_sha256": "e3750e09bae28e66628957533f2c61d19b940284e3df1bb7dec54aae62921e66"
     },
     "analytics.js": {
-      "new_sha256": "b6df123beb0fda02b77455762cab1cc5065aa7d31f1ca2f08e0f33ede98c3924",
+      "new_sha256": "37719a22b943d42c5c1f0a1aedec8270ba94fed5242d9349a9fddf57c330f0e3",
       "old_sha256": "b6df123beb0fda02b77455762cab1cc5065aa7d31f1ca2f08e0f33ede98c3924"
     },
     "app.css": {
@@ -31997,7 +31997,7 @@
       "old_sha256": "0c884977ebe11215f5819bbc115e536273ed2fe851c996db6437bf63864da00f"
     },
     "checkout.html": {
-      "new_sha256": "30778d2e37695cd79b714c1e82f13f403543453d5ad014d81c795dcfce123484",
+      "new_sha256": "d6c625ea68a75c62b0d8396db5b3b9c768ba4112d20a6e162048c92b99efe33f",
       "old_sha256": "0362e7ea30d40e996abde676a6f1fe8fa326aa90ac483fa0833976aa9661cf44"
     },
     "checkout.js": {
@@ -32005,27 +32005,27 @@
       "old_sha256": "c89792ff3c559f16b5f74b6006667745c4877f5906dbe5b8b3144358a2baf5a4"
     },
     "collaboration-components.js": {
-      "new_sha256": "ea70cf7a403bf845eda29571adb9840c301453c908b0e894a5b3ba0865deaa84",
+      "new_sha256": "4f48eddabe7c7c2d8b5539af8da306a8aeb66e911cdd93b4ecbd0aa27a740ddb",
       "old_sha256": "edf259950f23fb5fc76a43aecd12cf3fb085a3a351ff5ffe57200fd790a365e7"
     },
     "collaboration-data.js": {
-      "new_sha256": "cc477eda268f8fe3e7aa27cffc6a118df06a536d7514976336a1702ddba10ad8",
+      "new_sha256": "c24097accb18756928d7ee0b6905e9f841c563088137d46914a2b2d995910b32",
       "old_sha256": "cc477eda268f8fe3e7aa27cffc6a118df06a536d7514976336a1702ddba10ad8"
     },
     "collaboration.html": {
-      "new_sha256": "7e62947b67b42a8c15ab08eb4e5ab4b3eecd44c9f58ccf712a965057de3b08b6",
+      "new_sha256": "2e44d3d3f3787cef51c86990c006b11d5295b374e77eae9b90cff24603eece15",
       "old_sha256": "da84f9e46a193fde9d4defb285cb03a605bee0a78258adbce464c4e238a857db"
     },
     "demo.html": {
-      "new_sha256": "b335bad1f94e50bcf57d369376195420bff6d5246f4c94bea0744cf18f704d77",
+      "new_sha256": "09755fbc0b25ebda8328867ccbbcca0f219864ade09ae12c4fd0477e12a8a2de",
       "old_sha256": "f13376c435c8abe1ed992d87e55ee8fd93be50ed837d9fe20993c8bb7726114c"
     },
     "deployment.html": {
-      "new_sha256": "42a074377a0e0cd0362a245ce96f972af4af37d59a599ec7e339836f26365bf4",
+      "new_sha256": "8fd4b6ae015bf2f669cb690eb01cb4eb76c090220f3476bf7410a05b8a3932ae",
       "old_sha256": "3c75c098e8dbe282212106afb30a7179d8822553d17a0feb469924fdbb452879"
     },
     "disclaimer.html": {
-      "new_sha256": "d020a59902e8b64774412394e502f9f37165576f85bc4ea39b030b320469cfa6",
+      "new_sha256": "0cdebbcd81cba9f1fac34f06b947a4e5ec289be47b99ed21fa1dce67c33a1fb2",
       "old_sha256": "713c05624a73be5cb55f4f5d87ba59a4b58b92f42c1590a8ee8475afd3ab21de"
     },
     "guide-steps.css": {
@@ -32045,7 +32045,7 @@
       "old_sha256": "fb92448724ce65bbedb21e450c1ce8a8ff79b5a63ba93ed369d7e2e658a856da"
     },
     "index.html": {
-      "new_sha256": "0a9db0e193118610c188e18998cd1b47ff9f0172aa8710683986f2303e512a2e",
+      "new_sha256": "850b44b8501a9b85b066f1019438e629b82e053dcc957208ca42a55c80a2a5f4",
       "old_sha256": "68a3492147c3495d071d2c3b79c42dfcdb464b894042ac6b60ab3f2c99ebcd06"
     },
     "lib/auth-navigation.js": {
@@ -32121,23 +32121,23 @@
       "old_sha256": "f62babfc769c1ff3ee835db4e1ff6cea082623b34264bb897c831d05ec392987"
     },
     "pricing-config.js": {
-      "new_sha256": "164d17fd68f297e041098180afd06fd4fa45fca0fc1498cdfbe7d2f8d0af9513",
+      "new_sha256": "db9b96c43de2aee8139d2477eca1e53654ec00ca3ce0c2a714f7ca86f1f541b0",
       "old_sha256": "164d17fd68f297e041098180afd06fd4fa45fca0fc1498cdfbe7d2f8d0af9513"
     },
     "pricing.html": {
-      "new_sha256": "e4a55ad27c556def6b2875945bedf91ee25d6b8d5c7c2ff09a430a78f4e3bd75",
+      "new_sha256": "b9f477fa479f20e1647160d9b7c570b5a8f802593db2a1e9d27b8024af7a81f7",
       "old_sha256": "86c004b14bcff993d742b252a320dfd614d8fca397c7080b1043b7ee1f66247c"
     },
     "privacy.html": {
-      "new_sha256": "40bca88a1c9fbceb052b5694a696cd000842b2fb547e07a942bd2dd5ebd79319",
+      "new_sha256": "1f141eb00b83688898b9a388f792197f2d81d0dcb4a78de856a60df5950fd924",
       "old_sha256": "5e94c2874df07f11ba9a19a5190b13a4f558ebb21bf12f674aae80c1282dfe3e"
     },
     "robots.txt": {
-      "new_sha256": "98293d51934a665893162c8f473d0d77f08df4d17912adf0a10046f364ff56a2",
+      "new_sha256": "eb726c28b05d738605aad27199b607ccb315f3ce0afe46d9cbae8a9f3f42068c",
       "old_sha256": "98293d51934a665893162c8f473d0d77f08df4d17912adf0a10046f364ff56a2"
     },
     "security.html": {
-      "new_sha256": "73dc0a54e4eeffd076220bf547d0cf0eeb29f33d3eab32a7dace0e26a2fe0b50",
+      "new_sha256": "cd9f1c4deb875a70176d0535469a48ab7ac793abc2969086701674466ad95a74",
       "old_sha256": "4f168c89ff07355a4bf2c80b665cc5d43e6596ae4ca75c339df145ee11ec485a"
     },
     "signup.html": {
@@ -32145,7 +32145,7 @@
       "old_sha256": "c6fd9df8042f61afd9c809e3521fc74af628cfa5c9388a88d454cd3661cb56f0"
     },
     "sitemap.xml": {
-      "new_sha256": "821e65793459ef795aaa9d76f0f4a3793a4c1a5a3241cecd3be6f1a585914c58",
+      "new_sha256": "acf13461264b97b7b10dbb7e43d82c23093c8490fea0b3ab3fa5c017aaad76e6",
       "old_sha256": "821e65793459ef795aaa9d76f0f4a3793a4c1a5a3241cecd3be6f1a585914c58"
     },
     "slides.html": {
@@ -32161,7 +32161,7 @@
       "old_sha256": "9b4565b86046393bf2526281d3ebdb50925a93234ff28e7c15224e43273c2201"
     },
     "terms.html": {
-      "new_sha256": "f63028309a595951a79aae65e21902b509cc610f4d9abf55597c36931247165e",
+      "new_sha256": "a09c7dddf99457e54637673298397ecc0e03245d2f70c240122035b640db9f42",
       "old_sha256": "664a8e556ea4fa8d7bc22ac56dc5a447c3c4bb3779a2db56de91b30cbcb365bf"
     },
     "user-manual-cn.html": {
