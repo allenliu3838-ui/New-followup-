@@ -132,6 +132,12 @@
       </div>
     </div>
 
+    <!-- 闲置提醒：28 分钟无操作时显示，30 分钟自动退出登录 -->
+    <div id="idleWarning" class="idle-warning" role="alertdialog" aria-labelledby="idleWarningText" hidden>
+      <p id="idleWarningText">您已有一段时间没有操作。为保护研究数据，将在 <b id="idleCountdown">2 分 00 秒</b> 后自动退出登录，未保存的内容不会保留。</p>
+      <button type="button" class="btn primary" id="btnIdleContinue">继续使用</button>
+    </div>
+
     <!-- 登录后才从模板注入的内容 -->
     <div id="authGatedContainer"></div>
 
@@ -246,8 +252,9 @@
               <input id="patBaselineDate" type="date"/>
             </div>
             <div class="col">
-              <label for="patBaselineScr">基线血肌酐（μmol/L，可选）</label>
-              <input id="patBaselineScr" type="number" step="0.1" placeholder="例如：98"/>
+              <label for="patBaselineScr">基线血肌酐（可选）</label>
+              <div class="inline-field"><input id="patBaselineScr" type="number" min="0" step="any" placeholder="例如：98"/><select id="patBaselineScrUnit" aria-label="基线血肌酐单位"><option value="umol">μmol/L</option><option value="mgdl">mg/dL</option></select></div>
+              <div id="baselineScrHint" class="small" aria-live="polite">按化验单单位填写；系统统一按 μmol/L 保存（10–5000 μmol/L）。</div>
             </div>
             <div class="col">
               <label for="patBaselineUpcr">基线尿蛋白肌酐比（UPCR，可选）</label>
@@ -391,7 +398,7 @@
         <h2 id="importHeading">批量导入（CSV）</h2>
         <div class="muted small">先下载模板、预览单位和变更，再确认提交到当前项目。一次最多 500 行，服务器整批校验；失败可保留同一批次重试。</div>
         <div class="warnbox" style="margin-top:8px">
-          <b>导入规则：</b>基线只更新文件中提供的非空字段，缺失列及空格保持现有值；需要清空或更正时，请在看板中打开该患者的“随访记录”，使用“核对 / 更正基线”并填写原因。随访按服务器规则去重。未知列、重复表头及有错误的行会阻止整批导入。基线文件可包含知情同意状态与随访状态列（可填中文，如“已同意”“失访”），请先按原始知情同意记录核对。
+          <b>导入规则：</b>基线只更新文件中提供的非空字段，缺失列及空格保持现有值；需要清空或更正时，请在看板中打开该患者的“随访记录”，使用“核对 / 更正基线”并填写原因。随访按服务器规则去重。未知列、重复表头及有错误的行会阻止整批导入。基线文件可包含知情同意状态与随访状态列（可填中文，如“已同意”“失访”），请先按原始知情同意记录核对；拒绝或撤回同意、退出研究、死亡不能通过导入登记，请先建档，再在患者的“研究状态”中登记并填写原因。
         </div>
         <div class="row" style="margin-top:10px;align-items:flex-end;flex-wrap:wrap;gap:8px">
           <div class="col" style="min-width:180px">

@@ -186,7 +186,7 @@ export function renderOverviewHtml(o) {
       tile({ metric: 'n_patients', value: formatCount(o.n_patients), label: '入组患者', filter: 'all', consent: 'all' }),
       tile({ metric: 'n_active', value: formatCount(o.n_active), label: '在访', filter: 'active' }),
       tile({ metric: 'n_visits', value: formatCount(o.n_visits), label: '随访记录' }),
-      tile({ metric: 'n_visits_30d', value: formatCount(o.n_visits_30d), label: '近 30 天新增随访' }),
+      tile({ metric: 'n_visits_30d', value: formatCount(o.n_visits_30d), label: '近 30 天随访（按随访日期）' }),
     ]],
     ['谁该随访', [
       tile({ metric: 'n_overdue', value: formatCount(o.n_overdue), label: '逾期', tone: Number(o.n_overdue) > 0 ? 'bad' : '', filter: 'overdue' }),
@@ -284,6 +284,8 @@ export function renderFilterBar(rows, { state = 'all', consent = 'all' } = {}) {
 
 export const SCR_MGDL_TO_UMOL = 88.4;
 export const UPCR_GG_TO_MGG = 1000;
+/** 随访 UPCR 上限（mg/g），与数据库约束 visits_long_upcr_range 一致。 */
+export const UPCR_MAX_MGG = 50000;
 
 /** 全角数字、全角小数点与斜杠转为半角。 */
 export function normalizeDigits(text) {
@@ -359,8 +361,23 @@ export function buildVisitRow(draft, { today = localToday(), containsPII = () =>
   if (ok(dbp) && (dbp < 20 || dbp > 200)) errors.push({ field: 'dbp', message: '舒张压须在 20–200 mmHg 之间，请核对。' });
   if (ok(sbp) && ok(dbp) && dbp >= sbp) errors.push({ field: 'dbp', message: '舒张压须低于收缩压，请核对是否填反。' });
   const scr = creatinineToUmol(scrRaw, draft.scrUnit);
-  if (ok(scr) && (scr < 10 || scr > 5000)) errors.push({ field: 'scr', message: `血肌酐（换算后 ${scr} μmol/L）超出系统允许的 10–5000 μmol/L，请核对数值与单位。` });
+  if (ok(scr) && (scr < 10 || scr > 5000)) {
+    const asUmol = creatinineToUmol(scrRaw, 'mgdl');
+    const looksMgdl = draft.scrUnit !== 'mgdl' && scr < 10 && asUmol >= 10 && asUmol <= 5000;
+    const looksUmol = draft.scrUnit === 'mgdl' && scr > 5000 && scrRaw >= 10 && scrRaw <= 5000;
+    errors.push({ field: 'scr', message: looksMgdl
+      ? `血肌酐 ${scrRaw} μmol/L 低于系统允许的 10–5000 μmol/L。这个数值看起来是 mg/dL，请把单位切换为 mg/dL 后再保存。`
+      : looksUmol
+        ? `血肌酐 ${scrRaw} mg/dL 换算后为 ${scr} μmol/L，超出系统允许范围。这个数值看起来是 μmol/L，请把单位切换为 μmol/L 后再保存。`
+        : `血肌酐（换算后 ${scr} μmol/L）超出系统允许的 10–5000 μmol/L，请核对数值与单位。` });
+  }
   const upcr = upcrToMgG(upcrRaw, draft.upcrUnit);
+  if (ok(upcr) && upcr > UPCR_MAX_MGG) {
+    const looksMgg = draft.upcrUnit === 'gg' && upcrRaw <= UPCR_MAX_MGG;
+    errors.push({ field: 'upcr', message: looksMgg
+      ? `尿蛋白肌酐比 ${upcrRaw} g/g 换算后为 ${upcr} mg/g，超出系统允许的 0–50000 mg/g。这个数值看起来是 mg/g，请把单位切换为 mg/g 后再保存。`
+      : `尿蛋白肌酐比（换算后 ${upcr} mg/g）超出系统允许的 0–50000 mg/g，请核对数值与单位。` });
+  }
   const notes = String(draft.notes ?? '').trim();
   if (notes.length > 500) errors.push({ field: 'notes', message: '备注最多 500 字。' });
   if (notes && containsPII(notes)) errors.push({ field: 'notes', message: '备注中检测到疑似个人身份信息（手机号、身份证号、住院号、姓名等），请删除后再保存。' });
@@ -445,9 +462,12 @@ export function revokeReasonLabel(reason) {
   return /^[a-z0-9_]+$/.test(reason) ? '系统自动停用' : String(reason);
 }
 
-/** 把链接放在 # 之后：浏览器不会把它发送给服务器或写入访问日志。 */
-export function buildFollowupLink(origin, basePath, token) {
-  return `${origin}${basePath || ''}/followup#${encodeURIComponent(token)}`;
+/**
+ * 随访链接固定为站点根下的 /followup#<链接>，与工作台从哪个路径（/staff、/staff/…）打开无关。
+ * 链接放在 # 之后：浏览器不会把它发送给服务器或写入访问日志。
+ */
+export function buildFollowupLink(origin, token) {
+  return `${origin}/followup#${encodeURIComponent(token)}`;
 }
 
 export function linkMessageText({ link, expiresOn, project } = {}) {

@@ -23,8 +23,26 @@ function focusable(root) {
     .filter(n => !n.disabled && !n.hidden && n.offsetParent !== null);
 }
 
-/** 打开模态对话框。项目切换时 staff.js 会移除所有 [data-registry-modal]。 */
-export function openModal({ id, title, html, wide = false }) {
+// 打开中的对话框及其清理函数（清除内存中的明文链接、取消在途读取）。
+const openModals = new Map();
+
+/** 关闭全部对话框（切换项目、退出登录时调用），不等待进行中的保存。 */
+export function closeAllModals() {
+  for (const [overlay, cleanup] of [...openModals]) {
+    openModals.delete(overlay);
+    try { cleanup?.(); } catch { /* 清理失败不影响关闭 */ }
+    overlay.remove();
+  }
+}
+
+/** 打开模态对话框。项目切换或退出登录时 staff.js 调用 closeAllModals 并移除所有 [data-registry-modal]。 */
+export function openModal({ id, title, html, wide = false, onClose = null }) {
+  for (const [overlay, cleanup] of [...openModals]) {
+    if (overlay.dataset.registryModal !== id) continue;
+    openModals.delete(overlay);
+    try { cleanup?.(); } catch { /* 忽略 */ }
+    overlay.remove();
+  }
   document.querySelectorAll(`[data-registry-modal="${id}"]`).forEach(n => n.remove());
   const overlay = document.createElement('div');
   overlay.className = 'fu-modal-overlay';
@@ -46,6 +64,9 @@ export function openModal({ id, title, html, wide = false }) {
   };
   function close() {
     if (overlay.dataset.busy) return false;
+    const cleanup = openModals.get(overlay);
+    openModals.delete(overlay);
+    try { cleanup?.(); } catch { /* 忽略 */ }
     overlay.remove();
     document.removeEventListener('keydown', onKey, true);
     if (previous?.isConnected) previous.focus?.();
@@ -53,6 +74,7 @@ export function openModal({ id, title, html, wide = false }) {
   }
   overlay.addEventListener('click', event => { if (event.target.closest('[data-modal-close]')) close(); });
   document.addEventListener('keydown', onKey, true);
+  openModals.set(overlay, onClose);
   document.body.appendChild(overlay);
   const q = selector => overlay.querySelector(selector);
   return { overlay, q, close, isOpen: () => overlay.isConnected };
@@ -94,7 +116,7 @@ async function copyText(text, fallbackInput) {
 
 /**
  * deps: { sb, capture, isCurrent, assertCurrent, can, canManageLinks, setBusy, toast, errorMessage,
- *         containsPII, getRow, rowsLoaded, getProject, onSaved, openHistory, linkBase }
+ *         containsPII, getRow, rowsLoaded, getProject, onSaved, openHistory, linkOrigin }
  */
 export function createFollowupDialogs(deps) {
   const { sb } = deps;
@@ -105,9 +127,18 @@ export function createFollowupDialogs(deps) {
     const op = deps.capture();
     const today = localToday();
     const fixed = !!initialCode;
+    let contextEpoch = 0;
+    let contextAbort = null;
+    // 使“上次记录”的在途读取失效：换人、录下一位或关闭对话框后，迟到的结果不会显示在下一位患者下面。
+    const cancelContextRead = () => {
+      contextEpoch += 1;
+      try { contextAbort?.abort(); } catch { /* 忽略 */ }
+      contextAbort = null;
+    };
     const modal = openModal({
       id: 'visitEntry',
       title: '录入随访',
+      onClose: cancelContextRead,
       html: `<p class="muted small">项目：${escapeHtml(op.project.name)}。同一患者同一天只保留一条随访；内容完全相同的重复提交不会重复保存。请只使用研究编号，勿录入姓名等身份信息。</p>
 <div class="fu-grid">
   <div><label for="veCode">研究编号</label><input id="veCode" list="patientCodeOptions" autocomplete="off" maxlength="64" value="${escapeHtml(initialCode)}"${fixed ? ' readonly' : ''}/></div>
@@ -139,7 +170,6 @@ export function createFollowupDialogs(deps) {
     const fields = { code: q('#veCode'), date: q('#veDate'), sbp: q('#veSbp'), dbp: q('#veDbp'), scr: q('#veScr'), scrUnit: q('#veScrUnit'), upcr: q('#veUpcr'), upcrUnit: q('#veUpcrUnit'), notes: q('#veNotes') };
     const feedback = q('#veFeedback');
     let pending = null;
-    let contextEpoch = 0;
     let busy = false;
 
     const draft = () => ({ patientCode: fields.code.value, visitDate: fields.date.value, sbp: fields.sbp.value, dbp: fields.dbp.value, scr: fields.scr.value, scrUnit: fields.scrUnit.value, upcr: fields.upcr.value, upcrUnit: fields.upcrUnit.value, notes: fields.notes.value });
@@ -167,7 +197,8 @@ export function createFollowupDialogs(deps) {
     async function refreshContext() {
       const box = q('#veContext');
       const code = fields.code.value.trim();
-      const epoch = ++contextEpoch;
+      cancelContextRead();
+      const epoch = contextEpoch;
       box.replaceChildren();
       if (!code) return;
       const row = deps.getRow(code);
@@ -192,9 +223,14 @@ export function createFollowupDialogs(deps) {
       }
       if (!row.last_visit_date) return;
       try {
-        const { data, error } = await sb.from('visits_long').select('visit_date,sbp,dbp,scr_umol_l,upcr')
+        const controller = typeof AbortController === 'function' ? new AbortController() : null;
+        contextAbort = controller;
+        let query = sb.from('visits_long').select('visit_date,sbp,dbp,scr_umol_l,upcr')
           .eq('project_id', op.project.id).eq('patient_code', code).order('visit_date', { ascending: false }).limit(1);
-        if (error || epoch !== contextEpoch || !deps.isCurrent(op) || !modal.isOpen() || !data?.[0]) return;
+        if (controller && typeof query.abortSignal === 'function') query = query.abortSignal(controller.signal);
+        const { data, error } = await query;
+        if (contextAbort === controller) contextAbort = null;
+        if (error || epoch !== contextEpoch || fields.code.value.trim() !== code || !deps.isCurrent(op) || !modal.isOpen() || !data?.[0]) return;
         const v = data[0];
         const last = document.createElement('div');
         last.textContent = `上次记录（${v.visit_date}）：血压 ${v.sbp ?? '—'}/${v.dbp ?? '—'} mmHg · 血肌酐 ${v.scr_umol_l ?? '—'} μmol/L · UPCR ${v.upcr ?? '—'} mg/g。请对照单位核对本次数值。`;
@@ -210,6 +246,7 @@ export function createFollowupDialogs(deps) {
     }
 
     function resetForNext(message, tone = 'ok') {
+      cancelContextRead();
       for (const key of ['sbp', 'dbp', 'scr', 'upcr', 'notes']) fields[key].value = '';
       fields.code.readOnly = false;
       fields.code.value = '';
@@ -284,10 +321,13 @@ export function createFollowupDialogs(deps) {
   function openLinks(code) {
     if (!deps.canManageLinks()) { deps.toast('仅项目负责人和录入协作人可以管理随访链接。'); return null; }
     const op = deps.capture();
+    // 刚生成的链接全文只保存在这里（内存），用于复制；撤销该链接或关闭对话框时立即清除。
+    let once = null;
     const modal = openModal({
       id: 'links',
       title: `随访链接 · ${code}`,
       wide: true,
+      onClose: () => { once = null; },
       html: `<p class="muted small">随访链接让患者或随访人员无需登录即可填写该患者的随访。为保护患者，链接全文只在生成时显示一次，系统只保存无法还原链接的校验值；如遗失，请撤销后重新生成。链接泄露或发错对象时请立即撤销，已提交的数据不受影响。</p>
 <fieldset class="fu-fieldset"><legend>生成新链接</legend>
   <div class="fu-grid">
@@ -310,9 +350,20 @@ export function createFollowupDialogs(deps) {
     const q = modal.q;
     const feedback = q('#lkFeedback');
     let tokens = [];
+    let listLoaded = false;
     let revokeId = null;
     let busy = false;
     const markBusy = flag => { busy = flag; if (flag) modal.overlay.dataset.busy = '1'; else delete modal.overlay.dataset.busy; };
+
+    /** 移除一次性展示面板，并清除内存中的链接全文与发送文本。 */
+    function clearOnce() {
+      once = null;
+      const box = q('#lkOnce');
+      if (!box) return;
+      box.querySelectorAll('input,textarea').forEach(node => { node.value = ''; });
+      box.replaceChildren();
+      box.hidden = true;
+    }
 
     function renderList() {
       const box = q('#lkList');
@@ -322,9 +373,10 @@ export function createFollowupDialogs(deps) {
         const state = tokenState(t, now);
         const extra = state.key === 'revoked' ? revokeReasonLabel(t.revoke_reason)
           : state.key === 'used' && t.used_at ? `已于 ${formatLocalDateTime(t.used_at)} 提交` : '';
+        const fresh = once?.tokenId && once.tokenId === t.id ? '<span class="fu-sub">（刚才生成）</span>' : '';
         const action = state.key === 'active'
           ? `<button type="button" class="btn small" data-revoke-id="${escapeHtml(t.id)}">撤销</button>` : '';
-        return `<tr data-token-id="${escapeHtml(t.id)}" data-token-state="${state.key}"><td>${escapeHtml(formatLocalDateTime(t.created_at))}</td><td>${escapeHtml(formatLocalDateTime(t.expires_at) || '—')}</td><td>${t.single_use ? '单次' : '多次'}</td><td><span class="fu-badge tone-${state.tone}">${state.label}</span>${extra ? `<span class="fu-sub">${escapeHtml(extra)}</span>` : ''}</td><td>${action}</td></tr>`;
+        return `<tr data-token-id="${escapeHtml(t.id)}" data-token-state="${state.key}"><td>${escapeHtml(formatLocalDateTime(t.created_at))}${fresh}</td><td>${escapeHtml(formatLocalDateTime(t.expires_at) || '—')}</td><td>${t.single_use ? '单次' : '多次'}</td><td><span class="fu-badge tone-${state.tone}">${state.label}</span>${extra ? `<span class="fu-sub">${escapeHtml(extra)}</span>` : ''}</td><td>${action}</td></tr>`;
       }).join('');
       box.innerHTML = `<div class="fu-table-wrap"><table class="table"><thead><tr><th scope="col">创建时间</th><th scope="col">到期时间</th><th scope="col">使用方式</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody>${rows}</tbody></table></div>`;
       box.querySelectorAll('[data-revoke-id]').forEach(button => button.addEventListener('click', () => startRevoke(button.dataset.revokeId)));
@@ -335,13 +387,16 @@ export function createFollowupDialogs(deps) {
       try {
         const { data, error } = await sb.from('patient_tokens').select(TOKEN_COLUMNS)
           .eq('project_id', op.project.id).eq('patient_code', code).order('created_at', { ascending: false }).limit(200);
-        if (!deps.isCurrent(op) || !modal.isOpen()) return;
+        if (!deps.isCurrent(op) || !modal.isOpen()) return false;
         if (error) throw error;
         // 只保留需要显示的字段，任何链接文本或校验值都不会进入页面。
         tokens = (data || []).map(t => Object.fromEntries(TOKEN_COLUMNS.split(',').map(k => [k, t[k]])));
+        listLoaded = true;
         renderList();
+        return true;
       } catch (error) {
         if (deps.isCurrent(op) && modal.isOpen()) box.textContent = `随访链接读取失败：${deps.errorMessage(error)}`;
+        return false;
       }
     }
 
@@ -357,18 +412,23 @@ export function createFollowupDialogs(deps) {
       if (busy || !revokeId) return;
       const reason = q('#lkReason').value.trim();
       if (!reason) { setFeedback(feedback, '请填写撤销原因。'); q('#lkReason').focus(); return; }
+      if ([...reason].length > 500) { setFeedback(feedback, '撤销原因最多 500 字。'); return; }
       if (deps.containsPII(reason)) { setFeedback(feedback, '撤销原因中检测到疑似个人身份信息，请删除后再提交。'); return; }
       const button = q('#lkRevokeConfirm');
+      const target = revokeId;
       try {
         deps.assertCurrent(op);
         markBusy(true); deps.setBusy(button, true);
-        const { error } = await sb.rpc('revoke_patient_token_by_id', { p_project_id: op.project.id, p_token_id: revokeId, p_reason: reason });
+        const { error } = await sb.rpc('revoke_patient_token_by_id', { p_project_id: op.project.id, p_token_id: target, p_reason: reason });
         markBusy(false); deps.setBusy(button, false);
         if (!deps.isCurrent(op) || !modal.isOpen()) return;
         if (error) throw error;
         revokeId = null;
         q('#lkRevoke').hidden = true;
-        setFeedback(feedback, '链接已撤销，立即失效。', 'ok');
+        // 撤销的正是刚生成的链接（或无法确认是哪一条）时，立即移除展示面板与内存中的明文。
+        const removedOnce = !!once && (once.tokenId === null || once.tokenId === target);
+        if (removedOnce) clearOnce();
+        setFeedback(feedback, removedOnce ? '链接已撤销，立即失效；刚才显示的新链接已从页面移除。' : '链接已撤销，立即失效。', 'ok');
         deps.toast('随访链接已撤销');
         deps.onSaved('links', { patientCode: code });
         await loadList();
@@ -377,6 +437,26 @@ export function createFollowupDialogs(deps) {
       } finally {
         markBusy(false); deps.setBusy(button, false);
       }
+    }
+
+    function renderOnce(days, single) {
+      const box = q('#lkOnce');
+      box.hidden = false;
+      box.innerHTML = `<p><b>新链接已生成</b>（${days} 天内有效，${single ? '单次使用' : '可多次使用'}）。<b>请立即复制，之后无法再次查看。</b>系统只保存无法还原链接的校验值，关闭此窗口后无法再显示完整链接；如遗失，请撤销后重新生成。为避免链接留在本机浏览器的历史记录中，这里不提供直接打开；如需了解患者看到的页面，请查看“使用说明”。</p>
+<label for="lkOnceLink" class="sr-only">新生成的随访链接</label><input id="lkOnceLink" readonly autocomplete="off"/>
+<label for="lkOnceMsg">可直接发送的说明文字（粘贴到聊天工具后可再修改）</label><textarea id="lkOnceMsg" readonly rows="3"></textarea>
+<div class="btnbar"><button type="button" class="btn small primary" id="lkCopy">复制链接</button><button type="button" class="btn small" id="lkCopyMsg">复制发送文本</button><button type="button" class="btn small" id="lkOnceDone">已发送，从页面移除</button></div>`;
+      q('#lkOnceLink').value = once.link;
+      q('#lkOnceMsg').value = once.message;
+      q('#lkCopy').addEventListener('click', async () => {
+        if (!once) return;
+        deps.toast(await copyText(once.link, q('#lkOnceLink')) ? '已复制随访链接' : '复制失败，请手动选中链接复制');
+      });
+      q('#lkCopyMsg').addEventListener('click', async () => {
+        if (!once) return;
+        deps.toast(await copyText(once.message, q('#lkOnceMsg')) ? '已复制发送文本' : '复制失败，请手动选中文字复制');
+      });
+      q('#lkOnceDone').addEventListener('click', () => { clearOnce(); renderList(); setFeedback(feedback, '新链接已从页面移除；链接本身仍然有效，如需停用请撤销。', 'info'); });
     }
 
     async function createLink() {
@@ -389,6 +469,8 @@ export function createFollowupDialogs(deps) {
       const single = q('#lkSingle').checked;
       const button = q('#lkCreate');
       setFeedback(feedback, []);
+      clearOnce();
+      const knownIds = listLoaded ? new Set(tokens.map(t => t.id)) : null;
       try {
         deps.assertCurrent(op);
         markBusy(true); deps.setBusy(button, true);
@@ -397,22 +479,19 @@ export function createFollowupDialogs(deps) {
         if (!deps.isCurrent(op) || !modal.isOpen()) return;
         if (error) throw error;
         if (typeof data !== 'string' || !/^[A-Za-z0-9_-]{16,}$/.test(data)) throw new Error('服务器没有返回有效的随访链接，请刷新列表核对后再生成。');
-        const { origin, basePath } = deps.linkBase();
-        const link = buildFollowupLink(origin, basePath, data);
+        const link = buildFollowupLink(deps.linkOrigin(), data);
         const expiresOn = localToday(new Date(Date.now() + days * 86400000));
-        const message = linkMessageText({ link, expiresOn, project: deps.getProject() });
-        const once = q('#lkOnce');
-        once.hidden = false;
-        once.innerHTML = `<p><b>新链接已生成</b>（${days} 天内有效，${single ? '单次使用' : '可多次使用'}）。<b>请立即复制，之后无法再次查看。</b>系统只保存无法还原链接的校验值，关闭此窗口后无法再显示完整链接；如遗失，请撤销后重新生成。</p>
-<label for="lkOnceLink" class="sr-only">新生成的随访链接</label><input id="lkOnceLink" readonly value="${escapeHtml(link)}"/>
-<label for="lkOnceMsg">可直接发送的说明文字（粘贴到聊天工具后可再修改）</label><textarea id="lkOnceMsg" readonly rows="3">${escapeHtml(message)}</textarea>
-<div class="btnbar"><button type="button" class="btn small primary" id="lkCopy">复制链接</button><button type="button" class="btn small" id="lkCopyMsg">复制发送文本</button><button type="button" class="btn small" id="lkPreview">打开随访页预览</button></div>`;
-        q('#lkCopy').addEventListener('click', async () => deps.toast(await copyText(link, q('#lkOnceLink')) ? '已复制随访链接' : '复制失败，请手动选中链接复制'));
-        q('#lkCopyMsg').addEventListener('click', async () => deps.toast(await copyText(message, q('#lkOnceMsg')) ? '已复制发送文本' : '复制失败，请手动选中文字复制'));
-        q('#lkPreview').addEventListener('click', () => { window.open(link, '_blank', 'noopener,noreferrer'); });
+        const current = { link, message: linkMessageText({ link, expiresOn, project: deps.getProject() }), tokenId: null };
+        once = current;
+        renderOnce(days, single);
         deps.toast('随访链接已生成');
         deps.onSaved('links', { patientCode: code });
-        await loadList();
+        const loaded = await loadList();
+        // 接口只返回链接全文，不返回编号：按生成前后列表的差异认出新链接；认不出时撤销任一链接都会移除面板。
+        if (once === current && loaded && knownIds) {
+          const fresh = tokens.filter(t => !knownIds.has(t.id));
+          if (fresh.length === 1) { current.tokenId = fresh[0].id; renderList(); }
+        }
       } catch (error) {
         if (deps.isCurrent(op) && modal.isOpen()) setFeedback(feedback, `生成失败：${deps.errorMessage(error)}`);
       } finally {
@@ -482,7 +561,7 @@ ${exitOnly ? '<p id="ssExitOnly" class="fu-warn-line small">账户当前为只�
 </fieldset>
 <p id="ssExitHint" class="fu-warn-line small" hidden>拒绝或撤回同意后，看板不再提醒随访、也不能再发放随访链接。如患者不再随访，建议同时把随访状态改为“退出研究”，便于统计。 <button type="button" class="btn small" id="ssExitApply">同时改为“退出研究”</button></p>
 <p id="ssLinkNote" class="fu-warn-line small" hidden>该患者的有效随访链接将被自动撤销；已提交的数据不受影响。</p>
-<label for="ssReason">修改原因 <span class="muted">（改为或改自拒绝、撤回、失访、退出研究、死亡、肾衰竭、转院时必填）</span></label>
+<label for="ssReason">修改原因 <span class="muted" id="ssReasonNote">（改为或改自拒绝、撤回、失访、退出研究、死亡、肾衰竭、转院时必填）</span></label>
 <textarea id="ssReason" maxlength="500" placeholder="说明依据，例如：患者书面撤回同意。不要填写姓名、电话等身份信息。"></textarea>
 <div id="ssFeedback" class="fu-feedback"></div>
 <div class="btnbar"><button type="button" class="btn primary" id="ssSave">保存研究状态</button><button type="button" class="btn" data-modal-close>取消</button></div>`;
@@ -508,12 +587,29 @@ ${exitOnly ? '<p id="ssExitOnly" class="fu-warn-line small">账户当前为只�
         inputs.followup_status_date.disabled = !EXIT_FOLLOWUP_STATUSES.includes(inputs.followup_status.value);
       }
     };
-    const updateLinkNote = () => {
+    // 改为拒绝/撤回/停止随访，或从这些状态改回（如撤回后重新同意、失访后恢复随访）都必须说明原因。
+    const reasonRule = pending => {
+      const consentChanged = 'consent_status' in pending, followupChanged = 'followup_status' in pending;
+      const entering = (consentChanged && REASON_REQUIRED_CONSENT.includes(pending.consent_status))
+        || (followupChanged && REASON_REQUIRED_FOLLOWUP.includes(pending.followup_status));
+      const leaving = (consentChanged && REASON_REQUIRED_CONSENT.includes(original.consent_status))
+        || (followupChanged && REASON_REQUIRED_FOLLOWUP.includes(original.followup_status));
+      return { required: entering || leaving, entering, leaving };
+    };
+    const pendingStatus = () => {
       const pending = {};
       if (inputs.consent_status.value !== original.consent_status) pending.consent_status = inputs.consent_status.value;
       if (inputs.followup_status.value !== original.followup_status) pending.followup_status = inputs.followup_status.value;
+      return pending;
+    };
+    const updateLinkNote = () => {
+      const pending = pendingStatus();
       q('#ssLinkNote').hidden = !revokesLinks(pending);
       q('#ssExitHint').hidden = !(REASON_REQUIRED_CONSENT.includes(inputs.consent_status.value) && inputs.followup_status.value === 'active');
+      const rule = reasonRule(pending);
+      q('#ssReasonNote').textContent = rule.required
+        ? `（本次修改必填，至少 2 个字：${rule.leaving && !rule.entering ? '从拒绝、撤回或停止随访的状态改回' : '登记拒绝、撤回或停止随访'}须说明依据）`
+        : '（改为或改自拒绝、撤回、失访、退出研究、死亡、肾衰竭、转院时必填）';
     };
     for (const key of ['consent_status', 'followup_status']) inputs[key].addEventListener('change', () => { syncDates(); updateLinkNote(); });
     q('#ssExitApply').addEventListener('click', () => {
@@ -542,10 +638,13 @@ ${exitOnly ? '<p id="ssExitOnly" class="fu-warn-line small">账户当前为只�
         if (value && (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value > localToday())) errors.push(`${key === 'consent_date' ? consentDateLabel(inputs.consent_status.value) : '状态变更日期'}须为有效日期，且不能晚于今天。`);
       }
       if (changes.consent_version && changes.consent_version.length > 100) errors.push('知情同意书版本最多 100 个字符。');
-      const sensitive = ('consent_status' in changes && (REASON_REQUIRED_CONSENT.includes(changes.consent_status) || REASON_REQUIRED_CONSENT.includes(original.consent_status)))
-        || ('followup_status' in changes && (REASON_REQUIRED_FOLLOWUP.includes(changes.followup_status) || REASON_REQUIRED_FOLLOWUP.includes(original.followup_status)));
-      if (sensitive && reason.length < 2) errors.push('本次修改涉及拒绝、撤回或停止随访，请填写修改原因。');
-      if (reason.length > 500) errors.push('修改原因最多 500 字。');
+      const rule = reasonRule(changes);
+      if (rule.required && [...reason].length < 2) {
+        errors.push(rule.leaving && !rule.entering
+          ? '本次修改把患者从拒绝、撤回或停止随访的状态改回（如重新同意、恢复随访），请填写修改原因（至少 2 个字），说明依据。'
+          : '本次修改涉及拒绝、撤回或停止随访，请填写修改原因（至少 2 个字）。');
+      }
+      if ([...reason].length > 500) errors.push('修改原因最多 500 字。');
       if (deps.containsPII(reason) || deps.containsPII(changes.consent_version || '')) errors.push('内容中检测到疑似个人身份信息，请删除后再保存。');
       if (errors.length) { setFeedback(feedback, errors.length === 1 ? errors[0] : ['请先修正以下内容：', ...errors]); return; }
       if (revokesLinks(changes) && !window.confirm('保存后，该患者的有效随访链接将被自动撤销，已提交的数据不受影响。确认保存？')) return;
@@ -572,6 +671,6 @@ ${exitOnly ? '<p id="ssExitOnly" class="fu-warn-line small">账户当前为只�
     return modal;
   }
 
-  return { openVisitEntry, openLinks, openStudyStatus };
+  return { openVisitEntry, openLinks, openStudyStatus, closeAll: closeAllModals };
 }
 
