@@ -1,5 +1,5 @@
-import { supabase } from "/lib/supabase-client.js?v=registry-20260914-integrated-v1";
-import { qs, toast, escapeHtml } from "/lib/utils.js?v=registry-20260914-integrated-v1";
+import { supabase } from "/lib/supabase-client.js?v=registry-20261012-adoption-v4";
+import { qs, toast, escapeHtml } from "/lib/utils.js?v=registry-20261012-adoption-v4";
 import {
   normalizedNumber, validateVisit, createRequestId, ckdepi2021, DB_LIMITS, SCR_MGDL_TO_UMOL,
   studyInfo, classifyPatientError, contextErrorMessage, submissionOutcome, dataLocationLead,
