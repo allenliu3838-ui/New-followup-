@@ -3,7 +3,7 @@ import { createProjectMembers } from "/lib/project-members.js?v=registry-2026101
 import { qs, qsa, toast, toCsv, downloadText, downloadCsvUtf8Bom, fmtDate, daysLeft, escapeHtml } from "/lib/utils.js?v=registry-20261012-adoption-v4";
 import { throttle } from "/lib/rate-limit.js?v=registry-20261012-adoption-v4";
 import { validatePassword } from "/lib/password-strength.js?v=registry-20261012-adoption-v4";
-import { strictDate, finiteNumber, normalizeUpcr, parseRegistryCsv, readAllRows, exportColumns, sha256Text, BASELINE_IMPORT_FIELDS, VISIT_IMPORT_FIELDS, normalizeImportRow, registryErrorMessage, containsPII, assertNoPII, fieldLabel } from "/lib/registry-data.js?v=registry-20261012-adoption-v4";
+import { strictDate, finiteNumber, normalizeUpcr, parseRegistryCsv, readAllRows, readKeysetRows, exportColumns, sha256Text, BASELINE_IMPORT_FIELDS, VISIT_IMPORT_FIELDS, normalizeImportRow, registryErrorMessage, containsPII, assertNoPII, fieldLabel, creatinineUmol, correctionReasonError, CLINICAL_LIMITS, SCR_MGDL_TO_UMOL } from "/lib/registry-data.js?v=registry-20261012-adoption-v4";
 import { renderOverviewHtml, renderBoardHtml, renderFilterBar, sortBoardRows } from "/lib/followup-board.js?v=registry-20261012-adoption-v4";
 import { createFollowupDialogs } from "/lib/followup-dialogs.js?v=registry-20261012-adoption-v4";
 
@@ -63,6 +63,7 @@ function injectAuthGatedContent() {
   el.patBirthYear = qs("#patBirthYear");
   el.patBaselineDate = qs("#patBaselineDate");
   el.patBaselineScr = qs("#patBaselineScr");
+  el.patBaselineScrUnit = qs("#patBaselineScrUnit");
   el.patBaselineUpcr = qs("#patBaselineUpcr");
   el.patBaselineUpcrUnit = qs("#patBaselineUpcrUnit");
   el.patientSearch = qs("#patientSearch");
@@ -235,6 +236,8 @@ function bindAuthGatedEvents() {
   el.patientSearch?.addEventListener("input", ()=>{boardView.search=el.patientSearch.value;boardView.limit=100;renderBoard();});
   el.patBaselineUpcr?.addEventListener("input", renderBaselineConversion);
   el.patBaselineUpcrUnit?.addEventListener("change", renderBaselineConversion);
+  el.patBaselineScr?.addEventListener("input", renderBaselineScrHint);
+  el.patBaselineScrUnit?.addEventListener("change", renderBaselineScrHint);
   qs("#btnResetBaseline")?.addEventListener("click", ()=>{if(confirm("放弃本次未保存的基线？"))resetBaseline();});
   qs("#workspaceNav")?.addEventListener("click", e=>{ const a=e.target.closest("a");if(!a)return;const href=a.getAttribute("href");if(!href?.startsWith("#"))return;const t=qs(href);const d=t?.tagName==="DETAILS"?t:t?.querySelector(":scope > details");if(d)d.open=true; });
   el.btnOpenVisitEntry?.addEventListener("click", ()=>followupDialogs.openVisitEntry(''));
@@ -287,6 +290,15 @@ function bindAuthGatedEvents() {
 
   el.btnLoadIssues?.addEventListener("click", loadIssues);
 
+  // 附加数据列表中的删除 / 更正按钮：用 data 属性与事件委托，不在 HTML 中拼接脚本。
+  [el.variantsPreview, el.labsPreview, el.medsPreview, el.eventsPreview, el.projCustomLabsList].forEach(box => box?.addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (!b || !box.contains(b) || b.disabled) return;
+    if (b.dataset.deleteCustomLab) deleteProjectCustomLab(b.dataset.deleteCustomLab);
+    else if (b.dataset.deleteTable) deleteRecord(b.dataset.deleteTable, b.dataset.recordId);
+    else if (b.dataset.editTable) openRecordEditor(b.dataset.editTable, b.dataset.recordId);
+  }));
+
   [
     { el: el.evtNotes,  label: "事件备注" },
     { el: el.varNotes,  label: "基因备注" },
@@ -333,8 +345,9 @@ function requireProjectCapability(capability){
 }
 function applyProjectAccess(){
   const groups={can_write:['btnCreatePatient','btnAddVariant','btnAddLab','btnAddMed','btnAddEvent','importFile','btnConfirmImport','btnOpenVisitEntry'],can_manage_project:['btnSaveSettings'],can_export:['btnExportBaseline','btnExportVisits','btnExportLabs','btnExportMeds','btnExportVariants','btnExportEvents','btnPaperPack','btnCreateSnapshot','btnPaperPackWithSnapshot','btnRefreshSnapshots']};
-  for(const [capability,keys]of Object.entries(groups))for(const key of keys){const node=el[key];if(node){node.dataset.projectCapability=capability;node.disabled=busyButtons.has(node)||!canProject(capability);}}
-  qsa('[data-project-capability]').forEach(node=>{node.disabled=busyButtons.has(node)||!canProject(node.dataset.projectCapability);});
+  // data-blocked：按钮因本身状态不可用（如导入预览仍有错误），权限刷新时不重新启用。
+  for(const [capability,keys]of Object.entries(groups))for(const key of keys){const node=el[key];if(node){node.dataset.projectCapability=capability;node.disabled=busyButtons.has(node)||!canProject(capability)||node.dataset.blocked==='1';}}
+  qsa('[data-project-capability]').forEach(node=>{node.disabled=busyButtons.has(node)||!canProject(node.dataset.projectCapability)||node.dataset.blocked==='1';});
   const label=qs('#projectAccessStatus');if(label)label.textContent=!selectedProject?'请先选择项目':!projectAccess?'正在核对项目权限…':`我的项目角色：${({owner:'项目负责人',editor:'录入协作人',analyst:'分析协作人',viewer:'只读协作人'})[projectAccess.role]||'无权限'} · ${projectAccess.can_write?'可录入':'不可录入'} · ${projectAccess.can_export?'可导出':'不可导出'}${projectAccess.write_block_reason&&projectAccess.write_block_reason!=='role_read_only'?' · '+registryErrorMessage(projectAccess.write_block_reason):''}`;
   if(el.projectSettingsDetails)el.projectSettingsDetails.hidden=!canManageProject();
 }
@@ -357,11 +370,19 @@ function currentContext(c){try{assertContext(c);return true;}catch{return false;
 function resetBaseline(){
   ['patCode','patBirthYear','patBaselineDate','patBaselineScr','patBaselineUpcr','biopsyDate','lnBiopsyDate','lnAI','lnCI','rctRandomId','rctDate'].forEach(k=>{if(el[k])el[k].value='';});
   ['patSex','mestM','mestE','mestS','mestT','mestC','lnClass','lnPodocytopathy','rctArm'].forEach(k=>{if(el[k])el[k].value='';});
-  if(el.patBaselineUpcrUnit)el.patBaselineUpcrUnit.value='mg/g';renderBaselineConversion();
+  if(el.patBaselineUpcrUnit)el.patBaselineUpcrUnit.value='mg/g';
+  if(el.patBaselineScrUnit)el.patBaselineScrUnit.value='umol';
+  renderBaselineConversion();renderBaselineScrHint();
 }
 function renderBaselineConversion(){
   const hint=qs('#baselineUnitHint');if(!hint)return;
   try{const n=normalizeUpcr(el.patBaselineUpcr?.value,el.patBaselineUpcrUnit?.value||'mg/g');hint.textContent=n==null?'按所选单位输入，保存前显示换算结果。':`将保存：${n} mg/g；原始输入与单位同时留存。`;}catch(e){hint.textContent=e.message;}
+}
+function renderBaselineScrHint(){
+  const hint=qs('#baselineScrHint');if(!hint)return;
+  const raw=el.patBaselineScr?.value?.trim(),unit=el.patBaselineScrUnit?.value||'umol';
+  if(!raw){hint.textContent='按化验单单位填写；系统统一按 μmol/L 保存（10–5000 μmol/L）。';return;}
+  try{const umol=creatinineUmol(raw,unit,'基线血肌酐');hint.textContent=unit==='mgdl'?`按 1 mg/dL = ${SCR_MGDL_TO_UMOL} μmol/L 换算，将保存为 ${umol} μmol/L。`:`将保存为 ${umol} μmol/L。`;}catch(e){hint.textContent=e.message;}
 }
 function clearProjectWorkspace(){
   resetBaseline();_importParsed=null;projectCustomLabs=[];patients=[];patientsLoaded=false;projectOverview=null;
@@ -380,16 +401,87 @@ function clearProjectWorkspace(){
   ['importPreview','importProgress','snapshotOut'].forEach(k=>{if(el[k]){el[k].style.display='none';if(k!=='importPreview')el[k].textContent='';}});
   ['issueSummary','snapshotsList','patientsList','variantsPreview','labsPreview','medsPreview','eventsPreview'].forEach(k=>{if(el[k])el[k].textContent='请等待当前项目加载。';});
   if(el.issueList)el.issueList.textContent='';
+  boardLoad=null;rowRefreshSeq.clear();
+  followupDialogs.closeAll();
   document.querySelectorAll('[data-registry-modal]').forEach(n=>n.remove());
 }
 function clearSessionWorkspace(){
   sessionEpoch++;projectEpoch++;renderedForUser=null;projects=[];selectedProject=null;patients=[];patientsLoaded=false;projectOverview=null;_importParsed=null;projectCustomLabs=[];labCatalog=[];unitMap={};projectAccess=null;busyButtons.clear();frozenRequests.clear();isPlatformAdmin=false;
   projectMembersController?.clear();projectMembersController=null;
+  boardLoad=null;rowRefreshSeq.clear();
+  followupDialogs.closeAll();
   document.getElementById('authGatedContainer')?.replaceChildren();
   document.querySelectorAll('[data-registry-modal]').forEach(n=>n.remove());
   _authGatedBound=false;
   if(el.password)el.password.value='';if(el.confirmPwd)el.confirmPwd.value='';
-  if(el.trialBadge)el.trialBadge.style.display='none';if(el.upgradeBtn)el.upgradeBtn.style.display='none';
+  clearAccountDisplay();
+}
+/** 退出登录后清除页面上显示过的账号信息：邮箱、账户权益徽章及可能含研究编号的提示。 */
+function clearAccountDisplay(){
+  if(el.headerUserEmail){el.headerUserEmail.textContent='';el.headerUserEmail.style.display='none';}
+  if(el.trialBadge){el.trialBadge.textContent='';el.trialBadge.className='badge';el.trialBadge.style.display='none';}
+  if(el.upgradeBtn){el.upgradeBtn.style.display='none';el.upgradeBtn.setAttribute('href','#');}
+  if(el.email)el.email.value='';
+  if(el.loginHint)el.loginHint.textContent='';
+  document.querySelectorAll('.toast .t').forEach(n=>n.remove());
+  hideIdleWarning();
+}
+
+// ── 闲置自动退出 ─────────────────────────────────────────────
+// 30 分钟没有操作（鼠标、键盘、触摸、滚动）自动退出登录，28 分钟时提示可“继续使用”。
+// 多个标签页通过 localStorage 只共享“最近一次操作的时间戳”（不含任何账号或研究数据），任一标签页有操作即视为在用。
+const IDLE_LIMIT_MS=30*60_000, IDLE_WARN_MS=28*60_000, IDLE_WRITE_EVERY_MS=10_000, IDLE_STORE_KEY='ks_staff_last_activity';
+// ready：首次判断完登录状态后才写入时间戳，避免打开页面时的鼠标移动掩盖“已闲置很久”的旧会话。
+// expired：本页因闲置退出（或发现其他标签页因闲置退出），登录页说明原因，直到重新登录。
+const idle={last:Date.now(),written:0,signingOut:false,ready:false,expired:false};
+const IDLE_MESSAGE='由于 30 分钟没有操作，已自动退出登录。为保护研究数据，请重新登录。';
+function storedActivity(){try{const v=Number(localStorage.getItem(IDLE_STORE_KEY));return Number.isFinite(v)&&v>0?v:0;}catch{return 0;}}
+// 提示显示期间，只有点击、按键、触摸（或“继续使用”）才算继续使用；单纯移动鼠标或滚动不关闭提示。
+// 提示框内的操作交给“继续使用”按钮处理：按下按钮时不先收起提示，以免点击落到下面的页面元素上。
+const PASSIVE_ACTIVITY=new Set(['pointermove','mousemove','wheel','scroll']);
+function noteActivity(event){
+  const warningShown=!!el.idleWarning&&!el.idleWarning.hidden;
+  if(event&&warningShown&&(PASSIVE_ACTIVITY.has(event.type)||el.idleWarning.contains(event.target)))return;
+  const now=Date.now();
+  if(now>idle.last)idle.last=now;
+  if(idle.ready&&now-idle.written>=IDLE_WRITE_EVERY_MS){idle.written=now;try{localStorage.setItem(IDLE_STORE_KEY,String(now));}catch{/* 隐私模式时只在本标签页计时 */}}
+  if(!el.idleWarning?.hidden)hideIdleWarning();
+}
+function hideIdleWarning(){if(el.idleWarning&&!el.idleWarning.hidden){el.idleWarning.hidden=true;}}
+function showIdleWarning(remainingMs){
+  const box=el.idleWarning;if(!box)return;
+  const seconds=Math.max(0,Math.ceil(remainingMs/1000));
+  const countdown=qs('#idleCountdown');if(countdown)countdown.textContent=`${Math.floor(seconds/60)} 分 ${String(seconds%60).padStart(2,'0')} 秒`;
+  if(box.hidden){box.hidden=false;qs('#btnIdleContinue')?.focus();}
+}
+/** 重新打开页面时：上次操作已超过 30 分钟、且之后没有重新登录，则不沿用保存的登录状态。 */
+function sessionIdleExpired(){
+  const last=storedActivity();if(!last||Date.now()-last<IDLE_LIMIT_MS)return false;
+  const signedIn=Date.parse(user?.last_sign_in_at||'')||0;
+  return !(signedIn>last);
+}
+function checkIdle(){
+  if(!user||passwordRecoveryMode||idle.signingOut){hideIdleWarning();return;}
+  const shared=storedActivity();if(shared>idle.last)idle.last=shared;
+  const idleFor=Date.now()-idle.last;
+  if(idleFor>=IDLE_LIMIT_MS){idleSignOut();return;}
+  if(idleFor>=IDLE_WARN_MS)showIdleWarning(IDLE_LIMIT_MS-idleFor);else hideIdleWarning();
+}
+async function idleSignOut(){
+  if(idle.signingOut)return;idle.signingOut=true;idle.expired=true;
+  // 先清空页面上的研究数据与账号信息，再通知服务器退出；网络缓慢时也不会继续显示数据。
+  session=null;user=null;passwordRecoveryMode=false;clearSessionWorkspace();renderAuthState();
+  try{await sb.auth.signOut({scope:'local'});}catch{/* 本机登录状态已清除 */}
+  idle.signingOut=false;
+  if(!user){setLoginHint(IDLE_MESSAGE);toast('已自动退出登录');}
+}
+function startIdleWatch(){
+  el.idleWarning=qs('#idleWarning');
+  qs('#btnIdleContinue')?.addEventListener('click',()=>{idle.written=0;noteActivity();hideIdleWarning();});
+  for(const type of ['pointerdown','pointermove','mousemove','keydown','touchstart','wheel','scroll'])window.addEventListener(type,noteActivity,{capture:true,passive:true});
+  window.addEventListener('storage',e=>{if(e.key===IDLE_STORE_KEY){const v=Number(e.newValue);if(Number.isFinite(v)&&v>idle.last){idle.last=v;hideIdleWarning();}}});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkIdle();});
+  setInterval(checkIdle,1000);
 }
 window.addEventListener('beforeunload',e=>{if(busyButtons.size){e.preventDefault();e.returnValue='';}});
 
@@ -410,7 +502,8 @@ const followupDialogs=createFollowupDialogs({
   getProject:()=>selectedProject,
   onSaved:onFollowupSaved,
   openHistory:code=>openVisitHistory(code),
-  linkBase:()=>({origin:location.origin,basePath:resolveAppBasePath()}),
+  // 随访链接固定指向站点根下的 /followup，不随工作台的打开路径（/staff、/staff/…）变化。
+  linkOrigin:()=>location.origin,
 });
 
 
@@ -422,7 +515,7 @@ function setBusy(btn, busy){
   if (!btn) return;
   if (!btn.dataset.label) btn.dataset.label = btn.textContent;
   if(busy)busyButtons.add(btn);else busyButtons.delete(btn);
-  btn.disabled = !!busy || !!(btn.dataset.projectCapability&&!canProject(btn.dataset.projectCapability));
+  btn.disabled = !!busy || !!(btn.dataset.projectCapability&&!canProject(btn.dataset.projectCapability)) || btn.dataset?.blocked==='1';
   btn.textContent = busy ? "处理中…" : btn.dataset.label;
 }
 
@@ -454,6 +547,7 @@ function showIganPathBox(){
 }
 
 async function init(){
+  startIdleWatch();
   // Show loading indicator during auth check
   const authLoading = document.getElementById("authLoading");
   if (authLoading) authLoading.style.display = "block";
@@ -487,7 +581,8 @@ async function init(){
     // 同一用户的工作台已加载时不重复读取，避免覆盖正在进行的操作。
     if (["INITIAL_SESSION", "SIGNED_IN", "USER_UPDATED"].includes(_event) && user && renderedForUser === user.id) return;
     // Clear selection state on sign out
-    if (_event === "SIGNED_OUT"){ clearSessionWorkspace(); passwordRecoveryMode = false; }
+    // 其他标签页因闲置退出时，本页同样说明原因。
+    if (_event === "SIGNED_OUT"){ if (Date.now() - Math.max(idle.last, storedActivity()) >= IDLE_WARN_MS) idle.expired = true; clearSessionWorkspace(); passwordRecoveryMode = false; }
     renderAuthState();
     // After normal login/auth, check if there's a pending password reset
     if (user && !passwordRecoveryMode) checkPendingPasswordReset();
@@ -526,6 +621,8 @@ function renderAuthState(){
 
   if (!user){
     renderedForUser = null;
+    idle.ready = true;
+    clearAccountDisplay();
     // Anonymous: only show login card, no auth-gated content in DOM at all
     el.loginCard.style.display = "block";
     if (el.appCard) el.appCard.style.display = "none";
@@ -539,11 +636,15 @@ function renderAuthState(){
     el.btnRegister.style.display = "";
     el.btnResetPwd.style.display = "";
     isPlatformAdmin = false;
-    setLoginHint("提示：首次使用请先点击「注册账号」创建账号，之后再登录。");
+    setLoginHint(idle.expired ? IDLE_MESSAGE : "提示：首次使用请先点击「注册账号」创建账号，之后再登录。");
     return;
   }
   // 设置新密码完成前不显示工作台
   if (passwordRecoveryMode){ showNewPasswordMode(); return; }
+  // 关闭页面超过 30 分钟后重新打开：不沿用保存的登录状态，需要重新登录。
+  if (sessionIdleExpired()){ idleSignOut(); return; }
+  if (!idle.ready){ idle.ready = true; idle.last = Date.now(); idle.written = 0; noteActivity(); }
+  idle.expired = false;
   renderedForUser = user.id;
   // Logged in: inject auth-gated content from template (only once)
   injectAuthGatedContent();
@@ -856,7 +957,7 @@ function renderProjectCustomLabsPanel(){
     <div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(0,0,0,.06)">
       <span style="flex:1">${escapeHtml(cl.name)}${cl.unit ? " <span style='color:var(--muted)'>" + escapeHtml(cl.unit) + "</span>" : ""}</span>
       <button class="btn small" style="font-size:11px;padding:2px 7px;background:#fee2e2;color:#b91c1c;border:none"
-        data-project-capability="can_write" onclick="window._deleteProjectCustomLab('${cl.id}')">删除</button>
+        data-project-capability="can_write" data-delete-custom-lab="${escapeHtml(cl.id)}">删除</button>
     </div>`).join("");
   applyProjectAccess();
 }
@@ -869,7 +970,6 @@ async function deleteProjectCustomLab(id){
   toast("已删除");
   await loadProjectCustomLabs();
 }
-window._deleteProjectCustomLab = deleteProjectCustomLab;
 
 function updateLabUnits(){
   const code = el.labTestCode?.value;
@@ -903,9 +1003,14 @@ function updateLabUnits(){
     return;
   }
   const units = unitMap[code] || [];
-  el.labUnit.innerHTML = units.map(u =>
-    `<option value="${u.unit_symbol}" ${u.is_standard ? "selected" : ""}>${u.unit_symbol}${u.is_standard ? "（标准单位）" : ""}</option>`
-  ).join("");
+  // 单位来自数据库目录：用 DOM 属性与 textContent 生成选项，不拼接 HTML。
+  el.labUnit.replaceChildren(...units.map(u => {
+    const option = document.createElement("option");
+    option.value = String(u.unit_symbol ?? "");
+    option.textContent = `${u.unit_symbol ?? ""}${u.is_standard ? "（标准单位）" : ""}`;
+    option.selected = !!u.is_standard;
+    return option;
+  }));
 
   // Show catalog display note as hint
   const cat = labCatalog.find(c => c.code === code);
@@ -1208,14 +1313,23 @@ async function seedDemoData(){
 // ──────────────────────────────────────────────────────────────────────────────
 
 // ── 项目概览与随访看板（v_project_overview / v_patient_followup_status，按调用者权限读取） ──
+// 看板按 patient_id 键集分页读取（每页 500 行，不逐页计数）；保存随访、修改研究状态、生成或撤销链接后
+// 只重新读取该患者一行和项目概览，不再全量重读看板。
+const BOARD_PAGE_SIZE=500;
+let boardLoad=null;              // 正在进行的全量读取：{touched:Set<研究编号>}
+const rowRefreshSeq=new Map();   // 研究编号 → 最近一次单行读取的序号（丢弃较早发出、较晚返回的结果）
 async function loadBoard(op=captureContext()){
+  const load={touched:new Set()};boardLoad=load;
   try{
-    const rows=await readAllRows(sb,'v_patient_followup_status',op.project.id,()=>assertContext(op),500,{},{key:'patient_id'});
-    assertContext(op);
+    const rows=await readKeysetRows(sb,'v_patient_followup_status',op.project.id,{key:'patient_id',pageSize:BOARD_PAGE_SIZE,assertCurrent:()=>assertContext(op)});
+    assertContext(op);if(boardLoad!==load)return;boardLoad=null;
     patients=sortBoardRows(rows).map(r=>({...r,id:r.patient_id}));patientsLoaded=true;
     renderBoard();renderPatientCodeOptions();
     if(el.newPatientDetails&&!patients.length)el.newPatientDetails.open=true;
+    // 全量读取期间单独刷新过的患者：全量结果可能早于那次保存，再读一次这些行。
+    for(const code of load.touched)refreshPatientRow(op,code);
   }catch(e){
+    if(boardLoad===load)boardLoad=null;
     if(!currentContext(op))return;
     patients=[];patientsLoaded=false;
     if(el.boardFilters)el.boardFilters.replaceChildren();
@@ -1223,19 +1337,48 @@ async function loadBoard(op=captureContext()){
   }
 }
 
-async function loadOverview(op=captureContext()){
+/** 只重新读取一位患者的看板行（按项目 + 研究编号），替换、加入或移除该行。 */
+async function refreshPatientRow(op,code){
+  if(!code)return;
+  if(boardLoad)boardLoad.touched.add(code);
+  const seq=(rowRefreshSeq.get(code)||0)+1;rowRefreshSeq.set(code,seq);
   try{
-    const {data,error}=await sb.from('v_project_overview').select('*').eq('project_id',op.project.id).maybeSingle();
-    if(!currentContext(op))return;if(error)throw error;
-    projectOverview=data||null;renderOverview();
-  }catch(e){if(currentContext(op)&&el.projectOverview)el.projectOverview.textContent='项目概览读取失败：'+registryErrorMessage(e);}
+    const {data,error}=await sb.from('v_patient_followup_status').select('*').eq('project_id',op.project.id).eq('patient_code',code).maybeSingle();
+    if(!currentContext(op)||rowRefreshSeq.get(code)!==seq)return;
+    if(error)throw error;
+    if(!patientsLoaded)return; // 全量读取尚未完成，结果会包含该患者
+    const index=patients.findIndex(p=>p.patient_code===code);
+    if(data){const row={...data,id:data.patient_id};if(index>=0)patients[index]=row;else patients.push(row);}
+    else if(index>=0)patients.splice(index,1);
+    patients=sortBoardRows(patients);
+    renderBoard();if(index<0||!data)renderPatientCodeOptions();
+  }catch(e){if(currentContext(op))toast('该患者的看板状态刷新失败，请稍后刷新页面核对：'+registryErrorMessage(e));}
+}
+
+// 概览是全项目汇总：连续保存时只保留一次在途读取，结束后如有新的保存再读一次。
+let overviewLoad=null;
+async function loadOverview(op=captureContext()){
+  if(overviewLoad&&overviewLoad.projectEpoch===op.projectEpoch&&overviewLoad.sessionEpoch===op.sessionEpoch){overviewLoad.again=true;return overviewLoad.promise;}
+  const load={projectEpoch:op.projectEpoch,sessionEpoch:op.sessionEpoch,again:false};overviewLoad=load;
+  load.promise=(async()=>{
+    try{
+      do{
+        load.again=false;
+        const {data,error}=await sb.from('v_project_overview').select('*').eq('project_id',op.project.id).maybeSingle();
+        if(!currentContext(op))return;if(error)throw error;
+        projectOverview=data||null;renderOverview();
+      }while(load.again);
+    }catch(e){if(currentContext(op)&&el.projectOverview)el.projectOverview.textContent='项目概览读取失败：'+registryErrorMessage(e);}
+    finally{if(overviewLoad===load)overviewLoad=null;}
+  })();
+  return load.promise;
 }
 
 async function refreshFollowup(op=captureContext()){await Promise.all([loadBoard(op),loadOverview(op)]);}
 
-function onFollowupSaved(kind){
+function onFollowupSaved(kind,{patientCode}={}){
   if(!selectedProject)return;
-  const op=captureContext(),jobs=[refreshFollowup(op)];
+  const op=captureContext(),jobs=[loadOverview(op),patientCode?refreshPatientRow(op,patientCode):loadBoard(op)];
   if(kind==='visit')jobs.push(loadIssueSummary());
   Promise.all(jobs).catch(()=>{});
 }
@@ -1328,7 +1471,6 @@ async function deleteRecord(table, id){
   catch(e){toast('删除失败：'+registryErrorMessage(e));}finally{setBusy(marker,false);}
 }
 
-window._deleteRecord = deleteRecord;
 
 function renderVariantsPreview(rows){
   if (!el.variantsPreview) return;
@@ -1343,7 +1485,7 @@ function renderVariantsPreview(rows){
       <td>${escapeHtml(r.gene??"")}</td>
       <td class="muted small">${escapeHtml((r.variant||r.hgvs_c||"").slice(0,28))}</td>
       <td>${escapeHtml(r.classification??"")}</td>
-      <td><button class="btn small" style="color:#b91c1c" data-project-capability="can_write" onclick="window._deleteRecord('variants_long','${escapeHtml(r.id??"")}')">删除</button></td>
+      <td><button class="btn small" style="color:#b91c1c" data-project-capability="can_write" data-delete-table="variants_long" data-record-id="${escapeHtml(r.id??"")}">删除</button></td>
     </tr>
   `).join("");
   el.variantsPreview.innerHTML = `
@@ -1369,7 +1511,7 @@ function renderLabsPreview(rows){
       <td>${escapeHtml(r.lab_name||r.lab_test_code||"")}</td>
       <td>${escapeHtml(r.lab_value!=null ? String(r.lab_value) : (r.value_raw!=null ? String(r.value_raw) : ""))}</td>
       <td>${escapeHtml(r.lab_unit||r.unit_symbol||"")}</td>
-      <td><button class="btn small" style="color:#b91c1c" data-project-capability="can_write" onclick="window._editRegistryRecord('labs_long','${escapeHtml(r.id??"")}')">核对 / 更正</button></td>
+      <td><button class="btn small" style="color:#b91c1c" data-project-capability="can_write" data-edit-table="labs_long" data-record-id="${escapeHtml(r.id??"")}">核对 / 更正</button></td>
     </tr>
   `).join("");
   el.labsPreview.innerHTML = `
@@ -1395,7 +1537,7 @@ function renderMedsPreview(rows){
       <td class="muted small">${escapeHtml([r.dose,r.frequency,r.route].filter(Boolean).join(" "))}</td>
       <td>${escapeHtml(r.start_date??"")}</td>
       <td>${escapeHtml(r.end_date??"")}</td>
-      <td><button class="btn small" style="color:#b91c1c" data-project-capability="can_write" onclick="window._deleteRecord('meds_long','${escapeHtml(r.id??"")}')">删除</button></td>
+      <td><button class="btn small" style="color:#b91c1c" data-project-capability="can_write" data-delete-table="meds_long" data-record-id="${escapeHtml(r.id??"")}">删除</button></td>
     </tr>
   `).join("");
   el.medsPreview.innerHTML = `
@@ -1424,7 +1566,7 @@ function renderEventsPreview(rows){
       <td>${escapeHtml(r.event_date??"")}</td>
       <td>${escapeHtml(EVENT_SOURCE_LABELS[r.source||"manual"]||"其他来源")}</td>
       <td class="muted small">${escapeHtml((r.notes??"").slice(0,30))}</td>
-      <td><button class="btn small" style="color:#b91c1c" data-project-capability="can_write" onclick="window._deleteRecord('events_long','${escapeHtml(r.id??"")}')">删除</button></td>
+      <td><button class="btn small" style="color:#b91c1c" data-project-capability="can_write" data-delete-table="events_long" data-record-id="${escapeHtml(r.id??"")}">删除</button></td>
     </tr>
   `).join("");
   el.eventsPreview.innerHTML = `
@@ -1453,9 +1595,11 @@ async function createPatientBaseline(){
   }
 
   let scr,upcr,baselineDate;
-  try{scr=finiteNumber(el.patBaselineScr.value,'基线血肌酐',{min:0.01,max:3000});upcr=normalizeUpcr(el.patBaselineUpcr.value,el.patBaselineUpcrUnit.value);baselineDate=strictDate(el.patBaselineDate.value,'基线日期');assertNoPII(patient_code,'研究编号');}catch(e){return toast(e.message);}
+  // 与数据库约束一致：基线血肌酐 10–5000 μmol/L；按 mg/dL 填写时先换算。
+  try{scr=creatinineUmol(el.patBaselineScr.value,el.patBaselineScrUnit?.value||'umol','基线血肌酐');upcr=normalizeUpcr(el.patBaselineUpcr.value,el.patBaselineUpcrUnit.value);baselineDate=strictDate(el.patBaselineDate.value,'基线日期');assertNoPII(patient_code,'研究编号');}catch(e){if(/血肌酐/.test(e.message))el.patBaselineScr?.focus();return toast(e.message);}
   if(!baselineDate)return toast("请填写基线日期");
-  if(!confirm(`确认保存患者 ${patient_code} 到 ${op.project.name}？\n基线日期：${baselineDate}；血肌酐：${scr??'未填'} μmol/L；UPCR：${upcr??'未填'} mg/g`))return;
+  const scrNote=scr!=null&&el.patBaselineScrUnit?.value==='mgdl'?`（由 ${el.patBaselineScr.value} mg/dL 换算）`:'';
+  if(!confirm(`确认保存患者 ${patient_code} 到 ${op.project.name}？\n基线日期：${baselineDate}；血肌酐：${scr??'未填'} μmol/L${scrNote}；UPCR：${upcr??'未填'} mg/g`))return;
   const payload = {
     project_id: op.project.id,
     patient_code,
@@ -1501,28 +1645,13 @@ async function createPatientBaseline(){
     if(!currentContext(op))return;
     toast(`已建立 ${patient_code} 的基线；可在随访看板中为其录入随访。表单已清空，可继续录入下一位。`);
     resetBaseline();
-    await refreshFollowup(op);
+    await Promise.all([refreshPatientRow(op,patient_code),loadOverview(op)]);
   }catch(e){
     console.error(e);
     toast("保存失败：" + registryErrorMessage(e));
   }finally{
     setBusy(btn,false);
   }
-}
-
-function resolveAppBasePath(){
-  const p = window.location.pathname || "/";
-  // keep links stable when mounted under sub-paths like /c/, /app/, etc.
-  const knownEntry = ["/staff", "/staff.html", "/patient.html", "/guide", "/guide.html"];
-  for (const entry of knownEntry){
-    if (p === entry || p.endsWith(entry)){
-      const base = p.slice(0, -entry.length);
-      return base || "";
-    }
-  }
-  // default: directory of current page
-  const idx = p.lastIndexOf("/");
-  return idx > 0 ? p.slice(0, idx) : "";
 }
 
 async function addVariant(){
@@ -1887,7 +2016,6 @@ async function loadIssues(page=0){
     }));
   }catch(e){if(currentContext(op))el.issueList.textContent='数据质控问题读取失败：'+registryErrorMessage(e);}
 }
-window._editRegistryRecord=(table,id)=>openRecordEditor(table,id);
 const EDIT_FIELDS={
   patients_baseline:['sex','birth_year','baseline_date','baseline_scr','baseline_upcr','biopsy_date','oxford_m','oxford_e','oxford_s','oxford_t','oxford_c','ln_biopsy_date','ln_class','ln_activity_index','ln_chronicity_index','ln_podocytopathy','treatment_arm','randomization_id','randomization_date'],
   visits_long:['visit_date','sbp','dbp','scr_umol_l','upcr','notes'],
@@ -1895,6 +2023,8 @@ const EDIT_FIELDS={
 };
 const EDIT_LABELS={sex:'性别 M/F',birth_year:'出生年份',baseline_date:'基线日期',baseline_scr:'基线肌酐 μmol/L',baseline_upcr:'基线UPCR原始化验值',visit_date:'随访日期',sbp:'收缩压 mmHg',dbp:'舒张压 mmHg',scr_umol_l:'肌酐 μmol/L',upcr:'UPCR mg/g',notes:'备注（不含身份信息）',lab_date:'化验日期',lab_test_code:'化验目录代码',value_raw:'原始化验值',unit_symbol:'原始化验单位',biopsy_date:'肾穿日期',ln_biopsy_date:'LN肾穿日期',ln_class:'LN病理分型',ln_activity_index:'LN活动指数',ln_chronicity_index:'LN慢性指数',ln_podocytopathy:'足细胞病 true/false',treatment_arm:'研究分组',randomization_id:'分组记录编号',randomization_date:'分组日期'};
 const EDIT_NUMBERS=new Set(['birth_year','baseline_scr','baseline_upcr','oxford_m','oxford_e','oxford_s','oxford_t','oxford_c','ln_activity_index','ln_chronicity_index','sbp','dbp','scr_umol_l','upcr','value_raw']);
+// 更正时的数值范围，与数据库约束一致（数据库仍是最终校验）。血肌酐另按 creatinineUmol 检查并提示单位。
+const EDIT_LIMITS={birth_year:{integer:true,min:1900,max:new Date().getFullYear()},oxford_m:{integer:true,min:0,max:1},oxford_e:{integer:true,min:0,max:1},oxford_s:{integer:true,min:0,max:1},oxford_t:{integer:true,min:0,max:2},oxford_c:{integer:true,min:0,max:2},ln_activity_index:{min:0,max:24},ln_chronicity_index:{min:0,max:12},sbp:CLINICAL_LIMITS.sbp,dbp:CLINICAL_LIMITS.dbp,upcr:CLINICAL_LIMITS.upcr,baseline_upcr:{min:0}};
 async function openVisitHistory(patientCode){
   const op=captureContext();
   try{
@@ -1922,16 +2052,22 @@ async function openRecordEditor(table,id){
     if(table==='labs_long'&&!record.lab_test_code)return toast('此记录使用旧自定义化验格式。请先联系负责人确认目录映射，不能按标准化化验直接覆盖。');
     const overlay=document.createElement('div');overlay.dataset.registryModal='editor';overlay.style.cssText='position:fixed;inset:0;background:#102d46bb;z-index:9000;display:grid;place-items:center;padding:16px';
     const original={...record};if(table==='patients_baseline'&&record.baseline_upcr_raw!=null)original.baseline_upcr=record.baseline_upcr_raw;
-    overlay.innerHTML=`<section role="dialog" aria-modal="true" aria-labelledby="editTitle" style="background:white;color:#102d46;padding:24px;border-radius:16px;max-width:760px;width:100%;max-height:90vh;overflow:auto"><h2 id="editTitle">核对并更正 · ${escapeHtml(record.patient_code)}</h2><p>${escapeHtml(op.project.name)} · ${escapeHtml(({patients_baseline:'基线记录',visits_long:'随访记录',labs_long:'化验记录'})[table]||'记录')}。研究编号不能修改；更正原因与修改前后的值都会留痕。</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">${EDIT_FIELDS[table].map(k=>`<div><label for="edit_${k}">${escapeHtml(EDIT_LABELS[k]||k)}</label><input id="edit_${k}" data-field="${k}" type="${k.endsWith('_date')?'date':EDIT_NUMBERS.has(k)?'number':'text'}" ${EDIT_NUMBERS.has(k)?'step="any"':''} value="${escapeHtml(original[k]??'')}"/></div>`).join('')}</div>${table==='patients_baseline'?`<label for="edit_upcr_unit">基线UPCR原始单位（历史未确认的记录请按原始报告核对）</label><select id="edit_upcr_unit"><option value="">未确认</option><option value="mg/g" ${record.baseline_upcr_original_unit==='mg/g'?'selected':''}>mg/g</option><option value="g/g" ${record.baseline_upcr_original_unit==='g/g'?'selected':''}>g/g</option></select>`:''}<label for="editReason">更正原因（必填，不含身份信息）</label><textarea id="editReason" placeholder="说明原始资料依据及更正原因"></textarea><div id="editFeedback" role="status"></div><div class="btnbar"><button class="btn primary" id="editSave">核对变更并保存</button><button class="btn" id="editCancel">取消</button></div></section>`;
+    overlay.innerHTML=`<section role="dialog" aria-modal="true" aria-labelledby="editTitle" style="background:white;color:#102d46;padding:24px;border-radius:16px;max-width:760px;width:100%;max-height:90vh;overflow:auto"><h2 id="editTitle">核对并更正 · ${escapeHtml(record.patient_code)}</h2><p>${escapeHtml(op.project.name)} · ${escapeHtml(({patients_baseline:'基线记录',visits_long:'随访记录',labs_long:'化验记录'})[table]||'记录')}。研究编号不能修改；更正原因与修改前后的值都会留痕。${table==='patients_baseline'?'知情同意与随访状态不在此处更正，请在看板中该患者的“研究状态”里修改。':''}</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">${EDIT_FIELDS[table].map(k=>`<div><label for="edit_${k}">${escapeHtml(EDIT_LABELS[k]||k)}</label><input id="edit_${k}" data-field="${k}" type="${k.endsWith('_date')?'date':EDIT_NUMBERS.has(k)?'number':'text'}" ${EDIT_NUMBERS.has(k)?'step="any"':''} value="${escapeHtml(original[k]??'')}"/></div>`).join('')}</div>${table==='patients_baseline'?`<label for="edit_upcr_unit">基线UPCR原始单位（历史未确认的记录请按原始报告核对）</label><select id="edit_upcr_unit"><option value="">未确认</option><option value="mg/g" ${record.baseline_upcr_original_unit==='mg/g'?'selected':''}>mg/g</option><option value="g/g" ${record.baseline_upcr_original_unit==='g/g'?'selected':''}>g/g</option></select>`:''}<label for="editReason">更正原因（必填，3–500 字，不含身份信息）</label><textarea id="editReason" maxlength="500" placeholder="说明原始资料依据及更正原因"></textarea><div id="editFeedback" role="status"></div><div class="btnbar"><button class="btn primary" id="editSave">核对变更并保存</button><button class="btn" id="editCancel">取消</button></div></section>`;
     document.body.appendChild(overlay);qs('#editCancel',overlay).addEventListener('click',()=>overlay.remove());
     qs('#editSave',overlay).addEventListener('click',async()=>{
       const btn=qs('#editSave',overlay),feedback=qs('#editFeedback',overlay);try{
-        assertContext(op);const reason=qs('#editReason',overlay).value.trim();if(!reason)throw new Error('请填写更正原因');assertNoPII(reason,'更正原因');const changes={};
+        assertContext(op);const reason=qs('#editReason',overlay).value.trim();
+        const reasonProblem=correctionReasonError(reason);if(reasonProblem){qs('#editReason',overlay).focus();throw new Error(reasonProblem);}
+        const changes={};
         qsa('[data-field]',overlay).forEach(input=>{const key=input.dataset.field,value=input.value.trim();if(value===String(original[key]??''))return;
-          changes[key]=key.endsWith('_date')?strictDate(value,EDIT_LABELS[key]||key):EDIT_NUMBERS.has(key)?finiteNumber(value,EDIT_LABELS[key]||key):value||null;
+          const label=(EDIT_LABELS[key]||key).replace(/\s.*$/,'');
+          changes[key]=key.endsWith('_date')?strictDate(value,EDIT_LABELS[key]||key)
+            :['scr_umol_l','baseline_scr'].includes(key)?creatinineUmol(value,'umol',label)
+            :EDIT_NUMBERS.has(key)?finiteNumber(value,label,EDIT_LIMITS[key]||{}):value||null;
           if(key==='ln_podocytopathy'&&value){if(!['true','false'].includes(value))throw new Error('足细胞病须为true或false');changes[key]=value==='true';}
         });
-        if(changes.notes)assertNoPII(changes.notes,'备注');
+        if(changes.notes){assertNoPII(changes.notes,'备注');if([...changes.notes].length>500)throw new Error('备注最多 500 字');}
+        if(table==='visits_long'){const sbpValue='sbp'in changes?changes.sbp:record.sbp,dbpValue='dbp'in changes?changes.dbp:record.dbp;if(sbpValue!=null&&dbpValue!=null&&Number(dbpValue)>=Number(sbpValue))throw new Error('舒张压须低于收缩压，请核对是否填反');}
         if(table==='patients_baseline'){
           const unit=qs('#edit_upcr_unit',overlay).value||'';
           if('baseline_upcr'in changes || unit!==(record.baseline_upcr_original_unit||'')){
@@ -1943,7 +2079,9 @@ async function openRecordEditor(table,id){
         const summary=Object.entries(changes).filter(([k])=>!['baseline_upcr_raw','baseline_upcr_original_unit'].includes(k)).map(([k,v])=>`${EDIT_LABELS[k]||k}：${record[k]??'空'} → ${v??'空'}`).join('\n');
         if(!confirm('请核对本次变更：\n'+summary+'\n\n确认保存？'))return;
         setBusy(btn,true);feedback.textContent='正在保存并重新校验…';const {data,error}=await sb.rpc('correct_registry_record',{p_project_id:op.project.id,p_table:table,p_record_id:id,p_changes:changes,p_reason:reason});
-        if(error)throw error;assertContext(op);if(!data?.record)throw new Error('服务器未返回更正记录');overlay.remove();toast('更正已保存并留痕，请查看重新校验后的数据质控状态');await Promise.all([refreshFollowup(op),loadExtras(),loadIssueSummary(),loadIssues()]);
+        if(error)throw error;assertContext(op);if(!data?.record)throw new Error('服务器未返回更正记录');overlay.remove();toast('更正已保存并留痕，请查看重新校验后的数据质控状态');
+        // 更正只影响这位患者：只重新读取该患者的看板行和项目概览。
+        await Promise.all([refreshPatientRow(op,record.patient_code),loadOverview(op),loadExtras(),loadIssueSummary(),loadIssues()]);
       }catch(e){feedback.textContent='未保存：'+registryErrorMessage(e);}finally{setBusy(btn,false);}
     });
   }catch(e){toast('无法打开记录：'+registryErrorMessage(e));}
@@ -2236,13 +2374,13 @@ async function loadMyContract(){
   if (data.status === "approved" && data.payment_status === "unpaid"){
     extra = `<div class="infobox" style="margin-top:8px">
       <b>审批已通过！</b> 平台将与您联系确认付款方式。付款后由平台核验到账并开通权益。<br/>
-      套餐：<b>${data.plan || data.apply_plan}</b>
-      ${data.annual_price_cny ? `· 协议价：<b>¥${data.annual_price_cny}/年</b>` : ""}
+      套餐：<b>${escapeHtml(data.plan || data.apply_plan)}</b>
+      ${data.annual_price_cny ? `· 协议价：<b>¥${escapeHtml(data.annual_price_cny)}/年</b>` : ""}
       ${data.admin_note ? `<br/>备注：${escapeHtml(data.admin_note)}` : ""}
     </div>`;
   } else if (data.status === "approved" && data.payment_status === "paid"){
     extra = `<div class="infobox" style="margin-top:8px">
-      权益已激活，到期：<b>${data.expires_at ? fmtDate(data.expires_at) : "—"}</b>
+      权益已激活，到期：<b>${data.expires_at ? escapeHtml(fmtDate(data.expires_at)) : "—"}</b>
     </div>`;
   } else if (data.status === "rejected"){
     extra = `<div class="warnbox" style="margin-top:8px">
@@ -2252,9 +2390,9 @@ async function loadMyContract(){
   }
 
   c.innerHTML = `<div style="display:flex;align-items:center;gap:8px">
-    <span class="${s.cls}">${s.text}</span>
-    <span class="muted small">申请套餐：${data.apply_plan}
-      · 提交于 ${fmtDate(data.applied_at)}</span>
+    <span class="${escapeHtml(s.cls)}">${escapeHtml(s.text)}</span>
+    <span class="muted small">申请套餐：${escapeHtml(data.apply_plan)}
+      · 提交于 ${escapeHtml(fmtDate(data.applied_at))}</span>
   </div>${extra}`;
 }
 
@@ -2760,7 +2898,7 @@ async function handleImportFile(evt){
     el.importSummary.textContent=`目标：${op.project.name} / ${op.project.center_code}。${results.length} 行，${errors.length} 行需修正。整批成功或整批拒绝；基线未提供/空白字段保持原值。以下显示前20行及所有错误。`;
     const preview=results.slice(0,20), cols=[...new Set(preview.flatMap(r=>Object.keys(r.data)))];
     el.importTable.innerHTML=`${errors.length?`<div class="warnbox">${errors.map(r=>`第${r.row}行：${escapeHtml(r.error)}`).join('<br>')}</div>`:''}<div style="overflow:auto"><table class="table"><thead><tr><th>行号</th>${cols.map(c=>`<th title="${escapeHtml(c)}">${escapeHtml(fieldLabel(c))}</th>`).join('')}</tr></thead><tbody>${preview.map(r=>`<tr><td>${r.row}${r.ok?'':' ✗'}</td>${cols.map(c=>`<td>${escapeHtml(r.data[c]??'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
-    el.btnConfirmImport.disabled=!!errors.length;el.importPreview.style.display='block';el.importProgress.style.display='none';
+    el.btnConfirmImport.dataset.blocked=errors.length?'1':'';el.btnConfirmImport.disabled=!!errors.length||!canProject('can_write');el.importPreview.style.display='block';el.importProgress.style.display='none';
   }catch(e){_importParsed=null;toast('无法预览：'+registryErrorMessage(e));}
 }
 async function confirmImport(){

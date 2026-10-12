@@ -225,3 +225,7 @@ button.fu-tile:hover{border-color:rgba(37,99,235,.4);background:rgba(37,99,235,.
   .fu-search{flex:1 1 100%;}
   .fu-check label{margin-top:8px;}
 }
+/* 闲置提醒（工作台） */
+.idle-warning{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:10000;width:min(560px,calc(100vw - 32px));box-sizing:border-box;background:#fff7ed;color:#7c2d12;border:1px solid #fdba74;border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.22);padding:14px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;}
+.idle-warning[hidden]{display:none;}
+.idle-warning p{margin:0;flex:1 1 260px;font-size:14px;line-height:1.6;}

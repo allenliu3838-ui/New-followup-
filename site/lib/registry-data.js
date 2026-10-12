@@ -11,8 +11,54 @@ export function finiteNumber(value, label = '数值', options = {}) {
   if (value === '' || value == null) { if (options.required) throw new Error(`${label}不能为空`); return null; }
   const n = Number(value);
   if (!Number.isFinite(n) || (options.integer && !Number.isInteger(n))) throw new Error(`${label}须为有限${options.integer ? '整数' : '数值'}`);
-  if (options.min != null && n < options.min || options.max != null && n > options.max) throw new Error(`${label}超出允许范围`);
+  if (options.min != null && n < options.min || options.max != null && n > options.max) {
+    const unit = options.unit ? ` ${options.unit}` : '';
+    const range = options.min != null && options.max != null ? `须在 ${options.min}–${options.max}${unit} 之间` : options.min != null ? `不能小于 ${options.min}${unit}` : `不能大于 ${options.max}${unit}`;
+    throw new Error(`${label}${range}，请核对`);
+  }
   return n;
+}
+
+// 与数据库 CHECK 约束一致（0002_clinical_constraints.sql、0014_pr3_validators.sql）；数据库仍是最终校验。
+export const SCR_MGDL_TO_UMOL = 88.4;
+export const CLINICAL_LIMITS = Object.freeze({
+  sbp: { min: 40, max: 300, unit: 'mmHg' },
+  dbp: { min: 20, max: 200, unit: 'mmHg' },
+  scr_umol_l: { min: 10, max: 5000, unit: 'μmol/L' },
+  baseline_scr: { min: 10, max: 5000, unit: 'μmol/L' },
+  upcr: { min: 0, max: 50000, unit: 'mg/g' },
+  egfr: { min: 0, max: 200 },
+});
+
+/**
+ * 血肌酐换算为 μmol/L 并检查 10–5000 μmol/L。空白返回 null。
+ * 按 μmol/L 填了 mg/dL 的数值（如 1.1）或反过来时，提示切换单位，而不是笼统的“超出范围”。
+ */
+export function creatinineUmol(value, unit = 'umol', label = '血肌酐') {
+  if (value === '' || value == null || String(value).trim() === '') return null;
+  const raw = Number(String(value).trim());
+  if (!Number.isFinite(raw) || raw <= 0) throw new Error(`${label}须为大于 0 的数值`);
+  const umol = unit === 'mgdl' ? Math.round(raw * SCR_MGDL_TO_UMOL * 100) / 100 : raw;
+  const { min, max } = CLINICAL_LIMITS.scr_umol_l;
+  if (umol >= min && umol <= max) return umol;
+  const asUmol = Math.round(raw * SCR_MGDL_TO_UMOL * 100) / 100;
+  if (unit !== 'mgdl' && raw < min && asUmol >= min && asUmol <= max) {
+    throw new Error(`${label} ${raw} μmol/L 低于系统允许的 ${min}–${max} μmol/L。这个数值看起来是 mg/dL：请把单位切换为 mg/dL，或按 1 mg/dL = 88.4 μmol/L 换算（约 ${asUmol} μmol/L）后填写。`);
+  }
+  if (unit === 'mgdl' && umol > max && raw >= min && raw <= max) {
+    throw new Error(`${label} ${raw} mg/dL 换算后为 ${umol} μmol/L，超出系统允许的 ${min}–${max} μmol/L。这个数值看起来是 μmol/L：请把单位切换为 μmol/L。`);
+  }
+  throw new Error(`${label}${unit === 'mgdl' ? `换算后为 ${umol} μmol/L，` : ` ${raw} μmol/L `}超出系统允许的 ${min}–${max} μmol/L，请核对数值与单位。`);
+}
+
+/** 更正原因：去掉首尾空白后 3–500 字（与 correct_registry_record 一致），不含身份信息。 */
+export function correctionReasonError(reason) {
+  const text = String(reason ?? '').trim();
+  const length = [...text].length;
+  if (length < 3) return '请填写更正原因（3–500 字），说明依据的原始资料。';
+  if (length > 500) return `更正原因最多 500 字（当前 ${length} 字），请精简。`;
+  if (containsPII(text)) return '更正原因中检测到疑似个人身份信息（手机号、身份证号、住院号、姓名等），请删除后再保存。';
+  return '';
 }
 export function normalizeUpcr(value, unit) {
   const n = finiteNumber(value, 'UPCR', {min:0});
@@ -66,6 +112,29 @@ export async function readAllRows(sb, table, projectId, assertCurrent = ()=>{}, 
     if(!data.length||rows.length>expected)throw new Error('读取数量不一致，已停止');
   }
 }
+/**
+ * 键集分页读取（看板等）：按唯一键升序，每页取 pageSize 行，下一页从上一页最后一个键之后开始。
+ * 不逐页计数，单页耗时不随页数增长。数据在读取期间新增或变化时不中止（看板会在保存后单独刷新该患者）；
+ * 需要“整份数据一致”的导出仍使用上面带数量校验的 readAllRows。
+ */
+export async function readKeysetRows(sb, table, projectId, { key = 'id', select = '*', pageSize = 500, maxRows = 100000, assertCurrent = () => {} } = {}) {
+  const rows = []; const seen = new Set(); let after = null;
+  for (;;) {
+    assertCurrent();
+    let query = sb.from(table).select(select).eq('project_id', projectId);
+    if (after !== null) query = query.gt(key, after);
+    const { data, error } = await query.order(key, { ascending: true }).limit(pageSize);
+    assertCurrent(); if (error) throw error;
+    if (!Array.isArray(data) || data.length > pageSize) throw new Error('读取的数据不完整，请重试');
+    for (const r of data) {
+      const k = r?.[key];
+      if (k === null || k === undefined || k === '' || seen.has(String(k))) throw new Error('分页读取出现重复或缺少编号的记录，已停止');
+      seen.add(String(k)); rows.push(r); after = String(k);
+    }
+    if (rows.length > maxRows) throw new Error('数据量超过浏览器显示容量，请联系管理员');
+    if (data.length < pageSize) return rows;
+  }
+}
 export function exportColumns(rows, preferred=[]) {
   return [...new Set([...preferred,...rows.flatMap(r=>Object.keys(r))])];
 }
@@ -78,6 +147,7 @@ export const BASELINE_IMPORT_FIELDS=['patient_code','sex','birth_year','baseline
 const CONSENT_INPUT=Object.freeze({unconfirmed:'unconfirmed',consented:'consented',waiver:'waiver',declined:'declined',withdrawn:'withdrawn','未确认':'unconfirmed','已同意':'consented','伦理批准豁免':'waiver','拒绝':'declined','撤回':'withdrawn'});
 const FOLLOWUP_INPUT=Object.freeze({active:'active',lost:'lost',withdrawn:'withdrawn',deceased:'deceased',kidney_failure:'kidney_failure',transferred:'transferred','在访':'active','失访':'lost','退出':'withdrawn','退出研究':'withdrawn','死亡':'deceased','肾衰竭':'kidney_failure','转院':'transferred'});
 export const VISIT_IMPORT_FIELDS=['patient_code','visit_date','sbp','dbp','scr_umol_l','upcr','egfr','notes'];
+function localDateText(date=new Date()){return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;}
 export function normalizeImportRow(kind,input,defaultUpcrUnit=''){
   const allowed=kind==='baseline'?BASELINE_IMPORT_FIELDS:VISIT_IMPORT_FIELDS;
   const result={};
@@ -88,18 +158,26 @@ export function normalizeImportRow(kind,input,defaultUpcrUnit=''){
   if(!result.patient_code)throw new Error('研究编号不能为空');
   if(kind==='baseline'){
     if(result.sex){result.sex=({'男':'M','女':'F','M':'M','F':'F'})[result.sex];if(!result.sex)throw new Error('性别须为 M/F/男/女');}
-    const nums={birth_year:{integer:true,min:1900,max:new Date().getUTCFullYear()},baseline_scr:{min:0.01,max:3000},oxford_m:{integer:true,min:0,max:1},oxford_e:{integer:true,min:0,max:1},oxford_s:{integer:true,min:0,max:1},oxford_t:{integer:true,min:0,max:2},oxford_c:{integer:true,min:0,max:2},ln_activity_index:{min:0,max:24},ln_chronicity_index:{min:0,max:12}};
+    if('baseline_scr'in result)result.baseline_scr=creatinineUmol(result.baseline_scr,'umol','基线血肌酐');
+    const nums={birth_year:{integer:true,min:1900,max:new Date().getUTCFullYear()},oxford_m:{integer:true,min:0,max:1},oxford_e:{integer:true,min:0,max:1},oxford_s:{integer:true,min:0,max:1},oxford_t:{integer:true,min:0,max:2},oxford_c:{integer:true,min:0,max:2},ln_activity_index:{min:0,max:24},ln_chronicity_index:{min:0,max:12}};
     for(const [key,opts]of Object.entries(nums))if(key in result)result[key]=finiteNumber(result[key],fieldLabel(key),opts);
     for(const key of ['baseline_date','biopsy_date','ln_biopsy_date','randomization_date','consent_date','followup_status_date'])if(key in result)result[key]=strictDate(result[key],fieldLabel(key));
     if('consent_status'in result){const v=CONSENT_INPUT[result.consent_status];if(!v)throw new Error('知情同意状态须为：未确认、已同意、伦理批准豁免、拒绝、撤回');result.consent_status=v;}
     if('followup_status'in result){const v=FOLLOWUP_INPUT[result.followup_status];if(!v)throw new Error('随访状态须为：在访、失访、退出、死亡、肾衰竭、转院');result.followup_status=v;}
+    // 与数据库一致：退出类状态（拒绝/撤回同意、退出研究、死亡）不能通过导入登记，须先建档，再在患者的“研究状态”中填写原因登记。
+    if(['declined','withdrawn'].includes(result.consent_status)||['withdrawn','deceased'].includes(result.followup_status))throw new Error('拒绝或撤回同意、退出研究、死亡不能通过导入登记：请先导入基线，再在患者的“研究状态”中登记并填写原因');
     if('consent_version'in result&&result.consent_version.length>100)throw new Error('知情同意书版本最多 100 个字符');
     if('ln_podocytopathy'in result){const map={true:true,false:false,'是':true,'否':false};if(!(result.ln_podocytopathy in map))throw new Error('足细胞病变须为 true/false/是/否');result.ln_podocytopathy=map[result.ln_podocytopathy];}
     if('baseline_upcr'in result){const unit=result.baseline_upcr_unit||defaultUpcrUnit;if(!unit)throw new Error('基线 UPCR 缺少单位：请在 CSV 的 baseline_upcr_unit 列填写，或在页面明确选择');const raw=finiteNumber(result.baseline_upcr,'UPCR',{min:0});result.baseline_upcr=normalizeUpcr(raw,unit);result.baseline_upcr_unit='mg/g';result.baseline_upcr_raw=raw;result.baseline_upcr_original_unit=unit;}else delete result.baseline_upcr_unit;
   }else{
+    // 与“录入随访”对话框及数据库一致：至少一项测量值；各项按数据库范围检查，未填的项保持空白。
     result.visit_date=strictDate(result.visit_date,'随访日期',true);
-    for(const [key,opts]of Object.entries({sbp:{min:30,max:300,required:true},dbp:{min:10,max:200,required:true},scr_umol_l:{min:0.01,max:3000,required:true},upcr:{min:0,required:true},egfr:{min:0}})){if(opts.required||key in result)result[key]=finiteNumber(result[key],fieldLabel(key),opts);}
-    if(result.sbp<=result.dbp)throw new Error('收缩压须大于舒张压');
+    if(result.visit_date>localDateText())throw new Error('随访日期不能晚于今天');
+    if('scr_umol_l'in result)result.scr_umol_l=creatinineUmol(result.scr_umol_l,'umol','血肌酐');
+    for(const key of ['sbp','dbp','upcr','egfr'])if(key in result)result[key]=finiteNumber(result[key],fieldLabel(key),CLINICAL_LIMITS[key]);
+    if(!['sbp','dbp','scr_umol_l','upcr','egfr'].some(key=>key in result))throw new Error('请至少填写一项测量值（收缩压、舒张压、血肌酐或 UPCR）');
+    if('sbp'in result&&'dbp'in result&&result.dbp>=result.sbp)throw new Error('舒张压须低于收缩压，请核对是否填反');
+    if('notes'in result&&[...result.notes].length>500)throw new Error('备注最多 500 字');
   }
   return result;
 }
@@ -187,9 +265,10 @@ const ERROR_MESSAGES=[
   ['invalid_token_options','随访链接有效期须为 1–365 天。'],
   ['token_invalid_or_expired','该随访链接已失效。'],
   ['token_not_found','未找到该随访链接，可能已被删除或不属于当前项目，请刷新列表。'],
-  ['study_exit_reason_required','登记拒绝或撤回知情同意、退出研究或死亡时，请填写修改原因（至少 2 个字，不含身份信息）。'],
+  ['study_exit_reason_required','登记拒绝或撤回知情同意、退出研究或死亡，撤销退出，或修改已退出患者的研究状态时，请填写原因。'],
+  ['study_status_requires_dedicated_action','研究状态（同意、退出、死亡等）请在患者的“研究状态”中修改，不能通过导入或更正修改。'],
   ['patient_not_eligible_for_links','该患者已拒绝或撤回知情同意，或已退出研究、死亡，不能再发放随访链接。如情况有变，请先在“研究状态”中按原始记录更新。'],
-  ['egfr_out_of_range_check_scr','由血肌酐自动计算的 eGFR 超过 200，超出系统允许范围。请核对血肌酐数值与单位（μmol/L 或 mg/dL）后重试。'],
+  ['egfr_out_of_range_check_scr','由血肌酐、出生年份和性别计算的 eGFR 超出范围，请核对这几项。'],
   ['revoke_reason_required','请填写 1–500 字的撤销原因（不含身份信息）。'],
   ['editor_permission_removed','录入成员的权限已变更，相关随访链接已由系统撤销。'],
   ['same_day_limit_exceeded','同一天提交次数已超过上限，该随访链接已被系统停用。'],
@@ -228,6 +307,26 @@ const ERROR_PATTERNS=[
 // Translate any error into plain Chinese. Raw English/database text and table names are never shown;
 // the original is kept in the browser console for support.
 const SETTING_LABELS=Object.freeze({followup_interval_days:'随访间隔',public_title:'对患者显示的研究名称',institution_name:'机构名称',ethics_approval_no:'伦理批件号',contact_display:'研究团队联系方式'});
+// 数据库 CHECK 约束 → 中文字段名与允许范围。PostgREST 只返回约束名（在 message 中），不返回失败行之外的列名。
+const CONSTRAINT_FIELDS=Object.freeze({
+  visits_sbp_range:['收缩压','须在 40–300 mmHg 之间'],visits_dbp_range:['舒张压','须在 20–200 mmHg 之间'],
+  visits_scr_range:['血肌酐','须在 10–5000 μmol/L 之间'],visits_egfr_range:['eGFR','须在 0–200 之间；eGFR 由血肌酐、出生年份和性别计算，请核对这几项'],
+  visits_upcr_range:['尿蛋白肌酐比（UPCR）','不能为负数'],visits_long_upcr_range:['尿蛋白肌酐比（UPCR）','须在 0–50000 mg/g 之间'],
+  baseline_scr_range:['基线血肌酐','须在 10–5000 μmol/L 之间'],baseline_upcr_range:['基线UPCR','不能为负数'],
+  baseline_birth_year_range:['出生年份','须在 1900 年至今之间'],
+  oxford_m_check:['牛津分型M','只能为 0 或 1'],oxford_e_check:['牛津分型E','只能为 0 或 1'],oxford_s_check:['牛津分型S','只能为 0 或 1'],
+  oxford_t_check:['牛津分型T','只能为 0、1 或 2'],oxford_c_check:['牛津分型C','只能为 0、1 或 2'],
+  ln_class_check:['LN病理分型','取值无效'],ln_activity_index_check:['LN活动指数','须在 0–24 之间'],ln_chronicity_index_check:['LN慢性指数','须在 0–12 之间'],
+});
+const COLUMN_KEYS=Object.keys(FIELD_LABELS).sort((a,b)=>b.length-a.length);
+/** 约束错误对应的字段：先查已知约束，再从 column 或约束名中找已知列名。不读取 details（其中是失败行的原始内容）。 */
+function constraintProblem(error,raw){
+  const constraint=String(error?.constraint||raw.match(/violates check constraint "([^"]+)"/)?.[1]||'');
+  if(CONSTRAINT_FIELDS[constraint]){const [label,rule]=CONSTRAINT_FIELDS[constraint];return `${label}${rule}，本次没有保存，请核对数值与单位后重试。`;}
+  const column=String(error?.column||'');
+  const key=FIELD_LABELS[column]?column:COLUMN_KEYS.find(k=>constraint&&new RegExp(`(^|_)${k}(_|$)`).test(constraint));
+  return key?`${FIELD_LABELS[key]}的数值不符合系统约束，本次没有保存，请核对后重试。`:'';
+}
 export function registryErrorMessage(error, options = {}){
   const raw=String(error?.message ?? error ?? '');
   const row=raw.match(/row_(\d+)_/);
@@ -235,6 +334,7 @@ export function registryErrorMessage(error, options = {}){
   const field=raw.match(/:\s*([a-z_]+)\s*$/)?.[1];const fieldName=field&&(FIELD_LABELS[field]||SETTING_LABELS[field]);
   const prefix=(row&&options.rowPrefix!==false?`第 ${Number(row[1])+1} 行：`:'')+(fieldName?`${fieldName}：`:'');
   for(const [code,message]of ERROR_MESSAGES)if(raw.includes(code))return prefix+message;
+  if(/check constraint|check_violation/i.test(raw)||error?.code==='23514'){const problem=constraintProblem(error,raw);if(problem)return prefix+problem;}
   const haystack=[raw,error?.code,error?.details].filter(Boolean).join(' ');
   for(const [pattern,message]of ERROR_PATTERNS)if(pattern.test(haystack))return prefix+message;
   if(/[一-龥]/.test(raw)&&!/[a-z_]{3,}\.[a-z_]{3,}|relation|function /i.test(raw))return prefix+raw;

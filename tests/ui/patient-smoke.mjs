@@ -83,6 +83,14 @@ assert.equal(wf.beijingDateString(new Date('2026-10-12T16:30:00Z')), '2026-10-13
 assert.equal(wf.beijingDateString(new Date('2026-10-12T15:59:00Z')), '2026-10-12');
 assert.equal(wf.dataLocationLead(undefined) + '隐私政策', '数据当前存储于境外服务器，计划迁至中国境内，详见隐私政策');
 assert.equal(wf.dataLocationLead({ DATA_LOCATION_NOTE: '数据存储于中国境内。' }), '数据存储于中国境内。详见');
+// The link is read from the address once, then removed from it (kept in memory only).
+assert.equal(wf.linkFromAddress({ hash: '#abc_DEF-1', pathname: '/followup' }), 'abc_DEF-1');
+assert.equal(wf.linkFromAddress({ pathname: '/p/abc%2D1' }), 'abc-1');
+assert.equal(wf.linkFromAddress({ pathname: '/patient.html', search: '?pt=xyz' }), 'xyz');
+assert.equal(wf.linkFromAddress({ pathname: '/followup', hash: '#' }), null);
+assert.equal(wf.addressWithoutLink('https://r.example/followup#secret-link'), '/followup');
+assert.equal(wf.addressWithoutLink('https://r.example/p/secret-link'), '/followup');
+assert.equal(wf.addressWithoutLink('https://r.example/patient.html?pt=secret-link&lang=zh#x'), '/patient.html?lang=zh');
 
 // ---------- static server ----------
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -134,6 +142,7 @@ const json = (body, status = 200) => ({ status, body: JSON.stringify(body) });
 const pgError = code => json({ code: '42501', message: code, details: null, hint: null }, 400);
 
 async function openPage({ token, rpc, staticRoute, beforeGoto, entry = 'p', waitUntil = 'load' }) {
+  const target = entry === 'followup' ? `${BASE}/followup#${token}` : entry === 'query' ? `${BASE}/patient.html?pt=${token}&lang=zh` : `${BASE}/p/${token}`;
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
     timezoneId: 'Asia/Shanghai', locale: 'zh-CN' });
   const page = await context.newPage();
@@ -168,11 +177,19 @@ async function openPage({ token, rpc, staticRoute, beforeGoto, entry = 'p', wait
     return route.fulfill({ status: result.status, headers: { ...cors, 'content-type': 'application/json' }, body: result.body });
   });
   if (beforeGoto) await beforeGoto(page);
-  await page.goto(entry === 'followup' ? `${BASE}/followup#${token}` : `${BASE}/p/${token}`, { waitUntil });
+  await page.goto(target, { waitUntil });
   return { page, context, record };
 }
 
 const bodyText = page => page.evaluate(() => document.body.innerText);
+
+// The link must not stay in the address bar or in the current history entry once the page has read it.
+async function assertAddressClean(page, token, expectedPath, label) {
+  const address = await page.evaluate(() => ({ href: location.href, hash: location.hash, state: JSON.stringify(history.state) }));
+  assert.ok(!address.href.includes(token) && !String(address.state).includes(token), `${label}: link left in the address/history entry: ${address.href}`);
+  assert.equal(address.hash, '', `${label}: fragment left in the address`);
+  assert.equal(new URL(address.href).pathname + new URL(address.href).search, expectedPath, `${label}: address after removing the link`);
+}
 const FORBIDDEN = /试用|剩余\s*\d+\s*天|订阅|subscription|trial|token|Token|令牌|患者编号|后台/;
 
 // Also: the link (bearer token) never lands in browser storage, cookies or the console.
@@ -231,6 +248,7 @@ const submits = record => record.calls.filter(c => c.name === 'patient_submit_vi
   } });
   await page.waitForFunction(() => document.querySelector('#studyTitle').textContent.includes('IgA'));
   assert.equal(await page.textContent('#studyTitle'), 'IgA 肾病长期随访研究');
+  await assertAddressClean(page, 'synthetic-multi-0001', '/followup', '/p/<link>');
   const info = await page.textContent('#studyInfo');
   for (const expected of ['示例大学附属医院肾内科（由研究团队提供）', '伦审2026-018号（由研究团队提供）', '研究护士 王老师', 'IGAN-007']) assert.ok(info.includes(expected), `study info missing ${expected}`);
   assert.equal(await page.getAttribute('meta[name="referrer"]', 'content'), 'no-referrer');
@@ -291,7 +309,7 @@ const submits = record => record.calls.filter(c => c.name === 'patient_submit_vi
   const values = await page.evaluate(() => ['#visitDate', '#sbp', '#dbp', '#scr', '#upcr', '#notes', '#egfr'].map(s => document.querySelector(s).value));
   assert.deepEqual(values, ['', '', '', '', '', '', ''], 'inputs not cleared after submission');
   const payload = record.calls.find(c => c.name === 'patient_submit_visit_v2').body;
-  assert.equal(payload.p_token, 'synthetic-multi-0001');
+  assert.equal(payload.p_token, 'synthetic-multi-0001', 'submission uses the link kept in memory');
   assert.equal(payload.p_scr_umol_l, 106.08);
   assert.equal(payload.p_upcr, 450);
   assert.match(payload.p_request_id, /^[0-9a-f-]{36}$/);
@@ -440,6 +458,7 @@ for (const [code, expected] of [
     throw new Error('unexpected rpc ' + name);
   } });
   await page.waitForSelector('#visitsBox table');
+  await assertAddressClean(page, 'synthetic-hostile', '/followup', '/followup#<link>');
   await page.click('#moreRecords summary');
   await page.waitForSelector('#eventsBox table');
   await page.waitForSelector('#variantsBox table');
@@ -685,8 +704,40 @@ for (const [label, reply] of [
   await page.clock.runFor(21000);
   await page.waitForFunction(() => document.querySelector('#linkStatus').textContent.includes('重新验证链接'), null, { timeout: 2000 });
   assert.equal(await page.isVisible('#btnVerifyContext'), true);
+  await assertAddressClean(page, 'synthetic-rpc-hang', '/followup', 'stalled context');
   release();
+  // The link is no longer in the address: re-verifying uses the copy kept in memory.
+  await page.click('#btnVerifyContext');
+  await page.waitForFunction(() => document.querySelector('#studyTitle').textContent.includes('IgA'), null, { timeout: 5000 });
+  const contexts = record.calls.filter(c => c.name === 'patient_get_context');
+  assert.ok(contexts.length >= 2 && contexts.every(c => c.body.p_token === 'synthetic-rpc-hang'), 're-verify must send the in-memory link');
+  assert.equal(await page.isVisible('#formSection'), true, 'form available after re-verifying');
+  await assertAddressClean(page, 'synthetic-rpc-hang', '/followup', 'after re-verify');
   await assertClean(record, 'stalled context', page);
+  await context.close();
+}
+
+// ---------- Scenario M: ?pt= links, and another link opened in the same tab ----------
+{
+  const { page, context, record } = await openPage({ token: 'synthetic-query-0001', entry: 'query', rpc: async (name, body) => {
+    if (name === 'patient_get_context') return json([{ ...baseContext, patient_code: body.p_token === 'synthetic-second-0002' ? 'IGAN-008' : 'IGAN-007' }]);
+    if (name.startsWith('patient_list_')) return json([]);
+    throw new Error('unexpected rpc ' + name);
+  } });
+  await page.waitForFunction(() => document.querySelector('#studyInfo').textContent.includes('IGAN-007'));
+  await assertAddressClean(page, 'synthetic-query-0001', '/patient.html?lang=zh', '?pt=<link>');
+  // A second link pasted into the same tab opens that link and is removed from the address too.
+  await page.evaluate(() => { location.hash = '#synthetic-second-0002'; });
+  await page.waitForFunction(() => document.querySelector('#studyInfo').textContent.includes('IGAN-008'));
+  assert.deepEqual(record.calls.filter(c => c.name === 'patient_get_context').map(c => c.body.p_token), ['synthetic-query-0001', 'synthetic-second-0002']);
+  await assertAddressClean(page, 'synthetic-second-0002', '/patient.html?lang=zh', 'second link');
+  // A fragment that is not a link keeps the current link.
+  await page.evaluate(() => { location.hash = '#'; });
+  await page.waitForTimeout(200);
+  assert.ok((await page.textContent('#studyInfo')).includes('IGAN-008'));
+  assert.equal(record.calls.filter(c => c.name === 'patient_get_context').length, 2);
+  record.token = 'synthetic-second-0002';
+  await assertClean(record, 'second link', page);
   await context.close();
 }
 

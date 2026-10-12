@@ -3,7 +3,7 @@ import { qs, toast, escapeHtml } from "/lib/utils.js?v=registry-20261012-adoptio
 import {
   normalizedNumber, validateVisit, createRequestId, ckdepi2021, DB_LIMITS, SCR_MGDL_TO_UMOL,
   studyInfo, classifyPatientError, contextErrorMessage, submissionOutcome, dataLocationLead,
-  beijingDateString, formatLocalDateTime, formatLocalDate,
+  beijingDateString, formatLocalDateTime, formatLocalDate, linkFromAddress, addressWithoutLink,
 } from "/lib/patient-workflow.js?v=registry-20261012-adoption-v4";
 
 // The participant page never needs Supabase auth session detection —
@@ -77,7 +77,6 @@ let exited = false;            // the server says the participant has left the s
 let knownVisitDates = new Set(); // visit dates already on record (from the loaded history)
 let submittedDates = new Set();  // dates submitted from this page, in case history lags
 let focusAfterSubmit = null;   // field to focus once a rejected submission unlocks the form
-let currentHash = window.location.hash;
 
 // Read-only calls give up after a while so a stalled network never leaves the page waiting
 // forever. A submission that times out is retried with the same request id (no duplicate).
@@ -97,15 +96,17 @@ async function callRpc(name, args, timeoutMs){
   finally { clearTimeout(timer); }
 }
 
-function getToken(){
+function linkInAddress(){
+  return linkFromAddress({ hash: window.location.hash, pathname: window.location.pathname, search: window.location.search });
+}
+
+// Take the link out of the address bar and the current history entry; from here on it is
+// kept in memory only (token). Re-verifying or retrying uses the in-memory value.
+function removeLinkFromAddress(){
   try {
-    const h = window.location.hash;
-    if (h && h.length > 1) return decodeURIComponent(h.slice(1));
-    const m = (window.location.pathname || "").match(/\/p\/([^/]+)$/);
-    if (m) return decodeURIComponent(m[1]);
-    const q = new URLSearchParams(window.location.search);
-    return q.get("pt") || q.get("token");
-  } catch (_) { return null; }
+    const clean = addressWithoutLink(window.location.href);
+    if (clean !== window.location.pathname + window.location.search + window.location.hash) window.history.replaceState(null, "", clean);
+  } catch (_) { /* very old browsers: the page still works, the link stays in the address bar */ }
 }
 
 function canWrite(){
@@ -615,18 +616,20 @@ function bind(){
     if (dirty || pendingSubmission || busy) { event.preventDefault(); event.returnValue = ""; }
   });
   window.addEventListener("hashchange", () => {
-    if (busy || pendingSubmission || dirty && !window.confirm("当前内容还没有提交，确定放弃并打开另一个随访链接吗？")) {
-      window.history.replaceState(null, "", window.location.pathname + window.location.search + currentHash);
+    // Another link opened in this tab. Whatever happens, the address bar keeps no link.
+    const next = linkInAddress();
+    if (!next || next === token || busy || pendingSubmission || dirty && !window.confirm("当前内容还没有提交，确定放弃并打开另一个随访链接吗？")) {
+      removeLinkFromAddress();
       return;
     }
-    currentHash = window.location.hash;
     main();
   });
 }
 
 async function main(){
   ++contextEpoch;
-  token = getToken(); ctx = null; completed = false; reviewing = null; pendingSubmission = null;
+  token = linkInAddress(); ctx = null; completed = false; reviewing = null; pendingSubmission = null;
+  removeLinkFromAddress();
   busy = false; contextFailed = false; verifyRetryable = false; extraLoaded = false;
   linkUnusable = false; readOnlyAtLoad = false; exited = false; knownVisitDates = new Set(); submittedDates = new Set();
   focusAfterSubmit = null;
@@ -645,7 +648,7 @@ async function main(){
     document.title = "随访链接无法使用";
     el.studyTitle.textContent = "缺少随访链接";
     el.linkStatus.className = "link-status warnbox";
-    el.linkStatus.textContent = "请使用研究团队发给您的完整随访链接打开本页。";
+    el.linkStatus.textContent = "请使用研究团队发给您的完整随访链接打开本页。为保护您的信息，打开后地址栏不再保留链接；如刚才刷新了页面，请重新点开研究团队发来的链接。";
     updateControls();
     return;
   }

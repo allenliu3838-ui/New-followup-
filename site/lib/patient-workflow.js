@@ -93,6 +93,31 @@ export function ckdepi2021(scrMgDl, age, sex) {
   return Number.isFinite(result) ? result : null;
 }
 
+// ---- The link in the address bar ----
+
+// The link arrives as /followup#<link> (current), /p/<link> (older messages) or ?pt=<link>.
+export function linkFromAddress({ hash = '', pathname = '', search = '' } = {}) {
+  try {
+    if (hash && hash.length > 1) return decodeURIComponent(hash.slice(1)) || null;
+    const m = String(pathname).match(/\/p\/([^/]+)$/);
+    if (m) return decodeURIComponent(m[1]) || null;
+    const q = new URLSearchParams(search);
+    return q.get('pt') || q.get('token') || null;
+  } catch (_) { return null; }
+}
+
+// The same address without the link: no fragment, no pt/token parameter, and /p/<link>
+// rewritten to /followup. Used with history.replaceState so the link is not kept in the
+// browser history, the address bar or a bookmark; the page keeps it in memory only.
+export function addressWithoutLink(href) {
+  const url = new URL(href);
+  url.hash = '';
+  url.searchParams.delete('pt');
+  url.searchParams.delete('token');
+  url.pathname = url.pathname.replace(/\/p\/[^/]*$/, '/followup');
+  return url.pathname + url.search;
+}
+
 // ---- Patient-facing text helpers (pure; covered by tests/ui/patient-smoke.mjs) ----
 
 const cleanText = value => {
