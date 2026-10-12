@@ -31969,19 +31969,19 @@
       "old_sha256": "872074c4a42c986ffcbc368d9c1e06ef126c527ad87eb4ba6e53e7a041165e0b"
     },
     "assets/template/METHODS_TEMPLATE_EN.md": {
-      "new_sha256": "85ecbea1bdd0caa557954b5fa54640236f8b81645e47a4f6a30c50505bc1aa13",
+      "new_sha256": "226227197e2a05e86c89bc1627ab7768cc29e444ae72a1276d704955366adffb",
       "old_sha256": "d4354321c89d459cd525a54d5b5500ec29dead83bdd21f80c0129b60547e397b"
     },
     "assets/template/README_PACK.md": {
-      "new_sha256": "a91b9258ce7c20cd8dee7dbaa0ed6dcbc6c26f73ec32bc29ea17a18fa4b62a35",
+      "new_sha256": "d2d54ff8d60f26fdd2e5a63f3e104a64ab89767fba212a2be58ec9ec4863af5e",
       "old_sha256": "a8be26c97131efabe1d9b8d4c7ac107d82f617ebdeff48b4ccb9c8d51c142af1"
     },
     "assets/template/merge_centers.py": {
-      "new_sha256": "918b0394b46d72c8422498246081560f2ebe673475abca72b18727fadd5f5eaf",
+      "new_sha256": "b67e41c49ad9e28e8be562a68a20840eadcfac0397ec2491b831468674ef5be3",
       "old_sha256": "f86ba848c57cbf96d9f6bc43d0ddf5410bac06c85d696e20930b61e9d3ec4f06"
     },
     "assets/template/protocol_template.json": {
-      "new_sha256": "a93c468a1417e6ea5d62859089c06786a83ab114b2f3b52c09dd4c338d248b06",
+      "new_sha256": "ddf54bc70f70553ae2b95bc8f5f56d665242602e3bd5620a2563dc9da30c427e",
       "old_sha256": null
     },
     "assets/template/requirements.txt": {
@@ -31989,7 +31989,7 @@
       "old_sha256": "62e0118334f337d721a7cd8d12cea223b146c792e396ff34a437517716cf30a1"
     },
     "assets/template/run_analysis.py": {
-      "new_sha256": "feb00a1faa2e1cda09bdac452a80dfb8f17b321e83d3a911f9452ad25f74f40a",
+      "new_sha256": "041a2bd6aaa32534afac4b5e75aab6d7632e39119f9f7f449fa2049a174f2686",
       "old_sha256": "fe506fb678dac9da052f34a7504d69e18cd131dbb3a7a79a4f305472400857eb"
     },
     "auth-callback.html": {
