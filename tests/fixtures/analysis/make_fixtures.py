@@ -38,6 +38,7 @@ PATIENTS = [
     # Decline confirmed d60->d100 then recovery at d200: met unless require_last_below=true.
     (P1, "A", "008", "IGAN", "consented", "active", None, "2000", "mg/g", [(0, 100, 2000), (60, 55, 2000), (100, 54, 2000), (200, 90, 2000)]),
     # Other project, same code 001, module CKD (no remission definition): sustained decline; remission not covered.
+    # Confirmed esrd event at d200 (after the 40% decline was confirmed at d150; the 57% decline was never met).
     (P2, "A", "001", "CKD", "consented", "active", None, "500", "mg/g", [(0, 100, 500), (90, 50, 500), (150, 50, 500)]),
 ]
 
@@ -64,7 +65,8 @@ def main():
     write("visits_long.csv", KEY + ["id", "module", "visit_date", "sbp", "dbp", "scr_umol_l", "upcr", "egfr", "egfr_formula_version"], visit_rows)
     write("events_long.csv", KEY + ["id", "module", "event_type", "event_date", "confirmed", "source"],
           [[P1, "A", "007", "e001", "IGAN", "death", d(140), "true", "staff"],
-           [P1, "A", "001", "e002", "IGAN", "death", d(150), "false", "staff"]])
+           [P1, "A", "001", "e002", "IGAN", "death", d(150), "false", "staff"],
+           [P2, "A", "001", "e003", "CKD", "esrd", d(200), "true", "staff"]])
 
 
 if __name__ == "__main__":
