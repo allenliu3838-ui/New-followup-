@@ -36,7 +36,9 @@ import sys
 from pathlib import Path
 from urllib.parse import urlsplit
 
-ALLOWED_SUFFIXES = ('kidneysphere.com', 'kidneysphereregistry.cn')  # 本身及全部子域
+# 本身及全部子域。后三个是同一公司的兄弟产品站，只在跨产品导航（site/lib/product-nav.js）中作为跳转链接出现。
+ALLOWED_SUFFIXES = ('kidneysphere.com', 'kidneysphereregistry.cn',
+                    'kidneysphereremote.cn', 'kidneyspherefollowup.cn', 'kidneyspheredoctorapp.cn')
 ALLOWED_EXACT = frozenset({'beian.miit.gov.cn', 'beian.mps.gov.cn', 'www.cac.gov.cn'})
 # RFC 2606/6761 保留名称与本机地址：用作 URL 解析基准等，不产生外部请求。
 RESERVED_EXACT = frozenset({'localhost', 'example.com', 'example.net', 'example.org'})

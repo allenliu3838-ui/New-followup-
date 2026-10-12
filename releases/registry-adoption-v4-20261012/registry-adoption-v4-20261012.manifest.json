@@ -32093,7 +32093,7 @@
       "old_sha256": null
     },
     "lib/supabase-client.js": {
-      "new_sha256": "fc2d5174bdcea6325cc00b232ee8ae55bfbc8c1de1b1575a4081d1733a9b317a",
+      "new_sha256": "ba5a76c259a090ab08be1da15172fd084f59ade22647e2787fb64330029edb9d",
       "old_sha256": "b4e956aa6ecc0841a727831a9efaa715940ac0ca98cacb583dd25e3d9c81871b"
     },
     "lib/utils.js": {

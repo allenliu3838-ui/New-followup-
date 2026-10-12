@@ -126,6 +126,8 @@ def main() -> None:
     manifest = dict(previous)
     manifest.update({
         'release': release.VERSION,
+        # 迁到境内后只需改 registry_integrated_release.PROJECT_REF，清单随之更新，不会沿用旧身份
+        'project_ref': release.PROJECT_REF,
         'files': files,
         'config_sha256': sha((ROOT / 'site/config.js').read_bytes()),
         'migration_manifest_sha256': sha((ROOT / 'supabase/migration-manifest.json').read_bytes()),
