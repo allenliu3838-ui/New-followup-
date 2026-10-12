@@ -2040,6 +2040,28 @@
         },
         {
           "rls": true,
+          "table": "study_status_rpc_rows",
+          "schema": "registry_private",
+          "force_rls": false,
+          "anon_delete": false,
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_delete": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "constraints": [
+            {
+              "name": "study_status_rpc_rows_pkey",
+              "type": "p",
+              "validated": true,
+              "definition_md5": "84e00489f3778b4b4a152f0ccbf279cc"
+            }
+          ]
+        },
+        {
+          "rls": true,
           "table": "objects",
           "schema": "storage",
           "force_rls": false,
@@ -10940,6 +10962,44 @@
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
+        },
+        {
+          "name": "record_id",
+          "type": "uuid",
+          "table": "study_status_rpc_rows",
+          "schema": "registry_private",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "xact_id",
+          "type": "xid8",
+          "table": "study_status_rpc_rows",
+          "schema": "registry_private",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
         }
       ],
       "indexes": [
@@ -13250,6 +13310,37 @@
           "attribute_count": 2,
           "expressions_md5": null,
           "nulls_not_distinct": false
+        },
+        {
+          "live": true,
+          "name": "study_status_rpc_rows_pkey",
+          "ready": true,
+          "table": "study_status_rpc_rows",
+          "valid": true,
+          "schema": "registry_private",
+          "unique": true,
+          "columns": [
+            {
+              "column": "xact_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "record_id",
+              "included": false,
+              "position": 2,
+              "expression": false
+            }
+          ],
+          "primary": true,
+          "immediate": true,
+          "key_count": 2,
+          "predicate_md5": null,
+          "definition_md5": "7cd6486329cb11c43f33cae9cd3f2bf1",
+          "attribute_count": 2,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
         }
       ],
       "policies": [
@@ -13267,7 +13358,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13365,7 +13456,7 @@
           "with_check": null
         },
         {
-          "qual": "(EXISTS ( SELECT 1\n   FROM data_issues i\n  WHERE ((i.id = data_issue_comments.issue_id) AND has_project_permission(i.project_id, 'write'::text) AND ((data_issue_comments.created_by = auth.uid()) OR has_project_permission(i.project_id, 'manage'::text)))))",
+          "qual": "(EXISTS ( SELECT 1\n   FROM data_issues i\n  WHERE ((i.id = data_issue_comments.issue_id) AND (i.project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission)) AND ((data_issue_comments.created_by = auth.uid()) OR (i.project_id IN ( SELECT registry_private.project_ids_with_permission('manage'::text) AS project_ids_with_permission))))))",
           "roles": [
             "authenticated"
           ],
@@ -13386,10 +13477,10 @@
           "schema": "public",
           "command": "INSERT",
           "permissive": "PERMISSIVE",
-          "with_check": "((created_by = auth.uid()) AND (EXISTS ( SELECT 1\n   FROM data_issues i\n  WHERE ((i.id = data_issue_comments.issue_id) AND has_project_permission(i.project_id, 'write'::text)))))"
+          "with_check": "((created_by = auth.uid()) AND (EXISTS ( SELECT 1\n   FROM data_issues i\n  WHERE ((i.id = data_issue_comments.issue_id) AND (i.project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))))))"
         },
         {
-          "qual": "(EXISTS ( SELECT 1\n   FROM data_issues i\n  WHERE ((i.id = data_issue_comments.issue_id) AND has_project_permission(i.project_id, 'read'::text))))",
+          "qual": "(EXISTS ( SELECT 1\n   FROM data_issues i\n  WHERE ((i.id = data_issue_comments.issue_id) AND (i.project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission)))))",
           "roles": [
             "authenticated"
           ],
@@ -13401,7 +13492,7 @@
           "with_check": null
         },
         {
-          "qual": "(EXISTS ( SELECT 1\n   FROM data_issues i\n  WHERE ((i.id = data_issue_comments.issue_id) AND has_project_permission(i.project_id, 'write'::text) AND ((data_issue_comments.created_by = auth.uid()) OR has_project_permission(i.project_id, 'manage'::text)))))",
+          "qual": "(EXISTS ( SELECT 1\n   FROM data_issues i\n  WHERE ((i.id = data_issue_comments.issue_id) AND (i.project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission)) AND ((data_issue_comments.created_by = auth.uid()) OR (i.project_id IN ( SELECT registry_private.project_ids_with_permission('manage'::text) AS project_ids_with_permission))))))",
           "roles": [
             "authenticated"
           ],
@@ -13410,10 +13501,10 @@
           "schema": "public",
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
-          "with_check": "(EXISTS ( SELECT 1\n   FROM data_issues i\n  WHERE ((i.id = data_issue_comments.issue_id) AND has_project_permission(i.project_id, 'write'::text))))"
+          "with_check": "(EXISTS ( SELECT 1\n   FROM data_issues i\n  WHERE ((i.id = data_issue_comments.issue_id) AND (i.project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission)))))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13462,7 +13553,7 @@
           "with_check": "(status = 'pending'::text)"
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13483,10 +13574,10 @@
           "schema": "public",
           "command": "INSERT",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13498,7 +13589,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13507,10 +13598,10 @@
           "schema": "public",
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13522,7 +13613,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13543,10 +13634,10 @@
           "schema": "public",
           "command": "INSERT",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13558,7 +13649,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13567,10 +13658,10 @@
           "schema": "public",
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13591,10 +13682,10 @@
           "schema": "public",
           "command": "INSERT",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13606,7 +13697,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13615,7 +13706,7 @@
           "schema": "public",
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
           "qual": "true",
@@ -13644,7 +13735,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13665,10 +13756,10 @@
           "schema": "public",
           "command": "INSERT",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13680,7 +13771,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13689,10 +13780,10 @@
           "schema": "public",
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13713,10 +13804,10 @@
           "schema": "public",
           "command": "INSERT",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13728,7 +13819,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13737,7 +13828,7 @@
           "schema": "public",
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
           "qual": "(auth.uid() = user_id)",
@@ -13776,7 +13867,7 @@
           "with_check": "(EXISTS ( SELECT 1\n   FROM projects p\n  WHERE ((p.id = patient_tokens.project_id) AND (p.created_by = auth.uid()))))"
         },
         {
-          "qual": "has_project_permission(project_id, 'tokens'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('tokens'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13800,7 +13891,7 @@
           "with_check": "(EXISTS ( SELECT 1\n   FROM projects p\n  WHERE ((p.id = patient_tokens.project_id) AND (p.created_by = auth.uid()))))"
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13821,10 +13912,10 @@
           "schema": "public",
           "command": "INSERT",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13836,7 +13927,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13845,10 +13936,10 @@
           "schema": "public",
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13869,10 +13960,10 @@
           "schema": "public",
           "command": "INSERT",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13884,7 +13975,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13893,10 +13984,10 @@
           "schema": "public",
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13932,7 +14023,7 @@
           "with_check": "((created_by IS NULL) OR (created_by = auth.uid()))"
         },
         {
-          "qual": "has_project_permission(id, 'read'::text)",
+          "qual": "(id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -13956,7 +14047,7 @@
           "with_check": "(created_by = auth.uid())"
         },
         {
-          "qual": "has_project_permission(project_id, 'tokens'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('tokens'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -14017,7 +14108,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -14038,10 +14129,10 @@
           "schema": "public",
           "command": "INSERT",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -14053,7 +14144,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -14062,10 +14153,10 @@
           "schema": "public",
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -14086,10 +14177,10 @@
           "schema": "public",
           "command": "INSERT",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -14101,7 +14192,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -14110,10 +14201,10 @@
           "schema": "public",
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -14432,6 +14523,13 @@
           "table": "patients_baseline",
           "schema": "public",
           "enabled": "O",
+          "trigger": "registry_study_status_insert_audit",
+          "definition_md5": "d46e6151baea4ef2b2b69f3e313c7c37"
+        },
+        {
+          "table": "patients_baseline",
+          "schema": "public",
+          "enabled": "O",
           "trigger": "tr_patients_created_by",
           "definition_md5": "fe4a3242262b5b9893b4d08655cb8ffe"
         },
@@ -14539,6 +14637,13 @@
           "enabled": "O",
           "trigger": "a_registry_identity",
           "definition_md5": "aae0872d57a15ac46ae5c5aa66f9fbab"
+        },
+        {
+          "table": "visits_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "a_registry_project_lock",
+          "definition_md5": "9b1e034a2fe56a23b07513a80915039f"
         },
         {
           "table": "visits_long",
@@ -14886,7 +14991,7 @@
           "signature": "_trial_block_write()",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "650ffc0bccd0386915bac37d8f33b22d",
+          "definition_md5": "d1160e2548705cff274ded2bbde916b8",
           "security_definer": true,
           "authenticated_execute": false
         },
@@ -15258,7 +15363,7 @@
           "signature": "correct_registry_record(uuid,text,uuid,jsonb,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "6931fc8808e5bcf76e657f613d0b5a3d",
+          "definition_md5": "78d24940c16c8e084ae45eb44c50b585",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -15450,7 +15555,7 @@
           "signature": "import_registry_rows(uuid,text,jsonb,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "9fef141b92bf297ebdc63cdcfafe2b39",
+          "definition_md5": "301a628a806c8f19adc57d9d4a5f3457",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -15663,10 +15768,22 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "registry_private.audit_study_status_on_insert()",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "30587f59804bcfd19cf1d5d45d2a96d4",
+          "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "registry_private.check_calculated_egfr()",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "19179c13ef86d2270f08875f914c687b",
+          "definition_md5": "571528ad641ab72949be9598c528dd89",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -15690,7 +15807,7 @@
           "signature": "registry_private.check_study_status()",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "68545bf55135e56ed1f7deb7415d2f62",
+          "definition_md5": "ff2ed940716d29587df232841d71108b",
           "security_definer": true,
           "authenticated_execute": false
         },
@@ -15747,6 +15864,18 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "registry_private.lock_visit_project()",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "292d73c71408a551ea4ff4b62b96d7ed",
+          "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "registry_private.normalize_lab_row()",
           "volatility": "v",
           "anon_execute": false,
@@ -15765,6 +15894,18 @@
           "definition_md5": "ccb0361efa2dd3beafdef1cc8eaba14d",
           "security_definer": true,
           "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "signature": "registry_private.project_ids_with_permission(text)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "e6d5f4ef3d4276aafcc103297812095e",
+          "security_definer": true,
+          "authenticated_execute": true
         },
         {
           "owner": "postgres",
@@ -15858,8 +15999,20 @@
           "signature": "registry_private.study_exit_only_change(jsonb,jsonb)",
           "volatility": "i",
           "anon_execute": false,
-          "definition_md5": "bfb66030e5faccbcf4d22f6b6d307262",
+          "definition_md5": "8392e688dbce599fda3e35cc846ebac5",
           "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "signature": "registry_private.study_status_rpc_active(uuid)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "29812b9edc499a0a916f445f7ec606c5",
+          "security_definer": true,
           "authenticated_execute": false
         },
         {
@@ -15918,7 +16071,7 @@
           "signature": "revoke_patient_token(text,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "6b51e0bf97d1d657f22da8c0672191cd",
+          "definition_md5": "a78ad3e885cedb061debd1381e21449a",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -15966,7 +16119,7 @@
           "signature": "set_patient_study_status(uuid,text,jsonb,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "4786a0358c64177ae62fb56364204e21",
+          "definition_md5": "3f4778c556ea1b17fd81d1d4e267d533",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -18098,6 +18251,28 @@
         },
         {
           "rls": true,
+          "table": "study_status_rpc_rows",
+          "schema": "registry_private",
+          "force_rls": false,
+          "anon_delete": false,
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_delete": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "constraints": [
+            {
+              "name": "study_status_rpc_rows_pkey",
+              "type": "p",
+              "validated": true,
+              "definition_md5": "84e00489f3778b4b4a152f0ccbf279cc"
+            }
+          ]
+        },
+        {
+          "rls": true,
           "table": "objects",
           "schema": "storage",
           "force_rls": false,
@@ -26998,6 +27173,44 @@
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
+        },
+        {
+          "name": "record_id",
+          "type": "uuid",
+          "table": "study_status_rpc_rows",
+          "schema": "registry_private",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "xact_id",
+          "type": "xid8",
+          "table": "study_status_rpc_rows",
+          "schema": "registry_private",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
         }
       ],
       "indexes": [
@@ -29308,6 +29521,37 @@
           "attribute_count": 2,
           "expressions_md5": null,
           "nulls_not_distinct": false
+        },
+        {
+          "live": true,
+          "name": "study_status_rpc_rows_pkey",
+          "ready": true,
+          "table": "study_status_rpc_rows",
+          "valid": true,
+          "schema": "registry_private",
+          "unique": true,
+          "columns": [
+            {
+              "column": "xact_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "record_id",
+              "included": false,
+              "position": 2,
+              "expression": false
+            }
+          ],
+          "primary": true,
+          "immediate": true,
+          "key_count": 2,
+          "predicate_md5": null,
+          "definition_md5": "7cd6486329cb11c43f33cae9cd3f2bf1",
+          "attribute_count": 2,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
         }
       ],
       "policies": [
@@ -29325,7 +29569,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29423,7 +29667,7 @@
           "with_check": null
         },
         {
-          "qual": "(EXISTS ( SELECT 1\n   FROM data_issues i\n  WHERE ((i.id = data_issue_comments.issue_id) AND has_project_permission(i.project_id, 'write'::text) AND ((data_issue_comments.created_by = auth.uid()) OR has_project_permission(i.project_id, 'manage'::text)))))",
+          "qual": "(EXISTS ( SELECT 1\n   FROM data_issues i\n  WHERE ((i.id = data_issue_comments.issue_id) AND (i.project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission)) AND ((data_issue_comments.created_by = auth.uid()) OR (i.project_id IN ( SELECT registry_private.project_ids_with_permission('manage'::text) AS project_ids_with_permission))))))",
           "roles": [
             "authenticated"
           ],
@@ -29444,10 +29688,10 @@
           "schema": "public",
           "command": "INSERT",
           "permissive": "PERMISSIVE",
-          "with_check": "((created_by = auth.uid()) AND (EXISTS ( SELECT 1\n   FROM data_issues i\n  WHERE ((i.id = data_issue_comments.issue_id) AND has_project_permission(i.project_id, 'write'::text)))))"
+          "with_check": "((created_by = auth.uid()) AND (EXISTS ( SELECT 1\n   FROM data_issues i\n  WHERE ((i.id = data_issue_comments.issue_id) AND (i.project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))))))"
         },
         {
-          "qual": "(EXISTS ( SELECT 1\n   FROM data_issues i\n  WHERE ((i.id = data_issue_comments.issue_id) AND has_project_permission(i.project_id, 'read'::text))))",
+          "qual": "(EXISTS ( SELECT 1\n   FROM data_issues i\n  WHERE ((i.id = data_issue_comments.issue_id) AND (i.project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission)))))",
           "roles": [
             "authenticated"
           ],
@@ -29459,7 +29703,7 @@
           "with_check": null
         },
         {
-          "qual": "(EXISTS ( SELECT 1\n   FROM data_issues i\n  WHERE ((i.id = data_issue_comments.issue_id) AND has_project_permission(i.project_id, 'write'::text) AND ((data_issue_comments.created_by = auth.uid()) OR has_project_permission(i.project_id, 'manage'::text)))))",
+          "qual": "(EXISTS ( SELECT 1\n   FROM data_issues i\n  WHERE ((i.id = data_issue_comments.issue_id) AND (i.project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission)) AND ((data_issue_comments.created_by = auth.uid()) OR (i.project_id IN ( SELECT registry_private.project_ids_with_permission('manage'::text) AS project_ids_with_permission))))))",
           "roles": [
             "authenticated"
           ],
@@ -29468,10 +29712,10 @@
           "schema": "public",
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
-          "with_check": "(EXISTS ( SELECT 1\n   FROM data_issues i\n  WHERE ((i.id = data_issue_comments.issue_id) AND has_project_permission(i.project_id, 'write'::text))))"
+          "with_check": "(EXISTS ( SELECT 1\n   FROM data_issues i\n  WHERE ((i.id = data_issue_comments.issue_id) AND (i.project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission)))))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29520,7 +29764,7 @@
           "with_check": "(status = 'pending'::text)"
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29541,10 +29785,10 @@
           "schema": "public",
           "command": "INSERT",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29556,7 +29800,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29565,10 +29809,10 @@
           "schema": "public",
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29580,7 +29824,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29601,10 +29845,10 @@
           "schema": "public",
           "command": "INSERT",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29616,7 +29860,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29625,10 +29869,10 @@
           "schema": "public",
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29649,10 +29893,10 @@
           "schema": "public",
           "command": "INSERT",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29664,7 +29908,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29673,7 +29917,7 @@
           "schema": "public",
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
           "qual": "true",
@@ -29702,7 +29946,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29723,10 +29967,10 @@
           "schema": "public",
           "command": "INSERT",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29738,7 +29982,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29747,10 +29991,10 @@
           "schema": "public",
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29771,10 +30015,10 @@
           "schema": "public",
           "command": "INSERT",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29786,7 +30030,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29795,7 +30039,7 @@
           "schema": "public",
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
           "qual": "(auth.uid() = user_id)",
@@ -29834,7 +30078,7 @@
           "with_check": "(EXISTS ( SELECT 1\n   FROM projects p\n  WHERE ((p.id = patient_tokens.project_id) AND (p.created_by = auth.uid()))))"
         },
         {
-          "qual": "has_project_permission(project_id, 'tokens'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('tokens'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29858,7 +30102,7 @@
           "with_check": "(EXISTS ( SELECT 1\n   FROM projects p\n  WHERE ((p.id = patient_tokens.project_id) AND (p.created_by = auth.uid()))))"
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29879,10 +30123,10 @@
           "schema": "public",
           "command": "INSERT",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29894,7 +30138,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29903,10 +30147,10 @@
           "schema": "public",
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29927,10 +30171,10 @@
           "schema": "public",
           "command": "INSERT",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29942,7 +30186,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29951,10 +30195,10 @@
           "schema": "public",
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -29990,7 +30234,7 @@
           "with_check": "((created_by IS NULL) OR (created_by = auth.uid()))"
         },
         {
-          "qual": "has_project_permission(id, 'read'::text)",
+          "qual": "(id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -30014,7 +30258,7 @@
           "with_check": "(created_by = auth.uid())"
         },
         {
-          "qual": "has_project_permission(project_id, 'tokens'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('tokens'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -30075,7 +30319,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -30096,10 +30340,10 @@
           "schema": "public",
           "command": "INSERT",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -30111,7 +30355,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -30120,10 +30364,10 @@
           "schema": "public",
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -30144,10 +30388,10 @@
           "schema": "public",
           "command": "INSERT",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -30159,7 +30403,7 @@
           "with_check": null
         },
         {
-          "qual": "has_project_permission(project_id, 'write'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -30168,10 +30412,10 @@
           "schema": "public",
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
-          "with_check": "has_project_permission(project_id, 'write'::text)"
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
         },
         {
-          "qual": "has_project_permission(project_id, 'read'::text)",
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
           "roles": [
             "authenticated"
           ],
@@ -30490,6 +30734,13 @@
           "table": "patients_baseline",
           "schema": "public",
           "enabled": "O",
+          "trigger": "registry_study_status_insert_audit",
+          "definition_md5": "d46e6151baea4ef2b2b69f3e313c7c37"
+        },
+        {
+          "table": "patients_baseline",
+          "schema": "public",
+          "enabled": "O",
           "trigger": "tr_patients_created_by",
           "definition_md5": "fe4a3242262b5b9893b4d08655cb8ffe"
         },
@@ -30597,6 +30848,13 @@
           "enabled": "O",
           "trigger": "a_registry_identity",
           "definition_md5": "aae0872d57a15ac46ae5c5aa66f9fbab"
+        },
+        {
+          "table": "visits_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "a_registry_project_lock",
+          "definition_md5": "9b1e034a2fe56a23b07513a80915039f"
         },
         {
           "table": "visits_long",
@@ -30944,7 +31202,7 @@
           "signature": "_trial_block_write()",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "650ffc0bccd0386915bac37d8f33b22d",
+          "definition_md5": "d1160e2548705cff274ded2bbde916b8",
           "security_definer": true,
           "authenticated_execute": false
         },
@@ -31316,7 +31574,7 @@
           "signature": "correct_registry_record(uuid,text,uuid,jsonb,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "6931fc8808e5bcf76e657f613d0b5a3d",
+          "definition_md5": "78d24940c16c8e084ae45eb44c50b585",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -31508,7 +31766,7 @@
           "signature": "import_registry_rows(uuid,text,jsonb,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "9fef141b92bf297ebdc63cdcfafe2b39",
+          "definition_md5": "301a628a806c8f19adc57d9d4a5f3457",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -31721,10 +31979,22 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "registry_private.audit_study_status_on_insert()",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "30587f59804bcfd19cf1d5d45d2a96d4",
+          "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "registry_private.check_calculated_egfr()",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "19179c13ef86d2270f08875f914c687b",
+          "definition_md5": "571528ad641ab72949be9598c528dd89",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -31748,7 +32018,7 @@
           "signature": "registry_private.check_study_status()",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "68545bf55135e56ed1f7deb7415d2f62",
+          "definition_md5": "ff2ed940716d29587df232841d71108b",
           "security_definer": true,
           "authenticated_execute": false
         },
@@ -31805,6 +32075,18 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "registry_private.lock_visit_project()",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "292d73c71408a551ea4ff4b62b96d7ed",
+          "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "registry_private.normalize_lab_row()",
           "volatility": "v",
           "anon_execute": false,
@@ -31823,6 +32105,18 @@
           "definition_md5": "ccb0361efa2dd3beafdef1cc8eaba14d",
           "security_definer": true,
           "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "signature": "registry_private.project_ids_with_permission(text)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "e6d5f4ef3d4276aafcc103297812095e",
+          "security_definer": true,
+          "authenticated_execute": true
         },
         {
           "owner": "postgres",
@@ -31916,8 +32210,20 @@
           "signature": "registry_private.study_exit_only_change(jsonb,jsonb)",
           "volatility": "i",
           "anon_execute": false,
-          "definition_md5": "bfb66030e5faccbcf4d22f6b6d307262",
+          "definition_md5": "8392e688dbce599fda3e35cc846ebac5",
           "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "signature": "registry_private.study_status_rpc_active(uuid)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "29812b9edc499a0a916f445f7ec606c5",
+          "security_definer": true,
           "authenticated_execute": false
         },
         {
@@ -31976,7 +32282,7 @@
           "signature": "revoke_patient_token(text,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "6b51e0bf97d1d657f22da8c0672191cd",
+          "definition_md5": "a78ad3e885cedb061debd1381e21449a",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -32024,7 +32330,7 @@
           "signature": "set_patient_study_status(uuid,text,jsonb,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "4786a0358c64177ae62fb56364204e21",
+          "definition_md5": "3f4778c556ea1b17fd81d1d4e267d533",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -32120,7 +32426,7 @@
     }
   },
   "database_contract_protocol": "registry-contract-v3-pg17",
-  "database_contract_reference_sha256": "341ed8ab0a27bbaaef476635675d5ff89b34c8d0796dc30c0f7d10098902bd6c",
+  "database_contract_reference_sha256": "e8c23123e321b9c60f89e0fb87c375806079ffdbed7b5deaa96583a41fa0ccdd",
   "database_contract_sha256": "aca7000205680905a853fc72280ff60a2f99af32d8b2807bb761de7769ed6b29",
   "database_server_major": 17,
   "files": {
@@ -32165,7 +32471,7 @@
       "old_sha256": "c5c3d5b05e5a1a4fae277911f6bfe4af2c6af94d4bc96adbf61c844d132923e7"
     },
     "assets/sql/batch6_latest.sql": {
-      "new_sha256": "8f2aeeb83ae29935dc4ade446714dce6f49a79a5fa484cdaeafb42cd8174b0aa",
+      "new_sha256": "bf063c2acac2bda3eaa5431fb41d4d31d5c16845f628a7267f18143de26dec0c",
       "old_sha256": "872074c4a42c986ffcbc368d9c1e06ef126c527ad87eb4ba6e53e7a041165e0b"
     },
     "assets/template/METHODS_TEMPLATE_EN.md": {
@@ -32378,7 +32684,7 @@
     }
   },
   "format": 2,
-  "migration_manifest_sha256": "82364481988ddf0912dd9d57e3da732700b6724c3b571be709e0af555190bad6",
+  "migration_manifest_sha256": "9fac1eb43b96e2a5832e4b969451006218a14abc4a6213d4814af5284fc9bce0",
   "project_ref": "etsyglgpiutflethgirs",
   "release": "registry-20261012-adoption-v4",
   "required_db_checks": [
@@ -32411,6 +32717,8 @@
     "patient_context_minimal",
     "patient_submit_structured_values",
     "plaintext_erasure_audited",
+    "study_status_dedicated_action",
+    "set_based_project_rls",
     "single_billing_order_overload"
   ],
   "required_schema_versions": [

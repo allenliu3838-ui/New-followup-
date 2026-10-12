@@ -12,7 +12,7 @@
     "0039_patient_token_hashing"
   ],
   "order": "lexicographic filenames; historical duplicate prefixes retained, unique full filenames",
-  "bundle_sha256": "b8242bf6069abaa06f3632bad323f43177a97441568466578489b3d3ad389562",
+  "bundle_sha256": "04ec323ed6d44786b299536d9623ce915353829f4610b8709079d880155585ce",
   "migrations": [
     {
       "ordinal": 1,
@@ -212,12 +212,12 @@
     {
       "ordinal": 40,
       "file": "0038_followup_workflow.sql",
-      "sha256": "6a8eb414aadc1ec5fb62f3db772f35e24f11b1dce83569023646fb1815f37002"
+      "sha256": "d2aa212f6da4be05178fba886becf14153fab452c8722c6a0862d0bf37e92361"
     },
     {
       "ordinal": 41,
       "file": "0039_patient_token_hashing.sql",
-      "sha256": "6723f38341372a33fe9e82b30e072f8424bad53be4b6c7f526ecf41496dee477"
+      "sha256": "649ec1ac2b39ae5155d2155c53e8b4bba62e49a3d558fbf31a9df2a5dc4c5e75"
     }
   ]
 }

@@ -467,6 +467,7 @@ docker compose exec -T db rm -f /tmp/registry.dump
 说明：
 
 - 顺序不能颠倒：`public` 中有 7 个外键引用 `auth.users`，必须先恢复账号。
+- 业务数据（第 3 步）必须按上面的方式**结构与数据一起**恢复：pg_restore 先装载数据、最后才创建触发器，已验证可行。不要对 `public` 单独做 `--data-only` 恢复：那样触发器会在装载时执行，已退出研究患者的行会被拒绝（`study_status_requires_dedicated_action`），研究状态会被重复写入审计。确需 data-only 时必须加 `--disable-triggers`（需超级用户）。
 - 新 GoTrue/Storage 版本较新时，表上多出的列会取默认值；若报“列不存在”，说明新版本低于旧版本，停止并回到 4.2。
 - 认证审计日志 `auth.audit_log_entries` 不迁入新库，随 6.3 的加密备份按保留期保存（如运营方决定迁入，追加 `--table=audit_log_entries`）。
 - 旧库 `storage.objects` 上的旧策略不恢复；0033 会重建付款凭证的三条策略。5.3 中如有其他存储策略，在 6.12 之后评估是否重建。
