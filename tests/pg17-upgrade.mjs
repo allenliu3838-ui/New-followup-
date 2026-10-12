@@ -11,8 +11,9 @@ const project = randomUUID();
 const otherProject = randomUUID();
 const patientCode = 'SYNTHETIC-001';
 const visitId = randomUUID();
+// Production links are 32 lowercase hex characters; 0039 revokes any other stored format.
 const token = Object.fromEntries(['valid', 'expired', 'revoked', 'consumed', 'inactive']
-  .map(name => [name, `synthetic-${name}-${randomUUID()}`]));
+  .map(name => [name, randomUUID().replaceAll('-', '')]));
 let groups = 0;
 const pass = label => { groups++; console.log(`PASS ${label}`); };
 const row = async (sql, args = []) => (await db.query(sql, args)).rows[0];

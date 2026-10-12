@@ -322,7 +322,8 @@ let projectCustomLabs = [];  // [{id, name, unit}] — per-project custom lab ca
 let sessionEpoch=0, projectEpoch=0;
 let projectAccess=null;
 let projectMembersController=null;
-function canProject(capability){return !!selectedProject && projectAccess?.[capability]===true;}
+// can_record_study_exit：负责人和录入协作人登记拒绝/撤回同意或停止随访，不受账户只读影响（与撤销链接相同，数据库同样放行）。
+function canProject(capability){if(capability==='can_record_study_exit')return canRevokeTokens();return !!selectedProject && projectAccess?.[capability]===true;}
 function canRevokeTokens(){return !!selectedProject&&['owner','editor'].includes(projectAccess?.role);}
 function canManageProject(){return !!selectedProject&&projectAccess?.can_manage_project===true;}
 function requireProjectCapability(capability){

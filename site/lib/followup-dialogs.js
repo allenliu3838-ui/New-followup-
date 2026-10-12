@@ -4,6 +4,7 @@ import {
   escapeHtml, localToday, formatLocalDateTime, buildVisitRow, visitUnitHints, splitBloodPressure,
   visitSaveMessage, validationDetails, isSameDayConflict, tokenState, revokeReasonLabel, buildFollowupLink,
   linkMessageText, revokesLinks, newLinkBlockReason, CONSENT_STATUSES, FOLLOWUP_STATUSES, FOLLOWUP_STATUS_OPTIONS, FOLLOWUP_STATES, REASON_REQUIRED_CONSENT, REASON_REQUIRED_FOLLOWUP,
+  EXIT_CONSENT_STATUSES, EXIT_FOLLOWUP_STATUSES, consentDateLabel, inactiveReason,
 } from '/lib/followup-board.js?v=registry-20261012-adoption-v4';
 
 const TOKEN_COLUMNS = 'id,patient_code,created_at,expires_at,single_use,used_at,revoked_at,revoke_reason,active';
@@ -184,7 +185,9 @@ export function createFollowupDialogs(deps) {
       if (row.followup_state === 'inactive') {
         const warn = document.createElement('div');
         warn.className = 'fu-warn-line';
-        warn.textContent = `该患者的随访状态为“${FOLLOWUP_STATUSES[row.followup_status] || '已停止随访'}”。如患者已恢复随访，请同时在“研究状态”中更新。`;
+        warn.textContent = (row.followup_status ?? 'active') !== 'active'
+          ? `该患者的随访状态为“${FOLLOWUP_STATUSES[row.followup_status] || '已停止随访'}”。如患者已恢复随访，请同时在“研究状态”中更新。`
+          : `该患者已${inactiveReason(row) || '停止随访'}，看板不再提醒随访。录入前请按研究方案确认是否仍可收集数据；如情况有变，请先在“研究状态”中更新。`;
         box.append(warn);
       }
       if (!row.last_visit_date) return;
@@ -436,7 +439,9 @@ export function createFollowupDialogs(deps) {
 
   // ── 研究状态 ──────────────────────────────────────────────
   async function openStudyStatus(code) {
-    if (!deps.can('can_write')) { deps.toast('当前项目角色或账户状态不允许修改研究状态。'); return null; }
+    // 账户只读（如试用到期）时，负责人和录入协作人仍可登记拒绝/撤回同意或停止随访，这是合规操作。
+    const exitOnly = !deps.can('can_write') && deps.can('can_record_study_exit');
+    if (!deps.can('can_write') && !exitOnly) { deps.toast('当前项目角色或账户状态不允许修改研究状态。'); return null; }
     const op = deps.capture();
     const modal = openModal({ id: 'studyStatus', title: `研究状态 · ${code}`, html: '<p class="muted small" id="ssLoading">正在读取…</p>' });
     let record;
@@ -453,24 +458,29 @@ export function createFollowupDialogs(deps) {
       return modal;
     }
     const today = localToday();
+    const currentConsent = record.consent_status || 'unconfirmed';
+    const currentFollowup = record.followup_status || 'active';
+    // 只读期间只列出当前取值与退出类取值；数据库同样只放行这类修改。
+    const allowed = (map, current, exits) => Object.fromEntries(Object.entries(map).filter(([value]) => !exitOnly || value === current || exits.includes(value)));
     const options = (map, current) => Object.entries(map).map(([value, item]) => `<option value="${value}"${value === current ? ' selected' : ''}>${escapeHtml(typeof item === 'string' ? item : item.label)}</option>`).join('');
     const body = modal.q('.fu-modal-body');
     body.innerHTML = `<p class="muted small">知情同意与随访状态用于随访管理和数据使用范围核对，每次修改都会留痕。随访状态只决定是否继续提醒随访，不等同于临床终点事件；终点事件请按研究方案在“临床终点事件”中录入。</p>
+${exitOnly ? '<p id="ssExitOnly" class="fu-warn-line small">账户当前为只读（如试用期已结束或订阅已到期）。此处仍可登记拒绝或撤回知情同意、停止随访（失访、退出研究、死亡、肾衰竭、转院）及对应日期；其他修改需恢复账户权益后进行。</p>' : ''}
 <fieldset class="fu-fieldset"><legend>知情同意</legend>
   <div class="fu-grid">
-    <div><label for="ssConsent">同意状态</label><select id="ssConsent">${options(CONSENT_STATUSES, record.consent_status || 'unconfirmed')}</select></div>
-    <div><label for="ssConsentDate">签署或批准日期</label><input id="ssConsentDate" type="date" max="${today}" value="${escapeHtml(record.consent_date || '')}"/></div>
-    <div><label for="ssConsentVersion">知情同意书版本</label><input id="ssConsentVersion" maxlength="100" value="${escapeHtml(record.consent_version || '')}" placeholder="例如：V2.0（2026-03-01）"/></div>
+    <div><label for="ssConsent">同意状态</label><select id="ssConsent">${options(allowed(CONSENT_STATUSES, currentConsent, EXIT_CONSENT_STATUSES), currentConsent)}</select></div>
+    <div><label for="ssConsentDate" id="ssConsentDateLabel">${escapeHtml(consentDateLabel(currentConsent))}</label><input id="ssConsentDate" type="date" max="${today}" value="${escapeHtml(record.consent_date || '')}"/></div>
+    <div><label for="ssConsentVersion">知情同意书版本</label><input id="ssConsentVersion" maxlength="100" value="${escapeHtml(record.consent_version || '')}" placeholder="例如：V2.0（2026-03-01）"${exitOnly ? ' disabled' : ''}/></div>
   </div>
-  <p class="muted small">“伦理批准豁免”仅在伦理委员会书面批准免除知情同意时选择。</p>
+  <p class="muted small">日期记录当前同意状态对应的日期：已同意填签署日期，伦理批准豁免填批准日期，拒绝或撤回填拒绝或撤回日期。更改同意状态时请填写新状态的日期，原日期保留在修改记录中。“伦理批准豁免”仅在伦理委员会书面批准免除知情同意时选择。</p>
 </fieldset>
 <fieldset class="fu-fieldset"><legend>随访状态</legend>
   <div class="fu-grid">
-    <div><label for="ssFollowup">随访状态</label><select id="ssFollowup">${options(FOLLOWUP_STATUS_OPTIONS, record.followup_status || 'active')}</select></div>
+    <div><label for="ssFollowup">随访状态</label><select id="ssFollowup">${options(allowed(FOLLOWUP_STATUS_OPTIONS, currentFollowup, EXIT_FOLLOWUP_STATUSES), currentFollowup)}</select></div>
     <div><label for="ssFollowupDate">状态变更日期</label><input id="ssFollowupDate" type="date" max="${today}" value="${escapeHtml(record.followup_status_date || '')}"/></div>
   </div>
 </fieldset>
-<p id="ssExitHint" class="fu-warn-line small" hidden>看板只按“随访状态”提醒随访。患者撤回或拒绝同意后如不再随访，建议同时把随访状态改为“退出研究”。 <button type="button" class="btn small" id="ssExitApply">同时改为“退出研究”</button></p>
+<p id="ssExitHint" class="fu-warn-line small" hidden>拒绝或撤回同意后，看板不再提醒随访、也不能再发放随访链接。如患者不再随访，建议同时把随访状态改为“退出研究”，便于统计。 <button type="button" class="btn small" id="ssExitApply">同时改为“退出研究”</button></p>
 <p id="ssLinkNote" class="fu-warn-line small" hidden>该患者的有效随访链接将被自动撤销；已提交的数据不受影响。</p>
 <label for="ssReason">修改原因 <span class="muted">（改为或改自拒绝、撤回、失访、退出研究、死亡、肾衰竭、转院时必填）</span></label>
 <textarea id="ssReason" maxlength="500" placeholder="说明依据，例如：患者书面撤回同意。不要填写姓名、电话等身份信息。"></textarea>
@@ -486,6 +496,18 @@ export function createFollowupDialogs(deps) {
       followup_status_date: record.followup_status_date || null,
     };
     const inputs = { consent_status: q('#ssConsent'), consent_date: q('#ssConsentDate'), consent_version: q('#ssConsentVersion'), followup_status: q('#ssFollowup'), followup_status_date: q('#ssFollowupDate') };
+    // 日期属于当前状态：改选状态时清空原状态的日期（原日期保留在修改记录中），并更新标签。
+    const syncDates = () => {
+      for (const [status, date] of [['consent_status', 'consent_date'], ['followup_status', 'followup_status_date']]) {
+        if (inputs[status].value !== original[status] && inputs[date].value === (original[date] || '')) inputs[date].value = '';
+        if (inputs[status].value === original[status] && !inputs[date].value) inputs[date].value = original[date] || '';
+      }
+      q('#ssConsentDateLabel').textContent = consentDateLabel(inputs.consent_status.value);
+      if (exitOnly) {
+        inputs.consent_date.disabled = !EXIT_CONSENT_STATUSES.includes(inputs.consent_status.value);
+        inputs.followup_status_date.disabled = !EXIT_FOLLOWUP_STATUSES.includes(inputs.followup_status.value);
+      }
+    };
     const updateLinkNote = () => {
       const pending = {};
       if (inputs.consent_status.value !== original.consent_status) pending.consent_status = inputs.consent_status.value;
@@ -493,19 +515,21 @@ export function createFollowupDialogs(deps) {
       q('#ssLinkNote').hidden = !revokesLinks(pending);
       q('#ssExitHint').hidden = !(REASON_REQUIRED_CONSENT.includes(inputs.consent_status.value) && inputs.followup_status.value === 'active');
     };
-    inputs.consent_status.addEventListener('change', updateLinkNote);
-    inputs.followup_status.addEventListener('change', updateLinkNote);
+    for (const key of ['consent_status', 'followup_status']) inputs[key].addEventListener('change', () => { syncDates(); updateLinkNote(); });
     q('#ssExitApply').addEventListener('click', () => {
       inputs.followup_status.value = 'withdrawn';
+      syncDates();
       updateLinkNote();
       inputs.followup_status_date.focus();
     });
+    syncDates();
     updateLinkNote();
 
     q('#ssSave').addEventListener('click', async () => {
       setFeedback(feedback, []);
       const changes = {};
       for (const [key, input] of Object.entries(inputs)) {
+        if (input.disabled) continue;
         const value = input.value.trim();
         // 日期与版本清空时按接口约定传空字符串，由数据库存为空值。
         if ((value || null) !== original[key]) changes[key] = value;
@@ -515,7 +539,7 @@ export function createFollowupDialogs(deps) {
       const errors = [];
       for (const key of ['consent_date', 'followup_status_date']) {
         const value = changes[key];
-        if (value && (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value > localToday())) errors.push(`${key === 'consent_date' ? '签署或批准日期' : '状态变更日期'}须为有效日期，且不能晚于今天。`);
+        if (value && (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value > localToday())) errors.push(`${key === 'consent_date' ? consentDateLabel(inputs.consent_status.value) : '状态变更日期'}须为有效日期，且不能晚于今天。`);
       }
       if (changes.consent_version && changes.consent_version.length > 100) errors.push('知情同意书版本最多 100 个字符。');
       const sensitive = ('consent_status' in changes && (REASON_REQUIRED_CONSENT.includes(changes.consent_status) || REASON_REQUIRED_CONSENT.includes(original.consent_status)))
