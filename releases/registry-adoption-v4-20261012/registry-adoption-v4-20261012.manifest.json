@@ -32443,7 +32443,7 @@
       "old_sha256": "b6df123beb0fda02b77455762cab1cc5065aa7d31f1ca2f08e0f33ede98c3924"
     },
     "app.css": {
-      "new_sha256": "4de9f8592c6cdb0ade484aa85d70b0a32a53de8e5a699860acb0ccb9c11c4ea7",
+      "new_sha256": "489da9d1c502e6766337343aecc06d196a6f15961a535c61db093aff95e61fb3",
       "old_sha256": "3b291e374341e886e0664ee236b40691b589164721d483e19d940092c1851227"
     },
     "assets/registry-tech-hero.png": {
@@ -32563,11 +32563,11 @@
       "old_sha256": "249a55b8eecf910e3251721d7801a62a3f17de589580aec6ee36dfccfb9b0cab"
     },
     "lib/followup-board.js": {
-      "new_sha256": "4e1f6829dd37ebb7c3f6eb3b11b319de398fe2037c5ff7ffcd59cf416fa32f2c",
+      "new_sha256": "5bb6df89b59288e513267357e69816fec366e586a68a7afe61968b0fe40f2869",
       "old_sha256": null
     },
     "lib/followup-dialogs.js": {
-      "new_sha256": "5b41eb02ce5fe29c2e9f48497156064f44352c7217e3e7719d86db979f367a7e",
+      "new_sha256": "52073e94e104ae7c932cf82039390a74ad9ef57709638cb322cf28a7b58c288c",
       "old_sha256": null
     },
     "lib/password-strength.js": {
@@ -32575,7 +32575,7 @@
       "old_sha256": "619482677965c368936b629b0d433fe9d8a4751f6a8fdf96f4099b4c4b76ffa1"
     },
     "lib/patient-workflow.js": {
-      "new_sha256": "cafec852056390f4ef7056402aedf46000902ca747d477b28806b0cd8e8aba4a",
+      "new_sha256": "16a11d0f19707904c2ec2e3a8038ae4e80af6a5f851712338af41ff1ee3c8097",
       "old_sha256": null
     },
     "lib/product-nav.css": {
@@ -32595,7 +32595,7 @@
       "old_sha256": "815cddf25cfe58cef8fe12e09fa1b1b9cd9f2b30a4efa305d6038a3e13f9dd3e"
     },
     "lib/registry-data.js": {
-      "new_sha256": "5c9bd16b6e8ecdf5a86b3e1c2a4b0936f27bb817d75549e25a4aa5974af59eee",
+      "new_sha256": "1802adfaf1ea12bb4a207e3b65543c2c310de70787a63c882a48621eea2af75c",
       "old_sha256": null
     },
     "lib/supabase-client.js": {
@@ -32631,7 +32631,7 @@
       "old_sha256": "8387a113b719bb412417faf5d4cd4549dbd6ebce741ed3fbe6da73b3edf9967a"
     },
     "patient.js": {
-      "new_sha256": "cc9013f532fa9965578ca7e53c50808a16028598e5e6ec8f88b35ce2661d6187",
+      "new_sha256": "c64db4e62f79754a548afc69cb2359418b7dbddee5e66679cd4e917f26d58507",
       "old_sha256": "f62babfc769c1ff3ee835db4e1ff6cea082623b34264bb897c831d05ec392987"
     },
     "pricing-config.js": {
@@ -32667,11 +32667,11 @@
       "old_sha256": "77c7306a7e1ad8bdf091cb51240a1646427bcbd80df9847f5b2e3d1ed8b345f4"
     },
     "staff.html": {
-      "new_sha256": "46b38df173fe5ef28c7e1c4aa5a12a6b8212dafa8de44aa1047312bf0b8b14ce",
+      "new_sha256": "79d1cfd97f9c8df3d92cbab19b360fdff15024ae7fb7019fc4bac1e581a2aba0",
       "old_sha256": "2a26a4bc8cb72208bff88ed9b3f80b9e58f2b6703624cc2f74f65afee5ce0184"
     },
     "staff.js": {
-      "new_sha256": "c8488c6579c5c9ce5100ba2d84d8d4b37cf798b459d359db824b7fc10f21e979",
+      "new_sha256": "ca5e9126635d8af7bc27757f64e9afec273e56f396a02655283546b0324d9c07",
       "old_sha256": "9b4565b86046393bf2526281d3ebdb50925a93234ff28e7c15224e43273c2201"
     },
     "terms.html": {
