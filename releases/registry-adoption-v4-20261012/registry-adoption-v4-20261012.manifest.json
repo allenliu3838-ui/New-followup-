@@ -32069,7 +32069,7 @@
       "old_sha256": "619482677965c368936b629b0d433fe9d8a4751f6a8fdf96f4099b4c4b76ffa1"
     },
     "lib/patient-workflow.js": {
-      "new_sha256": "338f5d4440f30001d142a109cfd72e35df383f639fc50d2d46d336dad59a7ce8",
+      "new_sha256": "cafec852056390f4ef7056402aedf46000902ca747d477b28806b0cd8e8aba4a",
       "old_sha256": null
     },
     "lib/product-nav.css": {
@@ -32121,11 +32121,11 @@
       "old_sha256": "5fca455c8552312a74a67e84b2fe10d896d64c42407a89fa11eeb2c3dbf67f30"
     },
     "patient.html": {
-      "new_sha256": "196e651147e86b9e141e883a54acbc9d2a8794c912a979c0cbd0ceecf66ab053",
+      "new_sha256": "e0589c84b0ac8a792d9f0ea78a1abdc595e29730befda9b71963290a3812a576",
       "old_sha256": "8387a113b719bb412417faf5d4cd4549dbd6ebce741ed3fbe6da73b3edf9967a"
     },
     "patient.js": {
-      "new_sha256": "955bfc4eb1a9733dce8e741754b8dbddcf73bd91cfde1ca9b48b04fcd0c6457a",
+      "new_sha256": "cb14253d4bcec24e1061f5c117e8a9d001d8f054bc5d30e9f798a205b13b39e9",
       "old_sha256": "f62babfc769c1ff3ee835db4e1ff6cea082623b34264bb897c831d05ec392987"
     },
     "pricing-config.js": {
