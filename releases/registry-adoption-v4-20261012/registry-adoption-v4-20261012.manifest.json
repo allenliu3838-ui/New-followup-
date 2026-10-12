@@ -31937,7 +31937,7 @@
       "old_sha256": "b6df123beb0fda02b77455762cab1cc5065aa7d31f1ca2f08e0f33ede98c3924"
     },
     "app.css": {
-      "new_sha256": "3b291e374341e886e0664ee236b40691b589164721d483e19d940092c1851227",
+      "new_sha256": "4de9f8592c6cdb0ade484aa85d70b0a32a53de8e5a699860acb0ccb9c11c4ea7",
       "old_sha256": "3b291e374341e886e0664ee236b40691b589164721d483e19d940092c1851227"
     },
     "assets/registry-tech-hero.png": {
@@ -32056,6 +32056,14 @@
       "new_sha256": "249a55b8eecf910e3251721d7801a62a3f17de589580aec6ee36dfccfb9b0cab",
       "old_sha256": "249a55b8eecf910e3251721d7801a62a3f17de589580aec6ee36dfccfb9b0cab"
     },
+    "lib/followup-board.js": {
+      "new_sha256": "1f31777d04bef34948c4c91e045378366470b55ab4a1c424631223c1721255b4",
+      "old_sha256": null
+    },
+    "lib/followup-dialogs.js": {
+      "new_sha256": "fc5e80bc7edeba9662dea41d36ffc9707cd9013bea21af1a9e76f7eeceaf222c",
+      "old_sha256": null
+    },
     "lib/password-strength.js": {
       "new_sha256": "619482677965c368936b629b0d433fe9d8a4751f6a8fdf96f4099b4c4b76ffa1",
       "old_sha256": "619482677965c368936b629b0d433fe9d8a4751f6a8fdf96f4099b4c4b76ffa1"
@@ -32073,7 +32081,7 @@
       "old_sha256": "815cddf25cfe58cef8fe12e09fa1b1b9cd9f2b30a4efa305d6038a3e13f9dd3e"
     },
     "lib/registry-data.js": {
-      "new_sha256": "35a725a235ee8d845ebc479b0da9d528132c2ac39a7486a5e2408661978e8151",
+      "new_sha256": "b6f4b5b4e16406771b91b13f1989a1327451e5e967b3f412741a8297c9343868",
       "old_sha256": null
     },
     "lib/supabase-client.js": {
@@ -32145,11 +32153,11 @@
       "old_sha256": "77c7306a7e1ad8bdf091cb51240a1646427bcbd80df9847f5b2e3d1ed8b345f4"
     },
     "staff.html": {
-      "new_sha256": "4de741a80ce31015de886918299fecccc882f9bd2f6e180298b041e887e256af",
+      "new_sha256": "4d8e49316f71592b5a4b2ded40468ca7fe054e589f28fed2f0b39a8716c4b1d1",
       "old_sha256": "2a26a4bc8cb72208bff88ed9b3f80b9e58f2b6703624cc2f74f65afee5ce0184"
     },
     "staff.js": {
-      "new_sha256": "62c1fae148bb015f7d91b239369317120d2cc55bc868910a452db499394fe62f",
+      "new_sha256": "59107a4f59689efb07f5b3c723d9b8ce6204906c2dbe76c27426888ac1fbc872",
       "old_sha256": "9b4565b86046393bf2526281d3ebdb50925a93234ff28e7c15224e43273c2201"
     },
     "terms.html": {
