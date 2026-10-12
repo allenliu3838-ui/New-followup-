@@ -179,6 +179,33 @@ try {
   assert.equal(await versionCount(), 6);
   pass('0038/0039 refuse to run, change nothing and explain in Chinese when consent data or dependencies need a manual review');
 
+  // (f) Between the precondition check and the clearing step no consent value can be written:
+  // 0038 locks the baseline table before checking. Run its opening (up to and including the
+  // check) in another session and hold it there: writers cannot get in, plain reads can.
+  const text38 = fs.readFileSync(path.join(root, 'supabase/migrations', NEW_MIGRATIONS[0]), 'utf8');
+  const lockAt = text38.indexOf('\nLOCK TABLE public.patients_baseline IN EXCLUSIVE MODE;\n');
+  const checkAt = text38.indexOf('\n-- Preconditions.');
+  const afterCheck = text38.indexOf('\nALTER TABLE public.patients_baseline\n  ADD COLUMN IF NOT EXISTS consent_status');
+  assert.ok(lockAt > text38.indexOf('\nBEGIN;\n') && lockAt < checkAt && checkAt < afterCheck, 'the lock is taken inside the migration transaction, before the check');
+  const migrating = await connectOther();
+  await migrating.query(text38.slice(0, afterCheck));
+  const migratingPid = Number((await migrating.query('SELECT pg_backend_pid() AS p')).rows[0].p);
+  assert.equal((await row("SELECT bool_or(mode='ExclusiveLock' AND granted) AS held FROM pg_locks WHERE pid=$1 AND locktype='relation' AND relation='public.patients_baseline'::regclass", [migratingPid])).held,
+    true, 'the migration holds the baseline table after its check');
+  await db.exec("SET lock_timeout='200ms'");
+  try {
+    await as(owner, async () => assert.rejects(row("SELECT public.import_registry_rows($1,'baseline',$2,$3)", [project,
+      JSON.stringify([{patient_code: 'SYN-OK', consent_research: false}]), randomUUID()]), error => error.code === '55P03', 'a concurrent import of an explicit "no" cannot get in'));
+    await assert.rejects(db.query("UPDATE public.patients_baseline SET consent_research=false WHERE project_id=$1 AND patient_code='SYN-OK'", [project]),
+      error => error.code === '55P03', 'nor can a direct write');
+    assert.equal(Number((await row('SELECT count(*) AS n FROM public.patients_baseline WHERE project_id=$1', [project])).n), codes.length, 'plain reads continue');
+  } finally { await db.exec('RESET lock_timeout'); }
+  await migrating.query('ROLLBACK');
+  assert.ok((await rows('SELECT consent_research FROM public.patients_baseline')).every(r => r.consent_research === true));
+  assert.equal(await consentAudit(), 0);
+  assert.equal(await versionCount(), 6);
+  pass('0038 locks the baseline table before its precondition check: no consent value can be written between the check and the clearing step');
+
   // ---- Upgrade --------------------------------------------------------------------------
   await applyReviewed([NEW_MIGRATIONS[0]]);
   // (e) 0039 checks its own trigger and refuses duplicate plaintext (unique digests).
@@ -319,6 +346,16 @@ try {
   assert.equal(await consentResearch('SYN-OK15'), null, 'refused exit changed nothing');
   await as(editor, () => setStatus('SYN-OK15', {consent_status: 'declined', consent_date: ''}, '患者拒绝参加研究'));
   assert.equal(await consentResearch('SYN-OK15'), false);
+  // Undoing an exit, or changing the status fields of a participant who left, needs a reason too.
+  await as(owner, async () => {
+    for (const reason of [null, '', '  ', '是']) {
+      await assert.rejects(setStatus('SYN-OK15', {consent_status: 'unconfirmed'}, reason), fails('study_exit_reason_required'), `undo with ${JSON.stringify(reason)}`);
+    }
+    await assert.rejects(setStatus('SYN-OK15', {consent_status: 'consented'}, '患者手机13812345678'), fails('pii_detected_blocked'));
+    await assert.rejects(setStatus('SYN-OK15', {consent_version: 'V0.9'}), fails('study_exit_reason_required'), 'consent form version of a participant who declined');
+    await assert.rejects(setStatus('SYN-OK15', {followup_status: 'lost'}), fails('study_exit_reason_required'), 'follow-up status of a participant who declined');
+  });
+  assert.equal(await consentResearch('SYN-OK15'), false, 'refused undo changed nothing');
   await as(owner, () => setStatus('SYN-OK15', {consent_status: 'unconfirmed'}, '误选，恢复为未确认'));
   assert.equal(await consentResearch('SYN-OK15'), null);
   for (const user of [analyst, viewer, outsider]) {
@@ -353,27 +390,40 @@ try {
     WHERE b.project_id=$1 AND b.patient_code='SYN-DUE0' AND a.field_name='consent_status'`, [project])).change_reason, '研究同意或随访状态更新（未填写原因）');
   assert.equal((await row(`SELECT change_reason FROM public.field_audit_log a JOIN public.patients_baseline b ON b.id=a.record_id
     WHERE b.project_id=$1 AND b.patient_code='SYN-OK15' AND a.field_name='consent_status' AND a.new_value='declined'`, [project])).change_reason, '患者拒绝参加研究');
-  pass('set_patient_study_status: owner/editor only, validated keys and values, exit needs a reason, derived consent flag, field audit with reason');
+  pass('set_patient_study_status: owner/editor only, validated keys and values, recording or undoing an exit needs a reason, derived consent flag, field audit with reason');
 
   await as(owner, async () => {
     await assert.rejects(db.query("UPDATE public.patients_baseline SET consent_research=false WHERE project_id=$1 AND patient_code='SYN-OK'", [project]),
       fails('consent_research_is_derived'));
     await assert.rejects(db.query("INSERT INTO public.patients_baseline(project_id,patient_code,baseline_date,consent_research) VALUES($1,'SYN-NEW1',CURRENT_DATE,true)", [project]),
       fails('consent_research_is_derived'));
+    const csvBatch = randomUUID();
     const imported = await row('SELECT public.import_registry_rows($1,$2,$3,$4) AS r', [project, 'baseline',
-      JSON.stringify([{patient_code: 'SYN-CSV', baseline_date: '2025-03-01', consent_status: 'consented', consent_date: '2025-03-01', followup_status: 'active'}]), randomUUID()]);
+      JSON.stringify([{patient_code: 'SYN-CSV', baseline_date: '2025-03-01', consent_status: 'consented', consent_date: '2025-03-01', followup_status: 'active'}]), csvBatch]);
     assert.equal(imported.r.inserted, 1);
     await assert.rejects(row('SELECT public.import_registry_rows($1,$2,$3,$4) AS r', [project, 'baseline',
       JSON.stringify([{patient_code: 'SYN-CSV2', baseline_date: '2025-03-01', consent_research: 'true'}]), randomUUID()]), fails('unsupported_column: consent_research'));
     const csvId = (await row("SELECT id FROM public.patients_baseline WHERE project_id=$1 AND patient_code='SYN-CSV'", [project])).id;
+    // The study status given with a new patient is field-audited with the batch as its reason.
+    assert.deepEqual((await rows("SELECT field_name,old_value,new_value,changed_by,change_reason FROM public.field_audit_log WHERE table_name='patients_baseline' AND record_id=$1 ORDER BY field_name", [csvId]))
+      .map(a => [a.field_name, a.old_value, a.new_value, a.changed_by, a.change_reason]), [
+      ['consent_date', null, '2025-03-01', owner, `CSV导入批次 ${csvBatch}`],
+      ['consent_research', null, 'true', owner, `CSV导入批次 ${csvBatch}`],
+      ['consent_status', null, 'consented', owner, `CSV导入批次 ${csvBatch}`]]);
     await assert.rejects(row("SELECT public.correct_registry_record($1,'patients_baseline',$2,'{\"consent_status\":null}','核对原始记录')", [project, csvId]),
       fails('invalid_consent_status'));
-    const corrected = await row("SELECT public.correct_registry_record($1,'patients_baseline',$2,'{\"consent_status\":\"withdrawn\"}','患者书面撤回同意') AS r", [project, csvId]);
-    assert.equal(corrected.r.record.consent_research, false);
+    // The correction dialog never changes study status: that is set_patient_study_status.
+    for (const [changes, field] of [[{consent_status: 'withdrawn'}, 'consent_status'], [{consent_status: 'unconfirmed'}, 'consent_status'],
+      [{consent_version: 'V2'}, 'consent_version'], [{consent_date: '2025-03-02'}, 'consent_date'],
+      [{followup_status: 'lost', treatment_arm: 'A'}, 'followup_status'], [{followup_status_date: '2025-03-02'}, 'followup_status_date']]) {
+      await assert.rejects(row("SELECT public.correct_registry_record($1,'patients_baseline',$2,$3,'患者书面撤回同意')", [project, csvId, JSON.stringify(changes)]),
+        error => error.message === `study_status_requires_dedicated_action: ${field}`, JSON.stringify(changes));
+    }
   });
-  assert.equal(await consentResearch('SYN-CSV'), false);
+  assert.deepEqual(await row("SELECT consent_status,consent_research,treatment_arm FROM public.patients_baseline WHERE project_id=$1 AND patient_code='SYN-CSV'", [project]),
+    {consent_status: 'consented', consent_research: true, treatment_arm: null}, 'refused corrections changed nothing');
   await db.query("DELETE FROM public.patients_baseline WHERE project_id=$1 AND patient_code='SYN-CSV'", [project]);
-  pass('consent flag cannot be written directly; CSV import and audited correction use the explicit status fields');
+  pass('consent flag cannot be written directly; CSV import uses the explicit status fields and a new patient\'s status is field-audited; correction cannot change study status');
 
   // Leaving the study revokes usable links on every write path; lost to follow-up does not.
   await as(editor, () => setStatus('SYN-DUE', {consent_status: 'withdrawn', consent_date: '2025-06-01'}, '患者撤回同意'));
@@ -391,6 +441,67 @@ try {
   assert.equal(exitAudit.token_hash, null);
   assert.ok(!JSON.stringify(exitAudit).includes(plaintext.withdraw) && !JSON.stringify(exitAudit).includes(sha256(plaintext.withdraw)), 'no link material in the audit');
   pass('consent withdrawal stops link collection for that patient and audits the revoked link ids; loss to follow-up keeps the link');
+
+  // ---- CSV import cannot record, undo or change a study exit --------------------------------
+  // Synthetic patients for this group only (removed at the end): SYN-CSVA stays in the study,
+  // SYN-CSVW withdraws consent through the dedicated action.
+  for (const code of ['SYN-CSVA', 'SYN-CSVW']) {
+    await db.query("INSERT INTO public.patients_baseline(project_id,patient_code,baseline_date,sex,birth_year,created_by) VALUES($1,$2,CURRENT_DATE-60,'F',1985,$3)", [project, code, owner]);
+  }
+  await as(owner, () => setStatus('SYN-CSVW', {consent_status: 'withdrawn', consent_date: '2025-07-01'}, '患者书面撤回同意'));
+  const csvRow = async code => (await row('SELECT to_jsonb(b) - ARRAY[\'updated_at\',\'updated_by\'] AS r FROM public.patients_baseline b WHERE project_id=$1 AND patient_code=$2', [project, code]))?.r;
+  const csvBefore = {a: await csvRow('SYN-CSVA'), w: await csvRow('SYN-CSVW')};
+  const importBaseline = list => row("SELECT public.import_registry_rows($1,'baseline',$2,$3) AS r", [project, JSON.stringify(list), randomUUID()]).then(x => x.r);
+  const studyRefused = (rowNo, field) => error => error.message === `row_${rowNo}_study_status_requires_dedicated_action: ${field}`;
+  const d60 = await day(-60), d10 = await day(-10);
+  await as(owner, async () => {
+    // New patients cannot be created as having left; the whole batch is refused.
+    await assert.rejects(importBaseline([{patient_code: 'SYN-CSVN1', baseline_date: d60}, {patient_code: 'SYN-CSVN2', baseline_date: d60, consent_status: 'declined'}]),
+      studyRefused(2, 'consent_status'));
+    await assert.rejects(importBaseline([{patient_code: 'SYN-CSVN3', baseline_date: d60, followup_status: 'deceased', followup_status_date: d10}]), studyRefused(1, 'followup_status'));
+    await assert.rejects(importBaseline([{patient_code: 'SYN-CSVN3', baseline_date: d60, consent_status: 'withdrawn'}]), studyRefused(1, 'consent_status'));
+    // An existing patient cannot be moved into the exit state...
+    for (const [change, field] of [[{consent_status: 'withdrawn'}, 'consent_status'], [{consent_status: 'declined', consent_date: d10}, 'consent_status'],
+      [{followup_status: 'withdrawn', followup_status_date: d10}, 'followup_status'], [{followup_status: 'deceased'}, 'followup_status']]) {
+      await assert.rejects(importBaseline([{patient_code: 'SYN-CSVA', treatment_arm: 'A'}, {patient_code: 'SYN-CSVW', treatment_arm: 'A'}].map((r, i) => i ? r : {...r, ...change})),
+        studyRefused(1, field), JSON.stringify(change));
+    }
+    // ...nor out of it, nor may the status fields of a patient who left change.
+    for (const [change, field] of [[{consent_status: 'consented'}, 'consent_status'], [{consent_status: 'unconfirmed'}, 'consent_status'],
+      [{consent_status: 'declined'}, 'consent_status'], [{consent_date: d10}, 'consent_date'], [{consent_version: 'V2'}, 'consent_version'],
+      [{followup_status: 'lost'}, 'followup_status'], [{followup_status_date: d10}, 'followup_status_date']]) {
+      await assert.rejects(importBaseline([{patient_code: 'SYN-CSVA', treatment_arm: 'B'}, {patient_code: 'SYN-CSVW', ...change}]),
+        studyRefused(2, field), JSON.stringify(change));
+    }
+  });
+  assert.equal(Number((await row("SELECT count(*) AS n FROM public.patients_baseline WHERE project_id=$1 AND patient_code LIKE 'SYN-CSVN%'", [project])).n), 0, 'refused batches created nobody');
+  assert.deepEqual({a: await csvRow('SYN-CSVA'), w: await csvRow('SYN-CSVW')}, csvBefore, 'refused batches changed nobody');
+  await as(owner, async () => {
+    // Identical study values are no change; other columns of a patient who left may be imported.
+    assert.equal((await importBaseline([{patient_code: 'SYN-CSVW', consent_status: 'withdrawn', consent_date: '2025-07-01', treatment_arm: 'A'}])).updated, 1);
+    // Non-exit statuses are still imported, and audited with the batch.
+    const batch = randomUUID();
+    assert.equal((await row("SELECT public.import_registry_rows($1,'baseline',$2,$3) AS r", [project,
+      JSON.stringify([{patient_code: 'SYN-CSVA', consent_status: 'consented', consent_date: d60, followup_status: 'lost', followup_status_date: d10}]), batch])).r.updated, 1);
+    assert.deepEqual((await rows("SELECT a.field_name,a.change_reason FROM public.field_audit_log a JOIN public.patients_baseline b ON b.id=a.record_id WHERE b.project_id=$1 AND b.patient_code='SYN-CSVA' ORDER BY a.field_name", [project]))
+      .map(a => [a.field_name, a.change_reason]), ['consent_date', 'consent_research', 'consent_status', 'followup_status', 'followup_status_date'].map(f => [f, `CSV导入批次 ${batch}`]));
+    // The audited correction may fix other fields of a patient who left (design choice: data
+    // collected before the exit can still be entered), never the study status.
+    const wId = (await row("SELECT id FROM public.patients_baseline WHERE project_id=$1 AND patient_code='SYN-CSVW'", [project])).id;
+    assert.equal((await row("SELECT public.correct_registry_record($1,'patients_baseline',$2,'{\"treatment_arm\":\"B\"}','核对随机分组') AS r", [project, wId])).r.record.treatment_arm, 'B');
+    await assert.rejects(row("SELECT public.create_patient_token_v2($1,'SYN-CSVW',7,false)", [project]), fails('patient_not_eligible_for_links'), 'no link after a refused undo');
+  });
+  assert.deepEqual(await row("SELECT consent_status,consent_date::text AS d,consent_research FROM public.patients_baseline WHERE project_id=$1 AND patient_code='SYN-CSVW'", [project]),
+    {consent_status: 'withdrawn', d: '2025-07-01', consent_research: false});
+  // A new patient created directly with a study status is audited too (no reason given).
+  await as(editor, () => db.query("INSERT INTO public.patients_baseline(project_id,patient_code,baseline_date,consent_status,consent_version) VALUES($1,'SYN-CSVI',$2::date,'waiver','EC-2025-07')", [project, d60]));
+  assert.deepEqual((await rows("SELECT a.field_name,a.old_value,a.new_value,a.changed_by,a.change_reason FROM public.field_audit_log a JOIN public.patients_baseline b ON b.id=a.record_id WHERE b.project_id=$1 AND b.patient_code='SYN-CSVI' ORDER BY a.field_name", [project]))
+    .map(a => [a.field_name, a.old_value, a.new_value, a.changed_by, a.change_reason]), [
+    ['consent_research', null, 'true', editor, '新建患者时登记的研究状态（未填写原因）'],
+    ['consent_status', null, 'waiver', editor, '新建患者时登记的研究状态（未填写原因）'],
+    ['consent_version', null, 'EC-2025-07', editor, '新建患者时登记的研究状态（未填写原因）']]);
+  await db.query("DELETE FROM public.patients_baseline WHERE project_id=$1 AND patient_code IN ('SYN-CSVA','SYN-CSVW','SYN-CSVI')", [project]);
+  pass('CSV import cannot create a patient who left, record or undo an exit, or change the status fields of a patient who left (row-numbered, whole batch refused); non-exit statuses import and are audited');
 
   // ---- set_project_settings -------------------------------------------------------------
   const setSettings = settings => row('SELECT public.set_project_settings($1,$2) AS r', [project, JSON.stringify(settings)]).then(x => x.r);
@@ -603,6 +714,8 @@ try {
   // The plaintext-based legacy entry keeps the first revocation reason and time as well.
   await as(owner, () => row("SELECT public.revoke_patient_token($1,'再次撤销的原因')", [issued]));
   assert.deepEqual(await row('SELECT active,revoked_at,revoke_reason FROM public.patient_tokens WHERE id=$1', [stored.id]), revoked);
+  const revokeAudits = async id => Number((await row("SELECT count(*) AS n FROM public.security_audit_logs WHERE event_type='token_revoked' AND details->>'token_id'=$1", [id])).n);
+  assert.equal(await revokeAudits(stored.id), 1, 'a repeated revocation through the legacy entry is not audited again');
   const legacy = await as(owner, async () => (await row("SELECT public.create_patient_token_v2($1,'SYN-OK15',7,true) AS t", [project])).t);
   await as(owner, () => row("SELECT public.revoke_patient_token($1,'仍持有明文的旧撤销入口')", [legacy]));
   await as(null, async () => assert.rejects(db.query('SELECT * FROM public.patient_get_context($1)', [legacy]), denied));
@@ -614,6 +727,17 @@ try {
   const inactiveNow = await row('SELECT revoked_at,revoke_reason FROM public.patient_tokens WHERE id=$1', [inactiveId]);
   assert.ok(inactiveNow.revoked_at instanceof Date);
   assert.equal(inactiveNow.revoke_reason, '原停用原因');
+  // The same through the legacy entry: the deactivation reason is kept, the revocation is
+  // recorded once, and repeating it changes nothing and audits nothing.
+  const deactivated = await as(owner, async () => (await row("SELECT public.create_patient_token_v2($1,'SYN-OK15',7,false) AS t", [project])).t);
+  const deactivatedId = (await row('SELECT id FROM public.patient_tokens WHERE token_hash=$1', [sha256(deactivated)])).id;
+  await db.query("UPDATE public.patient_tokens SET active=false,revoke_reason='原停用原因（旧入口）' WHERE id=$1", [deactivatedId]);
+  await as(owner, () => row("SELECT public.revoke_patient_token($1,'旧入口撤销')", [deactivated]));
+  const deactivatedNow = await row('SELECT active,revoked_at,revoke_reason FROM public.patient_tokens WHERE id=$1', [deactivatedId]);
+  assert.deepEqual([deactivatedNow.active, deactivatedNow.revoked_at instanceof Date, deactivatedNow.revoke_reason], [false, true, '原停用原因（旧入口）']);
+  await as(owner, () => row("SELECT public.revoke_patient_token($1,'再次旧入口撤销')", [deactivated]));
+  assert.deepEqual(await row('SELECT active,revoked_at,revoke_reason FROM public.patient_tokens WHERE id=$1', [deactivatedId]), deactivatedNow);
+  assert.equal(await revokeAudits(deactivatedId), 1);
   await as(viewer, async () => assert.rejects(row("SELECT public.create_patient_token_v2($1,'SYN-OK',7,false)", [project]), denied));
   pass('new links: plaintext returned once, digest stored; revoke by id is permission-checked, audited and immediately effective; first revocation reason is kept');
 
@@ -675,19 +799,41 @@ try {
     await assert.rejects(update('consent_date=$2::date', [tomorrow]), fails('invalid_or_future_date: consent_date'));
     await assert.rejects(update('followup_status_date=$2::date', [tomorrow]), fails('invalid_or_future_date: followup_status_date'));
     for (const version of [' V3 ', 'V3 ', '', '   ', 'v1\tv2']) await assert.rejects(update('consent_version=$2', [version]), fails('invalid_consent_version'), JSON.stringify(version));
-    await assert.rejects(update("followup_status='deceased'"), fails('study_exit_reason_required'));
-    await assert.rejects(update("followup_status='withdrawn'"), fails('study_exit_reason_required'));
-    await assert.rejects(update("consent_status='withdrawn'"), fails('study_exit_reason_required'));
-    await assert.rejects(update("consent_status='declined',consent_date=CURRENT_DATE"), fails('study_exit_reason_required'));
-    await assert.rejects(db.query("INSERT INTO public.patients_baseline(project_id,patient_code,baseline_date,consent_status) VALUES($1,'SYN-DECLINED',CURRENT_DATE,'declined')", [project]),
-      fails('study_exit_reason_required'));
+    // Entering the exit state is the dedicated action's alone.
+    const dedicated = fails('study_status_requires_dedicated_action');
+    await assert.rejects(update("followup_status='deceased'"), dedicated);
+    await assert.rejects(update("followup_status='withdrawn'"), dedicated);
+    await assert.rejects(update("consent_status='withdrawn'"), dedicated);
+    await assert.rejects(update("consent_status='declined',consent_date=CURRENT_DATE"), dedicated);
+    await assert.rejects(db.query("INSERT INTO public.patients_baseline(project_id,patient_code,baseline_date,consent_status) VALUES($1,'SYN-DECLINED',CURRENT_DATE,'declined')", [project]), dedicated);
+    await assert.rejects(db.query("INSERT INTO public.patients_baseline(project_id,patient_code,baseline_date,followup_status) VALUES($1,'SYN-DECEASED',CURRENT_DATE,'deceased')", [project]), dedicated);
+    // A stated reason, or any session setting, does not turn a plain write into that action.
+    for (const sql of ["followup_status='deceased',followup_status_date=CURRENT_DATE", "consent_status='withdrawn'"]) {
+      await db.exec('BEGIN');
+      await db.query("SELECT set_config('app.registry_change_reason','家属告知患者去世',true),set_config('registry.study_exit_only','on',true),set_config('registry.study_status_rpc','on',true)");
+      await assert.rejects(update(sql), dedicated, sql);
+      await db.exec('ROLLBACK');
+    }
+    // The dedicated action's row mark cannot be written or read by a member.
+    await assert.rejects(db.query('INSERT INTO registry_private.study_status_rpc_rows(xact_id,record_id) VALUES(pg_current_xact_id(),$1)', [okBefore.id]), denied);
+    await assert.rejects(db.query('SELECT registry_private.study_status_rpc_active($1)', [okBefore.id]), denied);
+    // Leaving the exit state, or changing a recorded exit, directly: SYN-DUE withdrew consent.
+    const exited = (sql, args = []) => db.query(`UPDATE public.patients_baseline SET ${sql} WHERE project_id=$1 AND patient_code='SYN-DUE'`, [project, ...args]);
+    for (const sql of ["consent_status='consented'", "consent_status='unconfirmed'", "consent_status='declined'", 'consent_date=CURRENT_DATE-1',
+      "consent_version='V5'", "followup_status='lost'", 'followup_status_date=CURRENT_DATE']) {
+      await assert.rejects(exited(sql), dedicated, sql);
+    }
   });
   assert.deepEqual(await okRow(), okBefore, 'refused direct writes changed nothing');
+  assert.deepEqual(await row("SELECT consent_status,consent_date::text AS d,consent_version,followup_status FROM public.patients_baseline WHERE project_id=$1 AND patient_code='SYN-DUE'", [project]),
+    {consent_status: 'withdrawn', d: '2025-06-01', consent_version: null, followup_status: 'active'});
   await as(editor, async () => {
     await db.query("UPDATE public.patients_baseline SET consent_version='V1.0' WHERE project_id=$1 AND patient_code='SYN-OK15'", [project]);
     await db.query("UPDATE public.patients_baseline SET followup_status='transferred' WHERE project_id=$1 AND patient_code='SYN-NOBASE'", [project]);
+    // Other columns of a participant who left may still be written (data collected before the exit).
+    await db.query("UPDATE public.patients_baseline SET treatment_arm='A' WHERE project_id=$1 AND patient_code='SYN-DUE'", [project]);
   });
-  pass('direct table writes: no future consent/status dates (Beijing date), trimmed consent version, and no study exit without a reason');
+  pass('direct table writes: no future consent/status dates (Beijing date), trimmed consent version; entering, leaving or changing a study exit is refused whatever the session settings');
 
   // ---- Out-of-range patient values are a structured result, never a database error -------
   const youngYear = Number((await row('SELECT extract(year FROM registry_private.local_today())::int - 19 AS y')).y);
@@ -719,9 +865,11 @@ try {
   assert.deepEqual([caughtColumn.status, caughtColumn.invalid_fields], ['invalid_values', ['visit_date']]);
   assert.equal(await visitCount('SYN-YOUNG'), 0, 'nothing stored');
   assert.deepEqual(await row('SELECT active,used_at,revoked_at FROM public.patient_tokens WHERE token_hash=$1', [sha256(youngLink)]), {active: true, used_at: null, revoked_at: null}, 'the single-use link is not consumed');
-  // Workbench paths: a calculated eGFR above 200 is a creatinine input error with its own code.
+  // Workbench paths: a calculated eGFR above 200 is an input error with its own code; the hint
+  // names every input of the calculation (creatinine, birth year, sex).
+  const tooHigh = error => error.code === '23514' && error.message === 'egfr_out_of_range_check_scr'
+    && ['血肌酐', '出生年份', '性别'].every(word => error.hint.includes(word));
   await as(owner, async () => {
-    const tooHigh = error => error.code === '23514' && error.message === 'egfr_out_of_range_check_scr' && /血肌酐/.test(error.hint);
     await assert.rejects(row("SELECT public.import_registry_rows($1,'visits',$2,$3)", [project, JSON.stringify([{patient_code: 'SYN-YOUNG', visit_date: await day(-1), sbp: 120, dbp: 80, scr_umol_l: 10}]), randomUUID()]),
       tooHigh, 'CSV/visit entry import');
     await assert.rejects(db.query("INSERT INTO public.visits_long(project_id,patient_code,visit_date,sbp,dbp,scr_umol_l) VALUES($1,'SYN-YOUNG',CURRENT_DATE-2,120,80,10)", [project]), tooHigh, 'direct write');
@@ -731,7 +879,20 @@ try {
   assert.equal(accepted.status, 'submitted');
   assert.equal(await visitCount('SYN-YOUNG'), 2, 'the imported visit and the accepted submission');
   assert.ok((await row('SELECT used_at FROM public.patient_tokens WHERE token_hash=$1', [sha256(youngLink)])).used_at instanceof Date);
-  pass('out-of-range values: patient submission returns invalid_values with field names (nothing stored, link not consumed); a calculated eGFR above 200 is egfr_out_of_range_check_scr on workbench paths');
+  // Correcting the birth year recalculates eGFR from the same creatinine (50 -> 30 years old at
+  // 10 μmol/L): the same error, and its hint does not blame the creatinine alone.
+  const visitYear = Number((await row('SELECT extract(year FROM CURRENT_DATE-5)::int AS y')).y);
+  await db.query("INSERT INTO public.patients_baseline(project_id,patient_code,baseline_date,sex,birth_year,created_by) VALUES($1,'SYN-AGE',CURRENT_DATE-30,'M',$2,$3)", [project, visitYear - 50, owner]);
+  await db.query("INSERT INTO public.visits_long(project_id,patient_code,visit_date,sbp,dbp,scr_umol_l,created_by) VALUES($1,'SYN-AGE',CURRENT_DATE-5,120,80,10,$2)", [project, owner]);
+  const ageVisit = await row("SELECT egfr,egfr_formula_version FROM public.visits_long WHERE project_id=$1 AND patient_code='SYN-AGE'", [project]);
+  assert.ok(ageVisit.egfr_formula_version === 'CKD-EPI-2021-Cr' && Number(ageVisit.egfr) < 200, JSON.stringify(ageVisit));
+  const ageId = (await row("SELECT id FROM public.patients_baseline WHERE project_id=$1 AND patient_code='SYN-AGE'", [project])).id;
+  await as(owner, async () => {
+    await assert.rejects(row("SELECT public.correct_registry_record($1,'patients_baseline',$2,$3,'核对出生年份')", [project, ageId, JSON.stringify({birth_year: visitYear - 30})]),
+      tooHigh, 'birth year correction');
+  });
+  assert.deepEqual(await row("SELECT sex,birth_year FROM public.patients_baseline WHERE id=$1", [ageId]), {sex: 'M', birth_year: visitYear - 50});
+  pass('out-of-range values: patient submission returns invalid_values with field names (nothing stored, link not consumed); a calculated eGFR above 200 is egfr_out_of_range_check_scr on workbench paths, with a hint naming creatinine, birth year and sex');
 
   // ---- Lock order: study exits and patient submissions wait, never deadlock ---------------
   const admin = await connectOther();
@@ -754,21 +915,27 @@ try {
   const raceId = async code => (await row('SELECT id FROM public.patients_baseline WHERE project_id=$1 AND patient_code=$2', [project, code])).id;
   const submitSql = 'SELECT * FROM public.patient_submit_visit_v2($1,CURRENT_DATE,120,80,90,300,NULL,NULL,$2)';
 
-  // (1) A correction withdrawing consent holds the patient; a submission waits, then is refused.
+  // (1) A correction cannot withdraw consent. The dedicated action does, and holds the patient;
+  // a submission waits for it, then is refused.
   const link1 = await raceLink('SYN-RACE1');
+  const race1Id = await raceId('SYN-RACE1');
+  await as(owner, async () => assert.rejects(row("SELECT public.correct_registry_record($1,'patients_baseline',$2,'{\"consent_status\":\"withdrawn\"}','患者书面撤回同意')", [project, race1Id]),
+    error => error.message === 'study_status_requires_dedicated_action: consent_status'));
   await other.query('BEGIN');
   await setRole(other, owner);
-  await other.query("SELECT public.correct_registry_record($1,'patients_baseline',$2,'{\"consent_status\":\"withdrawn\"}','患者书面撤回同意')", [project, await raceId('SYN-RACE1')]);
+  await other.query("SELECT public.set_patient_study_status($1,'SYN-RACE1','{\"consent_status\":\"withdrawn\"}','患者书面撤回同意')", [project]);
   const pending1 = outcome(as(null, () => db.query(submitSql, [link1, randomUUID()])));
-  await eventually(waitsOnLock(mainPid), 'submission waits for the correction');
+  await eventually(waitsOnLock(mainPid), 'submission waits for the status change');
   await other.query('COMMIT; RESET ROLE');
   const result1 = await pending1;
   noDeadlock(result1);
   assert.ok(result1.error && invalidLink(result1.error), 'refused after the withdrawal committed');
   assert.equal(await visitCount('SYN-RACE1'), 0);
 
-  // (2) A submission holds the patient; a CSV import withdrawing consent waits, then revokes.
-  const link2 = await raceLink('SYN-RACE2', true);
+  // (2) A submission holds the patient; a CSV import withdrawing consent waits for it and is then
+  // refused (nothing changes, the link keeps working). The dedicated action waits for the next
+  // submission, then withdraws consent and revokes the link.
+  const link2 = await raceLink('SYN-RACE2');
   await other.query('BEGIN');
   await setRole(other, null);
   assert.equal((await other.query(submitSql, [link2, randomUUID()])).rows[0].status, 'submitted');
@@ -777,18 +944,34 @@ try {
   await other.query('COMMIT; RESET ROLE');
   const result2 = await pending2;
   noDeadlock(result2);
-  assert.equal(result2.value?.r.updated, 1, result2.error?.message);
-  assert.equal(await visitCount('SYN-RACE2'), 1, 'the earlier submission is kept');
+  assert.equal(result2.error?.message, 'row_1_study_status_requires_dedicated_action: consent_status', JSON.stringify(result2.value));
+  assert.deepEqual(await row('SELECT active,revoke_reason FROM public.patient_tokens WHERE token_hash=$1', [sha256(link2)]), {active: true, revoke_reason: null}, 'the refused import revoked nothing');
+  await other.query('BEGIN');
+  await setRole(other, null);
+  assert.equal((await other.query(submitSql, [link2, randomUUID()])).rows[0].status, 'submitted');
+  const pending2b = outcome(as(owner, () => setStatus('SYN-RACE2', {consent_status: 'withdrawn'}, '患者书面撤回同意')));
+  await eventually(waitsOnLock(mainPid), 'the status change waits for the submission');
+  await other.query('COMMIT; RESET ROLE');
+  const result2b = await pending2b;
+  noDeadlock(result2b);
+  assert.equal(result2b.value?.changed, true, result2b.error?.message);
+  assert.equal(await visitCount('SYN-RACE2'), 2, 'both earlier submissions are kept');
   assert.equal((await row('SELECT revoke_reason FROM public.patient_tokens WHERE token_hash=$1', [sha256(link2)])).revoke_reason, 'consent_withdrawn');
 
-  // (3) A direct table write with a reason (deceased) holds the patient; a submission waits.
+  // (3) A plain table write cannot record a death, even with a stated reason. The dedicated
+  // action holds the patient; a submission waits for it, then is refused.
   const link3 = await raceLink('SYN-RACE3');
   await other.query('BEGIN');
   await setRole(other, editor);
   await other.query("SELECT set_config('app.registry_change_reason','家属告知患者去世',true)");
-  await other.query("UPDATE public.patients_baseline SET followup_status='deceased',followup_status_date=CURRENT_DATE WHERE project_id=$1 AND patient_code='SYN-RACE3'", [project]);
+  await assert.rejects(other.query("UPDATE public.patients_baseline SET followup_status='deceased',followup_status_date=CURRENT_DATE WHERE project_id=$1 AND patient_code='SYN-RACE3'", [project]),
+    fails('study_status_requires_dedicated_action'));
+  await other.query('ROLLBACK');
+  await other.query('BEGIN');
+  await setRole(other, editor);
+  await other.query("SELECT public.set_patient_study_status($1,'SYN-RACE3',$2,'家属告知患者去世')", [project, JSON.stringify({followup_status: 'deceased', followup_status_date: await day(0)})]);
   const pending3 = outcome(as(null, () => db.query(submitSql, [link3, randomUUID()])));
-  await eventually(waitsOnLock(mainPid), 'submission waits for the direct write');
+  await eventually(waitsOnLock(mainPid), 'submission waits for the status change');
   await other.query('COMMIT; RESET ROLE');
   const result3 = await pending3;
   noDeadlock(result3);
@@ -817,8 +1000,39 @@ try {
   await third.query('RESET ROLE');
   assert.deepEqual((await rows('SELECT revoke_reason FROM public.patient_tokens WHERE token_hash = ANY($1) ORDER BY revoke_reason', [[sha256(link4a), sha256(link4b)]])).map(r => r.revoke_reason),
     ['consent_withdrawn', '发错对象']);
+
+  // (5) A direct multi-row visit insert (as the API sends it) waits for a patient held by another
+  // session while a correction or a baseline import of another of its patients starts. The insert
+  // takes the project row before any baseline row, so the correction/import waits behind it.
+  const otherPid = Number((await other.query('SELECT pg_backend_pid() AS p')).rows[0].p);
+  for (const code of ['SYN-RACE5X', 'SYN-RACE5Y']) {
+    await db.query("INSERT INTO public.patients_baseline(project_id,patient_code,baseline_date,sex,birth_year,created_by) VALUES($1,$2,CURRENT_DATE-30,'F',1980,$3)", [project, code, owner]);
+  }
+  const race5X = await raceId('SYN-RACE5X');
+  for (const [label, sql, args, offset] of [
+    ['correction', "SELECT public.correct_registry_record($1,'patients_baseline',$2,'{\"treatment_arm\":\"A\"}','核对随机分组')", [project, race5X], -3],
+    ['baseline import', "SELECT public.import_registry_rows($1,'baseline',$2,$3)", [project, JSON.stringify([{patient_code: 'SYN-RACE5X', treatment_arm: 'B'}]), randomUUID()], -4]]) {
+    await third.query('BEGIN');
+    await third.query("SELECT 1 FROM public.patients_baseline WHERE project_id=$1 AND patient_code='SYN-RACE5Y' FOR UPDATE", [project]);
+    await other.query('BEGIN');
+    await setRole(other, editor);
+    const inserting = outcome(other.query("INSERT INTO public.visits_long(project_id,patient_code,visit_date,sbp,dbp) VALUES($1,'SYN-RACE5X',$2::date,120,80),($1,'SYN-RACE5Y',$2::date,121,81)", [project, await day(offset)]));
+    await eventually(waitsOnLock(otherPid), `direct insert waits for the held patient (${label})`);
+    const writing = outcome(as(owner, () => db.query(sql, args)));
+    await eventually(waitsOnLock(mainPid), `${label} waits for the direct insert`);
+    await third.query('COMMIT');
+    const inserted = await inserting;
+    noDeadlock(inserted);
+    assert.equal(inserted.value?.rowCount, 2, inserted.error?.message);
+    await other.query('COMMIT; RESET ROLE');
+    const written = await writing;
+    noDeadlock(written);
+    assert.ok(!written.error, written.error?.message);
+  }
+  assert.equal(await visitCount('SYN-RACE5X') + await visitCount('SYN-RACE5Y'), 4);
+  assert.equal((await row("SELECT treatment_arm FROM public.patients_baseline WHERE id=$1", [race5X])).treatment_arm, 'B');
   await db.exec('RESET deadlock_timeout');
-  pass('lock order project → baseline → links on every path: exit changes (RPC, correction, import, direct write) and submissions wait for each other without deadlock (40P01)');
+  pass('lock order project → baseline → links on every path: exits only through set_patient_study_status (correction, import and direct write refused, also while waiting); exits, submissions, direct visit inserts, corrections and imports wait for each other without deadlock (40P01)');
 
   // ---- Frozen export carries the explicit status fields and their meaning ----------------
   const exported = await as(analyst, async () => (await row('SELECT public.create_registry_export($1,$2) AS e', [project, randomUUID()])).e);
@@ -853,6 +1067,76 @@ try {
   await as(null, async () => assert.equal((await row('SELECT patient_code FROM public.patient_get_context($1)', [plaintext.valid])).patient_code, 'SYN-LINK'));
   pass('re-applying 0038/0039 keeps entered consent, derived values, digests, audits and working links');
 
+  // ---- Row-level security decides project access once per query, exactly as before ---------
+  // A large synthetic project (bulk-loaded with triggers off): 240 patients, 3 visits and one
+  // link each. The owner is also listed as a viewer of it, the editor is a viewer there and the
+  // analyst an editor, so the same user holds different roles in different projects.
+  const bigProject = randomUUID();
+  await db.exec('SET session_replication_role=replica');
+  await db.query("INSERT INTO public.projects(id,name,center_code,module,created_by) VALUES($1,'Synthetic large project','BIG','IGAN',$2)", [bigProject, owner]);
+  await db.query(`INSERT INTO public.patients_baseline(project_id,patient_code,baseline_date,sex,birth_year,created_by)
+    SELECT $1,'BIG-'||lpad(g::text,4,'0'),CURRENT_DATE-400,'M',1970,$2 FROM generate_series(1,240) g`, [bigProject, owner]);
+  await db.query(`INSERT INTO public.visits_long(project_id,patient_code,visit_date,sbp,dbp,scr_umol_l,upcr,created_by)
+    SELECT $1,'BIG-'||lpad(g::text,4,'0'),CURRENT_DATE-360+v*100,120,80,90,300,$2 FROM generate_series(1,240) g,generate_series(1,3) v`, [bigProject, owner]);
+  await db.query(`INSERT INTO public.patient_tokens(project_id,patient_code,token_hash,expires_at,single_use,created_by)
+    SELECT $1,'BIG-'||lpad(g::text,4,'0'),encode(sha256(convert_to('big-'||g,'UTF8')),'hex'),now()+interval '30 days',false,$2 FROM generate_series(1,240) g`, [bigProject, owner]);
+  await db.exec('SET session_replication_role=origin; ANALYZE');
+  await db.query("INSERT INTO public.project_members(project_id,user_id,role,created_by) VALUES($1,$2,'viewer',$2),($1,$3,'viewer',$2),($1,$4,'editor',$2)", [bigProject, owner, editor, analyst]);
+  // (a) The set lookup answers exactly as has_project_permission, for every user (including no
+  // user), project (including an unknown one) and permission (including unknown and none).
+  const permissionCases = [];
+  for (const user of [owner, editor, analyst, viewer, outsider, null]) {
+    await db.query("SELECT set_config('request.jwt.claim.sub',$1,false)", [user || '']);
+    for (const r of await rows(`SELECT p::text AS project,perm,public.has_project_permission(p,perm) AS expected,
+        p IN (SELECT registry_private.project_ids_with_permission(perm)) AS actual
+      FROM unnest($1::uuid[]) AS p CROSS JOIN unnest($2::text[]) AS perm`,
+      [[project, otherProject, bigProject, randomUUID()], ['read', 'write', 'tokens', 'export', 'manage', 'owner', '', null]])) {
+      permissionCases.push({user, ...r});
+    }
+  }
+  await db.exec('RESET request.jwt.claim.sub');
+  assert.deepEqual(permissionCases.filter(c => c.expected !== c.actual), [], 'same answer as has_project_permission');
+  assert.equal(permissionCases.length, 6 * 4 * 8);
+  assert.equal(permissionCases.filter(c => c.expected).length, (5 + 5) + (3 + 1) + (2 + 3) + 1 + 5, 'granted pairs: owner 5+5, editor 3+1, analyst 2+3, viewer 1, outsider 5');
+  const setFn = await row(`SELECT p.prosecdef,p.provolatile,p.proconfig,has_function_privilege('authenticated',p.oid,'EXECUTE') AS auth,
+    has_function_privilege('anon',p.oid,'EXECUTE') AS anon,has_schema_privilege('authenticated','registry_private','USAGE') AS schema_usage
+    FROM pg_proc p WHERE p.oid='registry_private.project_ids_with_permission(text)'::regprocedure`);
+  assert.deepEqual(setFn, {prosecdef: true, provolatile: 's', proconfig: ['search_path=pg_catalog, public, pg_temp'], auth: true, anon: false, schema_usage: false});
+  await as(owner, async () => assert.rejects(db.query("SELECT registry_private.project_ids_with_permission('read')"), denied, 'not callable by name or through the API'));
+  assert.deepEqual(await rows("SELECT tablename,policyname FROM pg_policies WHERE qual ~ 'has_project_permission' OR with_check ~ 'has_project_permission'"), [], 'no policy asks per row');
+  // (b) The board, its count and the overview evaluate the permission set a fixed number of times,
+  // whatever the number of rows, and never call has_project_permission per row.
+  // Function call counters of this backend (not yet reported counts accumulate across
+  // transactions, so the difference around the one query is taken inside one transaction).
+  const callCounters = () => row(`SELECT coalesce(pg_stat_get_xact_function_calls('public.has_project_permission(uuid,text)'::regprocedure),0)::int AS per_row,
+    coalesce(pg_stat_get_xact_function_calls('registry_private.project_ids_with_permission(text)'::regprocedure),0)::int AS per_query`);
+  async function permissionCalls(sql, args) {
+    await db.exec('BEGIN');
+    try {
+      await db.exec("SET LOCAL track_functions='all'");
+      const before = await callCounters();
+      await db.query("SELECT set_config('request.jwt.claim.sub',$1,true)", [owner]);
+      await db.exec('SET LOCAL ROLE authenticated');
+      const result = await db.query(sql, args);
+      await db.exec('RESET ROLE');
+      const after = await callCounters();
+      return {rows: result.rows, per_row: after.per_row - before.per_row, per_query: after.per_query - before.per_query};
+    } finally { await db.exec('ROLLBACK'); }
+  }
+  const boardSql = 'SELECT * FROM public.v_patient_followup_status WHERE project_id=$1 ORDER BY patient_id';
+  const countSql = 'SELECT count(*)::int AS n FROM public.v_patient_followup_status WHERE project_id=$1';
+  const overviewSql = 'SELECT * FROM public.v_project_overview WHERE project_id=$1';
+  const smallCount = Number((await row('SELECT count(*) AS n FROM public.patients_baseline WHERE project_id=$1', [project])).n);
+  for (const sql of [boardSql, countSql, overviewSql]) {
+    const small = await permissionCalls(sql, [project]), big = await permissionCalls(sql, [bigProject]);
+    assert.deepEqual([small.per_row, big.per_row], [0, 0], `${sql}: no per-row permission call`);
+    assert.equal(big.per_query, small.per_query, `${sql}: ${smallCount} and 240 patients evaluate the permission set equally often`);
+    assert.ok(big.per_query >= 1 && big.per_query <= 12, `${sql}: ${big.per_query} evaluations`);
+    if (sql === boardSql) assert.deepEqual([small.rows.length, big.rows.length], [smallCount, 240]);
+    if (sql === overviewSql) assert.deepEqual([big.rows[0].n_patients, big.rows[0].n_visits, big.rows[0].n_active], [240, 720, 240]);
+  }
+  pass('row-level security: one set lookup per query with exactly has_project_permission\'s answers (no per-row calls), executable by signed-in users only and not by name');
+
   // ---- After the account trial ends: recording an exit still works; nothing else does ----
   await db.query("UPDATE public.user_profiles SET account_trial_expires_at=now()-interval '1 day' WHERE user_id=$1", [owner]);
   const today = await day(0);
@@ -870,15 +1154,38 @@ try {
   await as(owner, async () => {
     const left = await setStatus('SYN-LINK', {consent_status: 'withdrawn', consent_date: today}, '患者书面撤回同意');
     assert.deepEqual([left.consent_status, left.consent_date, left.changed], ['withdrawn', today, true]);
-    // A plain table write gets no exemption, even with a reason or a forged flag.
-    for (const [setting, value, sql] of [['app.registry_change_reason', '撤回同意', "consent_status='withdrawn'"],
-      ['registry.study_exit_only', 'on', "consent_version='V9'"]]) {
+    // A plain table write gets no exemption, even with a reason or a forged flag: an exit is
+    // refused as not the dedicated action, any other change by the account write guard.
+    for (const [setting, value, sql, code] of [['app.registry_change_reason', '撤回同意', "consent_status='withdrawn'", 'study_status_requires_dedicated_action'],
+      ['registry.study_status_rpc', 'on', "consent_status='withdrawn'", 'study_status_requires_dedicated_action'],
+      ['registry.study_exit_only', 'on', "consent_version='V9'", 'subscription_required']]) {
       await db.exec('BEGIN');
       await db.query('SELECT set_config($1,$2,true)', [setting, value]);
-      await assert.rejects(db.query(`UPDATE public.patients_baseline SET ${sql} WHERE project_id=$1 AND patient_code='SYN-OK15'`, [project]), fails('subscription_required'), sql);
+      await assert.rejects(db.query(`UPDATE public.patients_baseline SET ${sql} WHERE project_id=$1 AND patient_code='SYN-OK15'`, [project]), fails(code), sql);
       await db.exec('ROLLBACK');
     }
   });
+  // The exemption covers only a move from "not left" to "left" and the first entry of its date:
+  // never a move between exit statuses or a change to a recorded exit date.
+  await as(owner, async () => {
+    for (const [code, changes] of [
+      ['SYN-OK', {followup_status: 'lost'}], ['SYN-OK', {followup_status: 'deceased'}], ['SYN-OK', {followup_status_date: await day(-1)}],
+      ['SYN-RACE3', {followup_status: 'lost'}], ['SYN-RACE3', {followup_status: 'transferred'}], ['SYN-RACE3', {followup_status_date: await day(-1)}],
+      ['SYN-LINK', {consent_status: 'declined'}], ['SYN-LINK', {consent_date: await day(-1)}], ['SYN-LINK', {consent_date: ''}],
+      ['SYN-LINK', {followup_status: 'deceased', consent_date: await day(-1)}]]) {
+      await assert.rejects(setStatus(code, changes, '核对原始记录'), fails('subscription_required'), `${code} ${JSON.stringify(changes)}`);
+    }
+    const lost = await setStatus('SYN-NOVISIT', {followup_status: 'lost'}, '多次联系不上');
+    assert.deepEqual([lost.followup_status, lost.followup_status_date, lost.changed], ['lost', null, true]);
+    assert.equal((await setStatus('SYN-NOVISIT', {followup_status_date: await day(-2)}, '补填失访日期')).followup_status_date, await day(-2), 'first entry of the date');
+    await assert.rejects(setStatus('SYN-NOVISIT', {followup_status_date: await day(-3)}, '修改失访日期'), fails('subscription_required'), 'a recorded date stays');
+    assert.equal((await setStatus('SYN-OVER', {consent_status: 'declined'}, '患者拒绝参加研究')).consent_status, 'declined');
+    assert.equal((await setStatus('SYN-OVER', {consent_date: await day(-2)}, '补填拒绝日期')).consent_date, await day(-2), 'first entry of the date');
+    await assert.rejects(setStatus('SYN-OVER', {consent_date: await day(-3)}, '修改拒绝日期'), fails('subscription_required'), 'a recorded date stays');
+    await assert.rejects(setStatus('SYN-OVER', {consent_status: 'withdrawn'}, '改为撤回'), fails('subscription_required'), 'declined -> withdrawn');
+  });
+  assert.deepEqual(await row("SELECT followup_status,followup_status_date::text AS d FROM public.patients_baseline WHERE project_id=$1 AND patient_code='SYN-RACE3'", [project]),
+    {followup_status: 'deceased', d: today}, 'refused changes changed nothing');
   assert.equal((await row("SELECT change_reason FROM public.field_audit_log a JOIN public.patients_baseline b ON b.id=a.record_id WHERE b.project_id=$1 AND b.patient_code='SYN-OK' AND a.field_name='followup_status'", [project])).change_reason, '转至外院随访');
   await as(null, async () => {
     for (const value of [plaintext.valid, plaintext.single]) await assert.rejects(db.query('SELECT * FROM public.patient_get_context($1)', [value]), invalidLink, 'withdrawal after expiry revokes links');
@@ -889,7 +1196,7 @@ try {
     await row("SELECT public.revoke_patient_token_by_id($1,$2,'试用结束后撤销')", [project, lastLink]);
   });
   await as(null, async () => assert.rejects(db.query('SELECT * FROM public.patient_get_context($1)', [plaintext.lost]), denied));
-  pass('after the trial ends: consent withdrawal and stopped follow-up are recorded (with links revoked); other status changes, new links and plain table writes are refused; settings and revocation still work');
+  pass('after the trial ends: consent withdrawal and stopped follow-up (and the first entry of their date) are recorded with links revoked; moves between exit statuses, changed exit dates, other status changes, new links and plain table writes are refused; settings and revocation still work');
 
   console.log(`ADOPTION_DB_OK ${groups} groups; synthetic local PostgreSQL 17 database only.`);
 } finally {
