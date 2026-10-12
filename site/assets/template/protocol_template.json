@@ -1,0 +1,88 @@
+{
+  "_说明": "研究方案参数文件模板。这里的数值全部是示例，来自公开指南或常用研究定义，不是本平台推荐，也不会自动生效。使用前：复制本文件并改名；由研究负责人（PI）逐项核对原文、按本研究方案修改；确认后把对应章节的 requires_pi_confirmation 改为 false，并填写 confirmation 中的确认人和日期。未确认的章节不会被计算。键名以下划线开头的字段是说明，脚本忽略。",
+  "schema": "kidneysphere-analysis-protocol/1",
+  "protocol_id": "EXAMPLE-GN-ENDPOINTS",
+  "version": "0.1-example",
+  "title": "示例：肾小球疾病随访终点定义（需 PI 确认）",
+  "status": "example_requires_pi_confirmation",
+  "confirmation": {
+    "_说明": "确认人填写姓名与角色，日期用 YYYY-MM-DD。任一章节 requires_pi_confirmation=false 时这两项必须填写，否则脚本拒绝运行。",
+    "confirmed_by": "",
+    "role": "研究负责人（PI）",
+    "confirmed_date": "",
+    "statement": ""
+  },
+  "units": {
+    "_说明": "阈值所用单位，必须与数据的显式单位一致。登记系统导出的随访 UPCR 为 mg/g，eGFR 为 mL/min/1.73m2，血肌酐为 umol/L。如果方案原文用 g/g 或 g/24h，请由 PI 换算为 mg/g 后填写；单位不一致时脚本拒绝运行，不会自动换算。",
+    "upcr": "mg/g",
+    "egfr": "mL/min/1.73m2",
+    "scr": "umol/L"
+  },
+  "baseline": {
+    "_说明": "source 可选 baseline_record（使用基线表：基线血肌酐按 CKD-EPI 2021 计算 eGFR，基线 UPCR 按其显式单位换算）、visit_window（取基线日期前后 window_days 天内的随访测量）、baseline_record_else_visit_window（基线表缺失时再用窗口）。aggregate 为 nearest（离基线日最近的一次）或 mean（窗口内各日期均值）。使用窗口时，随访测量从窗口结束日之后开始计。",
+    "egfr": {"source": "baseline_record"},
+    "upcr": {"source": "baseline_record_else_visit_window", "window_days": [-90, 0], "aggregate": "nearest"}
+  },
+  "visit_window_days": 60,
+  "timepoints_days": [180, 365, 730],
+  "_timepoints说明": "按 timepoints_days 中的名义天数，在 ±visit_window_days 天内选离名义日最近的一整条随访，输出到 timepoints_per_protocol.csv。",
+  "egfr_decline": {
+    "_说明": "持续 eGFR 下降：随访 eGFR ≤ 基线 ×(1-阈值%)。confirmation：至少 min_measurements 次连续测量均满足、首末相隔至少 min_interval_days 天；require_last_below=true 时还要求截至最后一次可用测量仍满足。示例阈值 40% 与 57%（约相当于血肌酐倍增），确认间隔示例 28 天。",
+    "requires_pi_confirmation": true,
+    "thresholds_pct_decline": [40, 57],
+    "confirmation": {"min_measurements": 2, "min_interval_days": 28, "require_last_below": false},
+    "reference": {
+      "citation": "Levey AS, et al. GFR decline as an end point for clinical trials in CKD: a scientific workshop sponsored by the National Kidney Foundation and the US FDA. Am J Kidney Dis. 2014;64(6):821-835. 确认间隔参考：Heerspink HJL, et al. Dapagliflozin in patients with chronic kidney disease (DAPA-CKD). N Engl J Med. 2020;383:1436-1446（持续下降需间隔≥28天的再次测量确认）。",
+      "note": "示例，需 PI 对照原文与本研究方案确认"
+    }
+  },
+  "remission": {
+    "_说明": "按病种代码（与数据 module 一致，大写）分别定义。complete/partial 可用条件：upcr_below（UPCR 低于该值，mg/g）、upcr_reduction_pct_at_least（较基线下降至少该百分比）、egfr_stable_max_decline_pct（同日 eGFR 较基线下降不超过该百分比；同日无 eGFR 则该次不算满足）。assessment_window_days 为首次满足日期须落入的天数范围，null 表示不限。additional_criteria_not_computed 列出脚本无法计算的条件，满足其余条件时结果标为 upcr_egfr_criteria_met_other_criteria_not_evaluated，需人工补核。方案里没有列出的病种不计算缓解，并在质控文件中注明。",
+    "IGAN": {
+      "label": "IgA 肾病蛋白尿缓解（示例）",
+      "requires_pi_confirmation": true,
+      "complete": {"upcr_below": 300},
+      "partial": {"upcr_below": 1000, "upcr_reduction_pct_at_least": 50},
+      "confirmation": {"min_measurements": 2, "min_interval_days": 28, "require_last_below": false},
+      "assessment_window_days": null,
+      "additional_criteria_not_computed": [],
+      "reference": {
+        "citation": "KDIGO 2021 Clinical Practice Guideline for the Management of Glomerular Diseases. Kidney Int. 2021;100(4S):S1-S276. Chapter 2: Immunoglobulin A nephropathy (IgAN)/IgA vasculitis（蛋白尿降至 <1 g/d 作为替代指标）。",
+        "note": "示例：完全缓解 <0.3 g/g、部分缓解 较基线下降≥50% 且 <1 g/g 为临床研究中常用定义，并非 KDIGO 原文直接规定；需 PI 按本研究方案确认"
+      }
+    },
+    "LN": {
+      "label": "狼疮性肾炎肾脏应答（示例）",
+      "requires_pi_confirmation": true,
+      "complete": {"upcr_below": 500, "egfr_stable_max_decline_pct": 15},
+      "partial": {"upcr_below": 3000, "upcr_reduction_pct_at_least": 50, "egfr_stable_max_decline_pct": 15},
+      "confirmation": {"min_measurements": 2, "min_interval_days": 28, "require_last_below": false},
+      "assessment_window_days": [90, 365],
+      "additional_criteria_not_computed": [],
+      "reference": {
+        "citation": "KDIGO 2021 Clinical Practice Guideline for the Management of Glomerular Diseases. Kidney Int. 2021;100(4S):S1-S276. Chapter 10: Lupus nephritis（完全应答：UPCR <0.5 g/g 且肾功能稳定在基线 ±10–15%；部分应答：蛋白尿下降≥50% 且 <3 g/g、肾功能稳定；通常在治疗 6–12 个月内评估）。另见 KDIGO 2024 Clinical Practice Guideline for the Management of Lupus Nephritis. Kidney Int. 2024;105(1S):S1-S69。",
+        "note": "示例：15% 取自 10–15% 区间上限，评估窗口与确认间隔为示例值；需 PI 确认"
+      }
+    },
+    "MN": {
+      "label": "膜性肾病缓解（示例）",
+      "requires_pi_confirmation": true,
+      "complete": {"upcr_below": 300},
+      "partial": {"upcr_below": 3500, "upcr_reduction_pct_at_least": 50},
+      "confirmation": {"min_measurements": 2, "min_interval_days": 7, "require_last_below": false},
+      "assessment_window_days": null,
+      "additional_criteria_not_computed": ["血清白蛋白恢复正常（完全缓解）或改善（部分缓解）", "血肌酐正常（完全缓解）或稳定（部分缓解）"],
+      "reference": {
+        "citation": "KDIGO 2021 Clinical Practice Guideline for the Management of Glomerular Diseases. Kidney Int. 2021;100(4S):S1-S276. Chapter 3: Membranous nephropathy（完全缓解：UPCR <0.3 g/g，经间隔至少 1 周的两次测量确认，伴血清白蛋白与血肌酐正常；部分缓解：UPCR 0.3–3.5 g/g 且较基线下降≥50%，经两次测量确认，伴血清白蛋白改善、血肌酐稳定）。",
+        "note": "示例：白蛋白与血肌酐条件脚本未计算，结果需人工补核；需 PI 确认"
+      }
+    }
+  },
+  "censoring": {
+    "_说明": "截尾日期取以下各项中最早者：随访状态（followup_status 属于 followup_status_values）的状态日期；事件表中类型属于 event_types 的事件日期（require_event_confirmed=true 时只用已确认事件）。截尾日之后的测量不参与终点判定。数据中没有随访状态列时，RUN_LOG 会注明。",
+    "use_followup_status": true,
+    "followup_status_values": ["lost", "withdrawn", "deceased", "kidney_failure", "transferred"],
+    "event_types": ["esrd", "death"],
+    "require_event_confirmed": true
+  }
+}
