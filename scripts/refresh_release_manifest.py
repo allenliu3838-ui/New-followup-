@@ -57,7 +57,36 @@ def migration_manifest() -> dict:
     manifest = {'format': 1, 'release': release.VERSION, 'required_versions': increments, 'order': ORDER,
                 'bundle_sha256': sha(bundle.encode()), 'migrations': entries}
     write_json(ROOT / 'supabase/migration-manifest.json', manifest)
+    write_compatibility_bundles(entries, bundle)
     return manifest
+
+
+def write_compatibility_bundles(entries: list, bundle: str) -> None:
+    """Regenerate the SQL-Editor-sized batches and run_all copy so they never lag the canonical set.
+
+    Batches 1-5 keep their historical membership; batch 6 ("latest") carries every later migration.
+    """
+    def body(ms):
+        return ''.join(f'-- MIGRATION {m["ordinal"]:03d}: {m["file"]}\n' + (ROOT / 'supabase/migrations' / m['file']).read_text() + '\n' for m in ms)
+    sql_dir = ROOT / 'site/assets/sql'
+    batches = sorted(sql_dir.glob('batch[1-6]_*.sql'))
+    if [b.name[:6] for b in batches] != [f'batch{i}' for i in range(1, 7)]:
+        raise SystemExit('expected exactly six compatibility batches in site/assets/sql')
+    assigned = set()
+    for i, path in enumerate(batches, start=1):
+        if i < 6:
+            names = re.findall(r'^-- MIGRATION \d+: (\S+)$', path.read_text(), re.MULTILINE)
+            members = [m for m in entries if m['file'] in names]
+            if len(members) != len(names):
+                raise SystemExit(f'{path.name} lists a migration that no longer exists')
+        else:
+            members = [m for m in entries if m['file'] not in assigned]
+        assigned.update(m['file'] for m in members)
+        header = f'-- GENERATED compatibility batch {i}/6; execute all six in order, stop on error.\n'
+        path.write_text((header + body(members)).rstrip() + '\n')
+    if assigned != {m['file'] for m in entries}:
+        raise SystemExit('compatibility batches do not cover every migration exactly once')
+    (ROOT / 'supabase/run_all_migrations.sql').write_text(bundle)
 
 
 def preflight_check_names() -> list:
