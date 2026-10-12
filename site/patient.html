@@ -14,7 +14,7 @@
     body{font-size:16px;line-height:1.6}
     .container{max-width:760px}
     .study-eyebrow{margin:0 0 4px;font-size:14px;color:var(--muted);letter-spacing:.5px}
-    .study-title{margin:0;font-size:22px;line-height:1.4}
+    .study-title{margin:0;font-size:22px;line-height:1.4;overflow-wrap:anywhere;word-break:break-word}
     .study-kv{display:grid;grid-template-columns:7.5em minmax(0,1fr);gap:6px 12px;margin:12px 0 0;font-size:15px}
     .study-kv:empty{display:none}
     .study-kv dt{color:var(--muted)}
@@ -33,9 +33,9 @@
     #visitForm input,#visitForm select,#visitForm textarea{min-height:48px;font-size:16px}
     #visitFields{border:0;padding:0;margin:0;min-width:0}
     #visitFields:disabled{opacity:.72}
-    #visitForm[hidden],#doneBox[hidden],#reviewBox[hidden],#btnBack[hidden],#btnNextVisit[hidden],#btnVerifyContext[hidden],#formSection[hidden],#historySection[hidden]{display:none!important}
+    #visitForm[hidden],#doneBox[hidden],#reviewBox[hidden],#btnBack[hidden],#btnNextVisit[hidden],#btnVerifyContext[hidden],#btnReload[hidden],#formSection[hidden],#historySection[hidden],#dupBox[hidden]{display:none!important}
     .submit-bar{position:sticky;bottom:0;z-index:2;display:flex;gap:10px;flex-wrap:wrap;background:#fff;padding:12px 0 calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--border);margin-top:12px}
-    .submit-bar .btn,.done-actions .btn,#btnVerifyContext{min-height:48px;font-size:16px;justify-content:center}
+    .submit-bar .btn,.done-actions .btn,#btnVerifyContext,#btnReload{min-height:48px;font-size:16px;justify-content:center}
     .submit-bar .btn.primary{flex:1 1 220px}
     #unitReview{margin-top:12px;font-size:15px;line-height:1.7}
     #unitReview:empty{display:none}
@@ -46,6 +46,9 @@
     #reviewBox{margin-top:12px;font-size:15px}
     #reviewBox dl{display:grid;grid-template-columns:7em minmax(0,1fr);gap:4px 10px;margin:8px 0}
     #reviewBox dd{margin:0;font-weight:600}
+    #dupBox{margin-top:10px;font-size:15px}
+    #dupBox label{display:flex;align-items:center;gap:10px;min-height:44px;margin-top:6px;font-weight:600;color:inherit;cursor:pointer}
+    #dupBox input{width:22px;height:22px;flex:0 0 auto;margin:0}
     #submitHint{margin-top:10px;font-size:15px}
     #submitHint:empty{display:none}
     #doneBox{font-size:15px}
@@ -56,8 +59,9 @@
     .patient-table-wrap table{min-width:520px}
     .more-records summary{cursor:pointer;font-weight:600;padding:8px 0;min-height:44px}
     .more-records h3{font-size:16px;margin:14px 0 4px}
-    .patient-footer{text-align:center;padding:24px 16px 16px;font-size:12px;color:#94a3b8;line-height:1.8}
-    .patient-footer a{color:#94a3b8}
+    /* Footer text sits on the page background: keep contrast >= 4.5:1 (WCAG AA). */
+    .patient-footer{text-align:center;padding:24px 16px 16px;font-size:13px;color:#475569;line-height:1.8}
+    .patient-footer a{color:#334155;text-decoration:underline}
     @media(max-width:640px){
       .container{padding:12px}
       .card{padding:14px}
@@ -79,9 +83,10 @@
       <dl id="studyInfo" class="study-kv"></dl>
       <div id="linkStatus" class="link-status" role="status" aria-live="polite"></div>
       <button id="btnVerifyContext" type="button" class="btn" style="margin-top:12px" hidden>重新验证链接</button>
+      <button id="btnReload" type="button" class="btn" style="margin-top:12px" hidden>重新加载</button>
 
       <div class="warnbox notice">
-        <b>请勿</b>在本页填写姓名、电话、病案号或身份证号。这个链接只给您本人使用，请不要转发给其他人。本页只用于研究随访登记，不提供诊疗建议，看病用药请遵医嘱。
+        <b>请勿</b>在本页填写姓名、电话、病案号或身份证号。这个链接只给您本人使用：拿到链接的人都能看到本页显示的记录，请不要转发给其他人。本页只用于研究随访登记，不提供诊疗建议，看病用药请遵医嘱。
       </div>
 
       <details class="about" id="aboutStudy">
@@ -90,7 +95,11 @@
           <dt>这是什么</dt>
           <dd>这是您参加的临床研究的随访登记页。研究团队请您按约定时间，把化验单和血压等结果填在这里。</dd>
           <dt>谁能看到这些数据</dt>
-          <dd>只有本研究团队的授权人员能看到，仅用于这项研究。研究资料用研究编号登记，不使用您的姓名。</dd>
+          <dd id="dataAccess">
+            <p style="margin:0">研究团队的授权人员，以及为本研究提供技术服务的平台，在各自的职责范围内可以访问这些数据。研究资料用研究编号登记，不使用您的姓名。</p>
+            <p style="margin:6px 0 0">持有本链接的人都可以看到本页显示的历史记录，请不要转发链接。</p>
+            <p style="margin:6px 0 0"><span id="dataLocationNote">数据当前的存储地点请见</span><a href="/privacy" target="_blank" rel="noopener noreferrer">隐私政策</a>。</p>
+          </dd>
           <dt>不要填写的内容</dt>
           <dd>姓名、电话、病案号、身份证号等能认出您本人的信息，请不要填写，备注里也不要写。</dd>
           <dt>填错了怎么办</dt>
@@ -149,6 +158,11 @@
         <b id="reviewTitle">请对照化验单核对以下内容，无误后点击“确认提交”</b>
         <dl id="reviewList"></dl>
         <div id="reviewWarnings" class="qc-warning"></div>
+        <div id="dupBox" class="warnbox" hidden>
+          <div id="dupText">这一天已经有一条随访记录，确定还要再提交一条吗？</div>
+          <div class="small">同一次化验不需要重复提交；之前填错了请联系研究团队更正。</div>
+          <label for="dupConfirm"><input type="checkbox" id="dupConfirm"/>确定，再提交一条</label>
+        </div>
       </div>
 
       <div id="qcBox" class="infobox" aria-live="polite"></div>
@@ -200,10 +214,40 @@
 
   <footer class="patient-footer">
     <div>对本研究或本页有任何疑问，请联系研究团队。</div>
-    <div>技术支持：肾域科研平台 · <a href="/privacy">隐私政策</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener noreferrer">鲁公网安备37091102000922号</a></div>
+    <div>技术支持：肾域科研平台 · <a href="/privacy" target="_blank" rel="noopener noreferrer">隐私政策</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener noreferrer">鲁公网安备37091102000922号</a></div>
   </footer>
 
   <script src="/config.js?v=registry-20260914-integrated-v1"></script>
-  <script type="module" src="/patient.js?v=registry-20261012-adoption-v4"></script>
+  <script type="module" id="patientModule" src="/patient.js?v=registry-20261012-adoption-v4"></script>
+  <script>
+    // If the page program (or a module it imports) fails to load or start, do not leave the
+    // participant on "正在读取研究信息…" forever: say so and offer a reload.
+    (function () {
+      var failed = false;
+      function fail() {
+        if (failed || window.__patientPageStarted) return;
+        failed = true;
+        document.title = "页面没有加载完整";
+        var title = document.getElementById("studyTitle");
+        var status = document.getElementById("linkStatus");
+        var reload = document.getElementById("btnReload");
+        if (title) title.textContent = "页面没有加载完整";
+        if (status) {
+          status.className = "link-status warnbox";
+          status.textContent = "本页需要的程序没有加载成功，可能是网络不稳定。请点击“重新加载”；仍不行请稍后再试，或联系研究团队。";
+        }
+        if (reload) reload.hidden = false;
+      }
+      window.__patientBootFailed = function () { return failed; };
+      var reload = document.getElementById("btnReload");
+      if (reload) reload.addEventListener("click", function () { window.location.reload(); });
+      var entry = document.getElementById("patientModule");
+      if (entry) entry.addEventListener("error", fail);
+      window.addEventListener("error", function (event) {
+        if (event instanceof ErrorEvent) fail();
+      });
+      setTimeout(fail, 20000);
+    })();
+  </script>
 </body>
 </html>

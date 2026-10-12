@@ -1,9 +1,9 @@
 import { supabase } from "/lib/supabase-client.js?v=registry-20260914-integrated-v1";
 import { qs, toast, escapeHtml } from "/lib/utils.js?v=registry-20260914-integrated-v1";
 import {
-  normalizedNumber, validateVisit, createRequestId, ckdepi2021,
-  studyInfo, classifyPatientError, contextErrorMessage, submissionOutcome,
-  localDateString, formatLocalDateTime, formatLocalDate,
+  normalizedNumber, validateVisit, createRequestId, ckdepi2021, DB_LIMITS, SCR_MGDL_TO_UMOL,
+  studyInfo, classifyPatientError, contextErrorMessage, submissionOutcome, dataLocationLead,
+  beijingDateString, formatLocalDateTime, formatLocalDate,
 } from "/lib/patient-workflow.js?v=registry-20261012-adoption-v4";
 
 // The participant page never needs Supabase auth session detection —
@@ -16,6 +16,8 @@ const el = {
   studyInfo: qs("#studyInfo"),
   linkStatus: qs("#linkStatus"),
   btnVerify: qs("#btnVerifyContext"),
+  btnReload: qs("#btnReload"),
+  dataLocationNote: qs("#dataLocationNote"),
   formSection: qs("#formSection"),
   historySection: qs("#historySection"),
   form: qs("#visitForm"),
@@ -33,6 +35,8 @@ const el = {
   reviewBox: qs("#reviewBox"),
   reviewList: qs("#reviewList"),
   reviewWarnings: qs("#reviewWarnings"),
+  dupBox: qs("#dupBox"),
+  dupConfirm: qs("#dupConfirm"),
   qcBox: qs("#qcBox"),
   btnSubmit: qs("#btnSubmit"),
   btnBack: qs("#btnBack"),
@@ -69,11 +73,29 @@ let verifyRetryable = false;
 let linkUnusable = false;      // link could not be verified: hide form and history
 let readOnlyAtLoad = false;    // project not accepting entries when the page opened
 let extraLoaded = false;
+let exited = false;            // the server says the participant has left the study
+let knownVisitDates = new Set(); // visit dates already on record (from the loaded history)
+let submittedDates = new Set();  // dates submitted from this page, in case history lags
+let focusAfterSubmit = null;   // field to focus once a rejected submission unlocks the form
 let currentHash = window.location.hash;
+
+// Read-only calls give up after a while so a stalled network never leaves the page waiting
+// forever. A submission that times out is retried with the same request id (no duplicate).
+const READ_TIMEOUT_MS = 20000;
+const SUBMIT_TIMEOUT_MS = 45000;
 
 const display = value => value === null || value === undefined || value === "" ? "未填写" : String(value);
 const cell = value => escapeHtml(display(value));
 const roundForDisplay = value => Number.isFinite(value) ? String(Math.round(value * 100) / 100) : "未填写";
+
+async function callRpc(name, args, timeoutMs){
+  const request = sb.rpc(name, args);
+  if (typeof AbortController !== "function" || typeof request.abortSignal !== "function") return request;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try { return await request.abortSignal(controller.signal); }
+  finally { clearTimeout(timer); }
+}
 
 function getToken(){
   try {
@@ -101,7 +123,7 @@ function setHint(text){
 
 function updateControls(){
   const locked = !canWrite();
-  el.formSection.hidden = !completed && (linkUnusable || readOnlyAtLoad);
+  el.formSection.hidden = !completed && (linkUnusable || readOnlyAtLoad || exited);
   el.historySection.hidden = linkUnusable;
   el.form.hidden = completed;
   el.doneBox.hidden = !completed;
@@ -112,6 +134,7 @@ function updateControls(){
   el.btnBack.hidden = !reviewing || !!pendingSubmission;
   el.btnBack.disabled = busy;
   el.reviewBox.hidden = !reviewing || completed;
+  el.dupConfirm.disabled = busy || !!pendingSubmission;
   el.btnNext.hidden = !completed || ctx?.single_use === true;
   el.btnNext.disabled = busy;
   el.btnVerify.hidden = !(contextFailed && verifyRetryable);
@@ -140,20 +163,30 @@ function detectPII(s){
   return rules.some((r) => r.test(v));
 }
 
-function computeEgfr(){
-  el.egfr.value = "";
-  if (!ctx || !el.visitDate.value) return;
-  const scr = normalizedNumber(el.scr.value, el.scrUnit.value === "mgdl" ? 88.4 : 1);
+// Same inputs as the server's eGFR trigger (sex, birth year, visit year), rounded to 0.1.
+function estimateEgfr(){
+  if (!ctx || !el.visitDate.value) return null;
+  const scr = normalizedNumber(el.scr.value, el.scrUnit.value === "mgdl" ? SCR_MGDL_TO_UMOL : 1);
   const year = Number(ctx.birth_year);
   const age = year ? Number(el.visitDate.value.slice(0, 4)) - year : null;
-  const value = ckdepi2021(scr === null ? NaN : scr / 88.4, age, ctx.sex);
-  if (value !== null) el.egfr.value = value.toFixed(1);
+  const value = ckdepi2021(scr === null ? NaN : scr / SCR_MGDL_TO_UMOL, age, ctx.sex);
+  return value === null ? null : Math.round(value * 10) / 10;
+}
+
+function computeEgfr(){
+  const value = estimateEgfr();
+  el.egfr.value = value === null ? "" : value.toFixed(1);
 }
 
 function getQcState(){
   const values = Object.fromEntries(FIELD_NAMES.map(name => [name, el[name].value]));
   const q = validateVisit(values);
-  if (q.visitDate && q.visitDate > localDateString()) q.errors.push({field: "visitDate", message: "随访日期不能晚于今天。"});
+  if (q.visitDate && q.visitDate > beijingDateString()) q.errors.push({field: "visitDate", message: "随访日期不能晚于今天。"});
+  // The database also limits the eGFR it computes from creatinine (0–200).
+  const egfr = estimateEgfr();
+  if (egfr !== null && egfr > DB_LIMITS.egfr[1] && !q.errors.some(error => error.field === "scr")) {
+    q.errors.push({field: "scr", message: `按这个肌酐数值自动估算的 eGFR 为 ${egfr}，超出可接受范围，请核对肌酐数值和单位。`});
+  }
   // The research code comes from the verified link, never from editable input.
   if (detectPII(q.notes)) q.errors.push({field: "notes", message: "备注中似乎有姓名、电话、病案号或身份证号等信息，请删除。"});
   return q;
@@ -187,6 +220,8 @@ function renderReview(q){
   ];
   el.reviewList.innerHTML = rows.map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd>`).join("");
   el.reviewWarnings.textContent = q.warnings.length ? `请特别核对：${q.warnings.join("；")}` : "";
+  el.dupConfirm.checked = false;
+  el.dupBox.hidden = !q.sameDay;
 }
 
 function renderStudy(){
@@ -194,8 +229,9 @@ function renderStudy(){
   document.title = `${info.title}｜随访填报`;
   el.studyTitle.textContent = info.title;
   const rows = [];
-  if (info.institution) rows.push(["研究机构", info.institution]);
-  if (info.ethics) rows.push(["伦理批件号", info.ethics]);
+  // Entered by the study team, not verified by the platform: say who provided them.
+  if (info.institution) rows.push(["研究机构", `${info.institution}（由研究团队提供）`]);
+  if (info.ethics) rows.push(["伦理批件号", `${info.ethics}（由研究团队提供）`]);
   rows.push(["研究团队联系方式", info.contact || "请联系邀请您参加本研究的医生或研究护士"]);
   rows.push(["研究编号", ctx.patient_code]);
   if (ctx.center_code) rows.push(["中心编号", ctx.center_code]);
@@ -226,7 +262,7 @@ async function loadContext(){
   verifyRetryable = false;
   updateControls();
   try {
-    const {data, error} = await sb.rpc("patient_get_context", {p_token: requestToken});
+    const {data, error} = await callRpc("patient_get_context", {p_token: requestToken}, READ_TIMEOUT_MS);
     if (epoch !== contextEpoch) return false;
     if (error) throw error;
     const next = Array.isArray(data) ? data[0] : data;
@@ -298,10 +334,22 @@ function handleFailure(outcome){
       if (ctx) ctx.can_write = false;
       setHint(message);
       break;
-    case "duplicate":
-    case "input":
-      pendingSubmission = null; reviewing = null;
+    case "exited":
+      // Not an error the participant can fix: stop the form and say so at the top.
+      pendingSubmission = null; reviewing = null; exited = true;
+      if (ctx) ctx.can_write = false;
+      clearVisitFields();
+      el.linkStatus.className = "link-status warnbox";
+      el.linkStatus.textContent = message;
       setHint(message);
+      focusAfterSubmit = "linkStatus";
+      break;
+    case "input":
+      // Nothing was saved (and a single-use link is not used up): back to the form to fix it.
+      pendingSubmission = null; reviewing = null;
+      showErrors = true;
+      setHint(message);
+      focusAfterSubmit = outcome.fields?.[0] || "sbp";
       break;
     default:
       // Network or unknown result: keep the exact payload and request UUID.
@@ -316,7 +364,7 @@ async function sendSubmission(){
   busy = true; updateControls();
   setHint("正在提交，请稍候，不要关闭本页…");
   try {
-    const {data, error} = await sb.rpc("patient_submit_visit_v2", pendingSubmission.payload);
+    const {data, error} = await callRpc("patient_submit_visit_v2", pendingSubmission.payload, SUBMIT_TIMEOUT_MS);
     if (epoch !== contextEpoch) return;
     if (error) throw error;
     const row = Array.isArray(data) ? data[0] : data;
@@ -324,6 +372,7 @@ async function sendSubmission(){
     if (outcome.kind !== "submitted") { handleFailure(outcome); return; }
     const q = pendingSubmission.q;
     pendingSubmission = null; reviewing = null; completed = true;
+    submittedDates.add(q.visitDate);
     renderDone(row, q, outcome);
     clearVisitFields();
     setHint("");
@@ -337,8 +386,12 @@ async function sendSubmission(){
     handleFailure(classifyPatientError(error));
   } finally {
     if (epoch === contextEpoch) {
-      busy = false; updateControls();
+      busy = false; updateControls(); renderQc();
       if (completed) el.doneBox.scrollIntoView?.({block: "start", behavior: "smooth"});
+      const target = focusAfterSubmit && el[focusAfterSubmit];
+      focusAfterSubmit = null;
+      if (target === el.linkStatus) target.scrollIntoView?.({block: "start"});
+      else if (target) target.focus();
     }
   }
 }
@@ -356,12 +409,18 @@ async function onSubmit(event){
       setHint(q.errors[0].message);
       return;
     }
+    q.sameDay = knownVisitDates.has(q.visitDate) || submittedDates.has(q.visitDate);
     reviewing = q;
     renderReview(q);
     setHint("");
     updateControls();
     el.reviewBox.scrollIntoView?.({block: "nearest"});
     el.btnSubmit.focus();
+    return;
+  }
+  if (reviewing.sameDay && !el.dupConfirm.checked) {
+    setHint("这一天已经有一条随访记录。如确定还要再提交一条，请先勾选“确定，再提交一条”；如果是同一次化验，请点击“返回修改”。");
+    el.dupConfirm.focus();
     return;
   }
   try {
@@ -410,7 +469,7 @@ async function historyRows(name, rpc, limit){
   const epoch = contextEpoch;
   el[name].textContent = "正在读取…";
   try {
-    const {data, error} = await sb.rpc(rpc, {p_token: token, p_limit: limit});
+    const {data, error} = await callRpc(rpc, {p_token: token, p_limit: limit}, READ_TIMEOUT_MS);
     if (epoch !== contextEpoch) return null;
     if (error) throw error;
     if (!Array.isArray(data)) throw new Error("invalid_history_response");
@@ -428,6 +487,8 @@ function table(headers, rows){
 async function loadVisits(){
   const rows = await historyRows("visitsBox", "patient_list_visits", 30);
   if (rows === null) return;
+  // Used to ask before a second record for a date that already has one.
+  knownVisitDates = new Set(rows.map(r => r.visit_date).filter(Boolean).map(String));
   if (!rows.length) { el.visitsBox.innerHTML = "<div class='muted small'>还没有随访记录</div>"; return; }
   el.visitsBox.innerHTML = table(["日期", "血压（mmHg）", "肌酐（μmol/L）", "UPCR（mg/g）", "eGFR", "备注"], rows.map(r => `<tr>
       <td>${escapeHtml(r.visit_date || "")}</td>
@@ -567,9 +628,14 @@ async function main(){
   ++contextEpoch;
   token = getToken(); ctx = null; completed = false; reviewing = null; pendingSubmission = null;
   busy = false; contextFailed = false; verifyRetryable = false; extraLoaded = false;
-  linkUnusable = false; readOnlyAtLoad = false;
+  linkUnusable = false; readOnlyAtLoad = false; exited = false; knownVisitDates = new Set(); submittedDates = new Set();
+  focusAfterSubmit = null;
   clearVisitFields();
-  el.visitDate.max = localDateString();
+  el.visitDate.max = beijingDateString();
+  document.title = "研究随访填报";
+  el.studyTitle.textContent = "正在读取研究信息…";
+  el.studyInfo.innerHTML = "";
+  el.linkStatus.className = "link-status"; el.linkStatus.textContent = "";
   el.doneList.innerHTML = ""; el.receiptText.value = "";
   setHint("");
   clearHistory("链接验证后显示。");
@@ -586,5 +652,9 @@ async function main(){
   if (await loadContext()) await refreshHistory();
 }
 
+// The inline loader in patient.html shows a reload prompt until this flag is set.
+window.__patientPageStarted = true;
+el.btnReload.hidden = true;
+el.dataLocationNote.textContent = dataLocationLead(window.CONFIG);
 bind();
 main();
