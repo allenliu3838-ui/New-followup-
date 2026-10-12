@@ -1,0 +1,42 @@
+{
+  "_说明": "仅供自动化测试的合成方案，数值不代表任何临床建议。",
+  "schema": "kidneysphere-analysis-protocol/1",
+  "protocol_id": "TEST-SYNTHETIC",
+  "version": "1.0",
+  "confirmation": {"confirmed_by": "测试用合成方案（非真实 PI）", "confirmed_date": "2026-01-01"},
+  "units": {"upcr": "mg/g", "egfr": "mL/min/1.73m2", "scr": "umol/L"},
+  "baseline": {
+    "egfr": {"source": "visit_window", "window_days": [0, 0], "aggregate": "nearest"},
+    "upcr": {"source": "baseline_record"}
+  },
+  "visit_window_days": 60,
+  "timepoints_days": [180],
+  "egfr_decline": {
+    "requires_pi_confirmation": false,
+    "thresholds_pct_decline": [40, 57],
+    "confirmation": {"min_measurements": 2, "min_interval_days": 28, "require_last_below": false},
+    "kidney_failure_or_death_before_confirmation": "censor"
+  },
+  "remission": {
+    "IGAN": {
+      "requires_pi_confirmation": false,
+      "complete": {"upcr_below": 300},
+      "partial": {"upcr_below": 1000, "upcr_reduction_pct_at_least": 50, "upcr_reduction_reference": "baseline"},
+      "confirmation": {"min_measurements": 2, "min_interval_days": 28, "require_last_below": false},
+      "assessment_window_days": null,
+      "additional_criteria_not_computed": []
+    },
+    "MN": {
+      "requires_pi_confirmation": true,
+      "complete": {"upcr_below": 300},
+      "partial": null,
+      "confirmation": {"min_measurements": 2, "min_interval_days": 7, "require_last_below": false}
+    }
+  },
+  "censoring": {
+    "use_followup_status": true,
+    "followup_status_values": ["lost", "withdrawn", "deceased", "kidney_failure", "transferred"],
+    "event_types": ["esrd", "death"],
+    "require_event_confirmed": true
+  }
+}

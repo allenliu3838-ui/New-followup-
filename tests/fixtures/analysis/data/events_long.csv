@@ -1,0 +1,4 @@
+project_id,center_code,patient_code,id,module,event_type,event_date,confirmed,source
+00000000-0000-4000-8000-000000000001,A,007,e001,IGAN,death,2020-05-20,true,staff
+00000000-0000-4000-8000-000000000001,A,001,e002,IGAN,death,2020-05-30,false,staff
+00000000-0000-4000-8000-000000000002,A,001,e003,CKD,esrd,2020-07-19,true,staff

@@ -4,19 +4,19 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>肾域·科研 — 肾脏专科多中心研究登记系统</title>
-  <meta name="description" content="面向肾脏专科科研团队的多中心随访登记系统。邀请国内大学及附属医院共建研究方案、数据字典与质控流程，了解拟议的90天可行性试点。30天免费试用，科研用途，不录入PII。"/>
+  <meta name="description" content="面向肾脏专科临床医生与科研团队的随访登记系统：工作台录入随访、到期与逾期名单、随访链接管理、数据质控与冻结数据版本。30 天免费试用，含 1 个项目。科研用途，不录入患者直接身份信息。"/>
   <meta property="og:type" content="website"/>
   <meta property="og:title" content="肾域·科研 — 肾脏专科多中心研究登记"/>
-  <meta property="og:description" content="肾脏专科科研团队的多中心随访登记系统，可复现导出，30 天免费试用。"/>
+  <meta property="og:description" content="肾脏专科随访登记系统：随访管理、数据质控与冻结数据版本，30 天免费试用。"/>
   <meta property="og:url" content="https://kidneysphereregistry.cn/"/>
   <meta name="twitter:card" content="summary"/>
   <meta name="twitter:title" content="肾域·科研"/>
-  <meta name="twitter:description" content="肾脏专科科研团队的多中心随访登记系统，可复现导出，30 天免费试用。"/>
+  <meta name="twitter:description" content="肾脏专科随访登记系统：随访管理、数据质控与冻结数据版本，30 天免费试用。"/>
   <link rel="canonical" href="https://kidneysphereregistry.cn/"/>
-  <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
+  <link rel="stylesheet" href="/lib/product-nav.css?v=registry-20261012-adoption-v4">
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
-  <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
-  <link rel="stylesheet" href="/app.css?v=registry-20260914-integrated-v1"/>
+  <script src="/lib/product-nav.js?v=registry-20261012-adoption-v4" defer></script>
+  <link rel="stylesheet" href="/app.css?v=registry-20261012-adoption-v4"/>
   <link rel="icon" href="/assets/kidneysphere-ai.png"/>
   <link rel="preload" as="image" href="/assets/registry-tech-hero.png"/>
   <script>
@@ -120,6 +120,18 @@
     @media(max-width:840px){.registry-hero-grid{grid-template-columns:1fr;gap:24px;margin-top:26px;}.registry-hero .hero-headline{font-size:clamp(1.6rem,4.4vw,2rem);}.registry-visual{max-width:600px;width:100%;justify-self:center;}.registry-hero .hero-sub{max-width:650px;}.registry-home .registry-hero{padding:24px;}}
     @media(max-width:680px){.registry-home>.container{padding:14px;}.registry-home .registry-hero,.registry-home .university-intro{padding:20px;}.registry-hero .brand-sub{font-size:11px;}.registry-hero .hero-sub{font-size:13px;}.registry-hero .hero-ctas{gap:8px;}.registry-hero .hero-ctas .btn{padding:10px 14px;font-size:13px;}.registry-visual-top{padding:11px 13px;font-size:9px;}.registry-visual figcaption{padding:10px 13px;font-size:10px;}.registry-hero .sec-nav a{font-size:11px;padding:5px 10px;}.registry-home .university-paths{gap:12px;}}
     @media(prefers-reduced-motion:reduce){.registry-home .university-path{transition:none;}}
+    /* 注册前关心的问题 + 临床医生入口（主视觉内，沿用暗色科技风） */
+    .registry-faq{margin:14px 0 0;padding:12px 14px;border:1px solid rgba(151,207,230,.2);border-radius:12px;background:rgba(255,255,255,.03);}
+    .registry-faq-title{font-size:11px;letter-spacing:.08em;color:#82dce9;font-weight:700;margin:0 0 8px;}
+    .registry-faq dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:12px;line-height:1.7;}
+    .registry-faq dt{color:#e4eef7;font-weight:600;white-space:nowrap;}
+    .registry-faq dd{margin:0;color:#b5c8da;}
+    .registry-faq a{color:#9fe3f1;}
+    @media(max-width:520px){.registry-faq dl{grid-template-columns:1fr;gap:0;}.registry-faq dd{margin-bottom:6px;}}
+    .registry-clinician{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-top:12px;font-size:13px;color:#d2e7f4;}
+    .registry-clinician a{color:#9fe3f1;font-weight:700;text-decoration:none;border-bottom:1px solid rgba(159,227,241,.4);}
+    .registry-clinician a:hover{border-bottom-color:#9fe3f1;}
+    .site-footer .footer-more a{margin:0 2px;}
   </style>
 </head>
 <body class="registry-home">
@@ -140,16 +152,33 @@
         <div class="registry-eyebrow">KIDNEYSPHERE · RESEARCH REGISTRY</div>
         <p class="hero-headline">让肾脏专科的研究问题<br/><em>走向规范的多中心登记</em></p>
         <p class="hero-sub">
-          连接临床团队、大学研究者与附属医院，从研究方案、标准化字段和数据质量开始。适合 IgAN / LN / MN / CKD 等场景的 PI、CRC 及多中心协作团队。<br/>
-          <b>科研用途，不录入 PII，不提供诊断建议。</b>30 天免费试用，核心功能可用（含 1 个项目）。
+          在工作台录入随访，看清谁该随访、谁还没填；随访链接可发放、可撤销；数据质控问题逐条列出，更正留有原因，需要汇报时生成冻结数据版本。适合 IgAN / LN / MN / CKD 等队列的课题负责人、主治医生、研究护士与多中心团队。<br/>
+          <b>科研用途，以研究编号登记，不录入患者姓名、电话、病案号；不提供诊断建议。</b>
         </p>
         <div class="hero-ctas">
           <a class="btn primary" href="/signup?trial=1"
              data-track="click_start_trial" data-track-source="hero">开始 30 天试用</a>
           <a class="btn registry-login" href="/login"
-             data-track="click_login" data-track-source="hero">登录后台</a>
+             data-track="click_login" data-track-source="hero">登录工作台</a>
         </div>
-        <div class="small registry-trial-note">试用无需信用卡 · 到期暂停录入 · 可导出已有数据</div>
+        <div class="small registry-trial-note" data-pricing="trialSummary">30 天免费试用 · 含 1 个项目 · 注册无需付款信息 · 到期后转为只读，已录数据可继续查看和导出</div>
+        <div class="registry-clinician">
+          <span>我是临床医生，想管好自己的随访队列</span>
+          <a href="/guide#quickstart" data-track="click_clinician_quickstart" data-track-source="hero">看快速上手 →</a>
+        </div>
+        <section class="registry-faq" aria-labelledby="registryFaqTitle">
+          <p class="registry-faq-title" id="registryFaqTitle">注册前你最关心的</p>
+          <dl>
+            <dt>数据存在哪里</dt>
+            <dd>网页在阿里云（境内）；登记数据库目前使用境外云服务区域，具体以项目配置为准，正在整体迁至中国境内。详见<a href="/privacy">隐私政策</a>。</dd>
+            <dt>谁能看到数据</dt>
+            <dd>只有被加入项目的成员，按角色区分：负责人、录入、分析、只读；项目之间互相隔离。</dd>
+            <dt>能否导出和删除</dt>
+            <dd>负责人和分析协作人可随时导出，到期后也可以；删除账户或项目数据可发邮件申请，核验后处理。</dd>
+            <dt>伦理与知情同意</dt>
+            <dd>伦理审批与知情同意由研究团队按方案办理，工作台可逐例记录同意状态；评估说明材料可通过<a href="/demo?type=机构合作咨询">合作咨询</a>索取。</dd>
+          </dl>
+        </section>
         </div>
         <figure class="registry-visual">
           <div class="registry-visual-top"><span>MEDICINE / DATA / COLLABORATION</span><span class="registry-visual-mark" aria-hidden="true"><i></i><i></i><i></i></span></div>
@@ -160,14 +189,10 @@
 
       <!-- Secondary nav -->
       <nav class="sec-nav" aria-label="次级导航">
-        <a href="/demo" data-track="click_book_demo" data-track-source="sec_nav">预约演示</a>
-        <a href="/collaboration" data-track="click_view_projects" data-track-source="sec_nav">合作项目</a>
         <a href="/guide">使用说明</a>
-        <a href="/user-manual-cn">详细手册</a>
-        <a href="/slides">介绍PPT</a>
         <a href="/pricing">价格方案</a>
-        <a href="/security">安全合规</a>
-        <a href="/deployment">部署方式</a>
+        <a href="/security">安全与数据</a>
+        <a href="/demo" data-track="click_book_demo" data-track-source="sec_nav">合作咨询</a>
       </nav>
     </div>
 
@@ -205,22 +230,22 @@
         <a class="role-card" href="/guide#research"
            data-track="click_role_card" data-track-role="pi">
           <div class="role-icon">🔬</div>
-          <div class="role-title">PI / 课题负责人</div>
-          <div class="role-desc">建立队列、设计字段、准备分析数据。我想了解从研究问题到首轮数据检查的流程。</div>
+          <div class="role-title">课题负责人</div>
+          <div class="role-desc">建立项目（一个项目对应一个研究队列）、添加成员、确定随访间隔，按需生成冻结数据版本用于分析。</div>
           <div style="margin-top:8px;font-size:12px;color:var(--brand);font-weight:600">查看研究流程 →</div>
         </a>
         <a class="role-card" href="/guide#entry-qc"
            data-track="click_role_card" data-track-role="crc">
           <div class="role-icon">📋</div>
-          <div class="role-title">CRC / 录入员 / 随访护士</div>
-          <div class="role-desc">标准化录入、自动质控、补录提醒。我想知道哪些字段最关键，怎么避免 QC 报错。</div>
+          <div class="role-title">研究护士 / CRC / 没有研究护士的主治</div>
+          <div class="role-desc">门诊后在工作台直接录随访，看到期和逾期名单，发放或撤销随访链接，按数据质控问题逐条补录。</div>
           <div style="margin-top:8px;font-size:12px;color:var(--brand);font-weight:600">查看录入质控指南 →</div>
         </a>
         <a class="role-card" href="/collaboration"
            data-track="click_role_card" data-track-role="institution">
           <div class="role-icon">🏥</div>
-          <div class="role-title">多中心牵头 / 机构合作</div>
-          <div class="role-desc">统一 CRF、合并分析、管理多中心数据质量。我想了解机构合作与私有化部署方案。</div>
+          <div class="role-title">多中心牵头 / 信息科与伦理审查</div>
+          <div class="role-desc">统一 CRF、按中心代码合并分析；查看数据存储位置、角色权限、审计记录与部署方式的如实说明。</div>
           <div style="margin-top:8px;font-size:12px;color:var(--brand);font-weight:600">查看合作路径 →</div>
         </a>
       </div>
@@ -228,33 +253,33 @@
 
     <!-- ===== TRIAL ONBOARDING ===== -->
     <div class="card">
-      <h2 style="margin:0 0 4px">30 天试用，怎么跑通</h2>
+      <h2 style="margin:0 0 4px">试用期怎么跑通一轮</h2>
       <div class="small muted">先用模拟病例熟悉流程；真实数据录入须符合所在机构的审批和授权要求。</div>
       <div class="steps-track">
         <div class="step-card">
           <div class="step-num">1</div>
           <div class="step-title">建项目，选病种场景</div>
-          <div class="step-output">→ IgAN / MN / LN / CKD 等模板字段自动加载</div>
+          <div class="step-output">→ 选择 IgAN / MN / LN / CKD 等模块，设定随访间隔</div>
         </div>
         <div class="step-card">
           <div class="step-num">2</div>
           <div class="step-title">录入 3–5 例模拟病例</div>
-          <div class="step-output">→ 练习日期 / BP / Scr / UPCR 等字段；正式必填项由研究方案确定</div>
+          <div class="step-output">→ 以研究编号建档，练习录入日期、血压、血肌酐、尿蛋白等；正式必填项由研究方案确定</div>
         </div>
         <div class="step-card">
           <div class="step-num">3</div>
-          <div class="step-title">一键导出首版数据包</div>
-          <div class="step-output">→ 结构化 CSV + 字段说明 + 示例分析脚本</div>
+          <div class="step-title">看随访名单，试发随访链接</div>
+          <div class="step-output">→ 到期、逾期、尚未随访的患者分别列出；链接可设有效期并随时撤销</div>
         </div>
         <div class="step-card">
           <div class="step-num">4</div>
-          <div class="step-title">看 QC 报告，补录字段</div>
-          <div class="step-output">→ 核心字段完整率可见，缺口清单一目了然</div>
+          <div class="step-title">处理数据质控问题</div>
+          <div class="step-output">→ 缺失与异常逐条列出；更正时填写原因，留有记录</div>
         </div>
         <div class="step-card">
           <div class="step-num">5</div>
-          <div class="step-title">生成可汇报版本</div>
-          <div class="step-output">→ 复跑，锁定版本，用于汇报 / 多中心合并</div>
+          <div class="step-title">生成冻结数据版本</div>
+          <div class="step-output">→ 固定某一时点的数据，附字段说明与校验值，用于汇报或多中心合并</div>
         </div>
       </div>
       <div class="btnbar" style="margin-top:14px">
@@ -263,7 +288,7 @@
         <a class="btn" href="/guide#research"
            data-track="click_guide" data-track-source="onboarding">查看完整操作说明</a>
       </div>
-      <div class="small muted" style="margin-top:6px">试用成功标准：能稳定导出分析包并完成至少 1 轮 QC → 补录 → 复跑。</div>
+      <div class="small muted" style="margin-top:6px" data-pricing="trialSummary">30 天免费试用 · 含 1 个项目 · 注册无需付款信息 · 到期后转为只读，已录数据可继续查看和导出</div>
     </div>
 
     <!-- ===== CORE CAPABILITIES ===== -->
@@ -280,7 +305,7 @@
         </div>
         <div class="value-card">
           <div class="price-title">把数据质量变成日常流程</div>
-          <div class="small">通过 QC → 核查 → 修订 → 复跑逐步改善数据质量。缺失原因、修订依据和导出版本由项目团队共同记录。</div>
+          <div class="small">通过“发现数据质控问题 → 核查 → 带原因更正 → 重新检查”逐步改善数据质量。缺失原因、修订依据和导出版本由项目团队共同记录。</div>
         </div>
       </div>
       <div class="warnbox" style="margin-top:10px">
@@ -293,9 +318,9 @@
       <h2 style="margin:0 0 8px">定价与试用</h2>
       <div class="pricing-grid">
         <div class="price-card">
-          <div class="price-title">试用（30 天）</div>
+          <div class="price-title" data-pricing="trialTitle">试用（30 天）</div>
           <div class="price-main" style="font-size:1.5rem">免费</div>
-          <div class="small muted">含 1 个项目 · 支持录入、质控与分析包导出；试用到期暂停新增和修改，仍可读取及导出已有数据。</div>
+          <div class="small muted">含 <span data-pricing="trialProjects">1</span> 个项目 · 功能与付费版相同 · 注册无需付款信息；到期后转为只读，已录数据可继续查看和导出。</div>
           <div class="btnbar" style="margin-top:10px">
             <a class="btn small primary" href="/signup?trial=1"
                data-track="click_start_trial" data-track-source="pricing">开始试用</a>
@@ -307,7 +332,7 @@
           <div class="small muted">年付 <span data-pricing="proYearlyBase">¥4,790</span> · 支持微信 / 支付宝 / 对公转账</div>
           <div class="btnbar" style="margin-top:10px">
             <a class="btn small primary" href="/checkout"
-               data-track="click_upgrade" data-track-source="pricing">立即升级</a>
+               data-track="click_upgrade" data-track-source="pricing">升级 Pro</a>
             <a class="btn small" href="/pricing"
                data-track="click_view_pricing" data-track-source="pricing">查看详情</a>
           </div>
@@ -315,10 +340,10 @@
         <div class="price-card">
           <div class="price-title">机构科研合作版</div>
           <div class="price-main">联系报价</div>
-          <div class="small muted">多中心协作、数据治理与合规支持</div>
+          <div class="small muted">多中心协作、合同与对公采购、方法学支持</div>
           <div class="btnbar" style="margin-top:10px">
-            <a class="btn small" href="/demo"
-               data-track="click_institution_inquiry" data-track-source="pricing">咨询机构合作</a>
+            <a class="btn small" href="/demo?type=机构合作咨询"
+               data-track="click_institution_inquiry" data-track-source="pricing">合作咨询</a>
           </div>
         </div>
       </div>
@@ -326,154 +351,164 @@
 
     <!-- ===== PROJECTS ===== -->
     <div class="card">
-      <h2 style="margin:0 0 4px" id="projectHeading" data-testid="project-heading">正在招募合作中心 · <span id="projectCount" data-testid="project-count">10</span> 个研究项目</h2>
-      <div class="small muted">涵盖 IgAN / MN / C3G / MGRS / DKD / HD / CKD 康复 / 肾移植 / 腹膜透析。项目卡用于了解合作方向；当前招募状态、正式方案、入组条件及支持范围，请与项目团队逐项确认。</div>
+      <h2 style="margin:0 0 4px" id="projectHeading" data-testid="project-heading">研究合作方向 · <span id="projectCount" data-testid="project-count">10</span> 个（拟议，征集牵头单位）</h2>
+      <div class="small muted">涵盖 IgAN / MN / C3G / MGRS / DKD / HD / CKD 康复 / 肾移植 / 腹膜透析。这些方向目前尚未确定牵头单位、项目负责人和伦理批件，卡片内容为初步设想；欢迎申请牵头或参与。</div>
       <div id="indexProjects" class="projects-grid" style="margin-top:10px"><!-- BEGIN GENERATED PROJECT CARDS: node scripts/build_collaboration_pages.mjs -->
       <article class="price-card project-card" id="project-igan-cohort" data-project-slug="igan-cohort" data-category="肾小球疾病" aria-labelledby="project-igan-cohort-title">
-        <div style="margin-bottom:4px"><span class="proj-status ok">招募中</span><span class="pill active" style="margin-left:6px">肾小球疾病</span></div>
+        <div style="margin-bottom:4px"><span class="proj-status proposed" style="background:rgba(217,119,6,.10);color:#92400e;border:1px solid rgba(217,119,6,.28)">拟议方向（征集牵头单位）</span><span class="pill active" style="margin-left:6px">肾小球疾病</span></div>
+        <div class="small muted" style="font-size:11px;line-height:1.55;margin:0 0 6px">尚未确定牵头单位、项目负责人和伦理批件。下方的研究问题、目标规模和支持内容均为初步设想，需由牵头团队按正式方案确认。</div>
         <h3 class="price-title" id="project-igan-cohort-title" style="font-size:inherit;margin:0 0 6px">IgAN 动态风险重分层多中心双向队列</h3>
         <div class="infobox" style="padding:8px 10px;font-size:12px;line-height:1.55;margin:8px 0">活检后 6/12 个月的动态反应——蛋白尿达标、血尿缓解、eGFR 轨迹——能否比活检时基线资料更准确地预测 3–5 年肾脏结局？</div>
-        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">适合加入的中心</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>单中心 IgAN 专科门诊或活检随访队列</li><li>有 6 / 12 月复诊记录的肾脏专科中心</li></ul></div>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">可能适合的中心</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>单中心 IgAN 专科门诊或活检随访队列</li><li>有 6 / 12 月复诊记录的肾脏专科中心</li></ul></div>
         <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">建议优先准备的关键字段</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>基线 + 6/12 月时间窗：日期 / BP / Scr / UPCR / eGFR / 用药</li><li>Oxford MEST-C 病理（增强分析用，非必须）</li></ul></div>
-        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">加入后可获得的支持</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>标准化 eCRF 与数据字典</li><li>核心字段完整率检查与补录建议</li><li>首版 Table 1 / QC / 可复现导出</li></ul></div>
-        <details class="faq" style="margin-top:8px"><summary style="font-size:12px;font-weight:600">展开详细说明</summary><ul class="small" style="margin:8px 0 0;padding-left:16px;line-height:1.7"><li>双层设计：核心数据集即可入组；病理 / 血尿 / 治疗序贯完整者进增强分析</li><li>目标 10–20 家中心，总样本 800–1500 例，结局事件 ≥200</li></ul></details>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">拟提供的支持（需协商确认）</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>标准化 eCRF 与数据字典</li><li>核心字段完整率检查与补录建议</li><li>数据质控报告与冻结数据版本导出</li></ul></div>
+        <details class="faq" style="margin-top:8px"><summary style="font-size:12px;font-weight:600">展开详细说明</summary><ul class="small" style="margin:8px 0 0;padding-left:16px;line-height:1.7"><li>双层设计：核心数据集即可入组；病理 / 血尿 / 治疗序贯完整者进增强分析</li><li>初步设想：10–20 家中心、800–1500 例，需由牵头团队按统计计划确定</li></ul></details>
         <div class="btnbar" style="margin-top:10px">
-          <a class="btn small primary" href="mailto:china@kidneysphere.com?subject=%E5%8A%A0%E5%85%A5%E9%A1%B9%E7%9B%AE%EF%BC%9AIgAN%20%E5%8A%A8%E6%80%81%E9%A3%8E%E9%99%A9%E9%87%8D%E5%88%86%E5%B1%82%E5%A4%9A%E4%B8%AD%E5%BF%83%E5%8F%8C%E5%90%91%E9%98%9F%E5%88%97">联系加入</a>
+          <a class="btn small primary" href="mailto:china@kidneysphere.com?subject=%E5%92%A8%E8%AF%A2%E5%90%88%E4%BD%9C%E6%96%B9%E5%90%91%EF%BC%9AIgAN%20%E5%8A%A8%E6%80%81%E9%A3%8E%E9%99%A9%E9%87%8D%E5%88%86%E5%B1%82%E5%A4%9A%E4%B8%AD%E5%BF%83%E5%8F%8C%E5%90%91%E9%98%9F%E5%88%97">咨询牵头或参与</a>
         </div>
         <button type="button" class="copy-email" style="display:none" data-copy-email="china@kidneysphere.com" title="复制邮箱">
           📋 china@kidneysphere.com
         </button>
       </article>
       <article class="price-card project-card" id="project-speed-igan" data-project-slug="speed-igan" data-category="肾小球疾病" aria-labelledby="project-speed-igan-title">
-        <div style="margin-bottom:4px"><span class="proj-status ok">招募中</span><span class="pill active" style="margin-left:6px">肾小球疾病</span></div>
+        <div style="margin-bottom:4px"><span class="proj-status proposed" style="background:rgba(217,119,6,.10);color:#92400e;border:1px solid rgba(217,119,6,.28)">拟议方向（征集牵头单位）</span><span class="pill active" style="margin-left:6px">肾小球疾病</span></div>
+        <div class="small muted" style="font-size:11px;line-height:1.55;margin:0 0 6px">尚未确定牵头单位、项目负责人和伦理批件。下方的研究问题、目标规模和支持内容均为初步设想，需由牵头团队按正式方案确认。</div>
         <h3 class="price-title" id="project-speed-igan-title" style="font-size:inherit;margin:0 0 6px">SPEED-IgAN · 靶向布地奈德 vs 口服甲泼尼龙 RCT</h3>
         <div class="infobox" style="padding:8px 10px;font-size:12px;line-height:1.55;margin:8px 0">在有进展风险的原发性 IgAN 中，靶向释放布地奈德与口服甲泼尼龙相比，12 个月蛋白尿缓解率和安全性的差异。</div>
-        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">适合加入的中心</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>具备 RCT 执行能力的肾内科中心</li><li>有完整入排筛选与随机分配流程的中心</li></ul></div>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">可能适合的中心</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>具备 RCT 执行能力的肾内科中心</li><li>有完整入排筛选与随机分配流程的中心</li></ul></div>
         <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">建议优先准备的关键字段</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>随机分组信息 + 基线资料</li><li>随访核心四项：日期 / BP / Scr / UPCR</li><li>不良事件记录</li></ul></div>
-        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">加入后可获得的支持</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>入排标准核查与随机化支持</li><li>按月随访节点提醒与字段完整率追踪</li><li>安全性与蛋白尿全程追踪导出</li></ul></div>
-        <details class="faq" style="margin-top:8px"><summary style="font-size:12px;font-weight:600">展开详细说明</summary><ul class="small" style="margin:8px 0 0;padding-left:16px;line-height:1.7"><li>以参与中心身份加入，提供符合入排标准的患者随机化与随访数据</li><li>主要终点 12 个月，可延伸至 24 个月</li></ul></details>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">拟提供的支持（需协商确认）</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>入排标准核查清单</li><li>随访到期与逾期名单、字段完整率追踪</li><li>安全性与蛋白尿数据的冻结版本导出</li></ul></div>
+        <details class="faq" style="margin-top:8px"><summary style="font-size:12px;font-weight:600">展开详细说明</summary><ul class="small" style="margin:8px 0 0;padding-left:16px;line-height:1.7"><li>需先确定牵头单位、正式方案与伦理批准；参与中心按方案提供随访数据</li><li>拟议主要终点时间点 12 个月，可延伸至 24 个月（以正式方案为准）</li></ul></details>
         <div class="btnbar" style="margin-top:10px">
-          <a class="btn small primary" href="mailto:china@kidneysphere.com?subject=%E5%8A%A0%E5%85%A5%E9%A1%B9%E7%9B%AE%EF%BC%9ASPEED-IgAN%20RCT">联系加入</a>
+          <a class="btn small primary" href="mailto:china@kidneysphere.com?subject=%E5%92%A8%E8%AF%A2%E5%90%88%E4%BD%9C%E6%96%B9%E5%90%91%EF%BC%9ASPEED-IgAN%20RCT">咨询牵头或参与</a>
         </div>
         <button type="button" class="copy-email" style="display:none" data-copy-email="china@kidneysphere.com" title="复制邮箱">
           📋 china@kidneysphere.com
         </button>
       </article>
       <article class="price-card project-card" id="project-c3g-cohort" data-project-slug="c3g-cohort" data-category="罕见病/高壁垒" aria-labelledby="project-c3g-cohort-title">
-        <div style="margin-bottom:4px"><span class="proj-status ok">招募中</span><span class="pill active" style="margin-left:6px">罕见病/高壁垒</span></div>
+        <div style="margin-bottom:4px"><span class="proj-status proposed" style="background:rgba(217,119,6,.10);color:#92400e;border:1px solid rgba(217,119,6,.28)">拟议方向（征集牵头单位）</span><span class="pill active" style="margin-left:6px">罕见病/高壁垒</span></div>
+        <div class="small muted" style="font-size:11px;line-height:1.55;margin:0 0 6px">尚未确定牵头单位、项目负责人和伦理批件。下方的研究问题、目标规模和支持内容均为初步设想，需由牵头团队按正式方案确认。</div>
         <h3 class="price-title" id="project-c3g-cohort-title" style="font-size:inherit;margin:0 0 6px">C3G 多中心前瞻性队列</h3>
         <div class="infobox" style="padding:8px 10px;font-size:12px;line-height:1.55;margin:8px 0">C3 肾小球病（C3GN / DDD）的临床病理特征、补体谱、治疗实践与长期肾脏结局——真实世界多中心描述与预后分析。</div>
-        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">适合加入的中心</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>有 C3G / DDD 诊断能力的病理科或肾内科中心</li><li>DDD 等罕见表型中心尤为欢迎</li></ul></div>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">可能适合的中心</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>有 C3G / DDD 诊断能力的病理科或肾内科中心</li><li>DDD 等罕见表型中心尤为欢迎</li></ul></div>
         <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">建议优先准备的关键字段</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>基线：年龄 / Scr / UPCR / C3/C4 / 病理分型</li><li>随访核心四项（随访 12–36 个月）</li></ul></div>
-        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">加入后可获得的支持</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>数据字典与补体亚组分析模板</li><li>罕见表型中心专项支持与子分析设计</li></ul></div>
-        <details class="faq" style="margin-top:8px"><summary style="font-size:12px;font-weight:600">展开详细说明</summary><ul class="small" style="margin:8px 0 0;padding-left:16px;line-height:1.7"><li>考虑到 C3G 相对罕见，多中心汇聚必要，目标 ≥150 例</li><li>可加入或申请牵头；补体亚组可独立成分稿</li></ul></details>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">拟提供的支持（需协商确认）</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>数据字典与补体亚组分析模板</li><li>罕见表型中心专项支持与子分析设计</li></ul></div>
+        <details class="faq" style="margin-top:8px"><summary style="font-size:12px;font-weight:600">展开详细说明</summary><ul class="small" style="margin:8px 0 0;padding-left:16px;line-height:1.7"><li>C3G 相对罕见，需多中心汇聚；初步设想 ≥150 例</li><li>欢迎申请牵头；补体亚组可作为子课题方向，署名规则另行约定</li></ul></details>
         <div class="btnbar" style="margin-top:10px">
-          <a class="btn small primary" href="mailto:china@kidneysphere.com?subject=%E5%8A%A0%E5%85%A5%E9%A1%B9%E7%9B%AE%EF%BC%9AC3G%20%E5%A4%9A%E4%B8%AD%E5%BF%83%E5%89%8D%E7%9E%BB%E6%80%A7%E9%98%9F%E5%88%97">联系加入</a>
+          <a class="btn small primary" href="mailto:china@kidneysphere.com?subject=%E5%92%A8%E8%AF%A2%E5%90%88%E4%BD%9C%E6%96%B9%E5%90%91%EF%BC%9AC3G%20%E5%A4%9A%E4%B8%AD%E5%BF%83%E5%89%8D%E7%9E%BB%E6%80%A7%E9%98%9F%E5%88%97">咨询牵头或参与</a>
         </div>
         <button type="button" class="copy-email" style="display:none" data-copy-email="china@kidneysphere.com" title="复制邮箱">
           📋 china@kidneysphere.com
         </button>
       </article>
       <article class="price-card project-card" id="project-mgrs-registry" data-project-slug="mgrs-registry" data-category="罕见病/高壁垒" aria-labelledby="project-mgrs-registry-title">
-        <div style="margin-bottom:4px"><span class="proj-status ok">招募中</span><span class="pill active" style="margin-left:6px">罕见病/高壁垒</span></div>
+        <div style="margin-bottom:4px"><span class="proj-status proposed" style="background:rgba(217,119,6,.10);color:#92400e;border:1px solid rgba(217,119,6,.28)">拟议方向（征集牵头单位）</span><span class="pill active" style="margin-left:6px">罕见病/高壁垒</span></div>
+        <div class="small muted" style="font-size:11px;line-height:1.55;margin:0 0 6px">尚未确定牵头单位、项目负责人和伦理批件。下方的研究问题、目标规模和支持内容均为初步设想，需由牵头团队按正式方案确认。</div>
         <h3 class="price-title" id="project-mgrs-registry-title" style="font-size:inherit;margin:0 0 6px">MGRS 单克隆免疫球蛋白相关肾损害多中心前瞻性登记</h3>
         <div class="infobox" style="padding:8px 10px;font-size:12px;line-height:1.55;margin:8px 0">MGRS 的临床谱、病理类型、治疗选择（克隆靶向 vs 肾脏保护）与肾脏结局——建立多中心真实世界数据库。</div>
-        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">适合加入的中心</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>有血液科-肾内科联合诊治能力的医疗中心</li><li>已开展克隆靶向治疗的参与中心优先</li></ul></div>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">可能适合的中心</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>有血液科-肾内科联合诊治能力的医疗中心</li><li>已开展克隆靶向治疗的参与中心优先</li></ul></div>
         <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">建议优先准备的关键字段</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>单克隆免疫球蛋白类型 / 浓度 + 病理分型</li><li>基线 Scr / UPCR + 治疗方案</li></ul></div>
-        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">加入后可获得的支持</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>前瞻性登记 eCRF 与数据字典</li><li>克隆治疗反应随访模板</li><li>亚组分析与分稿支持</li></ul></div>
-        <details class="faq" style="margin-top:8px"><summary style="font-size:12px;font-weight:600">展开详细说明</summary><ul class="small" style="margin:8px 0 0;padding-left:16px;line-height:1.7"><li>目标 ≥200 例，各病理亚型分层分析</li><li>有血液科合作资源的中心优先；克隆治疗反应亚组可独立发表</li></ul></details>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">拟提供的支持（需协商确认）</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>前瞻性登记 eCRF 与数据字典</li><li>克隆治疗反应随访模板</li><li>亚组分析方法学支持</li></ul></div>
+        <details class="faq" style="margin-top:8px"><summary style="font-size:12px;font-weight:600">展开详细说明</summary><ul class="small" style="margin:8px 0 0;padding-left:16px;line-height:1.7"><li>初步设想 ≥200 例，按病理亚型分层分析</li><li>有血液科合作资源的中心优先；克隆治疗反应可作为子课题方向</li></ul></details>
         <div class="btnbar" style="margin-top:10px">
-          <a class="btn small primary" href="mailto:china@kidneysphere.com?subject=%E5%8A%A0%E5%85%A5%E9%A1%B9%E7%9B%AE%EF%BC%9AMGRS%20%E5%A4%9A%E4%B8%AD%E5%BF%83%E5%89%8D%E7%9E%BB%E6%80%A7%E7%99%BB%E8%AE%B0">联系加入</a>
+          <a class="btn small primary" href="mailto:china@kidneysphere.com?subject=%E5%92%A8%E8%AF%A2%E5%90%88%E4%BD%9C%E6%96%B9%E5%90%91%EF%BC%9AMGRS%20%E5%A4%9A%E4%B8%AD%E5%BF%83%E5%89%8D%E7%9E%BB%E6%80%A7%E7%99%BB%E8%AE%B0">咨询牵头或参与</a>
         </div>
         <button type="button" class="copy-email" style="display:none" data-copy-email="china@kidneysphere.com" title="复制邮箱">
           📋 china@kidneysphere.com
         </button>
       </article>
       <article class="price-card project-card" id="project-mn-rtx-obi" data-project-slug="mn-rtx-obi" data-category="肾小球疾病" aria-labelledby="project-mn-rtx-obi-title">
-        <div style="margin-bottom:4px"><span class="proj-status ok">招募中</span><span class="pill active" style="margin-left:6px">肾小球疾病</span></div>
+        <div style="margin-bottom:4px"><span class="proj-status proposed" style="background:rgba(217,119,6,.10);color:#92400e;border:1px solid rgba(217,119,6,.28)">拟议方向（征集牵头单位）</span><span class="pill active" style="margin-left:6px">肾小球疾病</span></div>
+        <div class="small muted" style="font-size:11px;line-height:1.55;margin:0 0 6px">尚未确定牵头单位、项目负责人和伦理批件。下方的研究问题、目标规模和支持内容均为初步设想，需由牵头团队按正式方案确认。</div>
         <h3 class="price-title" id="project-mn-rtx-obi-title" style="font-size:inherit;margin:0 0 6px">高危膜性肾病 RTX vs OBI 多中心观察性比较研究</h3>
         <div class="infobox" style="padding:8px 10px;font-size:12px;line-height:1.55;margin:8px 0">在高危原发性膜性肾病中，首次 anti-CD20 治疗选择利妥昔单抗（RTX）还是奥比妥珠单抗（OBI），谁的缓解率更高、复发更少、安全性更好？</div>
-        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">适合加入的中心</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>有膜性肾病规范随访能力的肾内科中心</li><li>0 / 3 / 6 / 12 月有时间点数据的中心</li></ul></div>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">可能适合的中心</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>有膜性肾病规范随访能力的肾内科中心</li><li>0 / 3 / 6 / 12 月有时间点数据的中心</li></ul></div>
         <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">建议优先准备的关键字段</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>核心四项：0/3/6/12 月时间点的日期 / BP / Scr / UPCR</li><li>anti-PLA2R / 白蛋白 / CD19 可选（增强分析）</li></ul></div>
-        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">加入后可获得的支持</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>零门槛入组：核心四项即进主分析</li><li>PLA2R 动态 / 免疫学 / 安全性子分析支持</li></ul></div>
-        <details class="faq" style="margin-top:8px"><summary style="font-size:12px;font-weight:600">展开详细说明</summary><ul class="small" style="margin:8px 0 0;padding-left:16px;line-height:1.7"><li>零门槛设计：核心四项即可入主分析</li><li>多中心汇聚；免疫学（PLA2R 动态）/ 安全性 / 再治疗可独立成分稿</li></ul></details>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">拟提供的支持（需协商确认）</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>核心四项（日期 / 血压 / 血肌酐 / 尿蛋白）完整即可参与主分析（拟议设计）</li><li>PLA2R 动态 / 免疫学 / 安全性子分析支持</li></ul></div>
+        <details class="faq" style="margin-top:8px"><summary style="font-size:12px;font-weight:600">展开详细说明</summary><ul class="small" style="margin:8px 0 0;padding-left:16px;line-height:1.7"><li>分层设计：核心四项完整即可参与主分析，其余字段用于增强分析</li><li>免疫学（PLA2R 动态）/ 安全性 / 再治疗可作为子课题方向</li></ul></details>
         <div class="btnbar" style="margin-top:10px">
-          <a class="btn small primary" href="mailto:china@kidneysphere.com?subject=%E5%8A%A0%E5%85%A5%E9%A1%B9%E7%9B%AE%EF%BC%9A%E9%AB%98%E5%8D%B1%E8%86%9C%E6%80%A7%E8%82%BE%E7%97%85%20RTX%20vs%20OBI%20%E5%A4%9A%E4%B8%AD%E5%BF%83%E8%A7%82%E5%AF%9F%E6%80%A7%E6%AF%94%E8%BE%83%E7%A0%94%E7%A9%B6">联系加入</a>
+          <a class="btn small primary" href="mailto:china@kidneysphere.com?subject=%E5%92%A8%E8%AF%A2%E5%90%88%E4%BD%9C%E6%96%B9%E5%90%91%EF%BC%9A%E9%AB%98%E5%8D%B1%E8%86%9C%E6%80%A7%E8%82%BE%E7%97%85%20RTX%20vs%20OBI%20%E5%A4%9A%E4%B8%AD%E5%BF%83%E8%A7%82%E5%AF%9F%E6%80%A7%E6%AF%94%E8%BE%83%E7%A0%94%E7%A9%B6">咨询牵头或参与</a>
         </div>
         <button type="button" class="copy-email" style="display:none" data-copy-email="china@kidneysphere.com" title="复制邮箱">
           📋 china@kidneysphere.com
         </button>
       </article>
       <article class="price-card project-card" id="project-hd-registry" data-project-slug="hd-registry" data-category="透析/康复" aria-labelledby="project-hd-registry-title">
-        <div style="margin-bottom:4px"><span class="proj-status ok">招募中</span><span class="pill active" style="margin-left:6px">透析/康复</span></div>
+        <div style="margin-bottom:4px"><span class="proj-status proposed" style="background:rgba(217,119,6,.10);color:#92400e;border:1px solid rgba(217,119,6,.28)">拟议方向（征集牵头单位）</span><span class="pill active" style="margin-left:6px">透析/康复</span></div>
+        <div class="small muted" style="font-size:11px;line-height:1.55;margin:0 0 6px">尚未确定牵头单位、项目负责人和伦理批件。下方的研究问题、目标规模和支持内容均为初步设想，需由牵头团队按正式方案确认。</div>
         <h3 class="price-title" id="project-hd-registry-title" style="font-size:inherit;margin:0 0 6px">HD 透析起始频次真实世界登记</h3>
         <div class="infobox" style="padding:8px 10px;font-size:12px;line-height:1.55;margin:8px 0">血液透析起始阶段透析频次的选择（每周 2 次 vs 3 次）对患者短中期临床结局、生活质量与院内资源利用的影响。</div>
-        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">适合加入的中心</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>有透析中心的肾内科或血液净化科</li><li>覆盖不同透析频次实践模式的中心</li></ul></div>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">可能适合的中心</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>有透析中心的肾内科或血液净化科</li><li>覆盖不同透析频次实践模式的中心</li></ul></div>
         <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">建议优先准备的关键字段</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>HD 起始日期 / 起始频次 / 基线 Scr</li><li>主要临床结局（随访 12–24 个月）</li></ul></div>
-        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">加入后可获得的支持</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>登记式 eCRF 与数据字典</li><li>资源利用与生活质量子分析模板</li></ul></div>
-        <details class="faq" style="margin-top:8px"><summary style="font-size:12px;font-weight:600">展开详细说明</summary><ul class="small" style="margin:8px 0 0;padding-left:16px;line-height:1.7"><li>目标 ≥300 例；多中心以覆盖不同实践模式</li><li>可延伸至生活质量与院内经济性子分析</li></ul></details>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">拟提供的支持（需协商确认）</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>登记式 eCRF 与数据字典</li><li>资源利用与生活质量子分析模板</li></ul></div>
+        <details class="faq" style="margin-top:8px"><summary style="font-size:12px;font-weight:600">展开详细说明</summary><ul class="small" style="margin:8px 0 0;padding-left:16px;line-height:1.7"><li>初步设想 ≥300 例；多中心以覆盖不同实践模式</li><li>可延伸至生活质量与院内经济性子分析</li></ul></details>
         <div class="btnbar" style="margin-top:10px">
-          <a class="btn small primary" href="mailto:china@kidneysphere.com?subject=%E5%8A%A0%E5%85%A5%E9%A1%B9%E7%9B%AE%EF%BC%9AHD%20%E9%80%8F%E6%9E%90%E8%B5%B7%E5%A7%8B%E9%A2%91%E6%AC%A1%E7%9C%9F%E5%AE%9E%E4%B8%96%E7%95%8C%E7%99%BB%E8%AE%B0">联系加入</a>
+          <a class="btn small primary" href="mailto:china@kidneysphere.com?subject=%E5%92%A8%E8%AF%A2%E5%90%88%E4%BD%9C%E6%96%B9%E5%90%91%EF%BC%9AHD%20%E9%80%8F%E6%9E%90%E8%B5%B7%E5%A7%8B%E9%A2%91%E6%AC%A1%E7%9C%9F%E5%AE%9E%E4%B8%96%E7%95%8C%E7%99%BB%E8%AE%B0">咨询牵头或参与</a>
         </div>
         <button type="button" class="copy-email" style="display:none" data-copy-email="china@kidneysphere.com" title="复制邮箱">
           📋 china@kidneysphere.com
         </button>
       </article>
       <article class="price-card project-card" id="project-regain-pa" data-project-slug="regain-pa" data-category="透析/康复" aria-labelledby="project-regain-pa-title">
-        <div style="margin-bottom:4px"><span class="proj-status ok">招募中</span><span class="pill active" style="margin-left:6px">透析/康复</span></div>
+        <div style="margin-bottom:4px"><span class="proj-status proposed" style="background:rgba(217,119,6,.10);color:#92400e;border:1px solid rgba(217,119,6,.28)">拟议方向（征集牵头单位）</span><span class="pill active" style="margin-left:6px">透析/康复</span></div>
+        <div class="small muted" style="font-size:11px;line-height:1.55;margin:0 0 6px">尚未确定牵头单位、项目负责人和伦理批件。下方的研究问题、目标规模和支持内容均为初步设想，需由牵头团队按正式方案确认。</div>
         <h3 class="price-title" id="project-regain-pa-title" style="font-size:inherit;margin:0 0 6px">REGAIN-PA · CKD / 透析患者体力活动干预实施研究</h3>
         <div class="infobox" style="padding:8px 10px;font-size:12px;line-height:1.55;margin:8px 0">在 CKD 及透析患者中实施结构化体力活动干预的真实世界可行性、依从性及对临床指标（eGFR / 生活质量 / 肌力）的影响。</div>
-        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">适合加入的中心</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>具备运动康复或肾脏康复专病门诊资源的中心</li><li>有透析患者规律随访体系的中心</li></ul></div>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">可能适合的中心</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>具备运动康复或肾脏康复专病门诊资源的中心</li><li>有透析患者规律随访体系的中心</li></ul></div>
         <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">建议优先准备的关键字段</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>CKD 分期 / 透析方式 + 体力活动基线评估</li><li>干预方案 + 随访核心四项（6–12 个月）</li></ul></div>
-        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">加入后可获得的支持</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>实施型研究 eCRF 与干预方案模板</li><li>依从性追踪与长期透析结局子分析</li></ul></div>
-        <details class="faq" style="margin-top:8px"><summary style="font-size:12px;font-weight:600">展开详细说明</summary><ul class="small" style="margin:8px 0 0;padding-left:16px;line-height:1.7"><li>以实施型研究设计为主，目标 ≥150 例</li><li>可延伸至长期透析结局子分析</li></ul></details>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">拟提供的支持（需协商确认）</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>实施型研究 eCRF 与干预方案模板</li><li>依从性追踪与长期透析结局子分析</li></ul></div>
+        <details class="faq" style="margin-top:8px"><summary style="font-size:12px;font-weight:600">展开详细说明</summary><ul class="small" style="margin:8px 0 0;padding-left:16px;line-height:1.7"><li>以实施型研究设计为主，初步设想 ≥150 例</li><li>可延伸至长期透析结局子分析</li></ul></details>
         <div class="btnbar" style="margin-top:10px">
-          <a class="btn small primary" href="mailto:china@kidneysphere.com?subject=%E5%8A%A0%E5%85%A5%E9%A1%B9%E7%9B%AE%EF%BC%9AREGAIN-PA%20CKD%2F%E9%80%8F%E6%9E%90%E6%82%A3%E8%80%85%E4%BD%93%E5%8A%9B%E6%B4%BB%E5%8A%A8%E5%B9%B2%E9%A2%84%E5%AE%9E%E6%96%BD%E7%A0%94%E7%A9%B6">联系加入</a>
+          <a class="btn small primary" href="mailto:china@kidneysphere.com?subject=%E5%92%A8%E8%AF%A2%E5%90%88%E4%BD%9C%E6%96%B9%E5%90%91%EF%BC%9AREGAIN-PA%20CKD%2F%E9%80%8F%E6%9E%90%E6%82%A3%E8%80%85%E4%BD%93%E5%8A%9B%E6%B4%BB%E5%8A%A8%E5%B9%B2%E9%A2%84%E5%AE%9E%E6%96%BD%E7%A0%94%E7%A9%B6">咨询牵头或参与</a>
         </div>
         <button type="button" class="copy-email" style="display:none" data-copy-email="china@kidneysphere.com" title="复制邮箱">
           📋 china@kidneysphere.com
         </button>
       </article>
       <article class="price-card project-card" id="project-dkd-access" data-project-slug="dkd-access" data-category="糖尿病/代谢肾病" aria-labelledby="project-dkd-access-title">
-        <div style="margin-bottom:4px"><span class="proj-status lead">牵头招募</span><span class="pill active" style="margin-left:6px">糖尿病/代谢肾病</span></div>
+        <div style="margin-bottom:4px"><span class="proj-status proposed" style="background:rgba(217,119,6,.10);color:#92400e;border:1px solid rgba(217,119,6,.28)">拟议方向（征集牵头单位）</span><span class="pill active" style="margin-left:6px">糖尿病/代谢肾病</span></div>
+        <div class="small muted" style="font-size:11px;line-height:1.55;margin:0 0 6px">尚未确定牵头单位、项目负责人和伦理批件。下方的研究问题、目标规模和支持内容均为初步设想，需由牵头团队按正式方案确认。</div>
         <h3 class="price-title" id="project-dkd-access-title" style="font-size:inherit;margin:0 0 6px">DKD-ACCESS 糖尿病合并 CKD 平台队列</h3>
         <div class="infobox" style="padding:8px 10px;font-size:12px;line-height:1.55;margin:8px 0">面向成人糖尿病合并 CKD 的多中心、分层准入、前瞻-回顾结合平台队列，聚焦器官保护治疗落实度、竞争风险与硬结局，支持不同数据能力层级的中心共同参与。</div>
-        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">适合加入的中心</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>A 类站点：可提供 eGFR、UACR 或 dipstick protein、基础用药和转诊信息的筛查链条站点</li><li>B 类站点：可提供重复 Scr/eGFR，最好有重复 UACR 的标准随访站点</li><li>C 类站点：可提供眼底/视网膜病变、PROMs、样本库、超声或 cystatin C 等增强模块的站点</li></ul></div>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">可能适合的中心</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>A 类站点：可提供 eGFR、UACR 或 dipstick protein、基础用药和转诊信息的筛查链条站点</li><li>B 类站点：可提供重复 Scr/eGFR，最好有重复 UACR 的标准随访站点</li><li>C 类站点：可提供眼底/视网膜病变、PROMs、样本库、超声或 cystatin C 等增强模块的站点</li></ul></div>
         <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">建议优先准备的关键字段</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>年龄、性别、糖尿病类型与病程</li><li>SBP / DBP、HbA1c</li><li>Scr / eGFR、UACR（无 UACR 时可先记录 dipstick protein）</li><li>血钾、白蛋白、血红蛋白</li><li>视网膜病变有/无、ASCVD / HF 有/无</li><li>现用药：ACEi/ARB、SGLT2i、GLP-1RA、finerenone/ns-MRA、statin、diuretics</li></ul></div>
-        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">加入后可获得的支持</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>分层准入的 eCRF 与 data dictionary</li><li>关键字段完整率检查与补录建议</li><li>KDIGO G/A 风险分层与基础分析模板</li><li>首版 care cascade / Table 1 / 可复现导出支持</li><li>支持后续嵌套子研究与增强模块扩展</li></ul></div>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">拟提供的支持（需协商确认）</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>分层准入的 eCRF 与数据字典</li><li>关键字段完整率检查与补录建议</li><li>KDIGO G/A 风险分层与基础分析模板</li><li>诊疗链条（筛查—监测—转诊）描述与冻结数据版本导出</li><li>支持后续嵌套子研究与增强模块扩展</li></ul></div>
         <details class="faq" style="margin-top:8px"><summary style="font-size:12px;font-weight:600">展开详细说明</summary><ul class="small" style="margin:8px 0 0;padding-left:16px;line-height:1.7"><li>主队列定义：成人糖尿病合并 CKD 平台队列，支持从回顾性数据快速起步并承接后续前瞻随访</li><li>适合开展筛查-监测-转诊 care cascade、治疗落实度与硬结局研究</li><li>支持后续 target trial emulation、表型分层与风险模型嵌套子研究</li></ul></details>
         <div class="btnbar" style="margin-top:10px">
-          <a class="btn small primary" href="mailto:china@kidneysphere.com?subject=%E5%8A%A0%E5%85%A5%E9%A1%B9%E7%9B%AE%EF%BC%9ADKD-ACCESS%20%E7%B3%96%E5%B0%BF%E7%97%85%E5%90%88%E5%B9%B6%20CKD%20%E5%B9%B3%E5%8F%B0%E9%98%9F%E5%88%97">联系加入</a>
+          <a class="btn small primary" href="mailto:china@kidneysphere.com?subject=%E5%92%A8%E8%AF%A2%E5%90%88%E4%BD%9C%E6%96%B9%E5%90%91%EF%BC%9ADKD-ACCESS%20%E7%B3%96%E5%B0%BF%E7%97%85%E5%90%88%E5%B9%B6%20CKD%20%E5%B9%B3%E5%8F%B0%E9%98%9F%E5%88%97">咨询牵头或参与</a>
         </div>
         <button type="button" class="copy-email" style="display:none" data-copy-email="china@kidneysphere.com" title="复制邮箱">
           📋 china@kidneysphere.com
         </button>
       </article>
       <article class="price-card project-card" id="project-ktr-care-china" data-project-slug="ktr-care-china" data-category="肾移植" aria-labelledby="project-ktr-care-china-title">
-        <div style="margin-bottom:4px"><span class="proj-status ok">招募中</span><span class="pill active" style="margin-left:6px">肾移植</span></div>
+        <div style="margin-bottom:4px"><span class="proj-status proposed" style="background:rgba(217,119,6,.10);color:#92400e;border:1px solid rgba(217,119,6,.28)">拟议方向（征集牵头单位）</span><span class="pill active" style="margin-left:6px">肾移植</span></div>
+        <div class="small muted" style="font-size:11px;line-height:1.55;margin:0 0 6px">尚未确定牵头单位、项目负责人和伦理批件。下方的研究问题、目标规模和支持内容均为初步设想，需由牵头团队按正式方案确认。</div>
         <h3 class="price-title" id="project-ktr-care-china-title" style="font-size:inherit;margin:0 0 6px">KTR-CARE China · 肾移植受者多中心真实世界长期随访队列</h3>
-        <div class="infobox" style="padding:8px 10px;font-size:12px;line-height:1.55;margin:8px 0">建立低门槛、标准化、可扩展的中国肾移植长期管理数据库，识别移植物功能下降、严重感染与住院的关键可干预因素，并构建门诊可用的动态风险分层工具。同一母队列支持 7 个预设子课题连续产出。</div>
-        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">适合加入的中心</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>有肾移植患者长期随访基础的肾移植内科 / 肾内科</li><li>协作随访中心（不要求本中心开展移植手术）</li><li>无需具备 DSA、dd-cfDNA、protocol biopsy 等高端检测能力</li></ul></div>
+        <div class="infobox" style="padding:8px 10px;font-size:12px;line-height:1.55;margin:8px 0">拟建立标准化、可扩展的肾移植受者长期随访数据库，研究移植物功能下降、严重感染与住院的可干预因素，并探索门诊可用的风险分层方法。同一母队列拟设多个子课题方向。</div>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">可能适合的中心</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>有肾移植患者长期随访基础的肾移植内科 / 肾内科</li><li>协作随访中心（不要求本中心开展移植手术）</li><li>无需具备 DSA、dd-cfDNA、protocol biopsy 等高端检测能力</li></ul></div>
         <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">建议优先准备的关键字段</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>Scr / eGFR、蛋白尿（每次随访）</li><li>免疫抑制方案：Tac/CsA/belatacept/mTORi；MPA/AZA；激素</li><li>Tac / CsA trough 水平</li><li>病史：排斥、BK、CMV、糖尿病、高血压、CVD</li><li>门诊血压、感染、住院、是否 biopsy-proven 排斥</li></ul></div>
-        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">加入后可获得的支持</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>统一 CRF 与数据字典，最低变量集对应常规门诊记录</li><li>7 个预设子课题方向（移植物下降模型、蛋白尿、Tac 变异性、感染、代谢等）</li><li>方法学与统计支持（Cox / 竞争风险 / 时间依赖分析）</li><li>子课题 concept sheet 机制，青年医生可申请牵头</li><li>建议每 3–6 个月门诊节奏更新，回顾+前瞻结合</li></ul></div>
-        <details class="faq" style="margin-top:8px"><summary style="font-size:12px;font-weight:600">展开详细说明</summary><ul class="small" style="margin:8px 0 0;padding-left:16px;line-height:1.7"><li>不统一免疫方案，不要求 protocol biopsy，协作随访中心均可加入</li><li>预设子课题：移植物功能下降风险模型、蛋白尿与结局、Tac trough 变异性、感染负担、代谢并发症、中心管理差异、低资源场景风险分层</li><li>目标期刊：AJT / CJASN / KI；支持 AST/ATC 相关会议摘要</li></ul></details>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">拟提供的支持（需协商确认）</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>统一 CRF 与数据字典，最低变量集对应常规门诊记录</li><li>拟设子课题方向（移植物功能下降、蛋白尿、Tac 变异性、感染、代谢等）</li><li>方法学与统计支持（Cox / 竞争风险 / 时间依赖分析）</li><li>子课题申请机制（concept sheet），青年医生可申请牵头</li><li>建议每 3–6 个月门诊节奏更新，回顾+前瞻结合</li></ul></div>
+        <details class="faq" style="margin-top:8px"><summary style="font-size:12px;font-weight:600">展开详细说明</summary><ul class="small" style="margin:8px 0 0;padding-left:16px;line-height:1.7"><li>不统一免疫方案，不要求 protocol biopsy，协作随访中心均可加入</li><li>拟设子课题：移植物功能下降风险模型、蛋白尿与结局、Tac trough 变异性、感染负担、代谢并发症、中心管理差异、低资源场景风险分层</li></ul></details>
         <div class="btnbar" style="margin-top:10px">
-          <a class="btn small primary" href="mailto:china@kidneysphere.com?subject=%E5%8A%A0%E5%85%A5%E9%A1%B9%E7%9B%AE%EF%BC%9AKTR-CARE%20China%20%E8%82%BE%E7%A7%BB%E6%A4%8D%E5%8F%97%E8%80%85%E5%A4%9A%E4%B8%AD%E5%BF%83%E9%95%BF%E6%9C%9F%E9%9A%8F%E8%AE%BF%E9%98%9F%E5%88%97">联系加入</a>
+          <a class="btn small primary" href="mailto:china@kidneysphere.com?subject=%E5%92%A8%E8%AF%A2%E5%90%88%E4%BD%9C%E6%96%B9%E5%90%91%EF%BC%9AKTR-CARE%20China%20%E8%82%BE%E7%A7%BB%E6%A4%8D%E5%8F%97%E8%80%85%E5%A4%9A%E4%B8%AD%E5%BF%83%E9%95%BF%E6%9C%9F%E9%9A%8F%E8%AE%BF%E9%98%9F%E5%88%97">咨询牵头或参与</a>
         </div>
         <button type="button" class="copy-email" style="display:none" data-copy-email="china@kidneysphere.com" title="复制邮箱">
           📋 china@kidneysphere.com
         </button>
       </article>
       <article class="price-card project-card" id="project-pd-open-china" data-project-slug="pd-open-china" data-category="腹膜透析" aria-labelledby="project-pd-open-china-title">
-        <div style="margin-bottom:4px"><span class="proj-status lead">牵头招募</span><span class="pill active" style="margin-left:6px">腹膜透析</span></div>
+        <div style="margin-bottom:4px"><span class="proj-status proposed" style="background:rgba(217,119,6,.10);color:#92400e;border:1px solid rgba(217,119,6,.28)">拟议方向（征集牵头单位）</span><span class="pill active" style="margin-left:6px">腹膜透析</span></div>
+        <div class="small muted" style="font-size:11px;line-height:1.55;margin:0 0 6px">尚未确定牵头单位、项目负责人和伦理批件。下方的研究问题、目标规模和支持内容均为初步设想，需由牵头团队按正式方案确认。</div>
         <h3 class="price-title" id="project-pd-open-china-title" style="font-size:inherit;margin:0 0 6px">PD-OPEN China · 中国腹膜透析开放协作平台研究</h3>
-        <div class="infobox" style="padding:8px 10px;font-size:12px;line-height:1.55;margin:8px 0">构建全国多中心、低门槛、可扩展的腹透平台队列，研究中心实践差异与患者结局（12 个月永久转 HD）的关系，并持续孵化感染 benchmark、增量腹透、急诊起始等嵌套子研究。</div>
-        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">适合加入的中心</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>A 类（核心队列）：有稳定 PD 门诊或住院管理团队，能判断主要结局</li><li>B 类（中心年度调查）：每年完成 1 次 10–15 分钟的中心实践调查</li><li>C 类（增强模块）：可提供 PROM、PET/RKF、容量管理、远程管理数据的中心</li></ul></div>
+        <div class="infobox" style="padding:8px 10px;font-size:12px;line-height:1.55;margin:8px 0">拟构建多中心、可扩展的腹膜透析平台队列，研究中心实践差异与患者结局（如 12 个月永久转 HD）的关系，并在此基础上开展感染对标、增量腹透、急诊起始等嵌套子研究。</div>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">可能适合的中心</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>A 类（核心队列）：有稳定 PD 门诊或住院管理团队，能判断主要结局</li><li>B 类（中心年度调查）：每年完成 1 次 10–15 分钟的中心实践调查</li><li>C 类（增强模块）：可提供 PROM、PET/RKF、容量管理、远程管理数据的中心</li></ul></div>
         <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">建议优先准备的关键字段</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>PD 起始日期、planned vs urgent 起始、既往 HD 暴露</li><li>处方类型：CAPD / APD；增量 vs 标准 PD</li><li>Hb、白蛋白、钾、磷、Scr；24 小时尿量或无尿状态</li><li>腹膜炎事件（日期、病原、是否拔管）、出口/隧道感染</li><li>转 HD 日期与原因、住院、死亡、移植</li></ul></div>
-        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">加入后可获得的支持</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>分层准入 eCRF 与统一数据字典（支持 Excel / REDCap / 本地系统导出映射）</li><li>每季度反馈各中心缺失率、逻辑冲突与事件定义核查清单</li><li>8 篇预设论文矩阵（NDT / KI / CKJ / KI Reports / PDI 等）</li><li>子课题 concept sheet 机制，青年医生优先申请牵头</li><li>建议核心变量完整率 ≥85%，主要终点缺失率 &lt;5%</li></ul></div>
-        <details class="faq" style="margin-top:8px"><summary style="font-size:12px;font-weight:600">展开详细说明</summary><ul class="small" style="margin:8px 0 0;padding-left:16px;line-height:1.7"><li>主终点：12 个月永久转 HD（连续转 HD &gt;90 天），记录原因</li><li>腹膜炎与出口感染 benchmark 对标 ISPD 2022/2023 标准（≤0.40 次/人年）</li><li>支持增量起始 vs 标准起始、急诊起始、低钾、残余肾功能等嵌套子研究</li><li>目标期刊：NDT / KI 主论文；子论文可至 CKJ / KI Reports / PDI / Kidney Medicine</li></ul></details>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">拟提供的支持（需协商确认）</div><ul class="small" style="margin:0;padding-left:16px;line-height:1.7"><li>分层准入 eCRF 与统一数据字典（支持 Excel / REDCap / 本地系统导出映射）</li><li>每季度反馈各中心缺失率、逻辑冲突与事件定义核查清单</li><li>拟议论文方向清单（需牵头团队确认，不承诺发表）</li><li>子课题申请机制（concept sheet），青年医生可申请牵头</li><li>数据质量目标（如核心变量完整率、主要终点缺失率）由牵头团队在方案中约定</li></ul></div>
+        <details class="faq" style="margin-top:8px"><summary style="font-size:12px;font-weight:600">展开详细说明</summary><ul class="small" style="margin:8px 0 0;padding-left:16px;line-height:1.7"><li>拟议主终点：12 个月永久转 HD（定义以正式方案为准），记录原因</li><li>腹膜炎与出口感染率可对照 ISPD 指南建议进行中心间比较</li><li>可开展增量起始 vs 标准起始、急诊起始、低钾、残余肾功能等嵌套子研究</li></ul></details>
         <div class="btnbar" style="margin-top:10px">
-          <a class="btn small primary" href="mailto:china@kidneysphere.com?subject=%E5%8A%A0%E5%85%A5%E9%A1%B9%E7%9B%AE%EF%BC%9APD-OPEN%20China%20%E8%85%B9%E8%86%9C%E9%80%8F%E6%9E%90%E5%BC%80%E6%94%BE%E5%8D%8F%E4%BD%9C%E5%B9%B3%E5%8F%B0%E7%A0%94%E7%A9%B6">联系加入</a>
+          <a class="btn small primary" href="mailto:china@kidneysphere.com?subject=%E5%92%A8%E8%AF%A2%E5%90%88%E4%BD%9C%E6%96%B9%E5%90%91%EF%BC%9APD-OPEN%20China%20%E8%85%B9%E8%86%9C%E9%80%8F%E6%9E%90%E5%BC%80%E6%94%BE%E5%8D%8F%E4%BD%9C%E5%B9%B3%E5%8F%B0%E7%A0%94%E7%A9%B6">咨询牵头或参与</a>
         </div>
         <button type="button" class="copy-email" style="display:none" data-copy-email="china@kidneysphere.com" title="复制邮箱">
           📋 china@kidneysphere.com
@@ -482,20 +517,20 @@
       <!-- END GENERATED PROJECT CARDS --></div>
       <div class="btnbar" style="margin-top:12px">
         <a class="btn primary" href="mailto:china@kidneysphere.com"
-           data-track="click_join_project" data-track-source="index_projects">联系加入</a>
+           data-track="click_join_project" data-track-source="index_projects">咨询牵头或参与</a>
         <a class="btn" href="/collaboration"
-           data-track="click_view_projects" data-track-source="index_projects">查看全部项目</a>
+           data-track="click_view_projects" data-track-source="index_projects">查看全部合作方向</a>
       </div>
     </div>
 
   </div>
 
-  <script src="/lib/error-logger.js?v=registry-20260914-integrated-v1"></script>
-  <script src="/config.js?v=registry-20260914-integrated-v1"></script>
-  <script src="/pricing-config.js?v=registry-20260914-integrated-v1"></script>
-  <script src="/analytics.js?v=registry-20260914-integrated-v1"></script>
-  <script src="/collaboration-data.js?v=registry-20260914-integrated-v1"></script>
-  <script src="/collaboration-components.js?v=registry-20260914-integrated-v1"></script>
+  <script src="/lib/error-logger.js?v=registry-20261012-adoption-v4"></script>
+  <script src="/config.js?v=registry-20261012-adoption-v4"></script>
+  <script src="/pricing-config.js?v=registry-20261012-adoption-v4"></script>
+  <script src="/analytics.js?v=registry-20261012-adoption-v4"></script>
+  <script src="/collaboration-data.js?v=registry-20261012-adoption-v4"></script>
+  <script src="/collaboration-components.js?v=registry-20261012-adoption-v4"></script>
   <script>
     (function(){
       try {
@@ -505,7 +540,7 @@
         var headingEl = document.getElementById('projectHeading');
         if (!idxData || !idxData.projectCards || !idxData.projectCards.length) {
           // Hide the entire heading if no data available
-          if (headingEl) headingEl.textContent = '正在招募合作中心';
+          if (headingEl) headingEl.textContent = '研究合作方向';
           return;
         }
         idxC.renderProjects(
@@ -516,13 +551,14 @@
       } catch(e) {
         // Graceful degradation: hide count on error
         var h = document.getElementById('projectHeading');
-        if (h) h.textContent = '正在招募合作中心';
+        if (h) h.textContent = '研究合作方向';
         console.error('[index] project render error:', e);
       }
     })();
   </script>
   <footer class="site-footer">
-    <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
+    <div class="footer-more">更多：<a href="/collaboration">合作项目</a> · <a href="/user-manual-cn">详细手册</a> · <a href="/slides">介绍幻灯片</a> · <a href="/deployment">部署方式</a> · <a href="/demo">合作咨询</a></div>
+    <div style="margin-top:4px">微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
     <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener">鲁公网安备37091102000922号</a></div>
   </footer>
 </body>

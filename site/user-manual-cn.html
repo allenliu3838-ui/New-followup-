@@ -3,172 +3,249 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <meta name="description" content="同行操作手册：角色权限、基线与随访、单位与质控、九表冻结导出、描述性分析、多中心合并及错误恢复。"/>
+  <meta name="description" content="详细操作手册：成员权限、知情同意与隐私、随访看板与录入随访、随访链接、字段与单位、数据质控问题与更正、冻结导出与本地分析、多中心合并及常见问题。"/>
   <meta property="og:type" content="website"/>
-  <meta property="og:title" content="详细使用说明 · 肾域·科研"/>
-  <meta property="og:description" content="同行操作手册：角色权限、基线与随访、单位与质控、九表冻结导出、描述性分析、多中心合并及错误恢复。"/>
+  <meta property="og:title" content="详细操作手册 · 肾域·科研"/>
+  <meta property="og:description" content="成员权限、知情同意与隐私、随访看板与录入随访、随访链接、数据质控、冻结导出与本地分析及常见问题。"/>
   <meta property="og:url" content="https://kidneysphereregistry.cn/user-manual-cn"/>
   <link rel="canonical" href="https://kidneysphereregistry.cn/user-manual-cn"/>
-  <title>详细使用说明（培训版）· 肾域·科研 — KidneySphere Research</title>
-  <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
+  <title>详细操作手册 · 肾域·科研</title>
+  <link rel="stylesheet" href="/lib/product-nav.css?v=registry-20261012-adoption-v4">
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
-  <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
-  <link rel="stylesheet" href="/app.css?v=registry-20260914-integrated-v1"/>
+  <script src="/lib/product-nav.js?v=registry-20261012-adoption-v4" defer></script>
+  <link rel="stylesheet" href="/app.css?v=registry-20261012-adoption-v4"/>
+  <link rel="stylesheet" href="/guide.css?v=registry-20261012-adoption-v4"/>
   <link rel="icon" href="/assets/kidneysphere-ai.png"/>
-  <style>
-    .doc { max-width: 980px; margin: 24px auto; }
-    .doc h1,.doc h2,.doc h3 { margin-top: 18px; }
-    .doc p,.doc li { line-height: 1.75; }
-    .toc a { margin-right: 10px; white-space: nowrap; }
-    .example { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; }
-  </style>
-
-  <style>
-    .doc-guide{max-width:1060px;margin:24px auto;}
-    .doc-guide p,.doc-guide li{line-height:1.8;}
-    .doc-guide h2{margin:26px 0 10px;scroll-margin-top:90px;}
-    .doc-guide h3{margin:18px 0 8px;}
-    .doc-guide .toc{display:flex;flex-wrap:wrap;gap:8px 16px;margin:16px 0;}
-    .doc-guide .toc a,.doc-guide .btn{min-height:30px;}
-    .doc-guide .table-wrap{overflow-x:auto;margin:12px 0;}
-    .doc-guide table{border-collapse:collapse;width:100%;font-size:13px;min-width:580px;}
-    .doc-guide th,.doc-guide td{padding:10px;text-align:left;vertical-align:top;border-bottom:1px solid var(--border);line-height:1.7;}
-    .doc-guide th{background:#f3f7ff;}
-    .doc-guide caption{text-align:left;font-weight:700;padding:8px 0;}
-    .doc-guide pre{background:#0b1220;color:#e5e7eb;padding:14px;border-radius:12px;overflow:auto;font-size:13px;line-height:1.7;}
-    .doc-guide pre code{all:unset;font-family:ui-monospace,monospace;}
-    .doc-guide code{overflow-wrap:anywhere;}
-    .doc-guide .example{padding:12px 14px;background:#f5f8ff;border:1px solid #dce6ff;border-radius:12px;}
-    .doc-guide a:focus-visible,.doc-guide summary:focus-visible{outline:3px solid #2563eb;outline-offset:3px;}
-    @media(max-width:640px){.doc-guide{margin:12px auto;}.doc-guide .card{padding:16px;}.doc-guide .brand-title{font-size:22px;}}
-  </style>
 </head>
 <body>
 
   <main class="container doc doc-guide">
     <div class="card">
-      <div class="brand"><img src="/assets/kidneysphere-ai.png" alt="肾域·科研"/><div><h1 class="brand-title">详细操作手册 · 同行协作版</h1><div class="brand-sub">负责人建项目，录入人员核对来源，分析人员复核版本与结果</div></div></div>
-      <div class="btnbar"><a class="btn small" href="/">首页</a><a class="btn small" href="/guide">快速说明</a><a class="btn small primary" href="/login">登录后台</a></div>
-      <p>本手册对应成员角色、事务导入、记录更正和冻结导出的配套版本。首次使用先在独立测试项目中用模拟记录演练。后台如没有相关入口或提示版本不匹配，应由技术团队核对部署状态后继续。</p>
-      <nav class="toc" aria-label="详细操作手册目录"><a href="#concepts">1 项目与编号</a><a href="#roles">2 成员权限</a><a href="#pii">3 研究授权与隐私</a><a href="#setup">4 首次准备</a><a href="#sop">5 录入流程</a><a href="#token">6 随访链接</a><a href="#rules">7 字段与单位</a><a href="#labs">8 化验与专业字段</a><a href="#import">9 批量导入</a><a href="#issues">10 质控更正</a><a href="#export">11 冻结与分析</a><a href="#scenario">12 模拟演练</a><a href="#faq">13 错误恢复</a></nav>
+      <div class="brand"><img src="/assets/kidneysphere-ai.png" alt="肾域·科研"/><div><h1 class="brand-title">详细操作手册</h1><div class="brand-sub">课题负责人（PI）建项目，研究护士 / 临床研究协调员（CRC）随访录入，分析人员冻结与复核</div></div></div>
+      <div class="btnbar"><a class="btn small" href="/">首页</a><a class="btn small" href="/guide#quickstart">快速上手（7 步）</a><a class="btn small primary" href="/login">登录工作台</a></div>
+      <p>本手册是逐项操作参考。第一次使用请先看<a href="/guide#quickstart">使用说明 · 快速上手</a>，并在一个独立的测试项目里用模拟数据演练。引号中的文字与工作台上的按钮或栏目名称一致；如果工作台没有对应入口，请联系技术团队核对部署版本。</p>
+      <nav class="toc" aria-label="详细操作手册目录"><a href="#concepts">1 项目与研究编号</a><a href="#roles">2 成员权限</a><a href="#pii">3 授权、同意与隐私</a><a href="#setup">4 首次准备</a><a href="#sop">5 日常随访</a><a href="#token">6 随访链接</a><a href="#rules">7 字段与单位</a><a href="#labs">8 化验与专业字段</a><a href="#import">9 批量导入</a><a href="#issues">10 数据质控问题</a><a href="#export">11 冻结与分析</a><a href="#scenario">12 模拟演练</a><a href="#faq">13 常见问题</a></nav>
 
       <h2 id="concepts">1. 项目、研究编号与记录</h2>
-      <p>后台按“项目 → 编码患者 → 基线、随访及扩展记录”组织数据。一个项目具有独立的 <code>project_id</code>、中心代码 <code>center_code</code> 和模块 <code>module</code>。多中心可以各建独立项目，按批准范围分别授权后汇总；当前没有自动覆盖所有中心的组织权限。</p>
-      <ul><li>研究对象身份键是 <code>project_id + center_code + patient_code</code>；每条记录另有原始 <code>id</code>。同一编号在不同中心或项目中不应被当作同一个人。</li><li><code>0001</code>、<code>1</code> 和文字编号须原样保留。不要在电子表格中自动转为数字，不因合并方便而改写项目或记录 ID。</li><li>编号与姓名的映射由来源机构按批准方式保管，不上传到登记系统。一个患者在同一项目内保留一条基线，后续随访按日期新增。</li></ul>
+      <p>工作台按“项目 → 研究对象 → 基线、随访及扩展记录”组织数据。一个项目对应一个研究队列，有自己的中心代码和病种模块。多中心研究由各中心分别建项目、分别授权，再汇总；系统没有自动覆盖所有中心的上级权限。</p>
+      <ul>
+        <li>研究对象由“项目 + 中心代码 + 研究编号”确定（导出文件中对应 <code>project_id</code>、<code>center_code</code>、<code>patient_code</code> 三列）。同一编号在不同中心或项目中不是同一个人。</li>
+        <li><code>0001</code>、<code>1</code> 和含字母的编号都按原样保存。不要让电子表格把编号自动转成数字。</li>
+        <li>研究编号与姓名的对照表由医院按规定保管，不上传到工作台。每位研究对象在同一项目内只有一条基线，随访按日期逐条增加。</li>
+      </ul>
 
       <h2 id="roles">2. 成员权限与交接</h2>
-      <ol><li>同行注册自己的邮箱账号并完成邮箱验证，不能共用负责人密码。</li><li>负责人选择项目，在项目成员区输入同行邮箱，选择 editor、analyst 或 viewer。此操作添加已有验证账号，不是自动发送邀请邮件，也不能授予 owner。</li><li>受邀同行重新加载项目列表，核对项目名、中心和角色。负责人按分工调整角色，离组时移除成员。原 editor 被移除或降为 analyst/viewer 时，系统会在操作确认后撤销该项目所有有效随访链接；需要继续随访的，由 owner/editor 重新发放。</li></ol>
-      <div class="table-wrap" role="region" aria-label="项目角色权限表" tabindex="0"><table id="permissionTable"><caption>已获项目授权、且写入状态正常时的权限</caption><thead><tr><th scope="col">角色</th><th scope="col">查看记录/QC</th><th scope="col">临床录入、导入与更正</th><th scope="col">随访链接</th><th scope="col">专用导出/冻结</th><th scope="col">项目与成员管理</th></tr></thead><tbody>
-        <tr data-access-role="owner"><th scope="row">owner · 负责人</th><td>可以</td><td>可以</td><td>发放、撤销</td><td>可以</td><td>可以</td></tr>
-        <tr data-access-role="editor"><th scope="row">editor · 录入协作人</th><td>可以</td><td>可以</td><td>发放、撤销</td><td>不可以</td><td>不可以</td></tr>
-        <tr data-access-role="analyst"><th scope="row">analyst · 分析协作人</th><td>可以</td><td>不可以</td><td>不可以</td><td>可以</td><td>不可以</td></tr>
-        <tr data-access-role="viewer"><th scope="row">viewer · 只读协作人</th><td>可以</td><td>不可以</td><td>不可以</td><td>不可以</td><td>不可以</td></tr>
+      <ol>
+        <li>同事用自己的邮箱注册并完成邮箱验证，不共用负责人的账号。</li>
+        <li>负责人选择项目，在“项目信息与协作成员”中填写同事的注册邮箱、选择角色，点“添加成员”。系统不发送邀请邮件，请另行告知；负责人角色不能转让或新增。</li>
+        <li>受邀同事登录后在项目列表中核对项目名称、中心代码与自己的角色。离组时由负责人移除，已录入的数据保留。录入协作人被移除或降为分析 / 只读角色时，确认后本项目现有的随访链接全部失效，需要继续随访的请重新生成。</li>
+      </ol>
+      <div class="table-wrap" role="region" aria-label="项目角色权限表" tabindex="0"><table id="permissionTable"><caption>项目写入状态正常时的权限</caption><thead><tr><th scope="col">角色</th><th scope="col">查看记录与数据质控问题</th><th scope="col">录入、导入、更正与研究状态</th><th scope="col">随访链接</th><th scope="col">冻结与导出</th><th scope="col">项目设置与成员</th></tr></thead><tbody>
+        <tr data-access-role="owner"><th scope="row">负责人</th><td>可以</td><td>可以</td><td>生成、撤销</td><td>可以</td><td>可以</td></tr>
+        <tr data-access-role="editor"><th scope="row">录入协作人</th><td>可以</td><td>可以</td><td>生成、撤销</td><td>不可以</td><td>不可以</td></tr>
+        <tr data-access-role="analyst"><th scope="row">分析协作人</th><td>可以</td><td>不可以</td><td>不可以</td><td>可以</td><td>不可以</td></tr>
+        <tr data-access-role="viewer"><th scope="row">只读协作人</th><td>可以</td><td>不可以</td><td>不可以</td><td>不可以</td><td>不可以</td></tr>
       </tbody></table></div>
-      <p>专用导出限制不等于防复制：有读取权限的人能够看到研究数据，应在授权与保密要求内使用。不同项目需分别授予权限；选择角色也不自动构成伦理授权。</p>
-      <p>项目到期后临床写入和发放新链接停止，资格按项目负责人账户判断。仍可读取；owner/analyst 仍可导出，owner/editor 仍可撤销链接，owner 仍可管理成员。具体写入阻断原因看后台提示；不通过重复注册绕过。</p>
+      <p>关闭导出不等于防复制：能查看的人就能看到研究数据，请只授权必要的人。选择角色也不构成伦理授权。</p>
+      <p>试用或订阅到期后，项目转为只读：不能录入、导入、更正，也不能生成新的随访链接；成员仍可查看，负责人和分析协作人仍可冻结与导出，负责人和录入协作人仍可撤销链接，负责人仍可管理成员。能否录入按项目负责人账户的状态判断，不要通过重复注册绕过。</p>
 
-      <h2 id="pii">3. 研究授权与隐私</h2>
-      <p>使用真实记录前，机构与项目负责人应确认研究方案、适用的伦理审批与知情同意/豁免、数据用途、字段范围、成员与导出接收方。系统账号、冻结版本或质控通过不能代替上述确认。</p>
-      <p>医疗健康属于敏感个人信息；研究编号替换姓名通常是去标识化，不能据此认定匿名化。编码后的记录仍可能与个人关联，按敏感个人信息管理。参见<a href="https://www.cac.gov.cn/2021-08/20/c_1631050028355286.htm" target="_blank" rel="noopener">《个人信息保护法》第28、73条</a>。</p>
-      <ul><li>不要输入姓名、电话、身份证、病案号、完整住址或编号映射，也不要把含这些内容的报告全文粘贴进备注。</li><li>系统对部分常见身份信息模式有提示或阻断，但不能识别所有姓名、变体或组合识别风险；提交前仍需人工核对。</li><li>阿里云网页托管不能证明数据库、认证、日志、备份均在境内。技术与机构负责人应核对实际服务位置、数据流和授权文件，不能按前端域名作结论。</li><li>误录或误分享时，停止进一步传播并联系项目与机构数据负责人处置。不要为“修复”而自行大批删除记录或销毁留痕。见<a href="/privacy">隐私政策</a>、<a href="/security">安全说明</a>。</li></ul>
+      <h2 id="pii">3. 研究授权、知情同意与隐私</h2>
+      <p>录入真实数据前，机构与课题负责人应确认研究方案、伦理审批（或适用的豁免）、知情同意、数据用途、字段范围、参与成员和数据接收方。工作台账号、冻结版本或数据质控通过都不能代替这些确认。</p>
+      <h3 id="consent">知情同意状态与随访状态</h3>
+      <p>每位研究对象在“随访看板”一行的“研究状态”中记录两项状态，每次修改都会留痕：</p>
+      <div class="table-wrap" role="region" aria-label="研究状态说明" tabindex="0"><table><caption>研究状态的含义</caption><thead><tr><th scope="col">项目</th><th scope="col">可选状态</th><th scope="col">说明</th></tr></thead><tbody>
+        <tr><th scope="row">知情同意</th><td>未确认、已同意、伦理批准豁免、拒绝、撤回</td><td>新建患者默认“未确认”，表示尚未核实，不表示同意。“伦理批准豁免”仅在伦理委员会书面批准免除知情同意时选择。可同时填写日期和知情同意书版本。</td></tr>
+        <tr><th scope="row">随访状态</th><td>在访、失访、退出研究、死亡、肾衰竭、转院</td><td>决定看板是否继续提醒随访；不等同于经核实的临床终点事件，终点请按研究方案在“临床终点事件”中录入。“肾衰竭”的判定标准以研究方案为准。</td></tr>
+      </tbody></table></div>
+      <ul>
+        <li>改为“拒绝”“撤回”，或随访状态改为“退出研究”“死亡”时，需要填写原因；保存后该患者尚有效的随访链接由系统自动撤销，已提交的数据不受影响。撤回同意且不再随访时，建议同时把随访状态改为“退出研究”。</li>
+        <li>分析脚本默认只纳入知情同意为“已同意”或“伦理批准豁免”的患者，其余患者的记录不进入结果，排除人数写在运行日志中。所以请及时把“未确认”改为实际状态。</li>
+      </ul>
+      <h3 id="privacy">隐私与数据保护</h3>
+      <p>医疗健康信息属于敏感个人信息。用研究编号替代姓名是去标识化，不等于匿名化，编码后的记录仍可能与个人关联，应按敏感个人信息管理。参见<a href="https://www.cac.gov.cn/2021-08/20/c_1631050028355286.htm" target="_blank" rel="noopener">《个人信息保护法》第二十八条、第七十三条</a>。</p>
+      <ul>
+        <li>不要输入姓名、电话、身份证号、病案号、完整住址或编号对照表，也不要把含这些内容的报告全文粘贴进备注。</li>
+        <li>系统会提示或拦截部分常见的身份信息格式，但不能识别所有姓名、变体或组合识别风险，提交前仍需人工核对。</li>
+        <li>数据存放位置以<a href="/privacy">隐私政策</a>为准，见<a href="#faq-storage">数据存在哪里</a>。不能根据网站域名或网页服务器位置推断数据所在地。</li>
+        <li>误录或误发时，停止进一步传播，联系项目和机构的数据负责人处置。不要为“补救”自行批量删除记录或销毁留痕。见<a href="/privacy">隐私政策</a>、<a href="/security">安全说明</a>。</li>
+      </ul>
 
-      <h2 id="setup">4. 首次准备：负责人完成后交接给同行</h2>
-      <ol><li>在登录页用邮箱和密码登录。负责人新建项目，填写清晰名称、独立中心代码和模块；同一个中心的新研究也应有独立项目身份。</li><li>按方案确认基线日期定义、访视窗口、肌酐/蛋白尿单位、病理与事件定义，以及哪些字段允许缺失。把数据字典版本交给所有录入人员。</li><li>按<a href="#roles">权限表</a>添加同行，确认各自项目可见性。先用模拟记录演练录入、纠错和一次冻结导出，再开始批准范围内的正式采集。</li><li>确认数据保管、支持联系人、离组处理和备份恢复安排。新版本冻结功能保留导出内容，不替代日常备份与恢复演练。</li></ol>
-      <h3 id="setup-faq">账号与项目准备遇到问题</h3><p>忘记密码用登录页“忘记密码”发送重置邮件，核对邮箱及垃圾邮件。添加成员失败先核对邮箱验证、是否已在项目中、角色及频率限制。不要反复尝试枚举他人邮箱；仍失败由负责人联系支持。</p>
+      <h2 id="setup">4. 首次准备：负责人完成后交接给同事</h2>
+      <ol>
+        <li>在<a href="/login">登录页</a>用邮箱和密码登录（也可以选“邮箱登录链接”）。在“项目 → 新建项目”填写清晰的项目名称、中心代码，选择病种模块，点“创建项目”。同一中心的新研究也应单独建项目。</li>
+        <li>在“项目设置（仅项目负责人）”中按研究方案确认随访间隔（7–730 天，默认 90 天），它决定看板上的“下次应随访”日期和逾期提醒。这里填写的研究名称、机构名称、伦理批件号和研究团队联系方式会显示在患者随访页上，只填写可以对外公开的信息，点“保存项目设置”。</li>
+        <li>按研究方案确认基线日期定义、访视窗口、血肌酐和蛋白尿单位、病理与事件定义，以及哪些字段允许缺失，把数据字典版本发给所有录入人员。</li>
+        <li>按<a href="#roles">权限表</a>添加同事，确认每人看到的项目与角色正确。先用模拟数据演练录入、更正和一次冻结导出（见<a href="#scenario">模拟演练</a>），再开始正式采集。</li>
+        <li>确认数据保管、联系人、成员离组处理和备份恢复安排。冻结导出保存的是当时的数据内容，不替代日常备份与恢复演练。</li>
+      </ol>
+      <h3 id="setup-faq">账号问题</h3>
+      <ul>
+        <li><b>忘记密码：</b>在登录页选“忘记密码”，输入注册邮箱，打开邮件中的链接设置新密码。</li>
+        <li><b>邮件里的登录或确认链接打不开、提示过期：</b>邮件链接只能使用一次且有有效期。打开后的提示页可以直接输入邮箱重新发送，也可以在登录页选“邮箱登录链接”。</li>
+        <li><b>提示邮箱还没有验证：</b>在登录页按提示点“重新发送确认邮件”，并检查垃圾邮件。</li>
+        <li><b>添加成员失败：</b>确认对方已用该邮箱注册并完成验证、尚未在本项目中，再重试。不要反复尝试他人邮箱；仍失败请联系支持。</li>
+      </ul>
 
-      <h2 id="sop">5. 日常录入与核对流程</h2>
-      <ol><li><b>先选项目：</b>看当前项目名称、中心和角色，再打开“患者与基线”。研究编号搜索能找到已有基线时，进入原记录，不重复建立。</li><li><b>填写基线：</b>按来源填写研究编号、性别、出生年、真实基线日期及已获得指标。基线肌酐按 μmol/L；UPCR 选报告单位后核对保存值。基线日期暂缺时可保留缺失，但脚本不能建立年度窗口或基线变化。</li><li><b>病理和分组：</b>只转录已有报告或批准分配结果。没有报告留空，不把未知病理评分填0；随机分组字段不提供自动随机化或分配隐藏。</li><li><b>增加随访：</b>按<a href="#token">随访链接流程</a>核对研究编号、随访日期、血压、肌酐、UPCR及原单位。缺少必填结果时先联系研究人员，不填0以通过提交。</li><li><b>核对保存：</b>看到成功回执后，在患者列表“随访记录”中检查日期、数值及单位。历史页有分页，近期随访页面不是完整数据集。</li><li><b>发现错误：</b>用“基线更正”或“随访记录”中的“核对 / 更正”，核对变更预览、填写原因后保存。研究编号不能在更正窗改写；编号错误先交由负责人核查归属。</li></ol>
+      <h2 id="sop">5. 日常随访：看板、录入、研究状态与核对</h2>
+      <ol>
+        <li><b>先选项目，看“项目概览”：</b>入组人数、在访人数、近 30 天新增随访、核心四项完整率（随访日期、血压、血肌酐、尿蛋白/肌酐比值均已填写的随访占比）、逾期 / 14 天内到期 / 尚无随访人数、知情同意已确认 / 未确认人数、待处理的数据质控问题。点数字可跳到看板中对应的筛选。</li>
+        <li><b>在“随访看板”确定今天要随访谁：</b>每位研究对象一行，显示中心、最近随访日期、距今天数、下次应随访日期、状态（逾期、即将到期、尚无随访、正常、已停止随访）、有效链接数和知情同意状态，逾期者排在最前，可按研究编号查找。</li>
+        <li><b>新增研究对象：</b>在“新增患者（建立基线）”填写研究编号、性别、出生年份、真实基线日期及已获得的指标，点“核对并保存基线”。基线血肌酐按 μmol/L；尿蛋白/肌酐比值按化验单选择单位并核对换算。基线日期可以暂缺，但脚本无法据此建立年度窗口和基线变化。已有基线的研究编号不要重复建立。</li>
+        <li><b>录入随访（研究人员代填）：</b>在看板该行点“录入随访”。随访日期默认今天；收缩压一栏可直接输入“130/80”自动拆分；血肌酐可选 μmol/L 或 mg/dL，系统换算后按 μmol/L 保存；尿蛋白/肌酐比值选择 mg/g 或 g/g；备注不写身份信息。点“保存”，连续录多位时点“保存并录下一位”。同一天内容完全相同的记录不会重复保存；同一天已有内容不同的记录时，请打开“随访记录”核对后更正。</li>
+        <li><b>或请患者自己填写：</b>见<a href="#token">随访链接</a>。</li>
+        <li><b>填写“研究状态”：</b>见<a href="#consent">知情同意状态与随访状态</a>。</li>
+        <li><b>核对与更正：</b>在看板该行点“随访记录”，检查日期、数值、单位和来源（经随访链接提交的会标注）；发现错误在该行点“核对 / 更正”，基线错误点“核对 / 更正基线”，核对修改前后的值，填写原因后保存，修改会留痕。研究编号不能在更正窗口中修改，编号错误交由负责人核查。</li>
+        <li><b>病理和分组：</b>只转录已有报告或已批准的分配结果。没有报告就留空，不把未知病理评分填 0；分组字段不提供自动随机化或分配隐藏。</li>
+      </ol>
 
-      <h2 id="token">6. 随访链接：发放、提交、撤销</h2>
-      <p>随访链接是一项访问凭证。收到完整链接的人无需后台登录即可进入对应研究编号的填报页，并可能看到相应研究记录；请仅交给授权填写人，不发到公开群、公开文档或截图中。</p>
-      <ol><li>owner/editor 在“随访链接”选择研究编号、最短适用有效期和是否单次使用。当前默认有效期30天、单次使用；按任务调整并核对。</li><li>点击“生成随访链接”，复制页面生成的完整链接，不自行拼接或删去随机码。填写人打开后先核对项目与研究编号，不匹配就停止填写。</li><li>先选择报告单位，再核对页面换算值并提交。成功后保留回执；单次链接已用、过期或撤销后不能继续提交。若仍需下一次随访，由研究人员重新发放。</li><li>重复使用链接也须有明确任务和有效期。任何泄露或不再需要的链接，由 owner/editor 在链接列表撤销；项目到期仍应及时撤销泄露凭证。</li></ol>
-      <p>提交超时先查看提示、重试同一次操作或重新验证链接，再核对回执/历史；不要立即创建新的相同记录。历史读取失败不代表提交未成功。切换项目、账号或链接后重新核对上下文。</p>
+      <h2 id="token">6. 随访链接：生成、提交、撤销</h2>
+      <p>随访链接是一项访问凭证：拿到完整链接的人不用登录就能为对应研究对象填写随访，并看到项目对患者显示的信息。只发给该患者或授权填写人，不发到公开群、公开文档或截图中。</p>
+      <ol>
+        <li>负责人或录入协作人在看板该行点“随访链接”。窗口上方“生成新链接”：设置有效期（1–365 天，默认 30 天）和是否“单次使用（提交一次后自动失效）”，点“生成新链接”。</li>
+        <li><b>链接全文只在生成时显示一次</b>，系统只保存无法还原链接的校验值。请立即点“复制链接”或“复制发送文本”发给填写人；遗失时撤销后重新生成。不要自行拼接或删改链接。</li>
+        <li>填写人打开链接后核对项目与研究编号，不一致就停止填写；按化验单选择单位，核对后点“核对并提交”，保留提交回执。单次链接用过、过期或被撤销后不能再提交，下一次随访请重新生成。</li>
+        <li>窗口下方“已发放的链接”列出每条链接的创建时间、到期时间、单次或多次、状态（有效、已使用、已过期、已撤销、系统自动停用）。链接泄露、发错或不再需要时点“撤销”，填写撤销原因（不含身份信息），链接立即失效，已提交的数据不受影响。</li>
+        <li>以下情况系统会自动撤销或停用链接：知情同意改为“拒绝”或“撤回”、随访状态改为“退出研究”或“死亡”、录入协作人的写权限被撤销、同一链接提交过于频繁或同日提交次数超限。项目到期后不能生成新链接，但仍可撤销已发放的链接。</li>
+      </ol>
+      <p>提交超时，请先看页面提示，重试同一次提交或重新验证链接，再核对回执和随访记录，不要立即新建一条相同的随访。读取历史失败不代表提交失败。</p>
 
       <h2 id="rules">7. 日期、缺失与单位规则</h2>
-      <div class="table-wrap" role="region" aria-label="字段填写规则" tabindex="0"><table><caption>录入前对照原始报告</caption><thead><tr><th scope="col">字段</th><th scope="col">操作规则</th><th scope="col">缺失/异常后果</th></tr></thead><tbody>
-        <tr><th scope="row">研究编号与记录ID</th><td>按字符串原样保存，保留前导0及所属项目/中心。</td><td>身份缺失或冲突时合并/分析停止，不能猜归属。</td></tr>
-        <tr><th scope="row">日期</th><td>使用真实日历日期，CSV 用 YYYY-MM-DD；明确基线与随访日期。</td><td>无基线不能计算基线相对时间；基线前访视不进入随访终点候选。</td></tr>
-        <tr><th scope="row">肌酐 Scr</th><td>基线/导入列为 μmol/L。随访填报可选 μmol/L 或 mg/dL，核对页面换算。</td><td>单位不明先核实，不从队列数值大小推断。</td></tr>
-        <tr><th scope="row">UPCR</th><td>按报告选 mg/g 或 g/g。基线保存原值/原单位及标准值，随访标准单位为 mg/g。</td><td>历史基线单位待核实时保留原值，排除相关比例、变化和阈值推断。UPCR 不等于 UACR 或24小时尿蛋白。</td></tr>
-        <tr><th scope="row">性别、出生年、eGFR</th><td>只填已知来源；自动估算使用成人 CKD-EPI 2021，年龄由年份差近似。</td><td>性别缺失不默认男性；未满18岁、年龄不合理或资料不足不使用成人公式。</td></tr>
-        <tr><th scope="row">空白、0、确认状态</th><td>空白代表未知/未采集，0是数值；事件确认须按来源和研究方案明确填写。</td><td>缺失不当阴性，数值候选不当已确认事件。</td></tr>
+      <div class="table-wrap" role="region" aria-label="字段填写规则" tabindex="0"><table><caption>录入前对照原始报告</caption><thead><tr><th scope="col">字段</th><th scope="col">填写规则</th><th scope="col">缺失或异常的后果</th></tr></thead><tbody>
+        <tr><th scope="row">研究编号</th><td>按原样保存，保留前导 0 及所属项目和中心。</td><td>身份缺失或冲突时合并与分析会停止，不会猜测归属。</td></tr>
+        <tr><th scope="row">日期</th><td>使用真实日历日期，CSV 中写 YYYY-MM-DD；分清基线日期与随访日期。随访日期不能晚于今天。</td><td>没有基线日期就无法计算随访时间；早于基线的随访不进入终点候选。</td></tr>
+        <tr><th scope="row">血肌酐（Scr）</th><td>基线和 CSV 导入按 μmol/L。录入随访和患者填写可选 μmol/L 或 mg/dL，系统换算后保存为 μmol/L。</td><td>单位不明先核实，不按数值大小推断。</td></tr>
+        <tr><th scope="row">尿蛋白/肌酐比值（UPCR）</th><td>按报告选 mg/g 或 g/g。基线保存原值、原单位和换算值；随访统一按 mg/g 保存。</td><td>历史基线单位待核实时保留原值，不参与比例、变化和阈值计算。UPCR 不等于尿白蛋白/肌酐比值或 24 小时尿蛋白。</td></tr>
+        <tr><th scope="row">性别、出生年份、估算肾小球滤过率（eGFR）</th><td>只填有来源的值。系统按成人 CKD-EPI 2021 公式估算 eGFR，年龄用“随访年份减出生年份”近似。</td><td>性别缺失不默认男性；未满 18 岁、年龄不合理或资料不足时不使用成人公式。</td></tr>
+        <tr><th scope="row">空白、0 与确认状态</th><td>空白表示未知或未采集，0 是一个数值；事件是否确认按来源和研究方案明确填写。</td><td>缺失不当作阴性，数值候选不当作已确认事件。</td></tr>
       </tbody></table></div>
-      <p>分析中保留原 eGFR 到 <code>egfr_recorded</code>，对明确标注 CKD-EPI 2021 的记录按当前来源重新估算并记录差异；来源不明的历史 eGFR 不自动视为已验证。公式来源见<a href="https://escholarship.org/content/qt3gj2d8m2/qt3gj2d8m2.pdf" target="_blank" rel="noopener">Inker 等，NEJM 2021，Table 2</a>；团队仍需判断其队列适用性。</p>
+      <p>分析时原始 eGFR 保留在 <code>egfr_recorded</code> 列，对明确标注 CKD-EPI 2021 的记录按当前来源重新估算并记录差异；来源不明的历史 eGFR 不视为已核实。公式来源见<a href="https://escholarship.org/content/qt3gj2d8m2/qt3gj2d8m2.pdf" target="_blank" rel="noopener">Inker 等，2021 年发表的 CKD-EPI 公式原文 Table 2</a>；是否适用于本队列由研究团队判断。</p>
 
       <h2 id="labs">8. 化验及扩展记录</h2>
-      <p>先选患者，再选检验项目代码、采样/检验日期、原始数值与原单位。核对标准值提示；修改历史记录时用“核对 / 更正”并说明来源。新旧原值/单位必须是同一组，不能把一个来源的数值与另一个来源的单位拼接。</p>
-      <p>CD19百分比不能直接当作细胞绝对计数；病毒 copies/mL 与 IU/mL 不能在缺少已验证换算关系时按1:1互换。无法换算或原值与标准值矛盾时，记录保留并交团队核实，相关结果不进入分析。</p>
-      <p>用药按已有记录填写名称/分类、剂量、途径、频次和日期；事件填写类型、日期、来源与确认状态。系统登记不产生用药建议，人工事件也需按研究方案裁定。</p>
-      <h3 id="advanced">病理、LOINC、HGVS 与其他专业字段</h3><p>病理评分照报告转录；LOINC须匹配实际项目、样本、方法与单位；基因字段保留报告中的基因、HGVS、转录本、合子状态及来源。不要为填满表格编造专业代码。当前分析脚本不执行基因变异解释，也不会因字段齐全自动生成遗传诊断或专病风险分层。</p>
+      <p>在“附加数据”中先选研究对象，再选检验项目、采样或检验日期、原始数值与原单位，核对换算提示后保存。修改历史记录时用“核对 / 更正”并说明来源；原值与单位必须来自同一份报告。</p>
+      <p>CD19 百分比不能当作细胞绝对计数；病毒载量 copies/mL 与 IU/mL 没有经过验证的换算关系时不能按 1:1 互换。无法换算或原值与换算值矛盾时，记录保留并交团队核实，相关结果不进入分析。</p>
+      <p>用药按已有记录填写名称或分类、剂量、途径、频次和日期；终点事件填写类型、日期、来源与确认状态。系统不提供用药建议，事件仍需按研究方案裁定。用药和终点事件记录可由负责人或录入协作人删除，删除会留痕；化验记录录错时用“核对 / 更正”。</p>
+      <h3 id="advanced">病理、检验编码、基因与其他专业字段</h3>
+      <p>病理评分照报告转录，例如 IgA 肾病的牛津病理分类评分（MEST-C）、狼疮性肾炎的 ISN/RPS 分型。检验项目代码（如 LOINC）须与实际项目、样本、方法和单位一致。基因字段保留报告中的基因、HGVS 命名、转录本、合子状态及来源；基因数据涉及人类遗传资源管理，工作台默认不开放录入，迁至境内并完成合规评估后由管理员开启。不要为填满表格编造专业代码；分析脚本不做遗传变异解释，也不会因字段齐全自动生成遗传诊断或风险分层。</p>
 
       <h2 id="import">9. CSV 批量导入</h2>
-      <ol><li>选择正确项目和“患者基线”或“随访记录”，点击“下载模板 CSV”。当前只提供这两类批量导入，不把其他长表直接套入模板。</li><li>每批最多500行、文件不超过2MB。保留表头，研究编号按文本保存。基线填写已核实的 UPCR 单位列，或在页面明确选择该批未标注记录的单位；混合单位文件应逐行标注。</li><li>确认肌酐列为 μmol/L、随访 UPCR 为 mg/g，勾选单位确认后选择文件，查看预览、错误行与拟变更。先修正重复编号、必填值、日期及单位问题。</li><li>点击“确认导入”。服务器整批校验；校验失败不会只导入前半批。网络中断则先查看反馈，在原页面重试同一批次，再核对患者/随访数量，不另建一份重复批次。</li><li>已有基线仅按本次明确提供字段处理，空白不用于随意清除已有内容；需要清空或纠正原记录时用更正功能并留原因。</li></ol>
-      <p>导入预览和服务器校验是质量控制的一部分，不能替代授权、单位核实或对原始病历的人工核对。无法确认来源的值不要通过填假单位或假0强行导入。</p>
+      <ol>
+        <li>在“批量导入（CSV）”选择“患者基线”或“随访记录”，点“下载模板 CSV”。目前只支持这两类批量导入。</li>
+        <li>每批最多 500 行，文件不超过 2MB。保留表头，研究编号按文本保存。基线须填写已核实的 UPCR 单位列，或在页面上明确选择该批未标注记录的单位；单位混杂的文件应逐行标注。</li>
+        <li>基线模板可以包含知情同意与随访状态列，取值用以下代码：知情同意 <code>unconfirmed</code>（未确认）、<code>consented</code>（已同意）、<code>waiver</code>（伦理批准豁免）、<code>declined</code>（拒绝）、<code>withdrawn</code>（撤回）；随访状态 <code>active</code>（在访）、<code>lost</code>（失访）、<code>withdrawn</code>（退出研究）、<code>deceased</code>（死亡）、<code>kidney_failure</code>（肾衰竭）、<code>transferred</code>（转院）。</li>
+        <li>确认血肌酐列为 μmol/L、随访 UPCR 为 mg/g，勾选单位确认后选择文件，查看预览、错误行与拟变更，先改正重复编号、必填值、日期和单位问题。</li>
+        <li>点“确认导入”。服务器整批校验，校验失败不会只导入前半批。网络中断时先看反馈，在原页面重试同一批次（同一批次不会重复写入），再核对患者与随访数量。</li>
+        <li>已有基线只按本次明确提供的字段处理，空白不会清除已有内容；需要清空或纠正时用更正功能并填写原因。</li>
+      </ol>
+      <p>预览和服务器校验是数据质控的一部分，不能代替授权、单位核实或对原始病历的人工核对。来源不明的值不要通过填假单位或 0 强行导入。</p>
 
-      <h2 id="issues">10. 质控与更正闭环</h2>
-      <ol><li>在“待办与质控”刷新列表，按研究编号和问题定位。看到“读取失败”先解决读取问题，不能当作零问题。</li><li>点击“核对原记录”，对照报告调整可更正字段，填写具体原因，确认前后值后保存。</li><li>刷新列表确认重新校验结果。不能通过直接把问题标成已解决来代替数据更正。</li><li>如果团队核实后决定保留异常原值，选择“接受不修复”并写理由。该状态与“已修正”分别统计，原数据仍保持原样。</li></ol>
-      <p>QC没有未处理项目不代表数据已完整、所有隐私风险已消除或临床终点已成立。本地分析还会另查身份、时间、单位与公式来源，并输出 <code>qc_issues.csv</code> 和 <code>qc_report.xlsx</code>。</p>
+      <h2 id="issues">10. 数据质控问题与更正</h2>
+      <ol>
+        <li>在“数据质控问题”点“查看未解决的问题”，按研究编号和问题说明定位。看到“读取失败”时先解决读取问题，不能当作没有问题。</li>
+        <li>点“核对原记录”，对照原始报告修改可更正的字段，填写具体原因，确认修改前后的值后保存。</li>
+        <li>刷新列表确认重新检查的结果。不能用“标记已解决”代替更正数据。</li>
+        <li>团队核实后决定保留异常原值时，选“接受不修复”并写明理由。该状态与“已修正”分开统计，原数据保持不变。</li>
+      </ol>
+      <p>没有待处理的数据质控问题，不代表数据已完整、隐私风险已消除或临床终点已成立。本地分析还会另外检查身份、时间、单位与公式来源，输出 <code>qc_issues.csv</code> 和 <code>qc_report.xlsx</code>。</p>
 
       <h2 id="export">11. 冻结数据、下载分析包、复核结果</h2>
-      <h3>11.1 选择导出方式</h3>
-      <p>owner/analyst 可单独下载基线、随访等 CSV 作核对；各次下载可能对应不同时间。需要同一数据版本时，点击“冻结并导出完整分析包”或“导出分析脚本包（ZIP）”，两个入口均使用一次数据库一致性读取。</p>
-      <p>“冻结当前数据版本”只保存当前版本。版本列表中“已冻结数据”可用“下载已冻结JSON”重下相同内容及校验值；“旧元数据记录”仅有说明/数量，不能恢复历史数据。冻结不会锁住后续录入，也不等于备份恢复。</p>
-      <h3>11.2 包内九张表与文件位置</h3>
-      <div class="table-wrap" role="region" aria-label="冻结导出数据表清单" tabindex="0"><table id="exportTables"><caption>research_data.json 内 tables 的9张表</caption><thead><tr><th scope="col">表</th><th scope="col">内容</th><th scope="col">CSV/脚本处理范围</th></tr></thead><tbody>
-        <tr><th scope="row"><code>patients_baseline</code></th><td>患者基线</td><td>analysis/data/；核心分析输入</td></tr>
-        <tr><th scope="row"><code>visits_long</code></th><td>随访</td><td>analysis/data/；核心分析输入</td></tr>
-        <tr><th scope="row"><code>labs_long</code></th><td>化验原值与标准值</td><td>analysis/data/；单位核对</td></tr>
-        <tr><th scope="row"><code>meds_long</code></th><td>用药记录</td><td>analysis/data/；描述性计数</td></tr>
-        <tr><th scope="row"><code>variants_long</code></th><td>基因变异</td><td>analysis/data/；读取并核对身份，不解释变异</td></tr>
-        <tr><th scope="row"><code>events_long</code></th><td>人工事件</td><td>analysis/data/；确认状态与时间核对</td></tr>
-        <tr><th scope="row"><code>ktx_baseline_ext</code></th><td>肾移植基线扩展</td><td>analysis/data/；保留，未自动分析</td></tr>
-        <tr><th scope="row"><code>ktx_visits_ext</code></th><td>肾移植随访扩展</td><td>analysis/data/；保留，未自动分析</td></tr>
-        <tr><th scope="row"><code>data_issues</code></th><td>数据库质控记录</td><td>包根目录 qc_issues.csv 与 qc_summary.json</td></tr>
+      <h3 id="export-mode">11.1 选择导出方式</h3>
+      <p>负责人和分析协作人可在“导出当前项目数据”中单独下载基线、随访等 CSV 用于核对，但各次下载可能来自不同时刻。需要同一数据版本时，在“数据快照（冻结的数据版本）”中点“冻结并导出完整分析包”，或在“科研数据与分析脚本包”中点“导出分析脚本包（ZIP）”，两者都基于数据库同一时刻的一次读取。</p>
+      <p>“冻结当前数据版本”只保存版本、不下载。版本列表中的已冻结版本可以重新下载相同内容与校验值；早期的“元数据记录”只有说明和数量，不能恢复历史数据。冻结不会锁住后续录入，也不等于备份恢复。</p>
+      <h3 id="export-tables">11.2 包内九张表</h3>
+      <div class="table-wrap" role="region" aria-label="冻结导出数据表清单" tabindex="0"><table id="exportTables"><caption>research_data.json 中的九张表（文件名即导出文件名）</caption><thead><tr><th scope="col">内容</th><th scope="col">文件名</th><th scope="col">分析脚本中的用途</th></tr></thead><tbody>
+        <tr><th scope="row">患者基线（含知情同意与随访状态）</th><td><code>patients_baseline</code></td><td>核心输入</td></tr>
+        <tr><th scope="row">随访</th><td><code>visits_long</code></td><td>核心输入</td></tr>
+        <tr><th scope="row">化验原值与换算值</th><td><code>labs_long</code></td><td>核心输入；单位核对</td></tr>
+        <tr><th scope="row">用药</th><td><code>meds_long</code></td><td>核心输入；描述性计数</td></tr>
+        <tr><th scope="row">基因变异</th><td><code>variants_long</code></td><td>核心输入；只核对身份，不解释变异</td></tr>
+        <tr><th scope="row">终点事件</th><td><code>events_long</code></td><td>核心输入；核对确认状态与时间</td></tr>
+        <tr><th scope="row">肾移植基线扩展</th><td><code>ktx_baseline_ext</code></td><td>保留，不自动分析</td></tr>
+        <tr><th scope="row">肾移植随访扩展</th><td><code>ktx_visits_ext</code></td><td>保留，不自动分析</td></tr>
+        <tr><th scope="row">数据质控问题</th><td><code>data_issues</code></td><td>写入包根目录的 qc_issues.csv 与 qc_summary.json</td></tr>
       </tbody></table></div>
-      <p><code>analysis/data/</code> 因此有8张原值 CSV，前6张是当前核心脚本输入；空表仍有表头。<code>excel_safe/</code> 有对应的电子表格查看副本，文本可能带公式防护前缀；不要将它们替换为分析输入。冻结 JSON 保留服务器原始内容和类型。</p>
-      <h3>11.3 校验与留存</h3>
-      <p><code>export_manifest.json</code> 记录源内容 <code>source_content_sha256</code> 及各文件 SHA-256。先保留未经修改的 ZIP 与清单；客户端在读取冻结内容时核对哈希，校验失败会停止下载。重下同一冻结版本的 JSON 应有相同哈希，重新生成的 ZIP 可能因导出时间或脚本版本不同而不同。</p>
-      <p>如需人工核对，在解压后的包根目录运行以下一条命令，将输出与清单中 <code>source_content_sha256</code> 比较：</p>
+      <p><code>analysis/data/</code> 中有前八张表的原值 CSV，前六张是分析脚本的核心输入，空表也有表头。<code>excel_safe/</code> 中是供 Excel 查看的副本，文字可能带有防公式前缀，不要拿它替换分析输入。<code>research_data.json</code> 保留服务器原始内容和类型；<code>data_dictionary.json</code> 说明字段含义，包括知情同意与随访状态的取值。</p>
+      <h3 id="export-verify">11.3 校验与留存</h3>
+      <p><code>export_manifest.json</code> 记录源内容校验值 <code>source_content_sha256</code> 和包内每个文件的 SHA-256。请保留未改动的 ZIP 与清单；浏览器在读取冻结内容时会核对校验值，不一致会停止下载。同一冻结版本重新下载的 JSON 校验值相同；重新生成的 ZIP 可能因导出时间或脚本版本不同而不同。</p>
+      <p>需要人工核对时，在解压后的包根目录运行下面一条命令，把输出与清单中的 <code>source_content_sha256</code> 比较：</p>
       <pre><code>python -c "import hashlib,pathlib; print(hashlib.sha256(pathlib.Path('research_data.json').read_bytes()).hexdigest())"</code></pre>
-      <p>SHA-256 用于发现内容变化，不证明研究结论正确或数据已匿名化。只在获准的协作范围与环境内分享包，不把真实记录传到公开仓库或公开咨询工具。</p>
-      <h3>11.4 本地运行</h3>
-      <p>使用 Python 3.11 或3.12，在含 <code>analysis/</code> 的包根目录打开终端，先创建独立环境：</p>
+      <p>校验值用于发现内容变化，不证明结论正确或数据已匿名化。只在获准的协作范围和环境中分享分析包，不上传到公开仓库或公开的在线工具。</p>
+      <h3 id="export-run">11.4 在自己电脑上运行</h3>
+      <p>安装 Python 3.11 或 3.12，在包含 <code>analysis/</code> 的包根目录打开终端，先建立独立环境：</p>
       <pre><code>python -m venv .venv</code></pre>
-      <p>Windows 命令提示符运行 <code>.venv\Scripts\activate</code>；macOS/Linux 运行 <code>source .venv/bin/activate</code>。激活后执行：</p>
+      <p>Windows 命令提示符运行 <code>.venv\Scripts\activate</code>；macOS / Linux 运行 <code>source .venv/bin/activate</code>。然后：</p>
       <pre><code>python -m pip install -r analysis/requirements.txt
 python analysis/run_analysis.py</code></pre>
-      <p>仅在看到 <code>DESCRIPTIVE_REVIEW_OK</code> 后，把新 <code>analysis/outputs/run-时间/</code> 目录视为本次结果。<code>ANALYSIS_FAILED</code> 表示本次失败，应先解决输入问题；不把上次结果冒充本次输出。</p>
-      <ul><li><code>table1_baseline.xlsx</code>：描述统计与各指标可用人数。</li><li><code>outcomes_12m.csv</code>：在基线后270–450天中选离365天最近的一整条访视；无记录为不可评估，不拼接不同访视或补0。</li><li><code>candidates_egfr_decline.csv</code>、<code>candidates_igan_proteinuria.csv</code>：数值阈值候选，不代表持续性、临床裁定或方案确认的终点。</li><li><code>manual_events_review.csv</code>：逐条保留人工事件，检查确认状态及时间；明确确认且日期在基线之后才标为 confirmed_in_followup。</li><li><code>egfr_slope_per_patient.csv</code> 与趋势图：描述性趋势；斜率至少需要两个不同日期，同日重复值先求均值。</li><li><code>RUN_LOG.json</code>、<code>METHODS_ACTUAL_EN.md</code>、<code>MODEL_STATUS.json</code>：本次输入与输出哈希、人数、版本、实际方法和未执行功能。模板文件本身不是已经运行的 Methods。</li></ul>
-      <div class="infobox"><b>明确未执行：</b>KFRE 风险计算、LME 队列推断、置信区间、生存/因果分析、自动缓解或持续性临床终点判定。当前不输出这些风险数值或模型结果。专业团队须另行制定、验证并记录适用的统计分析计划；不能把数值候选直接改名为已确认终点。</div>
-      <h3>11.5 多中心合并</h3>
-      <p>各中心先按批准范围导出，把六张核心机器 CSV 分别放入 <code>centers/A/</code>、<code>centers/B/</code>，保留各自原始项目、中心及记录身份。不要混入 Excel 安全副本或偷偷改写 ID：</p>
+      <p>只有看到 <code>DESCRIPTIVE_REVIEW_OK</code>，新生成的 <code>analysis/outputs/run-时间/</code> 才是本次结果；出现 <code>ANALYSIS_FAILED</code> 表示本次失败，先解决输入问题，不要把上次的结果当成本次输出。如果基线表有知情同意状态，脚本只纳入“已同意”或“伦理批准豁免”的患者，排除人数写在 <code>RUN_LOG.json</code>。</p>
+      <p>不带研究方案运行时（上面的命令），输出：</p>
+      <ul>
+        <li><code>table1_baseline.xlsx</code>：描述性基线表与各指标可用人数，不汇总任何下降率或缓解率。</li>
+        <li><code>outcomes_12m.csv</code>：在基线后 270–450 天内选离 365 天最近的一整条随访；没有合格记录标为“暂无可评估年度随访”，不补 0、不拼接。</li>
+        <li><code>candidates_unconfirmed_egfr_decline.csv</code>、<code>candidates_unconfirmed_igan_proteinuria.csv</code>：任一次测量越过固定数值就列出的“未确认候选”，不要求持续确认，<b>不是终点，也不是缓解</b>。</li>
+        <li><code>manual_events_review.csv</code>：逐条保留人工录入的事件；明确确认、有日期且在基线之后才标为随访期内已确认。</li>
+        <li><code>egfr_slope_per_patient.csv</code> 与趋势图：描述性个人趋势，至少需要两个不同日期，同日多个值先取均值。</li>
+        <li><code>qc_issues.csv</code>、<code>qc_report.xlsx</code>、<code>labs_review.csv</code>：缺失、单位和来源问题，需要团队复核。</li>
+        <li><code>RUN_LOG.json</code>、<code>METHODS_ACTUAL_EN.md</code>、<code>MODEL_STATUS.json</code>：本次的输入与输出校验值、人数、版本、实际执行步骤（英文方法学草稿，需研究团队审阅）和未执行的功能。</li>
+      </ul>
+      <h3 id="export-protocol">11.5 按研究方案判定终点</h3>
+      <p>终点和缓解的定义属于研究方案，由课题负责人确定，脚本不替研究者选择临床阈值。包内 <code>analysis/protocol_template.json</code> 中的定义和阈值只是示例，全部标为“需课题负责人确认”；直接使用模板不会计算任何终点。</p>
+      <ol>
+        <li>复制模板（例如 <code>analysis/my_protocol.json</code>），修改方案编号和版本号；每次改动定义都换版本号。</li>
+        <li>课题负责人对照原文和本研究方案，逐项确认基线取值方式、eGFR 下降阈值与持续确认条件（至少几次测量、首末间隔几天）、各病种的缓解条件、截尾规则（哪些随访状态与已确认事件的日期作为截尾）和单位。</li>
+        <li>把已确认章节的“需确认”标记改为否，并填写确认人和日期。拼错字段名、出现模板没有的字段、数值越界、标为已确认却缺确认人或日期，脚本都会拒绝运行。</li>
+        <li>运行 <code>python analysis/run_analysis.py --protocol analysis/my_protocol.json</code>。</li>
+      </ol>
+      <p>输出 <code>endpoints_per_protocol.csv</code>（每行是一名患者的一个终点，写明“已按方案判定”、满足 / 未满足 / 无法判定 / 其余条件待人工补核，以及事件日期、基线值与截尾信息）和 <code>timepoints_per_protocol.csv</code>（按方案时间点选出的随访）；<code>protocol_used.json</code> 是所用方案的原样副本，方案全文与 SHA-256 同时写入 <code>RUN_LOG.json</code> 和 <code>METHODS_ACTUAL_EN.md</code>。未覆盖或未确认的病种和章节不计算。这是按方案参数的程序化判定，不等于终点委员会的人工裁定。</p>
+      <div class="infobox"><b>任何模式下都不执行：</b>肾衰竭风险方程（KFRE）风险计算、线性混合模型推断、置信区间、生存分析或因果分析。按方案判定的事件表可供统计人员另行分析；未确认候选和描述性结果不能改名为已确认终点。</div>
+      <h3 id="export-merge">11.6 多中心合并</h3>
+      <p>各中心按批准范围冻结导出，由数据协调中心（DCC）把各中心六张核心原值 CSV 分别放入 <code>centers/A/</code>、<code>centers/B/</code> 等目录，保留各自的项目、中心和记录身份，不混入 Excel 副本，不改写编号：</p>
       <pre><code>python analysis/merge_centers.py --dirs centers/A centers/B --out analysis/merged-data --qc merge_qc.xlsx
 python analysis/run_analysis.py --data analysis/merged-data</code></pre>
-      <p>只有出现 <code>MERGE_OK</code> 才运行第二条。相同记录 ID 且内容完全一致可去重；同 ID 内容不同或同患者多条冲突基线会阻止合并。不同日期/不同 ID 的重复事件会保留。QC文件必须位于输入和合并输出目录之外；重跑使用新的空输出目录。核对 RUN_LOG 的 input_dir、人数与输入哈希确实对应合并数据。两张移植扩展表不在此核心合并脚本范围内，不能宣称已汇总它们。</p>
+      <p>只有出现 <code>MERGE_OK</code> 才运行第二条。记录编号相同且内容完全一致的可以去重；同编号内容不同或同一患者有多条冲突基线会阻止合并。质控文件要放在输入和输出目录之外，重跑时换一个新的空输出目录。核对 <code>RUN_LOG.json</code> 中的输入目录、人数和输入校验值确实是合并后的数据。两张肾移植扩展表不在合并脚本范围内。</p>
 
       <h2 id="scenario">12. 一次模拟演练</h2>
-      <div class="example"><p><b>以下全部是模拟资料：</b>在独立测试项目设置中心 <code>TEST01</code>，研究编号 <code>DEMO001</code>，性别F、出生年1980、基线日期2025-01-01、肌酐88.4 μmol/L、UPCR 0.8 g/g。确认页面标准 UPCR 为800 mg/g。</p><p>用授权测试链接填写2026-01-01随访：血压120/80 mmHg、肌酐1.0 mg/dL、UPCR 0.4 g/g，核对换算后提交。后台确认只有一条该次随访；练习带原因更正，再冻结、下载、运行并核对人数、单位和年度选中日期。</p><p>这些数值用于验证操作，不代表正常范围、疗效或诊疗建议。演练结束后保留在测试项目，不混入正式研究统计。</p></div>
+      <div class="example"><p><b>以下全部是模拟资料：</b>新建一个独立的测试项目，中心代码 <code>TEST01</code>；新增研究编号 <code>DEMO001</code>，性别女、出生年份 1980、基线日期 2025-01-01、血肌酐 88.4 μmol/L、UPCR 0.8 g/g，确认页面换算为 800 mg/g。在“研究状态”中把知情同意改为“已同意”。</p><p>在看板该行点“录入随访”：随访日期 2026-01-01、血压输入“120/80”、血肌酐 1.0 mg/dL、UPCR 0.4 g/g，核对换算后保存；再为它生成一条测试随访链接，用手机打开填写另一次随访。之后在“随访记录”中练习一次带原因的更正，再冻结、下载、运行脚本，核对人数、单位和年度随访的选中日期。</p><p>这些数值只用于练习操作，不代表正常范围、疗效或诊疗建议。演练数据留在测试项目，不混入正式研究统计。</p></div>
 
-      <h2 id="faq">13. 常见错误与恢复</h2>
-      <div class="table-wrap" role="region" aria-label="错误恢复参考" tabindex="0"><table><caption>先核对状态，再决定下一步</caption><thead><tr><th scope="col">看到什么</th><th scope="col">下一步</th></tr></thead><tbody>
-        <tr><th scope="row">项目不见了/没有权限</th><td>核对邮箱与当前项目，联系负责人确认已验证邮箱成员和角色。刷新后仍失败，保留提示。不要共享负责人账号。</td></tr>
-        <tr><th scope="row">不可录入/试用到期</th><td>查看项目权益与阻断原因；由负责人处理。到期后仍可撤销链接，有导出权限者仍可导出。</td></tr>
-        <tr><th scope="row">链接过期、已使用或撤销</th><td>联系研究人员核对是否已提交；需要继续时重新发放。不要修改随机码。</td></tr>
-        <tr><th scope="row">提交/导入网络超时</th><td>保留原页面与批次，按提示重试同一操作，核对回执和记录数量；不要立刻建立新批次或重复患者。</td></tr>
-        <tr><th scope="row">单位待核实/标准值矛盾</th><td>回溯报告核实数值与单位，按更正流程留痕。未核实数据保留但不进入相关推断；不通过选择“接受不修复”解除分析排除。</td></tr>
-        <tr><th scope="row">读取失败/列表暂空</th><td>失败状态不代表没有数据。核对网络/登录后刷新；不要因空白而补建相同记录。</td></tr>
-        <tr><th scope="row">冻结失败/容量限制</th><td>本次冻结限制每表最多10,000条、总体约16MiB；达到限制会停止，不静默截断。保留错误与项目概况，联系技术团队安排完整导出。</td></tr>
-        <tr><th scope="row">模板加载失败/哈希不一致</th><td>停止使用不完整包，联系技术团队检查版本与静态文件，再重新下载。不跳过检查或混用旧脚本。</td></tr>
-        <tr><th scope="row">缺少Python依赖</th><td>确认已激活环境、Python版本和包根目录，再按锁定 requirements 安装。不要随机替换依赖版本以忽略错误。</td></tr>
-        <tr><th scope="row">ANALYSIS_FAILED / MERGE_FAILED</th><td>读错误与QC，修复身份、单位或冲突；换新输出目录重跑。旧结果不代表新运行成功。</td></tr>
+      <h2 id="faq">13. 常见问题</h2>
+      <h3 id="faq-storage">数据存在哪里？</h3>
+      <p>网页、账户认证和登记数据库的实际存放位置以<a href="/privacy">隐私政策</a>中的说明为准，我们正在把全部服务迁至中国境内。在迁移完成并公布之前，我们不声明“数据只存放在境内”。如果所在机构要求数据境内存储，请在录入真实数据前联系 <a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a> 确认当前部署情况，并按机构要求完成相应评估。</p>
+      <h3 id="faq-visibility">谁能看到我的数据？</h3>
+      <p>只有被负责人添加到该项目的成员能看到这个项目，看到和能做什么取决于角色，见<a href="#roles">权限表</a>。其他项目的成员、其他中心看不到。患者通过随访链接只能为对应的研究对象填写随访并看到项目对患者显示的信息。平台运维人员仅在提供技术服务所需范围内按协议处理数据，详见<a href="/privacy">隐私政策</a>。</p>
+      <h3 id="faq-multicenter">分中心怎么加入？</h3>
+      <p>分中心成员先用自己的邮箱注册并验证，再由项目负责人在“项目信息与协作成员”中添加并选择角色；系统不会自动发送邀请邮件，请另行告知对方登录。每个项目只有一个中心代码，所以多中心研究通常每个中心一个项目：可由各中心负责人自建，也可由牵头单位创建后把分中心成员加进去（占用创建者的项目配额）。各中心冻结导出后，由数据协调中心合并（见<a href="#export-merge">多中心合并</a>）。伦理备案和协作协议由各中心按机构要求办理。</p>
+      <h3 id="faq-formats">导出能用 R、SPSS 或 Excel 打开吗？</h3>
+      <p>可以。导出的 CSV 均为带 BOM 的 UTF-8 编码：Excel 查看请用 <code>excel_safe/</code> 中的副本或 XLSX 文件；R 可用 <code>read.csv(..., fileEncoding = "UTF-8-BOM", colClasses = c(patient_code = "character"))</code> 读取；SPSS 和 Stata 导入文本数据时选择 UTF-8 编码，并把研究编号设为字符串。<code>research_data.json</code> 适合程序读取。研究编号务必按文本读入，避免 0001 变成 1。</p>
+      <h3 id="faq-phone">患者不会用手机怎么办？</h3>
+      <p>研究护士或医生可以在门诊或电话随访时，在“随访看板”该患者一行点“录入随访”直接代填，不需要随访链接；也可以由家属或护士用随访链接代为填写。代填时按原始化验单核对单位。</p>
+      <h3 id="faq-link-expired">随访链接过期了怎么办？</h3>
+      <p>过期、已使用或已撤销的链接不能再提交。先在该患者的“随访记录”中核对是否已经提交过；需要继续随访时，在看板该行点“随访链接”重新生成。不要修改链接中的字符。邮件中的登录链接过期属于账号问题，见<a href="#setup-faq">账号问题</a>。</p>
+      <h3 id="faq-correct">录错了怎么改？</h3>
+      <p>随访录错：看板该行点“随访记录”，在对应日期一行点“核对 / 更正”，修改后填写原因保存。基线录错：在同一窗口点“核对 / 更正基线”。数据质控问题列表中的记录可直接点“核对原记录”。每次修改都保留修改前后的值、修改人、时间和原因。研究编号本身不能在更正窗口修改，编号错误请交负责人核查。</p>
+      <h3 id="faq-delete">能删除记录吗？</h3>
+      <p>用药、基因和终点事件记录可由负责人或录入协作人在“附加数据”中删除，删除会留痕。基线、随访和化验记录在工作台中不提供删除按钮，录错请用更正功能并填写原因。确需删除某位研究对象的全部数据（例如撤回同意并要求删除）时，先把知情同意改为“撤回”，再由项目负责人联系 <a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a>，经核实后处理；已冻结的版本和已下载的副本需按数据处理协议另行处置。注销账户也需通过邮件申请。</p>
+      <h3 id="faq-retention">试用或订阅到期后，数据保留多久？</h3>
+      <p>到期后数据不会被自动删除：项目转为只读，有权限的成员仍可查看，负责人和分析协作人仍可冻结与导出。数据的具体保留期限按<a href="/terms">用户协议</a>、<a href="/privacy">隐私政策</a>以及与机构签订的数据处理协议执行。如需删除，请按上一条提出申请。</p>
+
+      <h3 id="recovery">出错时怎么办</h3>
+      <div class="table-wrap" role="region" aria-label="出错时的处理" tabindex="0"><table><caption>先核对状态，再决定下一步</caption><thead><tr><th scope="col">看到什么</th><th scope="col">下一步</th></tr></thead><tbody>
+        <tr><th scope="row">项目不见了或没有权限</th><td>核对登录邮箱与当前项目，请负责人确认已用你的注册邮箱添加你并设置了角色。刷新后仍失败，保留提示文字。不要共用负责人账号。</td></tr>
+        <tr><th scope="row">不能录入、试用到期</th><td>查看工作台的项目状态提示，由负责人处理账户权益。到期后仍可撤销链接，有导出权限者仍可导出。</td></tr>
+        <tr><th scope="row">随访链接过期、已使用或已撤销</th><td>核对是否已提交，需要继续随访时重新生成。见<a href="#faq-link-expired">随访链接过期</a>。</td></tr>
+        <tr><th scope="row">提交或导入时网络超时</th><td>保留原页面和批次，按提示重试同一操作，再核对回执和记录数量；不要立即新建批次或重复建立患者。</td></tr>
+        <tr><th scope="row">单位待核实、换算值矛盾</th><td>回溯报告核实数值与单位，按更正流程留痕。未核实的数据保留但不进入相关分析；选“接受不修复”不会解除分析排除。</td></tr>
+        <tr><th scope="row">列表读取失败或暂时为空</th><td>读取失败不代表没有数据。检查网络和登录状态后刷新；不要因为列表空白而补建相同记录。</td></tr>
+        <tr><th scope="row">冻结失败或超出容量</th><td>当前每张表最多 10,000 条、总体约 16MiB，达到上限会停止而不是悄悄截断。保留错误提示与项目概况，联系技术团队安排完整导出。</td></tr>
+        <tr><th scope="row">分析包不完整或校验不一致</th><td>停止使用该包，联系技术团队核对版本后重新下载。不要跳过校验或混用旧脚本。</td></tr>
+        <tr><th scope="row">本地运行缺少依赖</th><td>确认已激活独立环境、Python 版本正确、位于包根目录，再按锁定版本安装依赖。不要随意更换依赖版本来绕过错误。</td></tr>
+        <tr><th scope="row">本地分析或合并脚本报错（屏幕显示 ANALYSIS_FAILED 或 MERGE_FAILED）</th><td>阅读提示与质控文件，修正身份、单位、方案文件或冲突后，换一个新的输出目录重跑。旧结果不代表本次运行成功。</td></tr>
       </tbody></table></div>
-      <p>联系支持时给出页面、操作步骤、时间和错误文本。先遮盖患者记录、随访完整链接、密码及密钥，不把真实 CSV 当普通附件发送。现有联系邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a>。</p>
+      <p>联系支持时请写明页面、操作步骤、时间和错误提示，先遮盖研究数据、完整随访链接、密码和密钥，不要把真实 CSV 作为普通附件发送。联系邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a>。</p>
     </div>
   </main>
   <footer class="site-footer">
     <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
     <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/guide">使用说明</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener">鲁公网安备37091102000922号</a></div>
   </footer>
-  <script src="/analytics.js?v=registry-20260914-integrated-v1"></script>
+  <script src="/guide.js?v=registry-20261012-adoption-v4"></script>
+  <script src="/analytics.js?v=registry-20261012-adoption-v4"></script>
 </body>
 </html>

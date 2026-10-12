@@ -7,13 +7,13 @@ import re
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-EVIDENCE = ROOT / 'releases/registry-integrated-pg17-v3-20260914'
+EVIDENCE = ROOT / 'releases/registry-adoption-v4-20261012'
 
 def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 def verify():
-    manifest = json.loads((EVIDENCE / 'registry-integrated-pg17-v3-20260914.manifest.json').read_text())
+    manifest = json.loads((EVIDENCE / 'registry-adoption-v4-20261012.manifest.json').read_text())
     contract_bytes = (ROOT / 'supabase/database-contract-pg17.json').read_bytes()
     contract = json.loads(contract_bytes)
     assert manifest['database_contract_reference_sha256'] == sha(contract_bytes)
@@ -34,6 +34,13 @@ def verify():
     expected_bundle = '-- GENERATED from supabase/migrations in canonical filename order.\n-- Fresh/isolated databases only; use reviewed increments for production.\n\n'
     expected_bundle += ''.join(f'-- MIGRATION {m["ordinal"]:03d}: {m["file"]}\n' + (ROOT / 'supabase/migrations' / m['file']).read_text() + '\n' for m in migrations)
     assert (ROOT / 'all_migrations_combined.sql').read_text() == expected_bundle.rstrip() + '\n'
+    # Legacy entry points must not lag the canonical set: run_all is the same bundle, and the six
+    # SQL-Editor batches together contain every migration exactly once, in canonical order.
+    assert (ROOT / 'supabase/run_all_migrations.sql').read_text() == expected_bundle.rstrip() + '\n'
+    batched = []
+    for path in sorted((ROOT / 'site/assets/sql').glob('batch[1-6]_*.sql')):
+        batched += re.findall(r'^-- MIGRATION \d+: (\S+)$', path.read_text(), re.MULTILINE)
+    assert batched == [m['file'] for m in migrations], 'compatibility SQL batches are stale'
     for migration in migrations:
         assert sha((ROOT / 'supabase/migrations' / migration['file']).read_bytes()) == migration['sha256'], migration['file']
     for name, digest in json.loads((EVIDENCE / 'recovered-tools-sha256.json').read_text()).items():

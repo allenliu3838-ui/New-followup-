@@ -1,7 +1,7 @@
 // Isolated PostgreSQL 17 upgrade acceptance. All users and records are synthetic.
 // This suite neither connects to a hosted project nor loads production metadata.
 import assert from 'node:assert/strict';
-import {randomUUID} from 'node:crypto';
+import {createHash, randomUUID} from 'node:crypto';
 import {createDatabase, applyMigrations, readContract} from './helpers/pg17-fixture.mjs';
 
 const db = await createDatabase();
@@ -11,8 +11,9 @@ const project = randomUUID();
 const otherProject = randomUUID();
 const patientCode = 'SYNTHETIC-001';
 const visitId = randomUUID();
+// Production links are 32 lowercase hex characters; 0039 revokes any other stored format.
 const token = Object.fromEntries(['valid', 'expired', 'revoked', 'consumed', 'inactive']
-  .map(name => [name, `synthetic-${name}-${randomUUID()}`]));
+  .map(name => [name, randomUUID().replaceAll('-', '')]));
 let groups = 0;
 const pass = label => { groups++; console.log(`PASS ${label}`); };
 const row = async (sql, args = []) => (await db.query(sql, args)).rows[0];
@@ -81,6 +82,24 @@ try {
 
   await applyMigrations(db, {phase: 'upgrade'});
   const after = await captureRows();
+  // Exactly two reviewed value changes, each asserted, never merely tolerated: the
+  // never-entered consent default becomes unconfirmed (NULL), and each plaintext
+  // link is replaced by the SHA-256 digest of that same link.
+  const reviewedChanges = {
+    patients_baseline: (original, current) => {
+      assert.equal(original.consent_research, true, 'historical rows only held the schema default');
+      assert.equal(current.consent_research, null);
+      assert.equal(current.consent_status, 'unconfirmed');
+      assert.equal(current.followup_status, 'active');
+      return {...original, consent_research: null};
+    },
+    patient_tokens: (original, current) => {
+      assert.equal(typeof original.token, 'string');
+      assert.equal(current.token, null, 'plaintext link erased');
+      assert.equal(current.token_hash, createHash('sha256').update(original.token, 'utf8').digest('hex'));
+      return {...original, token: null};
+    }
+  };
   for (const table of preservedTables) {
     // Added columns may change JSON sort order, so compare by each historical row's key.
     const key = record => table === 'concept_alias_dictionary' ? `${record.concept_code}:${record.alias_cn}`
@@ -90,12 +109,14 @@ try {
     for (const original of before[table]) {
       const current = upgraded.get(key(original));
       assert.ok(current, `${table}: historical row survives`);
-      assert.deepEqual(Object.fromEntries(Object.keys(original).map(k => [k, current[k]])), original,
-        `${table}: every pre-existing column value remains unchanged`);
+      const expected = reviewedChanges[table] ? reviewedChanges[table](original, current) : original;
+      assert.deepEqual(Object.fromEntries(Object.keys(original).map(k => [k, current[k]])), expected,
+        `${table}: every other pre-existing column value remains unchanged`);
     }
   }
-  assert.equal(Number((await row('SELECT count(*) AS n FROM public.registry_schema_versions')).n), 6);
-  pass('incremental 0032–0037 preserves historical clinical, token, receipt and dictionary values');
+  assert.equal(Number((await row('SELECT count(*) AS n FROM public.registry_schema_versions')).n), 8);
+  assert.equal(Number((await row('SELECT count(*) AS n FROM public.patient_tokens WHERE token IS NOT NULL')).n), 0);
+  pass('incremental 0032–0039 preserves historical clinical, receipt and dictionary values; consent default and plaintext links change exactly as reviewed');
 
   const dictionaryInsertStatements = [
     "INSERT INTO public.abbreviation_dictionary(abbr,full_name_cn,category_cn) VALUES('DENIED','Denied','Denied')",
