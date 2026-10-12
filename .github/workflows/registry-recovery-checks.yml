@@ -37,3 +37,29 @@ jobs:
       - run: npm run test:restore
       - run: python3 scripts/build_registry_integrated.py /tmp/registry-recovered.pyz
       # No deployment, production database connection or browser execution.
+
+  browser-and-analysis:
+    # Browser smoke tests serve site/ locally and intercept every request with synthetic
+    # responses; analysis tests run on synthetic CSV fixtures. No production connection.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.pw-browsers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci --ignore-scripts
+      - name: Install Chromium matching the pinned Playwright version
+        run: npx playwright install --with-deps chromium
+      - run: npm run test:ui
+      - name: Install the analysis script's locked dependencies in an isolated venv
+        run: |
+          python3 -m venv "$RUNNER_TEMP/analysis-venv"
+          "$RUNNER_TEMP/analysis-venv/bin/pip" install --quiet -r site/assets/template/requirements.txt
+      - run: '"$RUNNER_TEMP/analysis-venv/bin/python" -I -m unittest discover -s tests -p test_analysis_protocol.py'
