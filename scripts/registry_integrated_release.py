@@ -17,7 +17,7 @@ import registry_visual_release as visual
 TARGET=Path('/var/www/kidneysphere-registry')
 BACKUPS=Path('/root/registry-integrated-releases')
 PROJECT_REF='etsyglgpiutflethgirs'
-VERSION='registry-20260914-integrated-pg17-v3'
+VERSION='registry-20261012-adoption-v4'
 CONTRACT_PROTOCOL='registry-contract-v3-pg17'
 CONTRACT_SERVER_MAJOR=17
 CONTRACT_CATEGORIES=('functions','triggers','policies','tables','columns','indexes','schema_privileges','buckets','views')

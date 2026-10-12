@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "release": "registry-20260914-integrated-pg17-v3",
+  "release": "registry-20261012-adoption-v4",
   "required_versions": [
     "0032_security_integrity",
     "0033_billing_registration",
@@ -10,6 +10,7 @@
     "0037_concept_view_security"
   ],
   "order": "lexicographic filenames; historical duplicate prefixes retained, unique full filenames",
+  "bundle_sha256": "6d35f2e0530e2c32294a4fb3c1f3be98d00257b4641500ef20c9274c32ec269c",
   "migrations": [
     {
       "ordinal": 1,
@@ -206,6 +207,5 @@
       "file": "0037_concept_view_security.sql",
       "sha256": "6ce0782078b55eabdce5905e6d1c98d553724e3832f25d58bce53056e92e46ae"
     }
-  ],
-  "bundle_sha256": "6d35f2e0530e2c32294a4fb3c1f3be98d00257b4641500ef20c9274c32ec269c"
+  ]
 }
