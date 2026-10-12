@@ -47,21 +47,23 @@ export function parseRegistryCsv(input) {
   });
   return {headers,data};
 }
-export async function readAllRows(sb, table, projectId, assertCurrent = ()=>{}, pageSize=500, filters={}) {
+export async function readAllRows(sb, table, projectId, assertCurrent = ()=>{}, pageSize=500, filters={}, options={}) {
+  // Views such as v_patient_followup_status have no "id" column; callers name a unique key instead.
+  const key=options.key||'id', select=options.select||'*';
   const rows=[]; const ids=new Set(); let expected=null;
   for(;;){
     assertCurrent();
-    let query=sb.from(table).select('*',{count:'exact'}).eq('project_id',projectId);
-    for(const [key,value]of Object.entries(filters))query=query.eq(key,value);
-    const {data,error,count}=await query.order('id',{ascending:true}).range(rows.length,rows.length+pageSize-1);
+    let query=sb.from(table).select(select,{count:'exact'}).eq('project_id',projectId);
+    for(const [field,value]of Object.entries(filters))query=query.eq(field,value);
+    const {data,error,count}=await query.order(key,{ascending:true}).range(rows.length,rows.length+pageSize-1);
     assertCurrent(); if(error)throw error;
-    if(!Array.isArray(data)||!Number.isInteger(count))throw new Error(`${table} 返回数据/数量不完整`);
+    if(!Array.isArray(data)||!Number.isInteger(count))throw new Error('读取的数据或数量不完整，请重试');
     if(expected===null)expected=count;
-    if(count!==expected)throw new Error(`${table} 在读取期间发生变化，请重试`);
-    if(expected>100000)throw new Error(`${table} 超过浏览器导出容量，请联系管理员使用服务器导出`);
-    for(const r of data){if(!r.id||ids.has(r.id))throw new Error(`${table} 分页记录重复或缺少 ID`);ids.add(r.id);rows.push(r);}
+    if(count!==expected)throw new Error('数据在读取期间发生变化，请重试');
+    if(expected>100000)throw new Error('数据量超过浏览器导出容量，请联系管理员使用服务器导出');
+    for(const r of data){if(!r[key]||ids.has(r[key]))throw new Error('分页读取出现重复或缺少编号的记录，已停止');ids.add(r[key]);rows.push(r);}
     if(rows.length===expected)return rows;
-    if(!data.length||rows.length>expected)throw new Error(`${table} 导出数量不一致，已停止`);
+    if(!data.length||rows.length>expected)throw new Error('读取数量不一致，已停止');
   }
 }
 export function exportColumns(rows, preferred=[]) {
@@ -71,7 +73,10 @@ export async function sha256Text(text) {
   const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
   return [...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-export const BASELINE_IMPORT_FIELDS=['patient_code','sex','birth_year','baseline_date','baseline_scr','baseline_upcr','baseline_upcr_unit','biopsy_date','oxford_m','oxford_e','oxford_s','oxford_t','oxford_c','ln_biopsy_date','ln_class','ln_activity_index','ln_chronicity_index','ln_podocytopathy','treatment_arm','randomization_id','randomization_date'];
+export const BASELINE_IMPORT_FIELDS=['patient_code','sex','birth_year','baseline_date','baseline_scr','baseline_upcr','baseline_upcr_unit','biopsy_date','oxford_m','oxford_e','oxford_s','oxford_t','oxford_c','ln_biopsy_date','ln_class','ln_activity_index','ln_chronicity_index','ln_podocytopathy','treatment_arm','randomization_id','randomization_date','consent_status','consent_date','consent_version','followup_status','followup_status_date'];
+// 研究状态列接受英文代码或中文名称（迁移 0038 起数据库接受这些列）；空白单元格保持原值。
+const CONSENT_INPUT=Object.freeze({unconfirmed:'unconfirmed',consented:'consented',waiver:'waiver',declined:'declined',withdrawn:'withdrawn','未确认':'unconfirmed','已同意':'consented','伦理批准豁免':'waiver','拒绝':'declined','撤回':'withdrawn'});
+const FOLLOWUP_INPUT=Object.freeze({active:'active',lost:'lost',withdrawn:'withdrawn',deceased:'deceased',kidney_failure:'kidney_failure',transferred:'transferred','在访':'active','失访':'lost','退出':'withdrawn','退出研究':'withdrawn','死亡':'deceased','肾衰竭':'kidney_failure','转院':'transferred'});
 export const VISIT_IMPORT_FIELDS=['patient_code','visit_date','sbp','dbp','scr_umol_l','upcr','egfr','notes'];
 export function normalizeImportRow(kind,input,defaultUpcrUnit=''){
   const allowed=kind==='baseline'?BASELINE_IMPORT_FIELDS:VISIT_IMPORT_FIELDS;
@@ -80,40 +85,157 @@ export function normalizeImportRow(kind,input,defaultUpcrUnit=''){
     if(!allowed.includes(key))throw new Error(`不支持的列：${key}`);
     if(value!==''&&value!=null)result[key]=String(value).trim();
   }
-  if(!result.patient_code)throw new Error('patient_code 不能为空');
+  if(!result.patient_code)throw new Error('研究编号不能为空');
   if(kind==='baseline'){
     if(result.sex){result.sex=({'男':'M','女':'F','M':'M','F':'F'})[result.sex];if(!result.sex)throw new Error('性别须为 M/F/男/女');}
     const nums={birth_year:{integer:true,min:1900,max:new Date().getUTCFullYear()},baseline_scr:{min:0.01,max:3000},oxford_m:{integer:true,min:0,max:1},oxford_e:{integer:true,min:0,max:1},oxford_s:{integer:true,min:0,max:1},oxford_t:{integer:true,min:0,max:2},oxford_c:{integer:true,min:0,max:2},ln_activity_index:{min:0,max:24},ln_chronicity_index:{min:0,max:12}};
-    for(const [key,opts]of Object.entries(nums))if(key in result)result[key]=finiteNumber(result[key],key,opts);
-    for(const key of ['baseline_date','biopsy_date','ln_biopsy_date','randomization_date'])if(key in result)result[key]=strictDate(result[key],key);
-    if('ln_podocytopathy'in result){const map={true:true,false:false,'是':true,'否':false};if(!(result.ln_podocytopathy in map))throw new Error('ln_podocytopathy 须为 true/false/是/否');result.ln_podocytopathy=map[result.ln_podocytopathy];}
-    if('baseline_upcr'in result){const unit=result.baseline_upcr_unit||defaultUpcrUnit;if(!unit)throw new Error('基线 UPCR 缺少单位，请在 CSV 中填写 baseline_upcr_unit 或在页面明确选择');const raw=finiteNumber(result.baseline_upcr,'UPCR',{min:0});result.baseline_upcr=normalizeUpcr(raw,unit);result.baseline_upcr_unit='mg/g';result.baseline_upcr_raw=raw;result.baseline_upcr_original_unit=unit;}else delete result.baseline_upcr_unit;
+    for(const [key,opts]of Object.entries(nums))if(key in result)result[key]=finiteNumber(result[key],fieldLabel(key),opts);
+    for(const key of ['baseline_date','biopsy_date','ln_biopsy_date','randomization_date','consent_date','followup_status_date'])if(key in result)result[key]=strictDate(result[key],fieldLabel(key));
+    if('consent_status'in result){const v=CONSENT_INPUT[result.consent_status];if(!v)throw new Error('知情同意状态须为：未确认、已同意、伦理批准豁免、拒绝、撤回');result.consent_status=v;}
+    if('followup_status'in result){const v=FOLLOWUP_INPUT[result.followup_status];if(!v)throw new Error('随访状态须为：在访、失访、退出、死亡、肾衰竭、转院');result.followup_status=v;}
+    if('consent_version'in result&&result.consent_version.length>100)throw new Error('知情同意书版本最多 100 个字符');
+    if('ln_podocytopathy'in result){const map={true:true,false:false,'是':true,'否':false};if(!(result.ln_podocytopathy in map))throw new Error('足细胞病变须为 true/false/是/否');result.ln_podocytopathy=map[result.ln_podocytopathy];}
+    if('baseline_upcr'in result){const unit=result.baseline_upcr_unit||defaultUpcrUnit;if(!unit)throw new Error('基线 UPCR 缺少单位：请在 CSV 的 baseline_upcr_unit 列填写，或在页面明确选择');const raw=finiteNumber(result.baseline_upcr,'UPCR',{min:0});result.baseline_upcr=normalizeUpcr(raw,unit);result.baseline_upcr_unit='mg/g';result.baseline_upcr_raw=raw;result.baseline_upcr_original_unit=unit;}else delete result.baseline_upcr_unit;
   }else{
-    result.visit_date=strictDate(result.visit_date,'visit_date',true);
-    for(const [key,opts]of Object.entries({sbp:{min:30,max:300,required:true},dbp:{min:10,max:200,required:true},scr_umol_l:{min:0.01,max:3000,required:true},upcr:{min:0,required:true},egfr:{min:0}})){if(opts.required||key in result)result[key]=finiteNumber(result[key],key,opts);}
+    result.visit_date=strictDate(result.visit_date,'随访日期',true);
+    for(const [key,opts]of Object.entries({sbp:{min:30,max:300,required:true},dbp:{min:10,max:200,required:true},scr_umol_l:{min:0.01,max:3000,required:true},upcr:{min:0,required:true},egfr:{min:0}})){if(opts.required||key in result)result[key]=finiteNumber(result[key],fieldLabel(key),opts);}
     if(result.sbp<=result.dbp)throw new Error('收缩压须大于舒张压');
   }
   return result;
 }
 
-export function registryErrorMessage(error){
-  const raw=String(error?.message ?? error ?? '未知错误');
-  const row=raw.match(/row_(\d+)_/);const prefix=row?`第 ${Number(row[1])+1} 行：`:'';
-  const mapping=[
-    ['baseline_upcr_unit_required','请对照原始报告明确选择基线 UPCR 单位，再保存。'],
-    ['conversion_mismatch','UPCR 原始值、单位与换算结果不一致，请重新填写并核对。'],
-    ['record_changed_since_import','该记录在上次导入后已被修改。请重新导出核对，再通过“核对 / 更正”处理，避免覆盖新记录。'],
-    ['same_day_record_conflict','该患者当天已有不同内容的随访。请打开患者“随访记录”核对并更正，不能直接重复导入。'],
-    ['duplicate_patient_code_in_batch','同一批基线 CSV 出现重复研究编号，请合并或更正重复行。'],
-    ['project_access_denied','当前账户没有该项目的操作权限，请重新登录并确认项目。'],
-    ['quota_exceeded','已达到当前账户项目额度，请检查现有项目或订阅方案。'],
-    ['export_table_too_large','单表数据已超过浏览器导出容量，请联系管理员安排服务器导出。'],
-    ['export_payload_too_large','完整数据包已超过浏览器导出容量，请联系管理员安排服务器导出。'],
-    ['baseline_date_after_existing_visit','基线日期晚于已有随访日期，请先核对基线与随访的原始日期。'],
-    ['project_read_only','项目当前为只读状态，可查看和导出；请核对账户权益后继续录入。'],
-    ['trial_expired','试用期限已结束，请核对账户权益后继续录入。'],
-    ['patient_not_found','未找到该项目中的研究编号，请先创建患者基线并核对编号。']
-  ];
-  for(const [code,message]of mapping)if(raw.includes(code))return prefix+message;
-  return raw;
+// Chinese labels for CSV columns and correction fields; users never see raw column keys in messages.
+export const FIELD_LABELS=Object.freeze({patient_code:'研究编号',sex:'性别',birth_year:'出生年份',baseline_date:'基线日期',baseline_scr:'基线血肌酐',baseline_upcr:'基线UPCR',baseline_upcr_unit:'基线UPCR单位',baseline_upcr_raw:'基线UPCR原始值',baseline_upcr_original_unit:'基线UPCR原始单位',biopsy_date:'肾穿日期',oxford_m:'牛津分型M',oxford_e:'牛津分型E',oxford_s:'牛津分型S',oxford_t:'牛津分型T',oxford_c:'牛津分型C',ln_biopsy_date:'LN肾穿日期',ln_class:'LN病理分型',ln_activity_index:'LN活动指数',ln_chronicity_index:'LN慢性指数',ln_podocytopathy:'足细胞病变',treatment_arm:'研究分组',randomization_id:'随机号',randomization_date:'随机化日期',visit_date:'随访日期',sbp:'收缩压',dbp:'舒张压',scr_umol_l:'血肌酐（μmol/L）',upcr:'UPCR（mg/g）',egfr:'eGFR',notes:'备注',consent_status:'知情同意状态',consent_date:'知情同意日期',consent_version:'知情同意书版本',followup_status:'随访状态',followup_status_date:'随访状态日期'});
+export function fieldLabel(key){return FIELD_LABELS[key]||key;}
+
+// Front-end PII screen, kept in step with the database _contains_pii rule. The database remains authoritative.
+export function containsPII(text) {
+  if (!text) return false;
+  return (
+    /1[3-9][0-9]{9}/.test(text)
+    || /[1-9][0-9]{5}(19|20)[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[0-9]{3}[0-9Xx]/.test(text)
+    || /(住院号|病案号|门诊号|病历号|床号|mrn|admiss)[^a-z0-9]{0,3}[0-9]{3,}/i.test(text)
+    || /(姓名|患者姓名|病人|name\s*[:：])\s*[一-龥]{2,4}/.test(text)
+    || /[0-9]{8,}/.test(text)
+    || /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(text)
+  );
+}
+export function assertNoPII(text, fieldLabel) {
+  if (containsPII(text)) throw new Error(`「${fieldLabel}」中检测到疑似个人身份信息（手机号、身份证号、住院号、姓名等）。请删除后重新保存；仅使用研究编号。`);
+}
+
+const ERROR_MESSAGES=[
+  ['visit_validation_failed','随访数据未通过系统校验，请核对数值与日期后重试。'],
+  ['baseline_upcr_unit_required','请对照原始报告明确选择基线 UPCR 单位，再保存。'],
+  ['conversion_mismatch','UPCR 原始值、单位与换算结果不一致，请重新填写并核对。'],
+  ['record_changed_since_import','该记录在上次导入后已被修改。请重新导出核对，再通过“核对 / 更正”处理，避免覆盖新记录。'],
+  ['previously_imported_record_deleted_requires_review','相同内容的随访记录曾录入后又被删除，系统暂停自动保存以便核对，请联系项目负责人确认。'],
+  ['same_day_record_conflict','该患者在这一天已有一条数值不同的随访记录。同一天只保留一条，请打开该患者的“随访记录”核对并更正，不能重复录入。'],
+  ['duplicate_patient_code_in_batch','同一批基线 CSV 出现重复研究编号，请合并或更正重复行。'],
+  ['patient_not_registered','未在本项目找到该研究编号的基线记录，请先在“新增患者”中建立基线并核对编号。'],
+  ['patient_not_found','未在本项目找到该研究编号，请先建立患者基线并核对编号。'],
+  ['core_measurement_required','请至少填写一项测量值（血压、血肌酐或尿蛋白肌酐比）。'],
+  ['patient_code_required','研究编号不能为空。'],
+  ['visit_date_required','请填写随访日期。'],
+  ['baseline_date_required_with_visits','该患者已有随访记录，基线日期不能清空。'],
+  ['baseline_date_required','基线日期不能为空。'],
+  ['baseline_date_after_existing_visit','基线日期晚于已有随访日期，请先核对基线与随访的原始日期。'],
+  ['invalid_or_future_date','日期须为有效日期，且不能晚于今天。'],
+  ['future_visit_date','随访日期不能晚于今天。'],
+  ['future_baseline_date','基线日期不能晚于今天。'],
+  ['visit_before_baseline','随访日期早于该患者的基线日期，请核对日期。'],
+  ['missing_visit_date','请填写随访日期。'],
+  ['invalid_iso_date','日期无效：格式须为 YYYY-MM-DD，且须是实际存在的日期（如 2 月没有 30 日）。'],
+  ['invalid_patient_code','研究编号须为 1–64 个字符，不能包含首尾空格或控制字符。'],
+  ['invalid_birth_year','出生年份无效。'],
+  ['invalid_oxford_score','牛津分型评分超出允许范围。'],
+  ['invalid_ln_score','LN 活动或慢性指数超出允许范围。'],
+  ['invalid_sex','性别须为男或女。'],
+  ['creatinine_must_be_positive','血肌酐须大于 0。'],
+  ['non_finite_number','数值须为有限的数字。'],
+  ['negative_value','该项数值不能为负数。'],
+  ['notes_too_long','备注最多 500 字，请精简后重试。'],
+  ['pii_detected','内容疑似包含个人身份信息，请删除后重试。'],
+  ['batch_id_content_conflict','本次提交编号与内容不一致，请关闭对话框后重新录入。'],
+  ['unsupported_column','提交内容包含系统不支持的字段，请刷新页面后重试。'],
+  ['text_value_required','提交格式与系统要求不一致，请刷新页面后重试。'],
+  ['scalar_value_required','提交格式与系统要求不一致，请刷新页面后重试。'],
+  ['must_be_object','提交格式与系统要求不一致，请刷新页面后重试。'],
+  ['invalid_import_request','提交格式与系统要求不一致，请刷新页面后重试。'],
+  ['import_requires_1_to_500_rows','每次提交须为 1–500 行。'],
+  ['project_access_denied','当前账户没有该项目的此项操作权限，请重新登录并确认项目与角色。'],
+  ['subscription_required','账户试用期已结束或订阅已到期，项目当前为只读：可查看和导出，暂不能录入或发放随访链接。请核对账户权益。'],
+  ['project_read_only','项目当前为只读状态，可查看和导出；请核对账户权益后继续录入。'],
+  ['trial_expired','试用期限已结束，请核对账户权益后继续录入。'],
+  ['role_read_only','当前项目角色为只读或分析，不能录入或更正数据。'],
+  ['project_not_found','未找到该项目，可能已被删除或您没有访问权限。'],
+  ['authentication_required','登录已过期，请重新登录。'],
+  ['admin_only','当前账号没有执行此操作（如导出）的权限。'],
+  ['quota_exceeded','已达到当前账户项目额度，请检查现有项目或订阅方案。'],
+  ['export_table_too_large','单表数据已超过浏览器导出容量，请联系管理员安排服务器导出。'],
+  ['export_payload_too_large','完整数据包已超过浏览器导出容量，请联系管理员安排服务器导出。'],
+  ['metadata_only_snapshot','这是旧版本的元数据记录，没有保存当时的数据内容；请冻结新的数据版本。'],
+  ['export_not_found','未找到该冻结数据版本。'],
+  ['correction_reason_required','请填写 3–500 字的更正原因。'],
+  ['correction_changes_required','没有需要保存的修改。'],
+  ['identity_is_immutable','研究编号与项目归属不能修改。'],
+  ['record_not_found','记录不存在或已被删除，请刷新后重试。'],
+  ['resolution_required','请填写 3–500 字的处理说明。'],
+  ['unit_not_allowed','所选单位不在该化验项目允许的单位范围内，请重新选择。'],
+  ['invalid_lab_value','请填写有效的化验数值。'],
+  ['lab_not_found','化验记录不存在或已被删除。'],
+  ['invalid_token_options','随访链接有效期须为 1–365 天。'],
+  ['token_invalid_or_expired','该随访链接已失效。'],
+  ['token_not_found','未找到该随访链接，可能已被删除或不属于当前项目，请刷新列表。'],
+  ['revoke_reason_required','请填写 1–500 字的撤销原因（不含身份信息）。'],
+  ['editor_permission_removed','录入成员的权限已变更，相关随访链接已由系统撤销。'],
+  ['same_day_limit_exceeded','同一天提交次数已超过上限，该随访链接已被系统停用。'],
+  ['rate_limited','提交过于频繁，请稍后再试。'],
+  ['reason_required','请填写原因（不含身份信息）。'],
+  ['reason_too_long','原因最多 500 字，请精简后重试。'],
+  ['study_status_changes_required','没有需要保存的修改。'],
+  ['consent_research_is_derived','研究同意请按“同意状态”记录；原“是/否”字段由系统自动生成。'],
+  ['invalid_consent_version','知情同意书版本须为 1–100 个字符。'],
+  ['setting_too_long','设置内容超过允许长度：研究名称、机构名称、联系方式最多 120 字，伦理批件号最多 80 字。'],
+  ['invalid_setting_text','设置内容不能包含换行等控制字符。'],
+  ['unsupported_setting','提交格式与系统要求不一致，请刷新页面后重试。'],
+  ['settings_must_be_object','提交格式与系统要求不一致，请刷新页面后重试。'],
+  ['setting_text_required','提交格式与系统要求不一致，请刷新页面后重试。'],
+  ['followup_interval','随访间隔须为 7–730 天的整数。'],
+  ['invalid_consent_status','知情同意状态取值无效，请重新选择。'],
+  ['invalid_followup_status','随访状态取值无效，请重新选择。'],
+  ['value_too_long','填写内容超过允许长度，请精简后重试。'],
+  ['Invalid login credentials','邮箱或密码不正确。'],
+  ['Email not confirmed','邮箱尚未验证，请先点击注册邮件中的验证链接。'],
+  ['New password should be different','新密码不能与旧密码相同。'],
+  ['Password should be','密码不符合要求，请按提示设置更安全的密码。'],
+  ['For security purposes','操作过于频繁，请稍后再试。'],
+];
+const ERROR_PATTERNS=[
+  [/does not exist|PGRST20[0-9]|42P01|42883|Could not find the (table|function)/i,'数据库尚未升级到与本页面匹配的版本，相关功能暂不可用，请联系平台管理员。'],
+  [/JWT expired|invalid JWT|PGRST30[0-9]|refresh token/i,'登录已过期，请重新登录。'],
+  [/permission denied|insufficient_privilege|not_authorized|42501/i,'当前账号没有此操作的权限。'],
+  [/rate limit|too many requests/i,'操作过于频繁，请稍后再试。'],
+  [/duplicate key|23505/i,'记录已存在（例如同一研究编号已建立基线），请核对后再保存。'],
+  [/check constraint|23514/i,'提交的数据不符合系统约束，请核对后重试。'],
+  [/value too long|22001/i,'填写内容超过允许长度，请精简后重试。'],
+  [/statement timeout|57014/i,'服务器处理超时，请稍后重试；本次操作可能未完成，请刷新核对。'],
+  [/Failed to fetch|NetworkError|Load failed|network|timed? ?out/i,'网络连接失败，请检查网络后重试；本次操作可能未完成，请刷新核对。'],
+];
+// Translate any error into plain Chinese. Raw English/database text and table names are never shown;
+// the original is kept in the browser console for support.
+const SETTING_LABELS=Object.freeze({followup_interval_days:'随访间隔',public_title:'对患者显示的研究名称',institution_name:'机构名称',ethics_approval_no:'伦理批件号',contact_display:'研究团队联系方式'});
+export function registryErrorMessage(error, options = {}){
+  const raw=String(error?.message ?? error ?? '');
+  const row=raw.match(/row_(\d+)_/);
+  // 例如 invalid_iso_date: consent_date —— 用中文字段名说明是哪一项。
+  const field=raw.match(/:\s*([a-z_]+)\s*$/)?.[1];const fieldName=field&&(FIELD_LABELS[field]||SETTING_LABELS[field]);
+  const prefix=(row&&options.rowPrefix!==false?`第 ${Number(row[1])+1} 行：`:'')+(fieldName?`${fieldName}：`:'');
+  for(const [code,message]of ERROR_MESSAGES)if(raw.includes(code))return prefix+message;
+  const haystack=[raw,error?.code,error?.details].filter(Boolean).join(' ');
+  for(const [pattern,message]of ERROR_PATTERNS)if(pattern.test(haystack))return prefix+message;
+  if(/[一-龥]/.test(raw)&&!/[a-z_]{3,}\.[a-z_]{3,}|relation|function /i.test(raw))return prefix+raw;
+  if(/[一-龥]/.test(error?.hint||''))return prefix+error.hint;
+  if(raw&&typeof console!=='undefined')console.warn('[registry] 未翻译的错误：',raw);
+  return prefix+'操作未完成，请稍后重试；如问题持续，请联系项目负责人或平台管理员。';
 }

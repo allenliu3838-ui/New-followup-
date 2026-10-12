@@ -5,10 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>科研工作台 · 肾域·科研</title>
   <meta name="robots" content="noindex,nofollow"/>
-  <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
-  <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
-  <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
-  <link rel="stylesheet" href="/app.css?v=registry-20260914-integrated-v1"/>
+  <link rel="stylesheet" href="/app.css?v=registry-20261012-adoption-v4"/>
   <link rel="icon" href="/assets/kidneysphere-ai.png"/>
   <style>
     /* 字段提示气泡 */
@@ -26,72 +23,87 @@
       white-space:normal;width:260px;line-height:1.5;
       box-shadow:0 4px 12px rgba(0,0,0,.25);
     }
-    /* Issue 面板 */
+    /* 数据质控问题等级 */
     .issue-badge { display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700; }
     .issue-critical { background:#fee2e2;color:#b91c1c; }
     .issue-warning  { background:#fef3c7;color:#b45309; }
     .issue-info     { background:#dbeafe;color:#1d4ed8; }
     .issue-resolved { background:#d1fae5;color:#065f46; }
-    /* Auth-gated content: moved to <template>, injected only after auth */
+    /* 登录后才注入的内容 */
     #profileCard, #appCard, #adminCard, #issuePanel { display:none; }
-    /* Loading indicator during auth check */
     #authLoading { text-align:center; padding:24px; }
     #authLoading .spinner { display:inline-block; width:20px; height:20px; border:3px solid var(--border); border-top-color:var(--brand); border-radius:50%; animation:spin .6s linear infinite; }
     @keyframes spin { to { transform:rotate(360deg); } }
 
-    #workspaceNav{position:sticky;top:0;z-index:30;background:#102d46;color:#fff;padding:12px 16px;border-radius:12px;margin:0 0 20px;box-shadow:0 4px 18px #102d4620}
-    #workspaceNav strong{display:block;margin-bottom:8px}#workspaceNav a{color:#e8f4ff;text-decoration:none;display:inline-block;padding:6px 10px;border-radius:6px}#workspaceNav a:hover,#workspaceNav a:focus{background:#285473}
-    [id$="Section"]{scroll-margin-top:130px}#baselineUnitHint{min-height:24px;color:#185886}#patientSearch{margin:12px 0}
-    .table{display:block;max-width:100%;overflow:auto}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #60a5fa;outline-offset:2px}
-    @media(max-width:680px){.row{display:block}.col{min-width:0!important;width:100%;margin-bottom:12px}.btnbar{gap:8px}.btnbar .btn{min-height:42px}#workspaceNav{position:static}.container{padding:12px}input,select,textarea{font-size:16px}}
+    .ws-header .brand img{width:48px;height:48px}
+    .ws-header-main{flex:1;min-width:0}
+    .ws-header-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .ws-header-account{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .ws-header-note{margin:10px 0 0;font-size:12px;line-height:1.6;color:#7c2d12;background:rgba(217,119,6,.07);border:1px solid rgba(217,119,6,.2);border-radius:10px;padding:6px 10px}
+    .ws-links{display:flex;gap:4px 14px;flex-wrap:wrap;margin-top:8px;font-size:13px}
+
+    #workspaceNav{position:sticky;top:0;z-index:30;background:#102d46;color:#fff;padding:10px 14px;border-radius:12px;margin:0 0 14px;box-shadow:0 4px 18px #102d4620;display:flex;flex-wrap:wrap;align-items:center;gap:2px 4px}
+    #workspaceNav strong{flex:1 0 100%;margin-bottom:4px;font-size:14px}
+    #workspaceNav a{color:#e8f4ff;text-decoration:none;display:inline-block;padding:5px 9px;border-radius:6px;font-size:13px}
+    #workspaceNav a:hover,#workspaceNav a:focus{background:#285473}
+    [id$="Section"],#issuePanel{scroll-margin-top:110px}
+    #baselineUnitHint{min-height:24px;color:#185886}
+    .table{display:block;max-width:100%;overflow:auto}
+    button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid #60a5fa;outline-offset:2px}
+    @media(max-width:680px){
+      .row{display:block}.col{min-width:0!important;width:100%;margin-bottom:12px}
+      .btnbar{gap:8px}.btnbar .btn{min-height:42px}
+      #workspaceNav{position:static}
+      .container{padding:10px 16px}
+      input,select,textarea{font-size:16px}
+      .ws-header .brand{align-items:flex-start;gap:10px}
+      .ws-header .brand img{width:40px;height:40px}
+      .ws-header .brand-title{font-size:19px}
+      .ws-header-account{gap:6px}
+      #headerUserEmail{flex-basis:100%;font-size:12px}
+      .ws-links{gap:4px 12px}
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="card">
+    <header class="card ws-header">
       <div class="brand">
         <img src="/assets/kidneysphere-ai.png" alt="肾域·科研"/>
-        <div style="flex:1">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <div class="ws-header-main">
+          <div class="ws-header-row">
             <div>
               <h1 class="brand-title">肾域·科研</h1>
-              <div class="brand-sub">科研工作台</div>
+              <div class="brand-sub">随访登记 · 科研工作台</div>
             </div>
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <div class="ws-header-account">
               <span id="headerUserEmail" class="muted small" data-testid="user-email" style="display:none"></span>
               <div id="trialBadge" class="badge" style="display:none"></div>
-              <a id="upgradeBtn" class="btn small primary" href="#"
-                 style="display:none;text-decoration:none">立即升级</a>
+              <a id="upgradeBtn" class="btn small primary" href="#" style="display:none;text-decoration:none">立即升级</a>
               <button class="btn small" id="btnHeaderSignOut" data-testid="signout-btn" style="display:none">退出登录</button>
             </div>
           </div>
         </div>
       </div>
-
-      <div class="warnbox" style="margin-top:12px">
-        <b>科研用途优先：</b>本系统仅用于随访数据登记与研究汇总，不提供诊断/处方/急救指导；
-        <b>请勿</b>录入姓名/电话/病案号/身份证等可识别个人信息（PII）。
-      </div>
-
-      <div class="btnbar" style="margin-top:12px">
-        <a class="btn" href="/guide" target="_blank">使用说明</a>
-        <a class="btn" href="/user-manual-cn" target="_blank">详细手册</a>
-        <a class="btn" href="/" target="_blank">返回首页</a>
-        <a class="btn" href="/pricing" target="_blank">价格方案</a>
-        <a class="btn" href="/security" target="_blank">安全合规</a>
-        <a class="btn" href="/deployment" target="_blank">部署方式</a>
-      </div>
-    </div>
+      <p class="ws-header-note"><b>仅用于研究：</b>本系统用于随访数据登记与研究汇总，不提供诊断、处方或急救指导。请只使用研究编号，勿录入姓名、电话、病案号、身份证号等可识别个人身份的信息。</p>
+      <nav class="ws-links" aria-label="帮助与说明">
+        <a href="/guide" target="_blank" rel="noopener">使用说明</a>
+        <a href="/user-manual-cn" target="_blank" rel="noopener">详细手册</a>
+        <a href="/security" target="_blank" rel="noopener">安全合规</a>
+        <a href="/privacy" target="_blank" rel="noopener">隐私政策</a>
+        <a href="/" target="_blank" rel="noopener">返回首页</a>
+      </nav>
+    </header>
 
     <div class="card" id="loginCard" data-testid="login-card">
       <h2 style="margin:0 0 6px 0">登录</h2>
-      <div class="muted small">使用邮箱和密码登录后台。首次使用请点击「注册账号」。</div>
-      <label id="emailLabel">邮箱</label>
-      <input id="email" type="email" placeholder="name@example.com"/>
-      <label>密码</label>
-      <input id="password" type="password" placeholder="请输入密码"/>
-      <label id="confirmPwdLabel" style="display:none">确认新密码</label>
-      <input id="confirmPwd" type="password" placeholder="再次输入新密码" style="display:none"/>
+      <div class="muted small">使用邮箱和密码登录工作台。首次使用请点击「注册账号」。</div>
+      <label id="emailLabel" for="email">邮箱</label>
+      <input id="email" type="email" placeholder="name@example.com" autocomplete="username"/>
+      <label for="password">密码</label>
+      <input id="password" type="password" placeholder="请输入密码" autocomplete="current-password"/>
+      <label id="confirmPwdLabel" for="confirmPwd" style="display:none">确认新密码</label>
+      <input id="confirmPwd" type="password" placeholder="再次输入新密码" autocomplete="new-password" style="display:none"/>
       <div id="registerConsentBox" style="margin-top:10px;display:none">
         <label style="display:flex;align-items:flex-start;gap:6px;cursor:pointer;margin:0">
           <input type="checkbox" id="agreeTermsStaff" style="width:auto;margin-top:2px"/>
@@ -111,7 +123,6 @@
       <div id="loginHint" class="muted small" style="margin-top:8px"></div>
     </div>
 
-    <!-- Auth loading indicator (shown during session check) -->
     <div class="card" id="authLoading" data-testid="auth-loading" style="display:none">
       <div style="text-align:center;padding:16px">
         <div class="spinner"></div>
@@ -119,162 +130,102 @@
       </div>
     </div>
 
-    <!-- Auth-gated container (content injected from template after auth) -->
+    <!-- 登录后才从模板注入的内容 -->
     <div id="authGatedContainer"></div>
 
-    <!-- ===== 以下内容仅登录后可见（template, not in DOM until auth succeeds） ===== -->
     <template id="authGatedTpl">
 
-    <!-- ===== 研究者资料（登录后填写） ===== -->
-    <div class="card" id="profileCard" style="display:none">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <h2 style="margin:0">研究者资料</h2>
-        <span id="profileStatus" class="badge" style="font-size:11px;display:none"></span>
-      </div>
-      <div class="muted small">帮助平台了解您的使用场景；资料不对外公开，仅平台管理员可查看。</div>
-
-      <div class="hr"></div>
-
-      <div class="row">
-        <div class="col">
-          <label>姓名</label>
-          <input id="profName" placeholder="例如：张三"/>
-        </div>
-        <div class="col">
-          <label>医院 / 单位</label>
-          <input id="profHospital" placeholder="例如：北京协和医院"/>
-        </div>
-        <div class="col">
-          <label>科室</label>
-          <input id="profDept" placeholder="例如：肾内科"/>
-        </div>
-      </div>
-      <div class="row">
-        <div class="col">
-          <label>意向套餐（仅供参考）</label>
-          <select id="profPlan">
-            <option value="">暂未决定</option>
-            <option value="trial">先试用</option>
-            <option value="pro">Pro（个人/团队）</option>
-            <option value="institution">机构版（多中心）</option>
-            <option value="partner">合作/联合申请</option>
-          </select>
-        </div>
-        <div class="col">
-          <label>联系方式（微信 / 手机，可选）</label>
-          <input id="profContact" placeholder="可选，方便平台联系"/>
-        </div>
-        <div class="col">
-          <label>备注（研究方向等，可选）</label>
-          <input id="profNotes" placeholder="例如：IgAN 队列，5 个中心"/>
-        </div>
-      </div>
-      <div class="btnbar">
-        <button class="btn primary" id="btnSaveProfile">保存资料</button>
-      </div>
-
-      <div class="hr"></div>
-
-      <h3 style="margin:0 0 6px 0;font-size:15px">申请合作伙伴权益</h3>
-      <div class="muted small">仅面向 <b>GlomCon 中国旗舰中心</b> 及 <b>共建单位</b>。符合条件的中心可在此提交申请，平台核实后联系您确认协议价格与付款方式。</div>
-
-      <div id="contractStatus" style="margin-top:10px"></div>
-
-      <div id="contractApplyForm" style="display:none;margin-top:10px">
-        <div class="row">
-          <div class="col">
-            <label>申请套餐</label>
-            <select id="contractPlan">
-              <option value="institution">机构版（推荐，支持多中心合并）</option>
-              <option value="pro">Pro（个人/小团队）</option>
-            </select>
-          </div>
-          <div class="col" style="max-width:200px">
-            <label>微信号 <span class="muted small">（必填，方便联系）</span></label>
-            <input id="contractWechat" placeholder="您的微信号"/>
-          </div>
-          <div class="col">
-            <label>申请说明（中心类型、研究方向等）</label>
-            <input id="contractNote" placeholder="例如：GlomCon 旗舰中心 / 共建单位，IgAN 队列，5 个中心"/>
-          </div>
-        </div>
-        <div class="btnbar">
-          <button class="btn primary" id="btnApplyContract">提交申请</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ===== 账户设置 ===== -->
-    <details class="card" id="accountSettingsCard" style="cursor:pointer">
-      <summary style="font-weight:700;font-size:15px;list-style:none;display:flex;align-items:center;gap:8px">
-        账户设置
-        <span class="muted small" style="font-weight:400">数据导出 · 账户管理 · 联系客服</span>
-      </summary>
-      <div style="margin-top:12px">
-        <div class="infobox" style="margin-bottom:12px">
-          <b>数据存储说明：</b>网站页面由阿里云提供，科研数据库另由 Supabase 服务提供。实际数据库地区与数据流向需按项目配置核实；录入真实数据前请完成所在机构授权。
-          如需了解详细的安全措施，请查看 <a href="/security">安全合规</a> 页面。
-        </div>
-        <div class="btnbar">
-          <button class="btn" id="btnExportAccount">导出当前项目完整数据</button>
-          <button class="btn danger" id="btnDeleteAccount">申请注销说明</button>
-          <a class="btn" href="mailto:china@kidneysphere.com">联系客服</a>
-          <a class="btn" href="/privacy" target="_blank">隐私政策</a>
-          <a class="btn" href="/terms" target="_blank">用户协议</a>
-        </div>
-        <div id="accountSettingsHint" class="muted small" style="margin-top:8px"></div>
-      </div>
-    </details>
-
     <div class="card" id="appCard" data-testid="workspace-card" style="display:none">
-      <nav id="workspaceNav" aria-label="科研工作任务"><strong id="currentProjectLabel">请先选择或创建项目</strong><a href="#projectSection">项目</a><a href="#patientsSection">患者与基线</a><a href="#followupSection">随访</a><a href="#issuePanel">待办与质控</a><a href="#importSection">批量导入</a><a href="#exportSection">导出</a><a href="/user-manual-cn" target="_blank" rel="noopener">帮助</a></nav>
-      <div class="row">
-        <div class="col">
-          <h2 id="projectSection" style="margin:0 0 6px 0">项目</h2>
-          <div class="muted small">负责人创建项目并邀请同行协作；受邀项目显示在下方列表。独立中心项目请使用不同中心代码。</div>
+      <nav id="workspaceNav" aria-label="工作台导航"><strong id="currentProjectLabel">请先选择或创建项目</strong><a href="#projectSection">项目</a><a href="#overviewSection">概览</a><a href="#boardSection">随访看板</a><a href="#patientsSection">新增患者</a><a href="#issuePanel">数据质控</a><a href="#importSection">批量导入</a><a href="#exportSection">导出与快照</a><a href="#extrasSection">附加数据</a><a href="/user-manual-cn" target="_blank" rel="noopener">帮助</a></nav>
 
-          <div class="hr"></div>
-
-          <h3 style="margin:0 0 8px 0;font-size:15px">新建项目</h3>
-          <label>项目名称</label>
-          <input id="projName" placeholder="例如：IgA肾病随访（BJ01）"/>
-          <label>中心代码（必填）</label>
-          <input id="projCenter" placeholder="例如：BJ01 / SH02"/>
-          <label>病种模块</label>
-          <select id="projModule">
-            <option value="IGAN">IgAN（IgA 肾病）</option>
-            <option value="LN">LN（狼疮性肾炎）</option>
-            <option value="MN">MN（膜性肾病）</option>
-            <option value="GENERAL">通用（混合/其他）</option>
-            <option value="KTX">KTx（肾移植术后）</option>
-          </select>
-          <label>描述（可选）</label>
-          <textarea id="projDesc" placeholder="共建单位试用 / 研究目的简述"></textarea>
-          <div class="btnbar">
-            <button class="btn primary" id="btnCreateProject">创建项目</button>
-          </div>
-
-          <div class="hr"></div>
-
-          <h3 style="margin:0 0 6px 0;font-size:15px">我可访问的项目</h3>
-          <div id="projectsList" class="pills"></div><p id="demoSeedFeedback" class="warnbox" role="status" style="display:none"></p>
-          <div id="projectMeta" class="kv" style="margin-top:8px"></div><p id="projectAccessStatus" class="infobox" role="status">请先选择项目</p><section id="projectMembers" aria-label="项目协作成员"></section>
+      <!-- ===== 项目 ===== -->
+      <section id="projectSection" class="ws-section is-first" aria-labelledby="projectHeading">
+        <div class="ws-section-head">
+          <h2 id="projectHeading">项目</h2>
+          <span class="muted small">一个项目对应一个研究队列；多中心协作时各中心使用不同的中心代码。</span>
         </div>
+        <div id="projectsList" class="pills"></div>
+        <p id="demoSeedFeedback" class="warnbox" role="status" style="display:none"></p>
+        <p id="projectAccessStatus" class="ws-access" role="status">请先选择项目</p>
 
-        <div class="col">
-          <h2 id="patientsSection" style="margin:0 0 6px 0">患者与基线</h2>
-          <div class="muted small">仅录入研究编号；请勿录入姓名/病案号等可识别信息。</div>
+        <div class="ws-folds">
+        <details id="newProjectDetails" class="ws-fold">
+          <summary>新建项目</summary>
+          <div class="muted small">由项目负责人创建项目，再在“项目信息与协作成员”中邀请同事。</div>
+          <div class="fu-grid">
+            <div><label for="projName">项目名称</label><input id="projName" placeholder="例如：IgA肾病随访（BJ01）"/></div>
+            <div><label for="projCenter">中心代码（必填）</label><input id="projCenter" placeholder="例如：BJ01 / SH02"/></div>
+            <div>
+              <label for="projModule">病种模块</label>
+              <select id="projModule">
+                <option value="IGAN">IgAN（IgA 肾病）</option>
+                <option value="LN">LN（狼疮性肾炎）</option>
+                <option value="MN">MN（膜性肾病）</option>
+                <option value="GENERAL">通用（混合/其他）</option>
+                <option value="KTX">KTx（肾移植术后）</option>
+              </select>
+            </div>
+          </div>
+          <label for="projDesc">描述（可选）</label>
+          <textarea id="projDesc" placeholder="研究目的简述、共建单位等"></textarea>
+          <div class="btnbar"><button class="btn primary" id="btnCreateProject">创建项目</button></div>
+        </details>
 
-          <div class="hr"></div>
+        <details id="projectInfoDetails" class="ws-fold">
+          <summary>项目信息与协作成员</summary>
+          <div id="projectMeta" class="kv" style="margin-top:8px"></div>
+          <section id="projectMembers" aria-label="项目协作成员"></section>
+        </details>
 
-          <h3 style="margin:0 0 8px 0;font-size:15px">创建患者基线</h3>
+        <details id="projectSettingsDetails" class="ws-fold" hidden>
+          <summary>项目设置（仅项目负责人）</summary>
+          <p class="muted small">随访间隔用于计算“下次应随访日期”和看板提醒，请按研究方案确认，默认 90 天。下列研究名称、机构、伦理批件号和联系方式会显示在患者随访页上，请填写对外公开的信息，不要填写患者信息。</p>
+          <div class="fu-grid">
+            <div><label for="setInterval">随访间隔（天，7–730）</label><input id="setInterval" type="number" min="7" max="730" step="1" inputmode="numeric"/></div>
+            <div><label for="setPublicTitle">对患者显示的研究名称（最多 120 字）</label><input id="setPublicTitle" maxlength="120" placeholder="例如：IgA 肾病长期随访研究"/></div>
+            <div><label for="setInstitution">机构名称（最多 120 字）</label><input id="setInstitution" maxlength="120" placeholder="例如：某某医院肾内科"/></div>
+            <div><label for="setEthicsNo">伦理批件号（最多 80 字）</label><input id="setEthicsNo" maxlength="80" placeholder="按伦理委员会批件填写"/></div>
+            <div><label for="setContact">研究团队联系方式（最多 120 字）</label><input id="setContact" maxlength="120" placeholder="例如：研究护士 王老师，科室电话"/></div>
+          </div>
+          <div id="settingsFeedback" class="fu-feedback"></div>
+          <div class="btnbar"><button class="btn primary" id="btnSaveSettings" data-project-capability="can_manage_project">保存项目设置</button></div>
+        </details>
+        </div>
+      </section>
+
+      <!-- ===== 项目概览 ===== -->
+      <section id="overviewSection" class="ws-section" aria-labelledby="overviewHeading">
+        <div class="ws-section-head"><h2 id="overviewHeading">项目概览</h2></div>
+        <div id="projectOverview" class="fu-overview" aria-live="polite"><p class="muted small">请先选择项目。</p></div>
+      </section>
+
+      <!-- ===== 随访看板 ===== -->
+      <section id="boardSection" class="ws-section" aria-labelledby="boardHeading">
+        <div class="ws-section-head">
+          <h2 id="boardHeading">随访看板</h2>
+          <button class="btn primary" id="btnOpenVisitEntry" type="button">录入随访</button>
+        </div>
+        <p class="muted small">谁该随访、谁还没有随访一目了然：逾期者排在最前。可在每一行直接录入随访、查看与更正随访记录、管理随访链接和研究状态。</p>
+        <div class="fu-toolbar">
+          <div id="boardFilters"></div>
+          <div class="fu-search"><label for="patientSearch">查找研究编号</label><input id="patientSearch" type="search" placeholder="输入研究编号" autocomplete="off"/></div>
+        </div>
+        <div id="patientsList" class="fu-board"></div>
+        <datalist id="patientCodeOptions"></datalist>
+      </section>
+
+      <!-- ===== 新增患者（建立基线） ===== -->
+      <section id="patientsSection" class="ws-section" aria-labelledby="patientsHeading">
+        <details id="newPatientDetails" class="ws-fold">
+          <summary id="patientsHeading">新增患者（建立基线）</summary>
+          <div class="muted small">只录入研究编号，不录入姓名、病案号等可识别信息。</div>
           <div class="row">
             <div class="col">
-              <label>研究编号</label>
+              <label for="patCode">研究编号</label>
               <input id="patCode" placeholder="例如：0001 / A023"/>
             </div>
             <div class="col">
-              <label>性别</label>
+              <label for="patSex">性别</label>
               <select id="patSex">
                 <option value="">未填</option>
                 <option value="M">男</option>
@@ -282,22 +233,22 @@
               </select>
             </div>
             <div class="col">
-              <label>出生年份（用于 eGFR）</label>
+              <label for="patBirthYear">出生年份（用于计算 eGFR）</label>
               <input id="patBirthYear" type="number" placeholder="例如：1985"/>
             </div>
           </div>
 
           <div class="row">
             <div class="col">
-              <label>基线日期（可选）</label>
+              <label for="patBaselineDate">基线日期</label>
               <input id="patBaselineDate" type="date"/>
             </div>
             <div class="col">
-              <label>基线 Scr（μmol/L，可选）</label>
+              <label for="patBaselineScr">基线血肌酐（μmol/L，可选）</label>
               <input id="patBaselineScr" type="number" step="0.1" placeholder="例如：98"/>
             </div>
             <div class="col">
-              <label for="patBaselineUpcr">基线 UPCR（可选）</label>
+              <label for="patBaselineUpcr">基线尿蛋白肌酐比（UPCR，可选）</label>
               <input id="patBaselineUpcr" type="number" min="0" step="any" placeholder="按原始化验单填写"/>
               <label for="patBaselineUpcrUnit">原始化验单单位</label><select id="patBaselineUpcrUnit"><option value="mg/g">mg/g</option><option value="g/g">g/g</option></select><div id="baselineUnitHint" class="small" aria-live="polite">按所选单位输入，保存前显示换算结果。</div>
             </div>
@@ -305,30 +256,30 @@
 
           <div id="iganPathBox" class="infobox" style="margin-top:10px;display:none">
             <b>IgAN 病理（Oxford MEST‑C）</b>
-            <div class="muted small" style="margin-top:4px">科研常用。未做肾穿或无报告可留空。</div>
+            <div class="muted small" style="margin-top:4px">未做肾穿或无报告可留空。</div>
             <div class="row" style="margin-top:6px">
               <div class="col">
-                <label>肾穿日期（可选）</label>
+                <label for="biopsyDate">肾穿日期（可选）</label>
                 <input id="biopsyDate" type="date"/>
               </div>
               <div class="col">
-                <label>M（0/1）</label>
+                <label for="mestM">M（0/1）</label>
                 <select id="mestM"><option value=""></option><option value="0">0</option><option value="1">1</option></select>
               </div>
               <div class="col">
-                <label>E（0/1）</label>
+                <label for="mestE">E（0/1）</label>
                 <select id="mestE"><option value=""></option><option value="0">0</option><option value="1">1</option></select>
               </div>
               <div class="col">
-                <label>S（0/1）</label>
+                <label for="mestS">S（0/1）</label>
                 <select id="mestS"><option value=""></option><option value="0">0</option><option value="1">1</option></select>
               </div>
               <div class="col">
-                <label>T（0/1/2）</label>
+                <label for="mestT">T（0/1/2）</label>
                 <select id="mestT"><option value=""></option><option value="0">0</option><option value="1">1</option><option value="2">2</option></select>
               </div>
               <div class="col">
-                <label>C（0/1/2）</label>
+                <label for="mestC">C（0/1/2）</label>
                 <select id="mestC"><option value=""></option><option value="0">0</option><option value="1">1</option><option value="2">2</option></select>
               </div>
             </div>
@@ -336,14 +287,14 @@
 
           <div id="lnPathBox" class="infobox" style="margin-top:10px;display:none">
             <b>LN 病理（ISN/RPS 2003/2018 分型）</b>
-            <div class="muted small" style="margin-top:4px">未做肾穿或无报告可留空。分型参照 ISN/RPS 2003 标准（2018修订）。</div>
+            <div class="muted small" style="margin-top:4px">未做肾穿或无报告可留空。分型参照 ISN/RPS 2003 标准（2018 修订）。</div>
             <div class="row" style="margin-top:6px">
               <div class="col">
-                <label>肾穿日期（可选）</label>
+                <label for="lnBiopsyDate">肾穿日期（可选）</label>
                 <input id="lnBiopsyDate" type="date"/>
               </div>
               <div class="col">
-                <label>ISN/RPS 分型
+                <label for="lnClass">ISN/RPS 分型
                   <span class="tooltip-icon" title="I=系膜轻微病变型；II=系膜增生型；III=局灶型；IV=弥漫型；V=膜型；VI=终末硬化型。S=节段，G=球性，A=活动，C=慢性。">?</span>
                 </label>
                 <select id="lnClass">
@@ -366,20 +317,20 @@
             </div>
             <div class="row" style="margin-top:6px">
               <div class="col">
-                <label>NIH 活动指数 AI（0–24）
-                  <span class="tooltip-icon" title="NIH Activity Index，0-24分。评估肾小球/间质活动性病变程度。">?</span>
+                <label for="lnAI">NIH 活动指数 AI（0–24）
+                  <span class="tooltip-icon" title="NIH 活动指数，0–24 分，评估肾小球/间质活动性病变程度。">?</span>
                 </label>
                 <input id="lnAI" type="number" min="0" max="24" step="1" placeholder="0–24"/>
               </div>
               <div class="col">
-                <label>NIH 慢性化指数 CI（0–12）
-                  <span class="tooltip-icon" title="NIH Chronicity Index，0-12分。评估肾小球/间质慢性化程度（纤维化/硬化）。">?</span>
+                <label for="lnCI">NIH 慢性化指数 CI（0–12）
+                  <span class="tooltip-icon" title="NIH 慢性化指数，0–12 分，评估肾小球/间质慢性化程度（纤维化/硬化）。">?</span>
                 </label>
                 <input id="lnCI" type="number" min="0" max="12" step="1" placeholder="0–12"/>
               </div>
               <div class="col">
-                <label>足细胞病变（2018修订）
-                  <span class="tooltip-icon" title="2018年ISN/RPS修订版新增。合并足细胞病变提示预后更差。">?</span>
+                <label for="lnPodocytopathy">足细胞病变（2018 修订）
+                  <span class="tooltip-icon" title="2018 年 ISN/RPS 修订版新增项目。">?</span>
                 </label>
                 <select id="lnPodocytopathy">
                   <option value="">未填</option>
@@ -391,16 +342,11 @@
           </div>
 
           <div class="infobox" style="margin-top:10px">
-            <b>RCT 随机化信息（如适用）</b>
-            <div class="muted small" style="margin-top:4px">仅随机对照试验需填写；观察性队列研究可全部留空。</div>
-            <div class="muted small" style="margin-top:6px;padding:5px 8px;background:rgba(0,0,0,.04);border-radius:6px;line-height:1.7">
-              <b>举例（某 IgAN 双臂 RCT）：</b><br>
-              患者 0001 → 干预组 · 随机号 R-0001 · 随机化日期 2024-03-01<br>
-              患者 0002 → 对照组 · 随机号 R-0002 · 随机化日期 2024-03-01
-            </div>
+            <b>随机化信息（仅随机对照试验填写）</b>
+            <div class="muted small" style="margin-top:4px">观察性队列研究可全部留空。示例：患者 0001 → 干预组 · 随机号 R-0001 · 随机化日期 2024-03-01。</div>
             <div class="row" style="margin-top:6px">
               <div class="col">
-                <label>干预组别</label>
+                <label for="rctArm">干预组别</label>
                 <select id="rctArm">
                   <option value="">未填（观察性）</option>
                   <option value="intervention">干预组</option>
@@ -409,384 +355,429 @@
                 </select>
               </div>
               <div class="col">
-                <label>随机号</label>
+                <label for="rctRandomId">随机号</label>
                 <input id="rctRandomId" placeholder="如：R-0042"/>
               </div>
               <div class="col">
-                <label>随机化日期</label>
+                <label for="rctDate">随机化日期</label>
                 <input id="rctDate" type="date"/>
               </div>
             </div>
           </div>
 
+          <p class="muted small" style="margin-top:10px">知情同意状态默认“未确认”。保存基线后，请在看板该患者一行的“研究状态”中按知情同意记录更新。</p>
           <div class="btnbar">
             <button class="btn primary" id="btnCreatePatient">核对并保存基线</button><button class="btn" id="btnResetBaseline">清空本次录入</button>
           </div>
+        </details>
+      </section>
 
-          <div class="hr"></div>
-
-          <h3 style="margin:0 0 6px 0;font-size:15px">患者列表</h3>
-          <div class="muted small">可选择患者录入扩展信息、核对基线，或查看并更正随访记录。</div>
-          <label for="patientSearch">查找研究编号</label><input id="patientSearch" type="search" placeholder="输入研究编号筛选患者"/><div id="patientsList"></div>
-
-          <div class="hr"></div>
-
-          <h3 style="margin:0 0 6px 0;font-size:15px" id="followupSection">随访链接（Token）
-            <span class="tooltip-icon" title="随访链接是访问凭证，仅向经授权的患者或随访人员发送；如有泄露请立即撤销。">?</span>
-          </h3>
-          <div class="muted small">
-            患者端/随访人员<b>无需登录</b>，用链接直接填写随访，每条链接仅对应特定患者。<br>
-            <b>Token 是什么？</b> 一串随机码，是访问该患者随访页的凭证。默认提交一次后失效；请仅向经授权的填写人发送，泄露时立即撤销。
-          </div>
-          <div class="row" style="align-items:flex-end;margin-top:8px">
-            <div class="col">
-              <label>研究编号
-                <span class="tooltip-icon" title="填入要生成链接的患者研究编号，或在上方患者列表点击「生成链接」自动填入。">?</span>
-              </label>
-              <input id="tokenPatientCode" placeholder="从上方患者列表点击会自动填入"/>
-            </div>
-            <div class="col">
-              <label>链接有效期（天）
-                <span class="tooltip-icon" title="链接过期后自动失效，患者无法再提交。请选择完成本次随访所需的最短有效期，默认 30 天。">?</span>
-              </label>
-              <input id="tokenDays" type="number" value="30"/>
-            </div>
-          </div>
-          <div class="row" style="margin-top:6px">
-            <div class="col">
-              <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-                <input type="checkbox" id="tokenSingleUse" checked style="width:auto;margin:0"/>
-                单次使用（提交一次后自动失效）
-                <span class="tooltip-icon" title="勾选后：患者提交一次随访数据，链接立刻失效，再次点击会提示已使用。适合一次性调查或防止重复提交。不勾选：链接可反复使用，适合长期随访。">?</span>
-              </label>
-            </div>
-          </div>
-          <div class="btnbar" style="margin-top:8px">
-            <button class="btn primary" id="btnGenToken">生成随访链接</button>
-          </div>
-          <div id="tokenOut" class="infobox" style="margin-top:10px;display:none"></div><div id="existingTokens" class="muted small" style="margin-top:14px"></div>
-        </div>
-      </div>
-
-      <div class="hr"></div>
-
-      <!-- ===== 质控 Issue 面板 ===== -->
-      <div id="issuePanel" style="display:none">
-        <h2 style="margin:0 0 6px 0">质控 Issue
-          <span class="tooltip-icon" title="系统自动检测数据问题（如日期冲突、超范围、单位不对），每个问题生成一个Issue。修正数据后Issue自动关闭；无法修正时可标记为「不修复」并说明原因。">?</span>
+      <!-- ===== 数据质控问题 ===== -->
+      <section id="issuePanel" class="ws-section" aria-labelledby="issueHeading" style="display:none">
+        <h2 id="issueHeading">数据质控问题
+          <span class="tooltip-icon" title="系统按规则自动检查数据（如日期冲突、超出范围、单位可疑），每发现一处生成一条数据质控问题。更正数据后会自动关闭；确认无法更正时可选择“接受不修复”并说明理由。">?</span>
         </h2>
         <div id="issueSummary" aria-live="polite" class="muted small">加载中…</div>
         <div id="issueList" style="margin-top:8px"></div>
         <div class="btnbar" style="margin-top:8px">
-          <button class="btn" id="btnLoadIssues">刷新质控列表</button>
+          <button class="btn" id="btnLoadIssues">查看未解决的问题</button>
         </div>
-      </div>
-
-      <div class="hr"></div>
-
-      <div class="row">
-        <div class="col">
-          <h2 id="exportSection" style="margin:0 0 6px 0">导出当前项目数据</h2>
-          <div class="muted small">导出 CSV 默认带 UTF‑8 BOM，Excel 直接打开一般不乱码。</div>
-          <div class="btnbar">
-            <button class="btn" id="btnExportBaseline">导出基线数据</button>
-            <button class="btn" id="btnExportVisits">导出随访记录</button>
-            <button class="btn" id="btnExportLabs">导出化验记录</button>
-            <button class="btn" id="btnExportMeds">导出用药记录</button>
-            <button class="btn" id="btnExportVariants">导出基因变异</button>
-            <button class="btn" id="btnExportEvents">导出终点事件</button>
-          </div>
-        </div>
-
-        <div class="col">
-          <h2 style="margin:0 0 6px 0">科研数据与分析脚本包</h2>
-          <div class="muted small">
-            打包当前项目的完整长表、质控报告、可运行分析脚本和文件校验值。统计结果需要下载后按说明运行。
-          </div>
-          <div class="btnbar">
-            <button class="btn primary" id="btnPaperPack">导出分析脚本包（ZIP）</button>
-          </div>
-          <div class="warnbox" style="margin-top:10px">
-            <b>提醒：</b>Methods 草稿为自动生成模板，投稿前需由 PI 最终审阅；系统不提供诊疗建议。
-          </div>
-        </div>
-
-          <div class="hr"></div>
-
-          <h3 style="margin:0 0 6px 0;font-size:15px">冻结的数据版本</h3>
-          <div class="muted small">新版本保存一次数据库一致性读取的完整数据，并可通过哈希核对或重新下载。旧元数据批次没有历史数据内容，列表会明确区分。</div>
-          <div class="btnbar" style="margin-top:8px">
-            <button class="btn" id="btnCreateSnapshot">冻结当前数据版本</button>
-            <button class="btn primary" id="btnPaperPackWithSnapshot">冻结并导出完整分析包</button>
-            <button class="btn" id="btnRefreshSnapshots">刷新数据版本</button>
-          </div>
-          <div id="snapshotOut" class="infobox" style="margin-top:10px;display:none"></div>
-          <div id="snapshotsList" style="margin-top:10px"></div>
-
-      <div class="hr"></div>
+      </section>
 
       <!-- ===== 批量导入 ===== -->
-      <h2 id="importSection" style="margin:0 0 6px 0">批量导入（CSV）</h2>
-      <div class="muted small">先下载模板、预览单位和变更，再确认提交到当前项目。一次最多500行，服务器整批校验；失败可保留同一批次重试。</div>
-      <div class="warnbox" style="margin-top:8px">
-        <b>导入规则：</b>基线只更新文件提供的非空字段，缺失列及空格保持现有值；清空数据请通过“核对 / 更正”并填写原因。随访按服务器规则去重。未知列、重复表头及有错误的行会阻止整批导入。
-      </div>
-      <div class="row" style="margin-top:10px;align-items:flex-end;flex-wrap:wrap;gap:8px">
-        <div class="col" style="min-width:180px">
-          <label>CSV未标注的基线UPCR单位</label><select id="importBaselineUnit"><option value="">请明确选择（有UPCR时必需）</option><option value="mg/g">mg/g</option><option value="g/g">g/g</option></select>
-          <label>导入类型</label>
-          <select id="importType">
-            <option value="baseline">患者基线（patients_baseline）</option>
-            <option value="visits">随访记录（visits_long）</option>
-          </select>
+      <section id="importSection" class="ws-section" aria-labelledby="importHeading">
+        <h2 id="importHeading">批量导入（CSV）</h2>
+        <div class="muted small">先下载模板、预览单位和变更，再确认提交到当前项目。一次最多 500 行，服务器整批校验；失败可保留同一批次重试。</div>
+        <div class="warnbox" style="margin-top:8px">
+          <b>导入规则：</b>基线只更新文件中提供的非空字段，缺失列及空格保持现有值；需要清空或更正时，请在看板中打开该患者的“随访记录”，使用“核对 / 更正基线”并填写原因。随访按服务器规则去重。未知列、重复表头及有错误的行会阻止整批导入。基线文件可包含知情同意状态与随访状态列（可填中文，如“已同意”“失访”），请先按原始知情同意记录核对。
         </div>
-        <div class="col" style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
-          <button class="btn" id="btnDownloadTemplate">下载模板 CSV</button>
-          <label class="btn" style="cursor:pointer;margin:0">
-            选择 CSV 文件
-            <input id="importFile" type="file" accept=".csv,text/csv" style="display:none"/>
-          </label>
+        <div class="row" style="margin-top:10px;align-items:flex-end;flex-wrap:wrap;gap:8px">
+          <div class="col" style="min-width:180px">
+            <label for="importType">导入类型</label>
+            <select id="importType">
+              <option value="baseline">患者基线</option>
+              <option value="visits">随访记录</option>
+            </select>
+            <label for="importBaselineUnit">CSV 未标注时的基线 UPCR 单位</label><select id="importBaselineUnit"><option value="">请明确选择（有 UPCR 时必需）</option><option value="mg/g">mg/g</option><option value="g/g">g/g</option></select>
+          </div>
+          <div class="col" style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
+            <button class="btn" id="btnDownloadTemplate">下载模板 CSV</button>
+            <label class="btn" style="cursor:pointer;margin:0">
+              选择 CSV 文件
+              <input id="importFile" type="file" accept=".csv,text/csv" style="display:none"/>
+            </label>
+          </div>
         </div>
-      </div>
-      <label style="display:flex;gap:8px;align-items:flex-start"><input id="importUnitsConfirm" type="checkbox" style="width:auto;margin-top:5px"/>我已核对：肌酐列为 μmol/L，随访 UPCR 为 mg/g；基线 UPCR 按文件列或页面所选单位换算。</label>
-      <div id="importPreview" style="margin-top:12px;display:none">
-        <div id="importSummary" class="muted small" style="margin-bottom:6px"></div>
-        <div id="importTable" style="overflow-x:auto;max-height:260px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px"></div>
+        <label style="display:flex;gap:8px;align-items:flex-start"><input id="importUnitsConfirm" type="checkbox" style="width:auto;margin-top:5px"/>我已核对：血肌酐列为 μmol/L，随访 UPCR 为 mg/g；基线 UPCR 按文件列或页面所选单位换算。</label>
+        <div id="importPreview" style="margin-top:12px;display:none">
+          <div id="importSummary" class="muted small" style="margin-bottom:6px"></div>
+          <div id="importTable" style="overflow-x:auto;max-height:260px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px"></div>
+          <div class="btnbar" style="margin-top:8px">
+            <button class="btn primary" id="btnConfirmImport">确认导入</button>
+            <button class="btn" id="btnCancelImport">取消</button>
+          </div>
+        </div>
+        <div id="importProgress" class="muted small" style="margin-top:8px;display:none"></div>
+      </section>
+
+      <!-- ===== 导出与数据快照 ===== -->
+      <section id="exportSection" class="ws-section" aria-labelledby="exportHeading">
+        <div class="row">
+          <div class="col">
+            <h2 id="exportHeading">导出当前项目数据</h2>
+            <div class="muted small">CSV 带 UTF‑8 BOM，用 Excel 直接打开一般不会乱码。</div>
+            <div class="btnbar">
+              <button class="btn" id="btnExportBaseline">导出基线数据</button>
+              <button class="btn" id="btnExportVisits">导出随访记录</button>
+              <button class="btn" id="btnExportLabs">导出化验记录</button>
+              <button class="btn" id="btnExportMeds">导出用药记录</button>
+              <button class="btn" id="btnExportVariants" hidden>导出基因变异</button>
+              <button class="btn" id="btnExportEvents">导出终点事件</button>
+            </div>
+          </div>
+          <div class="col">
+            <h3 class="fu-h3">科研数据与分析脚本包</h3>
+            <div class="muted small">打包当前项目的完整长表、数据质控报告、可运行的分析脚本和文件校验值。这是数据与脚本，不是统计结果；结果需下载后按说明运行。</div>
+            <div class="btnbar">
+              <button class="btn primary" id="btnPaperPack">导出分析脚本包（ZIP）</button>
+            </div>
+            <div class="warnbox" style="margin-top:10px">
+              <b>提醒：</b>方法学描述为自动生成的模板，投稿前需由项目负责人（PI）逐项审阅；系统不提供诊疗建议。
+            </div>
+          </div>
+        </div>
+        <h3 class="fu-h3">数据快照（冻结的数据版本）</h3>
+        <div class="muted small">每次冻结保存一份数据库一致性读取的完整数据，可按 SHA-256 校验值核对或重新下载相同内容。早期仅含元数据的批次记录没有历史数据内容，列表中会明确区分。</div>
         <div class="btnbar" style="margin-top:8px">
-          <button class="btn primary" id="btnConfirmImport">确认导入</button>
-          <button class="btn" id="btnCancelImport">取消</button>
+          <button class="btn" id="btnCreateSnapshot">冻结当前数据版本</button>
+          <button class="btn primary" id="btnPaperPackWithSnapshot">冻结并导出完整分析包</button>
+          <button class="btn" id="btnRefreshSnapshots">刷新数据快照列表</button>
+        </div>
+        <div id="snapshotOut" class="infobox" style="margin-top:10px;display:none"></div>
+        <div id="snapshotsList" style="margin-top:10px"></div>
+      </section>
+
+      <!-- ===== 附加数据 ===== -->
+      <section id="extrasSection" class="ws-section" aria-labelledby="extrasHeading">
+        <h2 id="extrasHeading">附加数据（可选）</h2>
+        <div class="muted small">研究需要且数据可获得时补录。所有记录只使用研究编号。</div>
+        <p id="geneticsDisabledNote" class="infobox" style="margin-top:8px">基因数据涉及人类遗传资源管理，迁至境内并完成合规评估后由管理员开启。</p>
+
+        <div class="row" style="margin-top:10px">
+          <div class="col" id="geneticsSection" hidden>
+            <h3 class="fu-h3">基因变异</h3>
+            <label for="varPatientCode">研究编号</label>
+            <input id="varPatientCode" list="patientCodeOptions" placeholder="例如：0001"/>
+            <div class="row">
+              <div class="col">
+                <label for="varTestDate">检测日期</label>
+                <input id="varTestDate" type="date"/>
+              </div>
+              <div class="col">
+                <label for="varTestName">检测名称（如 WES/Panel）</label>
+                <input id="varTestName" placeholder="例如：WES"/>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <label for="varGene">基因名</label>
+                <input id="varGene" placeholder="例如：COL4A5"/>
+              </div>
+              <div class="col">
+                <label for="varVariant">变异简述</label>
+                <input id="varVariant" placeholder="例如：c.1234A&gt;G"/>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <label for="varHgvsC">HGVS c. <span title="编码序列变异标准写法，从基因报告单复制。示例：NM_000495.5:c.1234A>G" style="cursor:help;color:#94a3b8">ⓘ</span></label>
+                <input id="varHgvsC" placeholder="NM_...:c.1234A&gt;G"/>
+              </div>
+              <div class="col">
+                <label for="varHgvsP">HGVS p. <span title="蛋白质层面变异，选填，从报告单复制。" style="cursor:help;color:#94a3b8">ⓘ</span></label>
+                <input id="varHgvsP" placeholder="p.(...)"/>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <label for="varZygosity">合子型（het/hom/hem）</label>
+                <input id="varZygosity" placeholder="het"/>
+              </div>
+              <div class="col">
+                <label for="varClass">ACMG 分级（P/LP/VUS/LB/B）</label>
+                <input id="varClass" placeholder="VUS"/>
+              </div>
+            </div>
+            <label for="varLabName">检测/报告单位（可选）</label>
+            <input id="varLabName" placeholder="例如：某医学检验所"/>
+            <label for="varNotes">备注（可选）</label>
+            <textarea id="varNotes" placeholder="不要填写任何身份信息"></textarea>
+            <div class="btnbar">
+              <button class="btn" id="btnAddVariant">添加基因记录</button>
+            </div>
+            <div id="variantsPreview" class="muted small" style="margin-top:8px"></div>
+          </div>
+
+          <div class="col">
+            <h3 class="fu-h3">化验记录</h3>
+            <label for="labPatientCode">研究编号</label>
+            <input id="labPatientCode" list="patientCodeOptions" placeholder="例如：0001"/>
+            <div class="row">
+              <div class="col">
+                <label for="labDate">化验日期</label>
+                <input id="labDate" type="date"/>
+              </div>
+              <div class="col">
+                <label for="labTestCode">化验项目
+                  <span class="tooltip-icon" title="从列表选择，系统会自动匹配允许单位并换算标准值。">?</span>
+                </label>
+                <select id="labTestCode">
+                  <option value="">-- 选择化验项目 --</option>
+                </select>
+                <input id="labName" type="hidden"/>
+                <input id="labCustomName" aria-label="自定义化验名称" placeholder="输入化验名称，例如：补体因子H" style="display:none;margin-top:6px"/>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <label for="labValue">化验数值（录入值）</label>
+                <input id="labValue" type="number" step="0.01" placeholder="填写原始数值"/>
+              </div>
+              <div class="col">
+                <label for="labUnit">单位
+                  <span class="tooltip-icon" title="选择化验项目后自动显示允许的单位，只能选允许值。">?</span>
+                </label>
+                <select id="labUnit">
+                  <option value="">-- 先选化验项目 --</option>
+                </select>
+                <input id="labCustomUnit" aria-label="自定义化验单位" placeholder="输入单位，例如：ng/mL" style="display:none;margin-top:6px"/>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <label for="labStdValue">标准值（自动换算，只读）
+                  <span class="tooltip-icon" title="系统自动换算到标准单位，便于多中心合并。例：88.4 μmol/L → 1.00 mg/dL。">?</span>
+                </label>
+                <input id="labStdValue" readonly placeholder="输入数值后自动显示" style="background:#f8fafc;color:#555"/>
+              </div>
+              <div class="col" id="labQcReasonCol" style="display:none">
+                <label for="labQcReason" style="color:#b45309">留痕原因（必填）
+                  <span class="tooltip-icon" title="检测到同日重复或异常值时必填。例：同日复查，第一次采血失败。">?</span>
+                </label>
+                <input id="labQcReason" placeholder="请说明原因"/>
+              </div>
+            </div>
+            <div class="btnbar">
+              <button class="btn" id="btnAddLab">添加化验记录</button>
+            </div>
+            <div id="labHint" class="muted small" style="margin-top:4px"></div>
+            <div id="labsPreview" class="muted small" style="margin-top:8px"></div>
+            <div id="projCustomLabsPanel" style="margin-top:12px;display:none">
+              <div style="font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.5px;margin-bottom:4px">本项目自定义化验目录</div>
+              <div id="projCustomLabsList" class="muted small"></div>
+            </div>
+          </div>
+
+          <div class="col">
+            <h3 class="fu-h3">用药记录</h3>
+            <label for="medPatientCode">研究编号</label>
+            <input id="medPatientCode" list="patientCodeOptions" placeholder="例如：0001"/>
+            <label for="medName">药品名称</label>
+            <input id="medName" placeholder="例如：泼尼松 / 吗替麦考酚酯 / ACEI"/>
+            <label for="medClass">药物类别（可选）</label>
+            <input id="medClass" placeholder="例如：糖皮质激素 / 免疫抑制剂 / RAAS 阻断剂"/>
+            <div class="row">
+              <div class="col">
+                <label for="medDose">剂量（可选）</label>
+                <input id="medDose" placeholder="例如：2 mg / 500 mg / 10 mg/kg"/>
+              </div>
+              <div class="col">
+                <label for="medRoute">给药途径（可选）</label>
+                <select id="medRoute">
+                  <option value="">-- 选择 --</option>
+                  <option value="PO">PO（口服）</option>
+                  <option value="IV">IV（静脉）</option>
+                  <option value="SC">SC（皮下注射）</option>
+                  <option value="IM">IM（肌肉注射）</option>
+                  <option value="topical">外用</option>
+                  <option value="other">其他</option>
+                </select>
+              </div>
+              <div class="col">
+                <label for="medFrequency">频次（可选）</label>
+                <select id="medFrequency">
+                  <option value="">-- 选择 --</option>
+                  <option value="qd">qd（每日1次）</option>
+                  <option value="bid">bid（每日2次）</option>
+                  <option value="tid">tid（每日3次）</option>
+                  <option value="qod">qod（隔日1次）</option>
+                  <option value="qw">qw（每周1次）</option>
+                  <option value="biw">biw（每周2次）</option>
+                  <option value="q2w">q2w（每2周1次）</option>
+                  <option value="qm">qm（每月1次）</option>
+                  <option value="prn">prn（按需）</option>
+                  <option value="other">其他</option>
+                </select>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <label for="medStart">开始日期（可选）</label>
+                <input id="medStart" type="date"/>
+              </div>
+              <div class="col">
+                <label for="medEnd">结束日期（可选）</label>
+                <input id="medEnd" type="date"/>
+              </div>
+            </div>
+            <div class="btnbar">
+              <button class="btn" id="btnAddMed">添加用药记录</button>
+            </div>
+            <div id="medsPreview" class="muted small" style="margin-top:8px"></div>
+          </div>
+        </div>
+
+        <h3 class="fu-h3">临床终点事件</h3>
+        <div class="muted small" style="margin-bottom:10px">手动录入经核实的终点事件。事件定义与判定标准以研究方案为准；eGFR 下降等候选终点需导出分析包后运行脚本，并由研究团队按方案核对与确认。</div>
+        <div class="row">
+          <div class="col">
+            <label for="evtPatientCode">研究编号</label>
+            <input id="evtPatientCode" list="patientCodeOptions" placeholder="例如：0001"/>
+            <div class="row">
+              <div class="col">
+                <label for="evtType">事件类型</label>
+                <select id="evtType">
+                  <option value="">-- 选择事件类型 --</option>
+                  <option value="egfr_decline_40pct">eGFR 下降 ≥40%（按方案确认）</option>
+                  <option value="egfr_decline_57pct">eGFR 下降 ≥57%（按方案确认）</option>
+                  <option value="esrd">终末期肾病（ESRD）</option>
+                  <option value="death">死亡</option>
+                  <option value="complete_remission">完全缓解</option>
+                  <option value="partial_remission">部分缓解</option>
+                  <option value="custom">其他（在备注中说明）</option>
+                </select>
+              </div>
+              <div class="col">
+                <label for="evtDate">事件日期（可选）</label>
+                <input id="evtDate" type="date"/>
+              </div>
+            </div>
+            <label for="evtNotes">备注（可选，勿填身份信息）</label>
+            <input id="evtNotes" placeholder="例如：透析起始 / 缓解确认日期"/>
+            <div class="btnbar">
+              <button class="btn" id="btnAddEvent">录入终点事件</button>
+            </div>
+          </div>
+          <div class="col">
+            <div id="eventsPreview" class="muted small" style="margin-top:8px">暂无记录</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 平台管理员面板：服务器确认角色后才由脚本注入 -->
+    <div id="adminCard" data-testid="admin-card" style="display:none"></div>
+
+    <!-- ===== 账户与资料（默认折叠，放在页面最底部） ===== -->
+    <details class="card" id="accountDetails">
+      <summary class="ws-account-summary">账户与资料 <span class="muted small">研究者资料 · 合作伙伴权益 · 账户设置</span> <span id="profileStatus" class="badge" style="font-size:11px;display:none"></span></summary>
+
+      <div id="profileCard" style="display:none">
+        <h3 class="fu-h3">研究者资料</h3>
+        <div class="muted small">帮助平台了解您的使用场景；资料不对外公开，仅平台管理员可查看。可随时填写，不影响使用工作台。</div>
+        <div class="row">
+          <div class="col">
+            <label for="profName">姓名</label>
+            <input id="profName" placeholder="例如：张三"/>
+          </div>
+          <div class="col">
+            <label for="profHospital">医院 / 单位</label>
+            <input id="profHospital" placeholder="例如：某某医院"/>
+          </div>
+          <div class="col">
+            <label for="profDept">科室</label>
+            <input id="profDept" placeholder="例如：肾内科"/>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col">
+            <label for="profPlan">意向套餐（仅供参考）</label>
+            <select id="profPlan">
+              <option value="">暂未决定</option>
+              <option value="trial">先试用</option>
+              <option value="pro">Pro（个人/团队）</option>
+              <option value="institution">机构版（多中心）</option>
+              <option value="partner">合作/联合申请</option>
+            </select>
+          </div>
+          <div class="col">
+            <label for="profContact">联系方式（微信 / 手机，可选）</label>
+            <input id="profContact" placeholder="可选，方便平台联系"/>
+          </div>
+          <div class="col">
+            <label for="profNotes">备注（研究方向等，可选）</label>
+            <input id="profNotes" placeholder="例如：IgAN 队列，5 个中心"/>
+          </div>
+        </div>
+        <div class="btnbar">
+          <button class="btn primary" id="btnSaveProfile">保存资料</button>
+        </div>
+
+        <div class="hr"></div>
+
+        <h3 class="fu-h3">申请合作伙伴权益</h3>
+        <div class="muted small">仅面向 <b>GlomCon 中国旗舰中心</b> 及 <b>共建单位</b>。符合条件的中心可在此提交申请，平台核实后联系您确认协议价格与付款方式。</div>
+        <div id="contractStatus" style="margin-top:10px"></div>
+        <div id="contractApplyForm" style="display:none;margin-top:10px">
+          <div class="row">
+            <div class="col">
+              <label for="contractPlan">申请套餐</label>
+              <select id="contractPlan">
+                <option value="institution">机构版（支持多中心合并）</option>
+                <option value="pro">Pro（个人/小团队）</option>
+              </select>
+            </div>
+            <div class="col" style="max-width:200px">
+              <label for="contractWechat">微信号 <span class="muted small">（必填，方便联系）</span></label>
+              <input id="contractWechat" placeholder="您的微信号"/>
+            </div>
+            <div class="col">
+              <label for="contractNote">申请说明（中心类型、研究方向等）</label>
+              <input id="contractNote" placeholder="例如：GlomCon 旗舰中心 / 共建单位，IgAN 队列，5 个中心"/>
+            </div>
+          </div>
+          <div class="btnbar">
+            <button class="btn primary" id="btnApplyContract">提交申请</button>
+          </div>
         </div>
       </div>
-      <div id="importProgress" class="muted small" style="margin-top:8px;display:none"></div>
 
       <div class="hr"></div>
-      <h2 style="margin:0 0 6px 0">附加数据（可选）：基因 / 化验 / 用药</h2>
-      <div class="muted small">如果研究需要并且数据可获得，可在此补录。建议仍坚持去标识化（只用 patient_code）。</div>
 
-      <div class="row" style="margin-top:10px">
-        <div class="col">
-          <h3 style="margin:0 0 8px 0;font-size:15px">🧬 基因变异</h3>
-          <label>研究编号</label>
-          <input id="varPatientCode" placeholder="例如：0001"/>
-          <div class="row">
-            <div class="col">
-              <label>检测日期</label>
-              <input id="varTestDate" type="date"/>
-            </div>
-            <div class="col">
-              <label>检测名称（如 WES/Panel）</label>
-              <input id="varTestName" placeholder="例如：WES"/>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <label>基因名</label>
-              <input id="varGene" placeholder="例如：COL4A5"/>
-            </div>
-            <div class="col">
-              <label>变异简述</label>
-              <input id="varVariant" placeholder="例如：c.1234A&gt;G"/>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <label>HGVS c. <span title="编码序列变异标准写法，从基因报告单复制。示例：NM_000495.5:c.1234A>G（NM_编号从报告单获取）" style="cursor:help;color:#94a3b8">ⓘ</span></label>
-              <input id="varHgvsC" placeholder="NM_...:c.1234A&gt;G"/>
-            </div>
-            <div class="col">
-              <label>HGVS p. <span title="蛋白质层面变异，选填。示例：p.Tyr412Cys（从报告单复制即可，格式不确定可到 variantvalidator.org 验证）" style="cursor:help;color:#94a3b8">ⓘ</span></label>
-              <input id="varHgvsP" placeholder="p.(...)"/>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <label>合子型（het/hom/hem）</label>
-              <input id="varZygosity" placeholder="het"/>
-            </div>
-            <div class="col">
-              <label>ACMG 分级（P/LP/VUS/LB/B）</label>
-              <input id="varClass" placeholder="VUS"/>
-            </div>
-          </div>
-          <label>检测/报告单位（可选）</label>
-          <input id="varLabName" placeholder="例如：XX 医学检验所"/>
-          <label>备注（可选）</label>
-          <textarea id="varNotes" placeholder="不要写任何 PII"></textarea>
-          <div class="btnbar">
-            <button class="btn" id="btnAddVariant">添加基因记录</button>
-          </div>
-          <div id="variantsPreview" class="muted small" style="margin-top:8px"></div>
+      <div id="accountSettingsCard">
+        <h3 class="fu-h3">账户设置</h3>
+        <div class="infobox" style="margin-bottom:12px">
+          <b>数据存储说明：</b>网站页面与科研数据库分别部署，当前数据库所在地以项目配置为准，详见<a href="/privacy" target="_blank" rel="noopener">隐私政策</a>。录入真实数据前请完成所在机构的授权与伦理审查。安全措施见<a href="/security" target="_blank" rel="noopener">安全合规</a>。
         </div>
-
-        <div class="col">
-          <h3 style="margin:0 0 8px 0;font-size:15px">🧪 化验记录</h3>
-          <label>研究编号</label>
-          <input id="labPatientCode" placeholder="例如：0001"/>
-          <div class="row">
-            <div class="col">
-              <label>化验日期</label>
-              <input id="labDate" type="date"/>
-            </div>
-            <div class="col">
-              <label>化验项目
-                <span class="tooltip-icon" title="从列表选择，系统会自动匹配允许单位并换算标准值。">?</span>
-              </label>
-              <select id="labTestCode">
-                <option value="">-- 选择化验项目 --</option>
-              </select>
-              <input id="labName" type="hidden"/>
-              <input id="labCustomName" placeholder="输入化验名称，例如：补体因子H" style="display:none;margin-top:6px"/>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <label>化验数值（录入值）</label>
-              <input id="labValue" type="number" step="0.01" placeholder="填写原始数值"/>
-            </div>
-            <div class="col">
-              <label>单位
-                <span class="tooltip-icon" title="选择化验项目后自动显示允许的单位，只能选允许值。">?</span>
-              </label>
-              <select id="labUnit">
-                <option value="">-- 先选化验项目 --</option>
-              </select>
-              <input id="labCustomUnit" placeholder="输入单位，例如：ng/mL" style="display:none;margin-top:6px"/>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <label>标准值（自动换算，只读）
-                <span class="tooltip-icon" title="系统自动换算到标准单位用于多中心合并。例：88.4 μmol/L → 1.00 mg/dL。">?</span>
-              </label>
-              <input id="labStdValue" readonly placeholder="输入数值后自动显示" style="background:#f8fafc;color:#555"/>
-            </div>
-            <div class="col" id="labQcReasonCol" style="display:none">
-              <label style="color:#b45309">⚠ 留痕原因（必填）
-                <span class="tooltip-icon" title="检测到同日重复或异常值时必填。例：同日复查，第一次采血失败。">?</span>
-              </label>
-              <input id="labQcReason" placeholder="请说明原因"/>
-            </div>
-          </div>
-          <div class="btnbar">
-            <button class="btn" id="btnAddLab">添加化验记录</button>
-          </div>
-          <div id="labHint" class="muted small" style="margin-top:4px"></div>
-          <div id="labsPreview" class="muted small" style="margin-top:8px"></div>
-          <div id="projCustomLabsPanel" style="margin-top:12px;display:none">
-            <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">本项目自定义化验目录</div>
-            <div id="projCustomLabsList" class="muted small"></div>
-          </div>
+        <div class="btnbar">
+          <button class="btn" id="btnExportAccount">导出当前项目完整数据</button>
+          <button class="btn danger" id="btnDeleteAccount">申请注销说明</button>
+          <a class="btn" href="mailto:china@kidneysphere.com">联系客服</a>
+          <a class="btn" href="/pricing" target="_blank" rel="noopener">订阅与价格</a>
+          <a class="btn" href="/privacy" target="_blank" rel="noopener">隐私政策</a>
+          <a class="btn" href="/terms" target="_blank" rel="noopener">用户协议</a>
         </div>
-
-        <div class="col">
-          <h3 style="margin:0 0 8px 0;font-size:15px">💊 用药记录</h3>
-          <label>研究编号</label>
-          <input id="medPatientCode" placeholder="例如：0001"/>
-          <label>药品名称</label>
-          <input id="medName" placeholder="例如：泼尼松 / 吗替麦考酚酯 / ACEI"/>
-          <label>药物类别（可选）</label>
-          <input id="medClass" placeholder="例如：糖皮质激素 / 免疫抑制剂 / RAAS阻断剂"/>
-          <div class="row">
-            <div class="col">
-              <label>剂量（可选）</label>
-              <input id="medDose" placeholder="例如：2 mg / 500 mg / 10 mg/kg"/>
-            </div>
-            <div class="col">
-              <label>给药途径（可选）</label>
-              <select id="medRoute">
-                <option value="">-- 选择 --</option>
-                <option value="PO">PO（口服）</option>
-                <option value="IV">IV（静脉）</option>
-                <option value="SC">SC（皮下注射）</option>
-                <option value="IM">IM（肌肉注射）</option>
-                <option value="topical">外用</option>
-                <option value="other">其他</option>
-              </select>
-            </div>
-            <div class="col">
-              <label>频次（可选）</label>
-              <select id="medFrequency">
-                <option value="">-- 选择 --</option>
-                <option value="qd">qd（每日1次）</option>
-                <option value="bid">bid（每日2次）</option>
-                <option value="tid">tid（每日3次）</option>
-                <option value="qod">qod（隔日1次）</option>
-                <option value="qw">qw（每周1次）</option>
-                <option value="biw">biw（每周2次）</option>
-                <option value="q2w">q2w（每2周1次）</option>
-                <option value="qm">qm（每月1次）</option>
-                <option value="prn">prn（按需）</option>
-                <option value="other">其他</option>
-              </select>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <label>开始日期（可选）</label>
-              <input id="medStart" type="date"/>
-            </div>
-            <div class="col">
-              <label>结束日期（可选）</label>
-              <input id="medEnd" type="date"/>
-            </div>
-          </div>
-          <div class="btnbar">
-            <button class="btn" id="btnAddMed">添加用药记录</button>
-          </div>
-          <div id="medsPreview" class="muted small" style="margin-top:8px"></div>
-        </div>
+        <div id="accountSettingsHint" class="muted small" style="margin-top:8px"></div>
       </div>
+    </details>
 
-      <div class="hr" style="margin-top:14px"></div>
-
-      <h3 style="margin:0 0 8px 0;font-size:15px">🏁 临床终点事件</h3>
-      <div class="muted small" style="margin-bottom:10px">手动录入终点事件（ESRD/死亡/缓解等）；eGFR 下降候选终点需导出分析包后运行脚本，并按方案核对与确认。</div>
-      <div class="row">
-        <div class="col">
-          <label>研究编号</label>
-          <input id="evtPatientCode" placeholder="例如：0001"/>
-          <div class="row">
-            <div class="col">
-              <label>事件类型 event_type</label>
-              <select id="evtType">
-                <option value="egfr_decline_40pct">eGFR 下降 ≥40%</option>
-                <option value="egfr_decline_57pct">eGFR 下降 ≥57%</option>
-                <option value="esrd">ESRD（终末期肾病）</option>
-                <option value="death">死亡</option>
-                <option value="complete_remission">完全缓解（CR）</option>
-                <option value="partial_remission">部分缓解（PR）</option>
-                <option value="custom">自定义</option>
-              </select>
-            </div>
-            <div class="col">
-              <label>事件日期（可选）</label>
-              <input id="evtDate" type="date"/>
-            </div>
-          </div>
-          <label>备注（可选，勿填 PII）</label>
-          <input id="evtNotes" placeholder="例如：透析起始 / CR 确认日期"/>
-          <div class="btnbar">
-            <button class="btn" id="btnAddEvent">录入终点事件</button>
-          </div>
-        </div>
-        <div class="col">
-          <div id="eventsPreview" class="muted small" style="margin-top:8px">暂无记录</div>
-        </div>
-      </div>
-
-      </div>
-    </div>
+    </template>
   </div>
 
-  <!-- Admin panel: dynamically injected by JS after server-side role check -->
-  <div id="adminCard" data-testid="admin-card" style="display:none"></div>
-
-    </template><!-- /authGatedTpl -->
-
-  <script src="/lib/error-logger.js?v=registry-20260914-integrated-v1"></script>
-  <script src="/config.js?v=registry-20260914-integrated-v1"></script>
-  <script src="/lib/vendor/jszip.min.js?v=registry-20260914-integrated-v1"></script>
-  <script type="module" src="/staff.js?v=registry-20260914-integrated-v1"></script>
+  <script src="/lib/error-logger.js?v=registry-20261012-adoption-v4"></script>
+  <script src="/config.js?v=registry-20261012-adoption-v4"></script>
+  <script src="/lib/vendor/jszip.min.js?v=registry-20261012-adoption-v4"></script>
+  <script type="module" src="/staff.js?v=registry-20261012-adoption-v4"></script>
   <footer class="site-footer">
     <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
     <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener">鲁公网安备37091102000922号</a></div>
