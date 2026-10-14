@@ -186,7 +186,44 @@ function isDate(text) {
   return Number.isFinite(d.getTime()) && d.toISOString().slice(0, 10) === text;
 }
 const len = text => [...String(text ?? '')].length;
-const isNumberText = text => /^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/.test(text) && Number.isFinite(Number(text));
+
+/** 与数据库 validate_clinical_input 相同的数字写法：可带正负号与小数点，指数最多 3 位。 */
+const NUMBER_PATTERN = /^[+-]?([0-9]+(\.[0-9]*)?|\.[0-9]+)([eE][+-]?[0-9]{1,3})?$/;
+/**
+ * 按十进制精确解析数字文本（不经过浮点数）：返回 { zero, negative, digits, point, canonical } 或 null。
+ * 数值 = 0.digits × 10^point（digits 无首尾 0），因此 |n| ≥ 10^k 当且仅当 point > k。
+ * canonical 用于比较两行内容是否相同（1.10 与 1.1 视为相同，与数据库按数值比较一致）。
+ */
+export function decimalParts(text) {
+  const t = String(text ?? '');
+  if (!NUMBER_PATTERN.test(t)) return null;
+  const negative = t[0] === '-';
+  const [mantissa, exp = '0'] = t.replace(/^[+-]/, '').split(/[eE]/);
+  const [intPart, fracPart = ''] = mantissa.split('.');
+  let digits = intPart + fracPart; let point = intPart.length + Number(exp);
+  const lead = digits.match(/^0*/)[0].length;
+  digits = digits.slice(lead).replace(/0+$/, ''); point -= lead;
+  if (!digits) return { zero: true, negative: false, digits: '', point: 0, canonical: '0' };
+  return { zero: false, negative, digits, point, canonical: `${negative ? '-' : ''}0.${digits}e${point}` };
+}
+/** 数据库上限：value_raw 绝对值 < 10^12；dose_value 须 > 0 且 < 10^6。 */
+const VALUE_MAX_EXP = 12;
+const DOSE_MAX_EXP = 6;
+/** 数据库 invalid_text：除 notes / event_detail 可含换行与制表符外，文本列不得含任何控制字符。 */
+const CONTROL_CHARS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/;
+const LINE_BREAKS = /[\n\r\t]/;
+const MULTILINE_COLUMNS = new Set(['notes', 'event_detail']);
+const NUMERIC_COLUMNS = new Set(['value_raw', 'dose_value']);
+/** 同一文件内比较两行内容：列集合与取值都相同才算相同；数字按数值比较。 */
+function payloadSignature(payload) {
+  return JSON.stringify(Object.keys(payload).sort().map(k => [k, NUMERIC_COLUMNS.has(k) ? decimalParts(payload[k])?.canonical ?? payload[k] : payload[k]]));
+}
+/** 业务键（与数据库 import_clinical_row 一致）。 */
+export const BUSINESS_KEYS = Object.freeze({ labs: ['patient_code', 'lab_date', 'lab_test_code'], meds: ['patient_code', 'drug_name', 'start_date'], events: ['patient_code', 'event_type', 'event_date'] });
+const BUSINESS_KEY_LABELS = Object.freeze({ labs: '研究编号 + 化验日期 + 化验项目', meds: '研究编号 + 药物名称 + 起始日期', events: '研究编号 + 事件类型 + 事件日期' });
+export const DUPLICATE_CONFLICT_REASON = '同一文件内同一业务键有两行内容不同，请合并为一行。';
+/** 预览中疑似个人信息的研究编号只显示为遮盖文字。 */
+export const MASKED_CODE = '****（疑似个人信息，已隐藏）';
 
 function parseRange(text) {
   const t = String(text ?? '').normalize('NFKC').replace(/\s+/g, '');
@@ -223,6 +260,8 @@ export function checkHeaders(kind, headers) {
  * 问题文字只描述规则，不包含单元格内容（错误报告会原样导出）。
  */
 export function validateBatch(kind, headers, data, ctx = {}) {
+  // ctx.lines：每条记录在文件中开始的物理行号（parseRegistryCsv 返回）；没有时按“表头 + 序号”推算。
+  const lineOf = i => Number.isInteger(ctx.lines?.[i]) ? ctx.lines[i] : i + 2;
   const fileIssues = checkHeaders(kind, headers);
   const rows = [];
   const unmapped = new Map();
@@ -232,9 +271,8 @@ export function validateBatch(kind, headers, data, ctx = {}) {
   const today = ctx.today || beijingToday();
   const mapping = ctx.mapping || {};
   const pii = typeof ctx.containsPII === 'function' ? ctx.containsPII : () => false;
-  const seenKeys = new Map();
   if (!fileIssues.length) data.forEach((cells, i) => {
-    const line = i + 2;
+    const line = lineOf(i);
     const issues = [];
     const block = (col, reason, fix = '') => issues.push({ col, level: 'block', reason, fix });
     const warn = (col, reason, fix = '') => issues.push({ col, level: 'warn', reason, fix });
@@ -243,9 +281,10 @@ export function validateBatch(kind, headers, data, ctx = {}) {
     const payload = {};
     let status = null; let mapKey = null;
     const code = v('patient_code');
+    const codePii = !!code && pii(code);
     if (!code) block('patient_code', '研究编号不能为空。', '填写项目内已存在的研究编号。');
-    else if (len(code) > 64 || /[\u0000-\u001f]/.test(code)) block('patient_code', '研究编号须为 1–64 个字符，不能包含控制字符。');
-    else if (pii(code)) block('patient_code', '研究编号疑似包含个人信息（手机号、身份证号、病案号或 8 位以上连续数字）。', PII_NOTICE);
+    else if (len(code) > 64 || /[\u0000-\u001f\u007f-\u009f]/.test(code)) block('patient_code', '研究编号须为 1–64 个字符，不能包含换行、制表符等控制字符。');
+    else if (codePii) block('patient_code', '研究编号疑似包含个人信息（手机号、身份证号、病案号或 8 位以上连续数字）。', PII_NOTICE);
     else if (!patients.has(code)) block('patient_code', '本项目中没有该研究编号的患者。', '先在“新增患者”或基线导入中建档，或核对编号。');
     if (code) payload.patient_code = code;
     const patient = patients.get(code);
@@ -259,6 +298,10 @@ export function validateBatch(kind, headers, data, ctx = {}) {
     };
     const text = (col, label, max, { checkPii = true } = {}) => {
       const t = v(col); if (!t) return null;
+      if (CONTROL_CHARS.test(t) || (!MULTILINE_COLUMNS.has(col) && LINE_BREAKS.test(t))) {
+        block(col, MULTILINE_COLUMNS.has(col) ? `${label}含有不可见的控制字符。` : `${label}含有换行、制表符或其他控制字符。`, MULTILINE_COLUMNS.has(col) ? '请删除不可见的控制字符后重新上传。' : '该列须为单行文本，请删除单元格内的换行与制表符。');
+        return null;
+      }
       if (len(t) > max) { block(col, `${label}超过 ${max} 字。`, '请精简。'); return null; }
       if (checkPii && pii(t)) { block(col, `${label}疑似包含个人信息。`, PII_NOTICE); return null; }
       payload[col] = t; return t;
@@ -289,13 +332,17 @@ export function validateBatch(kind, headers, data, ctx = {}) {
       const value = v('value_raw'); const resultText = text('result_text', '结果文本', 50);
       let numeric = null;
       if (value) {
-        if (!isNumberText(value)) block('value_raw', '结果数值不是数字。', '“<5”“阳性”等定性结果请填在结果文本列，数值列留空。');
-        else { numeric = Number(value); payload.value_raw = numeric; }
+        // 提交原始文本（如 1.10），由数据库按 numeric 解析，不经过浮点数。
+        const d = decimalParts(value);
+        if (!d) block('value_raw', '结果数值不是数字。', '“<5”“阳性”等定性结果请填在结果文本列，数值列留空；不要使用千分位或 4 位以上的指数。');
+        else if (!d.zero && d.point > VALUE_MAX_EXP) block('value_raw', '结果数值超出允许范围（绝对值须小于 10^12）。', '核对数值与单位。');
+        else { numeric = Number(value); payload.value_raw = value; }
       }
       if (!value && !resultText && !issues.some(x => x.col === 'result_text')) block('value_raw', '结果数值与结果文本都为空。', '至少填写一项。');
       const unitRaw = v('unit_symbol');
-      if (value && !unitRaw) block('unit_symbol', '填写结果数值时必须填写单位。', labCode ? `可选单位：${allowedUnits(ctx.unitMap, labCode).join('、') || '（字典未配置）'}` : '');
-      if (unitRaw && labCode) {
+      if (!value && unitRaw) info('unit_symbol', '定性结果不需要单位，已忽略单位。');
+      else if (value && !unitRaw) block('unit_symbol', '填写结果数值时必须填写单位。', labCode ? `可选单位：${allowedUnits(ctx.unitMap, labCode).join('、') || '（字典未配置）'}` : '');
+      else if (unitRaw && labCode) {
         const allowed = allowedUnits(ctx.unitMap, labCode);
         const unit = pickUnit(unitRaw, allowed);
         if (!unit) block('unit_symbol', '单位不在该化验项目允许的单位中。', allowed.length ? `可选单位：${allowed.join('、')}` : '该项目在字典中没有配置允许单位，请联系平台管理员。');
@@ -304,7 +351,7 @@ export function validateBatch(kind, headers, data, ctx = {}) {
           const standard = catalogByCode.get(labCode)?.standard_unit;
           if (standard && unit !== standard && numeric != null) info('unit_symbol', `与标准单位不同，将自动换算为 ${standard}。`);
         }
-      } else if (unitRaw && !labCode) payload.unit_symbol = normalizeUnitText(unitRaw);
+      } else if (unitRaw && !labCode && value) payload.unit_symbol = normalizeUnitText(unitRaw);
       text('ref_range', '参考范围', 50);
       const flagRaw = v('abnormal_flag');
       if (flagRaw) {
@@ -324,7 +371,7 @@ export function validateBatch(kind, headers, data, ctx = {}) {
       if (patient?.followup_status === 'deceased') warn('patient_code', '该患者随访状态为死亡，仍有化验记录。', '核对化验日期是否在死亡日期之前。');
       if (labDate && labCode && code) bizKey = `${code}\u0000${labDate}\u0000${labCode}`;
     } else if (kind === 'meds') {
-      const drug = text('drug_name', '药物名称', 100);
+      const drug = text('drug_name', '药物名称', 200);
       if (!v('drug_name')) block('drug_name', '药物名称不能为空。', '填写药物通用名。');
       const cls = v('drug_class');
       if (cls) {
@@ -333,8 +380,10 @@ export function validateBatch(kind, headers, data, ctx = {}) {
       }
       const doseValue = v('dose_value'); const doseUnit = text('dose_unit', '剂量单位', 20);
       if (doseValue) {
-        if (!isNumberText(doseValue) || Number(doseValue) <= 0) block('dose_value', '剂量数值须为大于 0 的数字。', '只填数字，单位填在剂量单位列。');
-        else payload.dose_value = Number(doseValue);
+        const d = decimalParts(doseValue);
+        if (!d || d.zero || d.negative) block('dose_value', '剂量数值须为大于 0 的数字。', '只填数字，单位填在剂量单位列。');
+        else if (d.point > DOSE_MAX_EXP) block('dose_value', '剂量数值须小于 1000000。', '核对数值与剂量单位。');
+        else payload.dose_value = doseValue;
       }
       if (!!doseValue !== !!v('dose_unit')) warn(doseValue ? 'dose_unit' : 'dose_value', '剂量数值与剂量单位只填了其中一项。', '两项成对填写，便于剂量统计。');
       const route = v('route');
@@ -364,14 +413,26 @@ export function validateBatch(kind, headers, data, ctx = {}) {
       if (type && STATUS_EVENTS.has(type) && patient && (patient.followup_status ?? 'active') === 'active') warn('event_type', '该患者随访状态仍为“在访”：请到该患者的研究状态登记。', '在随访看板中打开该患者的“研究状态”，按原始记录登记死亡、肾衰竭等状态。');
       if (type && eventDate && code) bizKey = `${code}\u0000${type}\u0000${eventDate}`;
     }
-    if (bizKey && status !== 'ignored') {
-      const first = seenKeys.get(bizKey);
-      if (first) warn('patient_code', `与第 ${first} 行的业务键相同（同一文件内重复）。`, '内容完全相同的行会被跳过；内容不同时服务器会拒绝该块，请合并或删除重复行。');
-      else seenKeys.set(bizKey, line);
-    }
-    if (!status) status = issues.some(x => x.level === 'block') ? 'block' : issues.some(x => x.level === 'warn') ? 'warn' : 'ok';
-    rows.push({ line, patient_code: code, cells, payload, status, issues, mapKey });
+    rows.push({ line, patient_code: code, codePii, cells, payload, status, issues, mapKey, bizKey });
   });
+  // 同一文件内同一业务键：内容完全相同 → 警告（服务器跳过重复行）；内容不同（含一行多出备注等列）→ 数据库会拒绝整块，两行都阻断。
+  const groups = new Map();
+  for (const r of rows) {
+    if (!r.bizKey || r.status === 'ignored' || r.issues.some(x => x.level === 'block')) continue;
+    if (!groups.has(r.bizKey)) groups.set(r.bizKey, []);
+    groups.get(r.bizKey).push(r);
+  }
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    const signatures = group.map(r => payloadSignature(r.payload));
+    const same = signatures.every(x => x === signatures[0]);
+    group.forEach((r, i) => {
+      const others = group.filter(o => o !== r).map(o => o.line).join('、');
+      if (same) { if (i > 0) r.issues.push({ col: 'patient_code', level: 'warn', reason: `与第 ${group[0].line} 行内容完全相同（同一文件内重复）。`, fix: '服务器会跳过重复行；也可删除重复行后再导入。' }); }
+      else r.issues.push({ col: BUSINESS_KEYS[kind].join('、'), level: 'block', reason: DUPLICATE_CONFLICT_REASON, fix: `与第 ${others} 行的业务键（${BUSINESS_KEY_LABELS[kind]}）相同但内容不同；保留一行正确内容后重新上传。` });
+    });
+  }
+  for (const r of rows) if (!r.status) r.status = r.issues.some(x => x.level === 'block') ? 'block' : r.issues.some(x => x.level === 'warn') ? 'warn' : 'ok';
   const counts = { total: data.length, writable: 0, warn: 0, block: 0, ignored: 0 };
   for (const r of rows) {
     if (r.status === 'ok' || r.status === 'warn') counts.writable++;
@@ -413,13 +474,13 @@ function csvCell(value, safe = true) {
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 export const ERROR_REPORT_COLUMNS = Object.freeze(['行号', 'patient_code', '出错列', '级别', '原因', '修正建议']);
-/** 错误报告 CSV（不含 BOM）：只含行号、研究编号、列名与规则说明，不含其他单元格内容。 */
+/** 错误报告 CSV（不含 BOM）：只含行号、研究编号、列名与规则说明，不含其他单元格内容；疑似个人信息的研究编号留空。 */
 export function errorReportCsv(result) {
   const lines = [ERROR_REPORT_COLUMNS.map(c => csvCell(c, false)).join(',')];
   for (const f of result.fileIssues) lines.push(['1', '', f.col, LEVEL_LABELS[f.level], f.reason, f.fix].map(c => csvCell(c)).join(','));
   for (const r of result.rows) for (const x of r.issues) {
     if (!LEVEL_LABELS[x.level]) continue;
-    lines.push([r.line, r.patient_code, x.col, LEVEL_LABELS[x.level], x.reason, x.fix].map(c => csvCell(c)).join(','));
+    lines.push([r.line, r.codePii ? '' : r.patient_code, x.col, LEVEL_LABELS[x.level], x.reason, x.fix].map(c => csvCell(c)).join(','));
   }
   lines.push(['说明', '', '', '', `隐私提示：${PII_NOTICE}本报告只含行号、研究编号与问题说明。`, ''].map(c => csvCell(c)).join(','));
   return lines.join('\r\n');

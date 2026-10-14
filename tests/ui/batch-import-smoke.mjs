@@ -42,9 +42,11 @@ const UNIT_MAP = [u('CREAT', 'mg/dL', true), u('CREAT', 'μmol/L', false), u('CR
   u('EGFR', 'mL/min/1.73m²', true), u('HGB', 'g/dL', true), u('HGB', 'g/L', false), u('ALT', 'U/L', true), u('ALB', 'g/dL', true), u('ALB', 'g/L', false), u('IGA', 'g/L', true)];
 const X = n => `<img src=x onerror=window.__xss=(window.__xss||[]).concat('${n}')>`;
 const BATCHES = [
-  { batch_id: '50000000-0000-4000-8000-000000000001', kind: 'labs', created_at: '2026-10-13T02:00:00Z', created_by_email: `crc${X('email')}@example.test`, inserted: 7, skipped: 1, total: 8, file_sha256: 'a'.repeat(64), file_name: `labs${X('file')}.csv`, chunk_index: 1, chunk_total: 1, undone_at: null, undo_reason: null },
-  { batch_id: '50000000-0000-4000-8000-000000000002', kind: 'baseline', created_at: '2026-10-12T02:00:00Z', created_by_email: USER.email, inserted: 3, skipped: 0, total: 3, file_sha256: null, file_name: null, chunk_index: null, chunk_total: null, undone_at: null, undo_reason: null },
-  { batch_id: '50000000-0000-4000-8000-000000000003', kind: 'meds', created_at: '2026-10-11T02:00:00Z', created_by_email: USER.email, inserted: 2, skipped: 0, total: 2, file_sha256: 'b'.repeat(64), file_name: 'meds.csv', chunk_index: 2, chunk_total: 3, undone_at: '2026-10-12T03:00:00Z', undo_reason: `重复导入${X('reason')}` },
+  { batch_id: '50000000-0000-4000-8000-000000000001', kind: 'labs', created_at: '2026-10-13T02:00:00Z', created_by_email: `crc${X('email')}@example.test`, inserted: 7, skipped: 1, total: 8, file_sha256: 'a'.repeat(64), file_name: `labs${X('file')}.csv`, chunk_index: 1, chunk_total: 1, undo_supported: true, undone_at: null, undo_reason: null },
+  { batch_id: '50000000-0000-4000-8000-000000000002', kind: 'baseline', created_at: '2026-10-12T02:00:00Z', created_by_email: USER.email, inserted: 3, skipped: 0, total: 3, file_sha256: null, file_name: null, chunk_index: null, chunk_total: null, undo_supported: true, undone_at: null, undo_reason: null },
+  { batch_id: '50000000-0000-4000-8000-000000000003', kind: 'meds', created_at: '2026-10-11T02:00:00Z', created_by_email: USER.email, inserted: 2, skipped: 0, total: 2, file_sha256: 'b'.repeat(64), file_name: 'meds.csv', chunk_index: 2, chunk_total: 3, undo_supported: false, undone_at: '2026-10-12T03:00:00Z', undo_reason: `重复导入${X('reason')}` },
+  // 0040 之前导入的随访批次：没有逐条记录，不能自动撤销。
+  { batch_id: '50000000-0000-4000-8000-000000000004', kind: 'visits', created_at: '2026-10-01T02:00:00Z', created_by_email: USER.email, inserted: 4, skipped: 0, total: 4, file_sha256: null, file_name: null, chunk_index: null, chunk_total: null, undo_supported: false, undone_at: null, undo_reason: null },
 ];
 
 // ── 本地静态服务器与浏览器 ───────────────────────────────────
@@ -124,7 +126,7 @@ function createMock({ access }) {
       case 'import_registry_rows': { const n = body.p_rows.length; return { inserted: n, updated: 0, skipped: 0, total: n, replayed: false, ...(importReplies.shift() || {}) }; }
       case 'register_import_file': return null;
       case 'list_import_batches': return BATCHES;
-      case 'undo_import_batch': return { deleted: 5, kept_changed: 2, already_undone: false };
+      case 'undo_import_batch': return { deleted: 5, kept_changed: 2, kept_referenced: 1, already_undone: false };
       default: unknown.push(`RPC ${name}`); return null;
     }
   }
@@ -214,6 +216,79 @@ async function checkPureHelpers() {
   assert.equal(bi.normalizeUnitText('mL/min/1.73m2'), 'mL/min/1.73m²');
   assert.deepEqual(bi.piiHeaderColumns(['patient_code', '姓名', 'drug_name', 'Phone', 'patient_name', 'lab_item_name']), ['姓名', 'Phone', 'patient_name']);
   assert.equal(bi.beijingToday(Date.parse('2026-10-14T17:00:00Z')), '2026-10-15', '“今天”按北京时间');
+  // 曾导入后又被删除：提示适用于所有记录类型，不只是随访。
+  const deleted = data.registryErrorMessage({ message: 'row_2_previously_imported_record_deleted_requires_review' });
+  assert.ok(deleted.includes('相同内容的记录曾导入后又被删除') && !deleted.includes('随访'), deleted);
+
+  // CSV 解析：每条记录保留其在文件中开始的物理行号（空行跳过、引号内换行跨行）。
+  const parsed = data.parseRegistryCsv('\ufeffa,b\r\n1,x\r\n\r\n2,"多\r\n行"\r\n3,y\n\n\n4,z');
+  assert.deepEqual(parsed.lines, [2, 4, 6, 9], '物理行号');
+  assert.deepEqual(parsed.data.map(r => r.a), ['1', '2', '3', '4']);
+  assert.throws(() => data.parseRegistryCsv('a,b\n1,2\n\n3'), /第 4 行列数/, '列数错误按物理行号报告');
+
+  // 逐行校验（与数据库 validate_clinical_input / check_clinical_row / import_clinical_row 一致）。
+  const PATIENTS = new Map([['P001', { followup_status: 'active', baseline_date: '2024-01-01' }], ['13812345678', { followup_status: 'active' }]]);
+  const unitMap = {}; for (const x of UNIT_MAP) (unitMap[x.lab_test_code] ||= []).push(x);
+  const ctx = { catalog: CATALOG, unitMap, patients: PATIENTS, today: '2026-10-14', containsPII: data.containsPII };
+  const LAB_COLS = ['patient_code', 'lab_date', 'lab_test_code', 'value_raw', 'unit_symbol', 'result_text', 'notes'];
+  const lab = (over = {}) => ({ patient_code: 'P001', lab_date: '2025-01-01', lab_test_code: 'CREAT', value_raw: '', unit_symbol: '', result_text: '', notes: '', ...over });
+  const labs = (rows, extra = {}) => bi.validateBatch('labs', LAB_COLS, rows, { ...ctx, ...extra });
+  // 定性结果填了单位：不阻断，提交时去掉单位并提示。
+  let r = labs([lab({ lab_test_code: 'IGA', result_text: '阴性', unit_symbol: 'g/L' })]);
+  assert.equal(r.rows[0].status, 'ok');
+  assert.deepEqual(r.rows[0].payload, { patient_code: 'P001', lab_date: '2025-01-01', lab_test_code: 'IGA', result_text: '阴性' }, '定性结果不提交单位');
+  assert.ok(r.rows[0].issues.some(i => i.level === 'info' && i.reason.includes('定性结果不需要单位，已忽略单位')));
+  // 数值：提交原始文本；范围、指数与数据库一致。
+  const valueStatus = value => labs([lab({ value_raw: value, unit_symbol: 'mg/dL' })]).rows[0];
+  assert.equal(valueStatus('1.10').payload.value_raw, '1.10', '数值按原文提交');
+  for (const ok of ['999999999999', '-5', '+.5', '1e3', '1E-3', '0', '1.', '0.000001e12']) assert.equal(valueStatus(ok).status, 'ok', `value_raw ${ok}`);
+  for (const bad of ['1e20', '1000000000000', '-1000000000000', '1e1000', '1e12', 'Infinity', 'NaN', '0x10', '1,000', '1 000', '5mg']) assert.equal(valueStatus(bad).status, 'block', `value_raw ${bad}`);
+  assert.ok(valueStatus('1e20').issues.some(i => i.reason.includes('超出允许范围')));
+  const MED_COLS = ['patient_code', 'drug_name', 'dose_value', 'dose_unit', 'start_date', 'notes'];
+  const med = (over = {}) => ({ patient_code: 'P001', drug_name: '缬沙坦', dose_value: '80', dose_unit: 'mg', start_date: '2025-01-01', notes: '', ...over });
+  const meds = rows => bi.validateBatch('meds', MED_COLS, rows, ctx);
+  assert.equal(meds([med({ dose_value: '80.50' })]).rows[0].payload.dose_value, '80.50', '剂量按原文提交');
+  for (const ok of ['999999.99', '1e5', '0.001', '+3']) assert.equal(meds([med({ dose_value: ok })]).rows[0].status, 'ok', `dose_value ${ok}`);
+  for (const bad of ['1000000', '1e6', '0', '-0', '-1', '0.000', '1e1000', 'abc']) assert.equal(meds([med({ dose_value: bad })]).rows[0].status, 'block', `dose_value ${bad}`);
+  assert.ok(meds([med({ dose_value: '1000000' })]).rows[0].issues.some(i => i.reason.includes('小于 1000000')));
+  // 文本列中的换行与控制字符（数据库 invalid_text）：备注 / 事件细节可换行，其他列不可；任何列都不能含其他控制字符。
+  assert.equal(meds([med({ drug_name: '缬\n沙坦' })]).rows[0].status, 'block', '药物名称不能换行');
+  assert.equal(meds([med({ drug_name: '缬\u0001沙坦' })]).rows[0].status, 'block', '药物名称不能含控制字符');
+  assert.equal(meds([med({ dose_unit: 'm\tg' })]).rows[0].status, 'block', '剂量单位不能含制表符');
+  assert.equal(meds([med({ notes: '第一行\n第二行' })]).rows[0].status, 'ok', '备注可以换行');
+  assert.equal(meds([med({ notes: '响铃\u0007' })]).rows[0].status, 'block', '备注不能含其他控制字符');
+  assert.equal(labs([lab({ result_text: '阴\r性', lab_test_code: 'IGA' })]).rows[0].status, 'block', '结果文本不能换行');
+  assert.equal(meds([med({ drug_name: 'x'.repeat(200) })]).rows[0].status, 'ok', '药物名称上限 200 字（与数据库一致）');
+  assert.equal(meds([med({ drug_name: 'x'.repeat(201) })]).rows[0].status, 'block');
+  const EVT_COLS = ['patient_code', 'event_type', 'event_date', 'event_detail', 'evidence_source'];
+  const evts = rows => bi.validateBatch('events', EVT_COLS, rows, ctx);
+  assert.equal(evts([{ patient_code: 'P001', event_type: 'relapse', event_date: '2025-01-01', event_detail: '第一行\n第二行', evidence_source: 'other' }]).rows[0].status, 'ok', '事件细节可以换行');
+  // 同一文件内同一业务键：内容相同 → 警告；内容不同（含一行多出备注）→ 两行都阻断。
+  r = labs([lab({ value_raw: '1.10', unit_symbol: 'mg/dL' }), lab({ value_raw: '1.1', unit_symbol: 'mg/dL' })]);
+  assert.deepEqual(r.rows.map(x => x.status), ['ok', 'warn'], '数值相同的重复行只警告');
+  assert.ok(r.rows[1].issues.some(i => i.reason.includes('与第 2 行内容完全相同')));
+  r = labs([lab({ value_raw: '1.1', unit_symbol: 'mg/dL' }), lab({ value_raw: '1.1', unit_symbol: 'mg/dL', notes: '复查' })]);
+  assert.deepEqual(r.rows.map(x => x.status), ['block', 'block'], '一行多出备注也算内容不同');
+  assert.ok(r.rows.every(x => x.issues.some(i => i.level === 'block' && i.reason === bi.DUPLICATE_CONFLICT_REASON)));
+  assert.ok(r.rows[0].issues.some(i => i.fix.includes('第 3 行')) && r.rows[1].issues.some(i => i.fix.includes('第 2 行')));
+  r = meds([med(), med({ dose_value: '40' }), med({ drug_name: '达格列净' })]);
+  assert.deepEqual(r.rows.map(x => x.status), ['block', 'block', 'ok'], '用药业务键：研究编号 + 药物名称 + 起始日期');
+  r = evts([{ patient_code: 'P001', event_type: 'relapse', event_date: '2025-01-01', event_detail: '', evidence_source: 'other' }, { patient_code: 'P001', event_type: '复发', event_date: '2025-01-01', event_detail: '', evidence_source: 'medical_record' }]);
+  assert.deepEqual(r.rows.map(x => x.status), ['block', 'block'], '终点事件业务键：研究编号 + 事件类型 + 事件日期');
+  // 已阻断的行不会提交，不参与重复比较。
+  r = labs([lab({ value_raw: '1.1', unit_symbol: 'mg/dL' }), lab({ value_raw: '1.2', unit_symbol: 'mmol/L' })]);
+  assert.deepEqual(r.rows.map(x => x.status), ['ok', 'block']);
+  assert.ok(!r.rows[0].issues.length);
+  // 行号来自解析器（ctx.lines）。
+  r = labs([lab({ value_raw: '1', unit_symbol: 'mg/dL' }), lab({ value_raw: 'x', unit_symbol: 'mg/dL', lab_date: '2025-01-02' })], { lines: [2, 7] });
+  assert.deepEqual(r.rows.map(x => x.line), [2, 7]);
+  assert.deepEqual(bi.buildChunks(r, () => 'id')[0].lines, [2]);
+  // 错误报告：疑似个人信息的研究编号留空。
+  r = labs([lab({ patient_code: '13812345678', value_raw: '1', unit_symbol: 'mg/dL' })]);
+  assert.equal(r.rows[0].status, 'block');
+  const piiReport = bi.errorReportCsv(r);
+  assert.ok(!piiReport.includes('13812345678'), piiReport);
+  assert.ok(piiReport.split('\r\n').some(l => l.startsWith('2,,patient_code,阻断,')), piiReport);
 }
 
 async function main() {
@@ -299,9 +374,11 @@ async function main() {
     await page.click('#btnConfirmImport');
     await eventually(async () => (await toastText(page)).includes('已核对警告'), '未勾选警告时应提示');
     assert.equal(mock.rpcCalls('import_registry_rows').length, 0, '未核对警告时不提交');
-    // 手动映射：XYZ1 → ALT；恶意名称 → 不导入。
+    // 手动映射：XYZ1 → ALT；恶意名称 → 不导入。校验结果变化后“已核对警告”须重新勾选。
+    await page.check('#importWarnConfirm');
     await page.selectOption('#importUnmapped select[data-unmapped-index="0"]', 'ALT');
     await eventually(async () => (await counts(page)).writable === 7, '映射后可写入行增加');
+    assert.equal(await page.locator('#importWarnConfirm').isChecked(), false, '校验结果变化后取消“已核对警告”');
     await page.selectOption('#importUnmapped select[data-unmapped-index="1"]', '__skip__');
     await eventually(async () => (await counts(page)).block === 4, '标记不导入后不再计为阻断');
     assert.match(await page.locator('#importTable tr[data-line="13"]').getAttribute('class'), /bi-row-ignored/);
@@ -312,18 +389,68 @@ async function main() {
     assert.equal(labCall.p_kind, 'labs');
     assert.match(labCall.p_batch_id, UUID_V4);
     assert.deepEqual(labCall.p_rows, [
-      { patient_code: 'P001', lab_date: '2025-06-01', lab_test_code: 'CREAT', value_raw: 88, unit_symbol: 'μmol/L' },
-      { patient_code: 'P001', lab_date: '2025-06-01', lab_test_code: 'EGFR', value_raw: 60, unit_symbol: 'mL/min/1.73m²' },
-      { patient_code: 'P003', lab_date: '2025-06-01', lab_test_code: 'UPCR', value_raw: 500, unit_symbol: 'mg/g' },
-      { patient_code: 'P001', lab_date: '2025-06-01', lab_test_code: 'ALT', value_raw: 3, unit_symbol: 'U/L', notes: 'SENTINEL-A' },
-      { patient_code: 'P001', lab_date: '2025-06-03', lab_test_code: 'ALB', value_raw: 40, unit_symbol: 'g/L', ref_range: '35-55', abnormal_flag: 'H' },
-      { patient_code: 'P002', lab_date: '2025-06-01', lab_test_code: 'IGA', value_raw: 2.1, unit_symbol: 'g/L' },
+      { patient_code: 'P001', lab_date: '2025-06-01', lab_test_code: 'CREAT', value_raw: '88', unit_symbol: 'μmol/L' },
+      { patient_code: 'P001', lab_date: '2025-06-01', lab_test_code: 'EGFR', value_raw: '60', unit_symbol: 'mL/min/1.73m²' },
+      { patient_code: 'P003', lab_date: '2025-06-01', lab_test_code: 'UPCR', value_raw: '500', unit_symbol: 'mg/g' },
+      { patient_code: 'P001', lab_date: '2025-06-01', lab_test_code: 'ALT', value_raw: '3', unit_symbol: 'U/L', notes: 'SENTINEL-A' },
+      { patient_code: 'P001', lab_date: '2025-06-03', lab_test_code: 'ALB', value_raw: '40', unit_symbol: 'g/L', ref_range: '35-55', abnormal_flag: 'H' },
+      { patient_code: 'P002', lab_date: '2025-06-01', lab_test_code: 'IGA', value_raw: '2.1', unit_symbol: 'g/L' },
       { patient_code: 'P003', lab_date: '2025-06-05', lab_test_code: 'IGA', result_text: '阴性', abnormal_flag: 'N' },
     ], '只提交可写入行，化验名称列不写入');
     assert.deepEqual(mock.rpcCalls('register_import_file')[0].body, { p_project_id: PROJECT.id, p_batch_id: labCall.p_batch_id, p_file_sha256: sha256(labBuffer), p_file_name: 'labs-oct.csv', p_chunk_index: 1, p_chunk_total: 1 });
     await eventually(async () => (await text(page.locator('#importResult')))?.includes('导入完成'), '应显示结果页');
     assert.ok((await text(page.locator('#importResult'))).includes('新增 7'));
     assert.ok(dialogs.some(d => d.includes('阻断的 4 行不会写入')), '确认框说明阻断行不写入');
+
+    // 2b. 物理行号（空行、引号内换行）、定性结果的单位、同一文件内重复业务键、疑似个人信息的研究编号、数值范围、文本换行。
+    const lab2Lines = [LAB_HEADER,
+      'P001,2025-07-01,IGA,,,g/L,阴性,,,',                      // 2 定性结果填了单位：忽略单位
+      '',                                                       // 3 空行
+      'P001,2025-07-02,CREAT,,1.10,μmol/L,,,,"多行\n备注"',     // 4–5 备注含换行
+      'P001,2025-07-03,CREAT,,90,μmol/L,,,,',                   // 6 与第 7 行业务键相同、内容不同
+      'P001,2025-07-03,CREAT,,90,μmol/L,,,,补充',               // 7
+      'P003,2025-07-04,HGB,,120,g/L,,,,',                       // 8
+      'P003,2025-07-04,HGB,,120.0,g/L,,,,',                     // 9 与第 8 行内容相同：警告
+      '13812345678,2025-07-05,HGB,,120,g/L,,,,',                // 10 研究编号疑似手机号
+      'P001,2025-07-06,HGB,,1e20,g/L,,,,',                      // 11 超出数据库范围
+      'P001,2025-07-07,HGB,,120,g/L,"阴\n性",,,',               // 12–13 结果文本含换行
+      'P001,2025-07-08,HGB,,121,g/L,,,,',                       // 14
+    ];
+    await page.setInputFiles('#importFile', csvFile('labs-lines.csv', lab2Lines));
+    await page.locator('#importCounts').waitFor({ state: 'visible' });
+    assert.deepEqual(await counts(page), { total: 10, writable: 5, warn: 1, block: 5 });
+    assert.deepEqual(await page.locator('#importTable tr[data-line]').evaluateAll(t => t.map(x => Number(x.dataset.line))), [2, 4, 6, 7, 8, 9, 10, 11, 12, 14], '预览行号为物理行号');
+    assert.match(await page.locator('#importTable tr[data-line="2"]').getAttribute('class'), /bi-row-ok/, '定性结果填了单位不阻断');
+    assert.ok((await rowText(2)).includes('定性结果不需要单位，已忽略单位'));
+    for (const line of [6, 7]) {
+      assert.match(await page.locator(`#importTable tr[data-line="${line}"]`).getAttribute('class'), /bi-row-block/);
+      assert.ok((await rowText(line)).includes('同一文件内同一业务键有两行内容不同，请合并为一行'), await rowText(line));
+    }
+    assert.match(await page.locator('#importTable tr[data-line="9"]').getAttribute('class'), /bi-row-warn/);
+    assert.ok((await rowText(9)).includes('与第 8 行内容完全相同'));
+    assert.ok(!(await rowText(10)).includes('13812345678') && (await rowText(10)).includes('****'), '疑似个人信息的研究编号在预览中遮盖');
+    assert.ok((await rowText(11)).includes('超出允许范围'));
+    assert.ok((await rowText(12)).includes('换行'));
+    const report2 = await download(page, () => page.click('#btnDownloadImportErrors'));
+    const report2Lines = report2.text.slice(1).split('\r\n');
+    assert.ok(!report2.text.includes('13812345678'), '错误报告不含疑似个人信息的研究编号');
+    assert.ok(report2Lines.some(l => l.startsWith('10,,patient_code,阻断,')), '该行研究编号留空');
+    for (const line of [6, 7, 11, 12]) assert.ok(report2Lines.some(l => l.startsWith(`${line},P001,`)), `错误报告第 ${line} 行`);
+    assert.ok(report2Lines.some(l => l.startsWith('9,P003,patient_code,警告,')));
+    await page.check('#importWarnConfirm');
+    const i2b = mock.rpcCalls('import_registry_rows').length;
+    mock.importReplies.push({ postgrestError: { code: 'P0001', message: 'row_2_unit_not_allowed: unit_symbol', details: null, hint: null } });
+    await page.click('#btnConfirmImport');
+    await eventually(async () => (await text(page.locator('#importResult')))?.includes('导入未全部完成'), '数据库拒绝时报告');
+    assert.ok((await text(page.locator('#importResult'))).includes('第 4 行'), '数据库错误按物理行号显示');
+    assert.deepEqual(mock.rpcCalls('import_registry_rows')[i2b].body.p_rows, [
+      { patient_code: 'P001', lab_date: '2025-07-01', lab_test_code: 'IGA', result_text: '阴性' },
+      { patient_code: 'P001', lab_date: '2025-07-02', lab_test_code: 'CREAT', value_raw: '1.10', unit_symbol: 'μmol/L', notes: '多行\n备注' },
+      { patient_code: 'P003', lab_date: '2025-07-04', lab_test_code: 'HGB', value_raw: '120', unit_symbol: 'g/L' },
+      { patient_code: 'P003', lab_date: '2025-07-04', lab_test_code: 'HGB', value_raw: '120.0', unit_symbol: 'g/L' },
+      { patient_code: 'P001', lab_date: '2025-07-08', lab_test_code: 'HGB', value_raw: '121', unit_symbol: 'g/L' },
+    ], '定性结果不带单位；数值按原文提交');
+    await page.click('#btnCancelImport');
 
     // 3. 终点事件：派生终点阻断、死亡 + 在访患者给警告、“其他”须填细节。
     await page.selectOption('#importType', 'events');
@@ -375,7 +502,7 @@ async function main() {
     const bigCalls = mock.rpcCalls('import_registry_rows').slice(importsBefore).map(r => r.body);
     assert.deepEqual(bigCalls.map(c => c.p_rows.length), [500, 500, 203]);
     assert.equal(new Set(bigCalls.map(c => c.p_batch_id)).size, 3, '每块一个新批次编号');
-    assert.deepEqual(bigCalls[0].p_rows[0], { patient_code: 'P001', drug_name: '药A1', drug_class: '其他', dose_value: 10, dose_unit: 'mg', route: 'PO', frequency: 'qd', start_date: '2025-01-01' });
+    assert.deepEqual(bigCalls[0].p_rows[0], { patient_code: 'P001', drug_name: '药A1', drug_class: '其他', dose_value: '10', dose_unit: 'mg', route: 'PO', frequency: 'qd', start_date: '2025-01-01' });
     const regs = mock.rpcCalls('register_import_file').slice(regsBefore).map(r => r.body);
     assert.deepEqual(regs.map(r => [r.p_batch_id, r.p_chunk_index, r.p_chunk_total]), bigCalls.map((c, i) => [c.p_batch_id, i + 1, 3]));
     assert.ok(regs.every(r => r.p_file_sha256 === sha256(bigBuffer) && r.p_file_name === 'meds-big.csv'), '各块文件 SHA-256 相同，文件名去掉路径');
@@ -414,7 +541,7 @@ async function main() {
     await eventually(async () => (await text(page.locator('#importResult')))?.includes('导入完成'), '重试后完成');
     const [failed, retried] = mock.rpcCalls('import_registry_rows').slice(i3).map(r => r.body);
     assert.equal(retried.p_batch_id, failed.p_batch_id, '网络失败重试沿用同一批次编号');
-    assert.deepEqual(retried.p_rows, [{ patient_code: 'P001', drug_name: '达格列净', drug_class: 'SGLT2抑制剂', dose_value: 10, route: 'PO', frequency: 'qd', start_date: '2025-01-01' }]);
+    assert.deepEqual(retried.p_rows, [{ patient_code: 'P001', drug_name: '达格列净', drug_class: 'SGLT2抑制剂', dose_value: '10', route: 'PO', frequency: 'qd', start_date: '2025-01-01' }]);
 
     // 7. 导入记录与撤销：数据库返回值只作为文字显示；撤销须填写原因；基线批次不能撤销。
     await page.click('#importBatchesDetails summary');
@@ -423,7 +550,9 @@ async function main() {
     assert.ok(listText.includes('化验记录') && listText.includes('患者基线') && listText.includes('已撤销') && listText.includes('2/3'), listText);
     assert.ok(listText.includes('<img src=x'), '恶意文件名按文字显示');
     assert.equal(await page.locator('#importBatchesList img').count(), 0);
-    assert.equal(await page.locator('#importBatchesList [data-undo-index]').count(), 1, '只有未撤销的非基线批次可撤销');
+    assert.equal(await page.locator('#importBatchesList [data-undo-index]').count(), 1, '只有未撤销、支持撤销的非基线批次可撤销');
+    assert.equal(await page.locator('#importBatchesList tr[data-batch-row="3"] [data-undo-index]').count(), 0, '0040 之前的批次不显示撤销按钮');
+    assert.ok((await text(page.locator('#importBatchesList tr[data-batch-row="3"]'))).includes('该批次导入于支持撤销之前，不能自动撤销'));
     await page.click('#importBatchesList [data-undo-index="0"]');
     await page.locator('#importUndoForm').waitFor({ state: 'visible' });
     await page.click('#btnConfirmUndoBatch');
@@ -438,6 +567,7 @@ async function main() {
     assert.deepEqual(mock.rpcCalls('undo_import_batch')[0].body, { p_project_id: PROJECT.id, p_batch_id: BATCHES[0].batch_id, p_reason: '化验日期整列错位，撤销后重新导入' });
     await eventually(async () => (await text(page.locator('#importUndoResult')))?.includes('删除 5 条'), '应显示撤销结果');
     assert.ok((await text(page.locator('#importUndoResult'))).includes('保留 2 条'));
+    assert.ok((await text(page.locator('#importUndoResult'))).includes('因其他批次引用而保留 1 条'), '显示因其他批次引用而保留的记录数');
 
     // 8. 手工录入：终点事件新增类型与判定依据来源；用药剂量数值 + 单位、用药目的、备注。
     await page.fill('#evtPatientCode', 'P003');

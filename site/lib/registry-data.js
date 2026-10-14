@@ -68,17 +68,21 @@ export function normalizeUpcr(value, unit) {
   if (!Number.isFinite(converted)) throw new Error('UPCR 换算结果超出范围');
   return converted;
 }
+/**
+ * CSV 解析。返回 { headers, data, lines }：lines[i] 是 data[i] 这条记录在文件中开始的物理行号（表头为第 1 行），
+ * 空行被跳过、引号内换行跨多行时仍与 Excel 等编辑器中看到的行号一致。
+ */
 export function parseRegistryCsv(input) {
   const text = String(input).replace(/^\uFEFF/, '');
-  let i=0, field='', row=[], quoted=false, closed=false; const rows=[];
+  let i=0, field='', row=[], quoted=false, closed=false, line=1, rowStart=1; const rows=[]; const starts=[];
   function fieldEnd(){ row.push(field); field='';closed=false; }
-  function rowEnd(){ fieldEnd(); if(row.some(v=>v.trim()!=='')) rows.push(row);row=[]; }
+  function rowEnd(){ fieldEnd(); if(row.some(v=>v.trim()!=='')){rows.push(row);starts.push(rowStart);} row=[]; }
   while(i<text.length){ const c=text[i++];
-    if(quoted){ if(c==='"'){ if(text[i]==='"'){field+='"';i++;}else{quoted=false;closed=true;} } else field+=c; continue; }
-    if(c==='"'){if(field!==''||closed) throw new Error('CSV 引号格式错误');quoted=true;continue;}
+    if(quoted){ if(c==='"'){ if(text[i]==='"'){field+='"';i++;}else{quoted=false;closed=true;} } else { field+=c; if(c==='\n'||(c==='\r'&&text[i]!=='\n'))line++; } continue; }
+    if(c==='"'){if(field!==''||closed) throw new Error(`CSV 第 ${line} 行引号格式错误`);quoted=true;continue;}
     if(c===','){fieldEnd();continue;}
-    if(c==='\n'||c==='\r'){if(c==='\r'&&text[i]==='\n')i++;rowEnd();continue;}
-    if(closed){if(c===' '||c==='\t')continue;throw new Error('CSV 引号结束后有多余字符');}
+    if(c==='\n'||c==='\r'){if(c==='\r'&&text[i]==='\n')i++;line++;rowEnd();rowStart=line;continue;}
+    if(closed){if(c===' '||c==='\t')continue;throw new Error(`CSV 第 ${line} 行引号结束后有多余字符`);}
     field+=c;
   }
   if(quoted) throw new Error('CSV 引号未闭合');
@@ -87,11 +91,12 @@ export function parseRegistryCsv(input) {
   const headers=rows[0].map(h=>h.trim().toLowerCase().replace(/\s+/g,'_'));
   if(headers.some(h=>!h)||new Set(headers).size!==headers.length)throw new Error('CSV 表头不能为空或重复');
   if(headers.some(h=>['__proto__','constructor','prototype'].includes(h)))throw new Error('CSV 包含保留列名');
+  const lines=starts.slice(1);
   const data=rows.slice(1).map((cells,n)=>{
-    if(cells.length!==headers.length)throw new Error(`CSV 第 ${n+2} 行列数与表头不一致`);
+    if(cells.length!==headers.length)throw new Error(`CSV 第 ${lines[n]} 行列数与表头不一致`);
     return Object.fromEntries(headers.map((h,j)=>[h,cells[j].trim()]));
   });
-  return {headers,data};
+  return {headers,data,lines};
 }
 export async function readAllRows(sb, table, projectId, assertCurrent = ()=>{}, pageSize=500, filters={}, options={}) {
   // Views such as v_patient_followup_status have no "id" column; callers name a unique key instead.
@@ -260,7 +265,7 @@ const ERROR_MESSAGES=[
   ['baseline_upcr_unit_required','请对照原始报告明确选择基线 UPCR 单位，再保存。'],
   ['conversion_mismatch','UPCR 原始值、单位与换算结果不一致，请重新填写并核对。'],
   ['record_changed_since_import','该记录在上次导入后已被修改。请重新导出核对，再通过“核对 / 更正”处理，避免覆盖新记录。'],
-  ['previously_imported_record_deleted_requires_review','相同内容的随访记录曾录入后又被删除，系统暂停自动保存以便核对，请联系项目负责人确认。'],
+  ['previously_imported_record_deleted_requires_review','相同内容的记录曾导入后又被删除，系统暂停自动保存以便核对，请联系项目负责人确认。'],
   ['same_day_record_conflict','该患者在这一天已有一条数值不同的随访记录。同一天只保留一条，请打开该患者的“随访记录”核对并更正，不能重复录入。'],
   ['duplicate_patient_code_in_batch','同一批基线 CSV 出现重复研究编号，请合并或更正重复行。'],
   ['patient_not_registered','未在本项目找到该研究编号的基线记录，请先在“新增患者”中建立基线并核对编号。'],

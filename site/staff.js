@@ -6,7 +6,7 @@ import { validatePassword } from "/lib/password-strength.js?v=registry-20261012-
 import { strictDate, finiteNumber, normalizeUpcr, parseRegistryCsv, readAllRows, readKeysetRows, exportColumns, sha256Text, BASELINE_IMPORT_FIELDS, VISIT_IMPORT_FIELDS, normalizeImportRow, registryErrorMessage, containsPII, assertNoPII, fieldLabel, creatinineUmol, correctionReasonError, CLINICAL_LIMITS, SCR_MGDL_TO_UMOL } from "/lib/registry-data.js?v=registry-20261012-adoption-v4";
 import { renderOverviewHtml, renderBoardHtml, renderFilterBar, sortBoardRows } from "/lib/followup-board.js?v=registry-20261012-adoption-v4";
 import { createFollowupDialogs } from "/lib/followup-dialogs.js?v=registry-20261012-adoption-v4";
-import { BATCH_KINDS, TEMPLATES as BATCH_TEMPLATES, KIND_LABELS, PII_NOTICE, SKIP_MAPPING, CHUNK_SIZE, MAX_FILE_BYTES, MAX_FILE_ROWS, EVIDENCE_SOURCES, IMPORTABLE_EVENTS, templateCsv, validateBatch, buildChunks, errorReportCsv, piiHeaderColumns, baseFileName, beijingToday } from "/lib/batch-import.js?v=registry-20261012-adoption-v4";
+import { BATCH_KINDS, TEMPLATES as BATCH_TEMPLATES, KIND_LABELS, PII_NOTICE, SKIP_MAPPING, CHUNK_SIZE, MAX_FILE_BYTES, MAX_FILE_ROWS, EVIDENCE_SOURCES, IMPORTABLE_EVENTS, templateCsv, validateBatch, buildChunks, errorReportCsv, piiHeaderColumns, baseFileName, beijingToday, MASKED_CODE } from "/lib/batch-import.js?v=registry-20261012-adoption-v4";
 
 const sb = supabase();
 // 基因数据涉及人类遗传资源管理：默认关闭，仅当服务器配置 CONFIG.FEATURES.GENETICS === true 时显示。
@@ -2984,16 +2984,16 @@ async function handleImportFile(evt){
   const op=captureContext(),type=el.importType.value;
   if(file.size>2*1024*1024)return toast('单次 CSV 不超过2MB、500行，请分为明确的导入批次。');
   try{
-    const {headers,data}=parseRegistryCsv(await file.text());assertContext(op);
+    const {headers,data,lines}=parseRegistryCsv(await file.text());assertContext(op);
     const piiColumns=piiHeaderColumns(headers);
     if(piiColumns.length)throw new Error(`表头含疑似个人信息列（${piiColumns.join('、')}），整份文件已拒绝。${PII_NOTICE}`);
     if(data.length>500)throw new Error('单次最多500行，防止浏览器中断；请分批准备文件');
     const unit=qs('#importBaselineUnit')?.value||'';
-    const results=data.map((row,i)=>{try{assertNoPII(row.patient_code,'研究编号');if(row.notes)assertNoPII(row.notes,'备注');return {row:i+2,ok:true,data:normalizeImportRow(type,row,unit)};}catch(e){return {row:i+2,ok:false,error:e.message,data:row};}});
+    const results=data.map((row,i)=>{try{assertNoPII(row.patient_code,'研究编号');if(row.notes)assertNoPII(row.notes,'备注');return {row:lines[i],ok:true,data:normalizeImportRow(type,row,unit)};}catch(e){return {row:lines[i],ok:false,error:e.message,data:row};}});
     const errors=results.filter(r=>!r.ok);
     _importParsed={op,type,results,batchId:crypto.randomUUID(),filename:file.name};
     el.importSummary.textContent=`目标：${op.project.name} / ${op.project.center_code}。${results.length} 行，${errors.length} 行需修正。整批成功或整批拒绝；基线未提供/空白字段保持原值。以下显示前20行及所有错误。`;
-    const preview=[...results.slice(0,20),...errors.filter(r=>r.row>21)];const cols=[...new Set(preview.flatMap(r=>Object.keys(r.data)))];
+    const preview=[...results.slice(0,20),...errors.filter(r=>r.row>results[19]?.row)];const cols=[...new Set(preview.flatMap(r=>Object.keys(r.data)))];
     el.importTable.innerHTML=`${errors.length?`<div class="warnbox">${errors.map(r=>`第${r.row}行：${escapeHtml(r.error)}`).join('<br>')}</div>`:''}<div style="overflow:auto"><table class="table"><thead><tr><th>行号</th>${cols.map(c=>`<th title="${escapeHtml(c)}">${escapeHtml(fieldLabel(c))}</th>`).join('')}</tr></thead><tbody>${preview.map(r=>`<tr><td>${r.row}${r.ok?'':' ✗'}</td>${cols.map(c=>`<td>${escapeHtml(r.data[c]??'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
     el.btnConfirmImport.dataset.blocked=errors.length?'1':'';el.btnConfirmImport.disabled=!!errors.length||!canProject('can_write');el.importPreview.style.display='block';el.importProgress.style.display='none';
   }catch(e){_importParsed=null;toast('无法预览：'+registryErrorMessage(e));}
@@ -3017,19 +3017,21 @@ async function handleBatchFile(file){
   try{
     const buffer=await file.arrayBuffer();
     const sha256=await sha256Bytes(buffer);
-    const {headers,data}=parseRegistryCsv(new TextDecoder('utf-8').decode(buffer));assertContext(op);
+    const {headers,data,lines}=parseRegistryCsv(new TextDecoder('utf-8').decode(buffer));assertContext(op);
     if(data.length>MAX_FILE_ROWS)throw new Error(`单个文件最多 ${MAX_FILE_ROWS} 行，请拆分为多个文件`);
     if(type==='labs'&&!labCatalog.length){await loadLabCatalog();assertContext(op);}
     if(type==='labs'&&!labCatalog.length)throw new Error('化验项目字典读取失败，请刷新页面后重试');
     const patientMap=await loadImportPatients(op);
-    _importParsed={op,type,batch:true,headers,data,fileName,sha256,mapping:{},patients:patientMap,today:beijingToday(),result:null,chunks:null};
+    _importParsed={op,type,batch:true,headers,data,lines,fileName,sha256,mapping:{},patients:patientMap,today:beijingToday(),result:null,chunks:null};
     revalidateBatch();
   }catch(e){if(currentContext(op)){_importParsed=null;toast('无法预览：'+registryErrorMessage(e));}}
 }
 function revalidateBatch(){
   const b=_importParsed;if(!b?.batch)return;
-  b.result=validateBatch(b.type,b.headers,b.data,{catalog:labCatalog,unitMap,patients:b.patients,today:b.today,mapping:b.mapping,containsPII});
+  b.result=validateBatch(b.type,b.headers,b.data,{catalog:labCatalog,unitMap,patients:b.patients,today:b.today,mapping:b.mapping,containsPII,lines:b.lines});
   _lastImportReport={type:b.type,result:b.result};
+  // 校验结果变化（新文件、处理未映射项目等）后须重新核对警告。
+  const warnBox=qs('#importWarnConfirm');if(warnBox)warnBox.checked=false;
   renderBatchPreview();
 }
 function renderBatchPreview(){
@@ -3052,7 +3054,7 @@ function renderBatchPreview(){
     const problems=r.rows.filter(x=>x.status!=='ok'),fine=r.rows.filter(x=>x.status==='ok');
     const shown=[...problems.slice(0,300),...fine.slice(0,20)].sort((a,b2)=>a.line-b2.line);
     const cols=b.headers;
-    el.importTable.innerHTML=`<table class="table"><thead><tr><th>行号</th><th>状态</th>${cols.map(h=>`<th title="${escapeHtml(h)}">${escapeHtml(fieldLabel(h))}</th>`).join('')}<th>问题与提示</th></tr></thead><tbody>${shown.map(x=>`<tr class="bi-row-${x.status}" data-line="${Number(x.line)}"><td>${Number(x.line)}</td><td>${ROW_STATUS_LABELS[x.status]}</td>${cols.map(h=>`<td>${escapeHtml(x.cells[h]??'')}</td>`).join('')}<td>${x.issues.map(i=>`<div class="bi-issue-${i.level}">${escapeHtml(fieldLabel(i.col))}：${escapeHtml(i.reason)}${i.fix?' '+escapeHtml(i.fix):''}</div>`).join('')}</td></tr>`).join('')}</tbody></table>${problems.length>300||fine.length>20?`<div class="muted small" style="padding:6px">仅显示前 300 个问题行与前 20 个正常行；完整清单请下载错误报告。</div>`:''}`;
+    el.importTable.innerHTML=`<table class="table"><thead><tr><th>行号</th><th>状态</th>${cols.map(h=>`<th title="${escapeHtml(h)}">${escapeHtml(fieldLabel(h))}</th>`).join('')}<th>问题与提示</th></tr></thead><tbody>${shown.map(x=>`<tr class="bi-row-${x.status}" data-line="${Number(x.line)}"><td>${Number(x.line)}</td><td>${ROW_STATUS_LABELS[x.status]}</td>${cols.map(h=>`<td>${escapeHtml(h==='patient_code'&&x.codePii?MASKED_CODE:(x.cells[h]??''))}</td>`).join('')}<td>${x.issues.map(i=>`<div class="bi-issue-${i.level}">${escapeHtml(fieldLabel(i.col))}：${escapeHtml(i.reason)}${i.fix?' '+escapeHtml(i.fix):''}</div>`).join('')}</td></tr>`).join('')}</tbody></table>${problems.length>300||fine.length>20?`<div class="muted small" style="padding:6px">仅显示前 300 个问题行与前 20 个正常行；完整清单请下载错误报告。</div>`:''}`;
   }
   const warnRow=qs('#importWarnConfirmRow');warnRow.style.display=c.warn?'flex':'none';
   const warnBox=qs('#importWarnConfirm');warnBox.disabled=locked;if(!c.warn)warnBox.checked=false;
@@ -3087,7 +3089,7 @@ async function confirmImport(){
     toast('整批导入已完成');_importParsed=null;el.importFile.value='';el.importPreview.style.display='none';
     await Promise.all([refreshFollowup(batch.op),loadExtras(),loadIssueSummary()]);
     if(qs('#importBatchesDetails')?.open)loadImportBatches();
-  }catch(e){if(batch&&currentContext(batch.op)){el.importProgress.style.display='block';el.importProgress.textContent=`未确认完成：${registryErrorMessage(e)} 批次 ${batch.batchId} 已保留，可修复后用同一预览重试；不要改用新批次重复提交。`;}toast('导入未完成：'+registryErrorMessage(e));}
+  }catch(e){const rowLine=n=>batch?.results?.[n-1]?.row??null;if(batch&&currentContext(batch.op)){el.importProgress.style.display='block';el.importProgress.textContent=`未确认完成：${registryErrorMessage(e,{rowLine})} 批次 ${batch.batchId} 已保留，可修复后用同一预览重试；不要改用新批次重复提交。`;}toast('导入未完成：'+registryErrorMessage(e,{rowLine}));}
   finally{setBusy(btn,false);}
 }
 async function confirmBatchImport(){
@@ -3177,10 +3179,10 @@ function renderImportBatches(){
     <td>${escapeHtml(KIND_LABELS[r.kind]||'其他')}</td><td>${escapeHtml(fmtDateTime(r.created_at))}</td><td>${escapeHtml(r.created_by_email||'—')}</td><td>${escapeHtml(r.file_name||'—')}</td>
     <td>${r.chunk_index&&r.chunk_total?`${num(r.chunk_index)}/${num(r.chunk_total)}`:'—'}</td><td>${num(r.inserted)} / ${num(r.skipped)}</td>
     <td>${r.undone_at?`<span class="badge bad">已撤销</span> ${escapeHtml(fmtDateTime(r.undone_at))}${r.undo_reason?`：${escapeHtml(r.undo_reason)}`:''}`:'<span class="badge ok">有效</span>'}</td>
-    <td>${canWrite&&!r.undone_at&&UNDOABLE_KINDS.includes(r.kind)?`<button class="btn small danger" data-project-capability="can_write" data-undo-index="${i}">撤销本批次</button>`:''}</td></tr>`).join('')}</tbody></table>`;
+    <td>${!r.undone_at&&UNDOABLE_KINDS.includes(r.kind)?(r.undo_supported===true?(canWrite?`<button class="btn small danger" data-project-capability="can_write" data-undo-index="${i}">撤销本批次</button>`:''):'<span class="muted small" data-undo-unsupported>该批次导入于支持撤销之前，不能自动撤销</span>'):''}</td></tr>`).join('')}</tbody></table>`;
 }
 function openUndoForm(index){
-  const target=_importBatches[index];if(!target||!requireProjectCapability('can_write'))return;
+  const target=_importBatches[index];if(!target||target.undo_supported!==true||!requireProjectCapability('can_write'))return;
   _undoTarget=target;
   const form=qs('#importUndoForm');const label=qs('#importUndoTarget');
   if(label)label.textContent=`撤销批次：${KIND_LABELS[target.kind]||'其他'}，${fmtDateTime(target.created_at)}，${target.file_name||'未记录文件名'}${target.chunk_index&&target.chunk_total?`（第 ${Number(target.chunk_index)}/${Number(target.chunk_total)} 块）`:''}，新增 ${Number(target.inserted)||0} 条。`;
@@ -3198,7 +3200,7 @@ async function confirmUndoBatch(){
   try{
     const {data,error}=await sb.rpc('undo_import_batch',{p_project_id:op.project.id,p_batch_id:target.batch_id,p_reason:reason});if(error)throw error;assertContext(op);
     closeUndoForm();
-    out.textContent=data?.already_undone?'该批次此前已撤销，本次未重复操作。':`已撤销本批次：删除 ${Number(data?.deleted)||0} 条记录；因导入后已被更正而保留 ${Number(data?.kept_changed)||0} 条。`;
+    out.textContent=data?.already_undone?'该批次此前已撤销，本次未重复操作。':`已撤销本批次：删除 ${Number(data?.deleted)||0} 条记录；因导入后已被更正而保留 ${Number(data?.kept_changed)||0} 条${data?.kept_referenced!=null?`；因其他批次引用而保留 ${Number(data.kept_referenced)||0} 条`:''}。`;
     await Promise.allSettled([loadImportBatches(),loadExtras(),target.kind==='visits'?refreshFollowup(op):Promise.resolve()]);
   }catch(e){if(currentContext(op))out.textContent='撤销未完成：'+registryErrorMessage(e);}
   finally{setBusy(btn,false);}
