@@ -933,10 +933,22 @@
           "auth_update": true,
           "constraints": [
             {
+              "name": "events_long_event_detail_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "bf3880901751d197e30b32b3c0f07265"
+            },
+            {
               "name": "events_long_event_type_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "e1314d910bac75490fc3e6e301bc20dc"
+              "definition_md5": "52c50cc6f1510f773d57453bcc1409b9"
+            },
+            {
+              "name": "events_long_evidence_source_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "d0eb6ce5c230de62546ecf940e0d6540"
             },
             {
               "name": "events_long_patient_project_fk",
@@ -1065,14 +1077,14 @@
           "table": "lab_test_catalog",
           "schema": "public",
           "force_rls": false,
-          "anon_delete": true,
-          "anon_insert": true,
+          "anon_delete": false,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_delete": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_delete": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "constraints": [
             {
               "name": "lab_test_catalog_pkey",
@@ -1087,14 +1099,14 @@
           "table": "lab_test_unit_map",
           "schema": "public",
           "force_rls": false,
-          "anon_delete": true,
-          "anon_insert": true,
+          "anon_delete": false,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_delete": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_delete": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "constraints": [
             {
               "name": "lab_test_unit_map_lab_test_code_fkey",
@@ -1131,10 +1143,22 @@
           "auth_update": true,
           "constraints": [
             {
+              "name": "labs_long_abnormal_flag_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "80c28022b83e8bc363aba7c337831bf5"
+            },
+            {
               "name": "labs_long_lab_test_code_fkey",
               "type": "f",
               "validated": true,
               "definition_md5": "c9e8197145542eba5e1d7ff1edf1726c"
+            },
+            {
+              "name": "labs_long_notes_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "5dc158536c763a86f88eee1ad9897a38"
             },
             {
               "name": "labs_long_patient_project_fk",
@@ -1153,6 +1177,18 @@
               "type": "f",
               "validated": true,
               "definition_md5": "07f3414b4de8691ee7edea30c01f758f"
+            },
+            {
+              "name": "labs_long_ref_range_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "eab385abd7638ac21d5c7d12423de9fc"
+            },
+            {
+              "name": "labs_long_result_text_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "b2b468f226dd2efd24376b838e3f7380"
             },
             {
               "name": "labs_long_unit_symbol_fkey",
@@ -1176,6 +1212,36 @@
           "auth_select": true,
           "auth_update": true,
           "constraints": [
+            {
+              "name": "meds_long_dose_unit_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "913e24573e2203f3e425058c70a08f1b"
+            },
+            {
+              "name": "meds_long_dose_value_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "47329f2365242fbf4fec4f0039c376b1"
+            },
+            {
+              "name": "meds_long_end_not_before_start",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "792653a0333f3c70acf4dfa4dc310731"
+            },
+            {
+              "name": "meds_long_indication_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "1c3b0193296bc3669f4ca01507d7a053"
+            },
+            {
+              "name": "meds_long_notes_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "5dc158536c763a86f88eee1ad9897a38"
+            },
             {
               "name": "meds_long_patient_project_fk",
               "type": "f",
@@ -1663,10 +1729,28 @@
               "definition_md5": "508a4cf20410e80e6cb722233bc03330"
             },
             {
+              "name": "registry_import_batches_file_info",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "183949b968855b35d5b35fa1ba6fac33"
+            },
+            {
+              "name": "registry_import_batches_file_name_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "2c7e216c7652155fef5d5f544bef7153"
+            },
+            {
+              "name": "registry_import_batches_file_sha256_format",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "32c21f7659c55aedf4c9a6be5d5811ee"
+            },
+            {
               "name": "registry_import_batches_kind_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "9eaf41a57beb7c0a5e2f986efe12cda4"
+              "definition_md5": "a56d94ed560a2a8cee1ec5fe1c32ecb7"
             },
             {
               "name": "registry_import_batches_pkey",
@@ -1679,6 +1763,24 @@
               "type": "f",
               "validated": true,
               "definition_md5": "07f3414b4de8691ee7edea30c01f758f"
+            },
+            {
+              "name": "registry_import_batches_undo_info",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "70217034a1b3fb12ee22e0bc76759270"
+            },
+            {
+              "name": "registry_import_batches_undo_reason_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "e39e73b270ab248295be498a37b1dca6"
+            },
+            {
+              "name": "registry_import_batches_undone_by_fkey",
+              "type": "f",
+              "validated": true,
+              "definition_md5": "45f8d3fbaceb56f785693bec0016404f"
             }
           ]
         },
@@ -1697,10 +1799,16 @@
           "auth_update": false,
           "constraints": [
             {
+              "name": "registry_import_records_action_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "f90f9f74ef63afcb00a18f3bc3085f2d"
+            },
+            {
               "name": "registry_import_records_kind_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "9eaf41a57beb7c0a5e2f986efe12cda4"
+              "definition_md5": "a56d94ed560a2a8cee1ec5fe1c32ecb7"
             },
             {
               "name": "registry_import_records_pkey",
@@ -1713,6 +1821,12 @@
               "type": "f",
               "validated": true,
               "definition_md5": "07f3414b4de8691ee7edea30c01f758f"
+            },
+            {
+              "name": "registry_import_records_record_sha256_format",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "937ee7b37813dfaebb2e98bd99eddc4f"
             }
           ]
         },
@@ -4732,12 +4846,50 @@
           "array_dimensions": 0
         },
         {
+          "name": "event_detail",
+          "type": "text",
+          "table": "events_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "event_type",
           "type": "text",
           "table": "events_long",
           "schema": "public",
           "identity": "",
           "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "evidence_source",
+          "type": "text",
+          "table": "events_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
           "anon_insert": true,
@@ -5747,12 +5899,12 @@
           "not_null": true,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -5766,12 +5918,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -5785,12 +5937,12 @@
           "not_null": false,
           "collation": null,
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": "75230039beb12ce952f24927f2bfa2f2",
           "has_default": true,
           "array_dimensions": 0
@@ -5804,12 +5956,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -5823,12 +5975,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -5842,12 +5994,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -5861,12 +6013,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -5880,12 +6032,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -5899,12 +6051,12 @@
           "not_null": true,
           "collation": null,
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": "68934a3e9455fa72420237eb05902327",
           "has_default": true,
           "array_dimensions": 0
@@ -5918,12 +6070,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -5937,12 +6089,12 @@
           "not_null": true,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": "3daeaa9d45824153e44ad73a1ce76472",
           "has_default": true,
           "array_dimensions": 0
@@ -5956,12 +6108,12 @@
           "not_null": true,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -5975,12 +6127,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -5994,12 +6146,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -6013,12 +6165,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -6032,12 +6184,12 @@
           "not_null": true,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -6051,12 +6203,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -6070,12 +6222,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -6089,12 +6241,12 @@
           "not_null": true,
           "collation": null,
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": "68934a3e9455fa72420237eb05902327",
           "has_default": true,
           "array_dimensions": 0
@@ -6108,12 +6260,12 @@
           "not_null": true,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -6127,12 +6279,12 @@
           "not_null": true,
           "collation": null,
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": "c4ca4238a0b923820dcc509a6f75849b",
           "has_default": true,
           "array_dimensions": 0
@@ -6146,12 +6298,12 @@
           "not_null": true,
           "collation": null,
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": "cfcd208495d565ef66e7dff9f98764da",
           "has_default": true,
           "array_dimensions": 0
@@ -6163,6 +6315,25 @@
           "schema": "public",
           "identity": "",
           "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "abnormal_flag",
+          "type": "text",
+          "table": "labs_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
           "anon_insert": true,
@@ -6366,6 +6537,25 @@
           "array_dimensions": 0
         },
         {
+          "name": "notes",
+          "type": "text",
+          "table": "labs_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "patient_code",
           "type": "text",
           "table": "labs_long",
@@ -6405,6 +6595,44 @@
         },
         {
           "name": "qc_reason",
+          "type": "text",
+          "table": "labs_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "ref_range",
+          "type": "text",
+          "table": "labs_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "result_text",
           "type": "text",
           "table": "labs_long",
           "schema": "public",
@@ -6594,6 +6822,44 @@
           "array_dimensions": 0
         },
         {
+          "name": "dose_unit",
+          "type": "text",
+          "table": "meds_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "dose_value",
+          "type": "numeric",
+          "table": "meds_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "drug_class",
           "type": "text",
           "table": "meds_long",
@@ -6686,6 +6952,44 @@
           "auth_update": true,
           "default_md5": "f3b72bb359a50b640590970a2ab8e514",
           "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "indication",
+          "type": "text",
+          "table": "meds_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "table": "meds_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
           "array_dimensions": 0
         },
         {
@@ -9140,6 +9444,44 @@
           "array_dimensions": 0
         },
         {
+          "name": "chunk_index",
+          "type": "integer",
+          "table": "registry_import_batches",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "chunk_total",
+          "type": "integer",
+          "table": "registry_import_batches",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "content_sha256",
           "type": "text",
           "table": "registry_import_batches",
@@ -9175,6 +9517,44 @@
           "auth_update": false,
           "default_md5": "75230039beb12ce952f24927f2bfa2f2",
           "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "file_name",
+          "type": "text",
+          "table": "registry_import_batches",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "file_sha256",
+          "type": "text",
+          "table": "registry_import_batches",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
           "array_dimensions": 0
         },
         {
@@ -9222,6 +9602,139 @@
           "schema": "public",
           "identity": "",
           "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "undo_reason",
+          "type": "text",
+          "table": "registry_import_batches",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "undo_result",
+          "type": "jsonb",
+          "table": "registry_import_batches",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "undo_tracked",
+          "type": "boolean",
+          "table": "registry_import_batches",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": "68934a3e9455fa72420237eb05902327",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "undone_at",
+          "type": "timestamp with time zone",
+          "table": "registry_import_batches",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "undone_by",
+          "type": "uuid",
+          "table": "registry_import_batches",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "action",
+          "type": "text",
+          "table": "registry_import_records",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "batch_id",
+          "type": "uuid",
+          "table": "registry_import_records",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
           "collation": null,
           "generated": "",
           "anon_insert": false,
@@ -9318,6 +9831,25 @@
           "identity": "",
           "not_null": true,
           "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "record_sha256",
+          "type": "text",
+          "table": "registry_import_records",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
           "generated": "",
           "anon_insert": false,
           "anon_select": false,
@@ -12741,6 +13273,68 @@
         },
         {
           "live": true,
+          "name": "registry_import_batches_project_created_idx",
+          "ready": true,
+          "table": "registry_import_batches",
+          "valid": true,
+          "schema": "public",
+          "unique": false,
+          "columns": [
+            {
+              "column": "project_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "created_at",
+              "included": false,
+              "position": 2,
+              "expression": false
+            }
+          ],
+          "primary": false,
+          "immediate": true,
+          "key_count": 2,
+          "predicate_md5": null,
+          "definition_md5": "abaafd77b5185a507e37ab85fc1ab3bf",
+          "attribute_count": 2,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
+          "name": "registry_import_records_batch_idx",
+          "ready": true,
+          "table": "registry_import_records",
+          "valid": true,
+          "schema": "public",
+          "unique": false,
+          "columns": [
+            {
+              "column": "project_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "batch_id",
+              "included": false,
+              "position": 2,
+              "expression": false
+            }
+          ],
+          "primary": false,
+          "immediate": true,
+          "key_count": 2,
+          "predicate_md5": "ca0355eac64d39deb86c9e8217d5c37c",
+          "definition_md5": "8f0910f3c8ec21f119e60e1b1d29fb0c",
+          "attribute_count": 2,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
           "name": "registry_import_records_pkey",
           "ready": true,
           "table": "registry_import_records",
@@ -14285,6 +14879,13 @@
           "table": "events_long",
           "schema": "public",
           "enabled": "O",
+          "trigger": "registry_audit_event",
+          "definition_md5": "bc510535cd0c02ea3045ddf042e5a54f"
+        },
+        {
+          "table": "events_long",
+          "schema": "public",
+          "enabled": "O",
           "trigger": "tr_events_created_by",
           "definition_md5": "66a6a398c97600751f9bf5eac78ea49b"
         },
@@ -14300,7 +14901,7 @@
           "schema": "public",
           "enabled": "O",
           "trigger": "trg_pii_guard_events",
-          "definition_md5": "48c317cfe950f4aeb1dcd7fac041ea7e"
+          "definition_md5": "118323cde9536235ab239bedf81611d0"
         },
         {
           "table": "ktx_baseline_ext",
@@ -14398,14 +14999,14 @@
           "schema": "public",
           "enabled": "O",
           "trigger": "trg_normalize_lab_row",
-          "definition_md5": "8b5a964b34c02f8148ffdb99e0530c96"
+          "definition_md5": "384fb5bcd18ea60f9647b925bf7cc038"
         },
         {
           "table": "labs_long",
           "schema": "public",
           "enabled": "O",
           "trigger": "trg_pii_guard_labs",
-          "definition_md5": "1c62fd8a184a29eb8df3adb21e03c226"
+          "definition_md5": "8cd0ef2c6571c75bf4d99cc851d63d73"
         },
         {
           "table": "labs_long",
@@ -14420,6 +15021,13 @@
           "enabled": "O",
           "trigger": "a_registry_identity",
           "definition_md5": "b4a46fc1797bde188223514ce4e4ff13"
+        },
+        {
+          "table": "meds_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "registry_audit_med",
+          "definition_md5": "027b808f640e74c5757b756877815096"
         },
         {
           "table": "meds_long",
@@ -14441,6 +15049,13 @@
           "enabled": "O",
           "trigger": "tr_meds_updated_meta",
           "definition_md5": "e1ce507c2f409f8049be2370d0b050cd"
+        },
+        {
+          "table": "meds_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "trg_pii_guard_meds",
+          "definition_md5": "473f54ca8121a6d8005f35968b71bb1a"
         },
         {
           "table": "partner_contracts",
@@ -14919,7 +15534,7 @@
           "signature": "_registry_input_columns(text)",
           "volatility": "i",
           "anon_execute": false,
-          "definition_md5": "e9efa32a4592c092d04737c4cb2506f7",
+          "definition_md5": "0c7f2e11aea23d10dc63dd94336c17cf",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -14931,7 +15546,7 @@
           "signature": "_registry_validate_input(text,jsonb)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "277a428d9a9ad976924203b441208f27",
+          "definition_md5": "cbdf1413ff5885aecdb626976923c7b3",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -15363,7 +15978,7 @@
           "signature": "correct_registry_record(uuid,text,uuid,jsonb,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "78d24940c16c8e084ae45eb44c50b585",
+          "definition_md5": "452baccbc9a0ce4a1d26798305634698",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -15555,7 +16170,7 @@
           "signature": "import_registry_rows(uuid,text,jsonb,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "301a628a806c8f19adc57d9d4a5f3457",
+          "definition_md5": "ecb0a2399f238d085d484835c3a3093f",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -15568,6 +16183,18 @@
           "volatility": "s",
           "anon_execute": false,
           "definition_md5": "dae547a3a80d336eb5f82c6d7cb67992",
+          "security_definer": true,
+          "authenticated_execute": true
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "list_import_batches(uuid,integer)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "c05b98e546d595b11ea0b5cef7f89d3a",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -15756,6 +16383,18 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "register_import_file(uuid,uuid,text,text,integer,integer)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "bdb4923224817891076b0e4b4465a0d9",
+          "security_definer": true,
+          "authenticated_execute": true
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "registry_private.assert_token(patient_tokens,boolean)",
           "volatility": "s",
           "anon_execute": false,
@@ -15784,6 +16423,18 @@
           "volatility": "v",
           "anon_execute": false,
           "definition_md5": "571528ad641ab72949be9598c528dd89",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "registry_private.check_clinical_row(text,jsonb)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "55ecf15a6656607747a1e66081543dde",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -15850,6 +16501,30 @@
         {
           "owner": "postgres",
           "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "registry_private.import_clinical_row(uuid,text,jsonb,integer,uuid)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "bbf2e11aee8733912fbfd4d9c2733c24",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "registry_private.import_record_digest(text,uuid)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "b00e0893a2a6c890546d4c516653114f",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
           "language": "sql",
           "parallel": "u",
           "signature": "registry_private.local_today()",
@@ -15879,7 +16554,7 @@
           "signature": "registry_private.normalize_lab_row()",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "bdf97f9c13842737f69f79c83199dc5e",
+          "definition_md5": "e776b002c85777c586bf635cb2b90964",
           "security_definer": true,
           "authenticated_execute": false
         },
@@ -16044,6 +16719,18 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "registry_private.validate_clinical_input(text,jsonb)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "0fbd4b50cf825cc05b8b74737744d63d",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "remove_project_member(uuid,uuid)",
           "volatility": "v",
           "anon_execute": false,
@@ -16144,6 +16831,18 @@
           "volatility": "v",
           "anon_execute": false,
           "definition_md5": "d7c72adbfe1a17b7eb0b206f1cc8894d",
+          "security_definer": true,
+          "authenticated_execute": true
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "undo_import_batch(uuid,uuid,text)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "0ce0463425290172bd0180cc15f6e1a4",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -17144,10 +17843,22 @@
           "auth_update": true,
           "constraints": [
             {
+              "name": "events_long_event_detail_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "bf3880901751d197e30b32b3c0f07265"
+            },
+            {
               "name": "events_long_event_type_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "e1314d910bac75490fc3e6e301bc20dc"
+              "definition_md5": "52c50cc6f1510f773d57453bcc1409b9"
+            },
+            {
+              "name": "events_long_evidence_source_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "d0eb6ce5c230de62546ecf940e0d6540"
             },
             {
               "name": "events_long_patient_project_fk",
@@ -17276,14 +17987,14 @@
           "table": "lab_test_catalog",
           "schema": "public",
           "force_rls": false,
-          "anon_delete": true,
-          "anon_insert": true,
+          "anon_delete": false,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_delete": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_delete": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "constraints": [
             {
               "name": "lab_test_catalog_pkey",
@@ -17298,14 +18009,14 @@
           "table": "lab_test_unit_map",
           "schema": "public",
           "force_rls": false,
-          "anon_delete": true,
-          "anon_insert": true,
+          "anon_delete": false,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_delete": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_delete": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "constraints": [
             {
               "name": "lab_test_unit_map_lab_test_code_fkey",
@@ -17342,10 +18053,22 @@
           "auth_update": true,
           "constraints": [
             {
+              "name": "labs_long_abnormal_flag_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "80c28022b83e8bc363aba7c337831bf5"
+            },
+            {
               "name": "labs_long_lab_test_code_fkey",
               "type": "f",
               "validated": true,
               "definition_md5": "c9e8197145542eba5e1d7ff1edf1726c"
+            },
+            {
+              "name": "labs_long_notes_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "5dc158536c763a86f88eee1ad9897a38"
             },
             {
               "name": "labs_long_patient_project_fk",
@@ -17364,6 +18087,18 @@
               "type": "f",
               "validated": true,
               "definition_md5": "07f3414b4de8691ee7edea30c01f758f"
+            },
+            {
+              "name": "labs_long_ref_range_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "eab385abd7638ac21d5c7d12423de9fc"
+            },
+            {
+              "name": "labs_long_result_text_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "b2b468f226dd2efd24376b838e3f7380"
             },
             {
               "name": "labs_long_unit_symbol_fkey",
@@ -17387,6 +18122,36 @@
           "auth_select": true,
           "auth_update": true,
           "constraints": [
+            {
+              "name": "meds_long_dose_unit_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "913e24573e2203f3e425058c70a08f1b"
+            },
+            {
+              "name": "meds_long_dose_value_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "47329f2365242fbf4fec4f0039c376b1"
+            },
+            {
+              "name": "meds_long_end_not_before_start",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "792653a0333f3c70acf4dfa4dc310731"
+            },
+            {
+              "name": "meds_long_indication_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "1c3b0193296bc3669f4ca01507d7a053"
+            },
+            {
+              "name": "meds_long_notes_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "5dc158536c763a86f88eee1ad9897a38"
+            },
             {
               "name": "meds_long_patient_project_fk",
               "type": "f",
@@ -17874,10 +18639,28 @@
               "definition_md5": "508a4cf20410e80e6cb722233bc03330"
             },
             {
+              "name": "registry_import_batches_file_info",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "183949b968855b35d5b35fa1ba6fac33"
+            },
+            {
+              "name": "registry_import_batches_file_name_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "2c7e216c7652155fef5d5f544bef7153"
+            },
+            {
+              "name": "registry_import_batches_file_sha256_format",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "32c21f7659c55aedf4c9a6be5d5811ee"
+            },
+            {
               "name": "registry_import_batches_kind_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "9eaf41a57beb7c0a5e2f986efe12cda4"
+              "definition_md5": "a56d94ed560a2a8cee1ec5fe1c32ecb7"
             },
             {
               "name": "registry_import_batches_pkey",
@@ -17890,6 +18673,24 @@
               "type": "f",
               "validated": true,
               "definition_md5": "07f3414b4de8691ee7edea30c01f758f"
+            },
+            {
+              "name": "registry_import_batches_undo_info",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "70217034a1b3fb12ee22e0bc76759270"
+            },
+            {
+              "name": "registry_import_batches_undo_reason_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "e39e73b270ab248295be498a37b1dca6"
+            },
+            {
+              "name": "registry_import_batches_undone_by_fkey",
+              "type": "f",
+              "validated": true,
+              "definition_md5": "45f8d3fbaceb56f785693bec0016404f"
             }
           ]
         },
@@ -17908,10 +18709,16 @@
           "auth_update": false,
           "constraints": [
             {
+              "name": "registry_import_records_action_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "f90f9f74ef63afcb00a18f3bc3085f2d"
+            },
+            {
               "name": "registry_import_records_kind_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "9eaf41a57beb7c0a5e2f986efe12cda4"
+              "definition_md5": "a56d94ed560a2a8cee1ec5fe1c32ecb7"
             },
             {
               "name": "registry_import_records_pkey",
@@ -17924,6 +18731,12 @@
               "type": "f",
               "validated": true,
               "definition_md5": "07f3414b4de8691ee7edea30c01f758f"
+            },
+            {
+              "name": "registry_import_records_record_sha256_format",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "937ee7b37813dfaebb2e98bd99eddc4f"
             }
           ]
         },
@@ -20943,12 +21756,50 @@
           "array_dimensions": 0
         },
         {
+          "name": "event_detail",
+          "type": "text",
+          "table": "events_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "event_type",
           "type": "text",
           "table": "events_long",
           "schema": "public",
           "identity": "",
           "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "evidence_source",
+          "type": "text",
+          "table": "events_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
           "anon_insert": true,
@@ -21958,12 +22809,12 @@
           "not_null": true,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -21977,12 +22828,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -21996,12 +22847,12 @@
           "not_null": false,
           "collation": null,
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": "75230039beb12ce952f24927f2bfa2f2",
           "has_default": true,
           "array_dimensions": 0
@@ -22015,12 +22866,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -22034,12 +22885,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -22053,12 +22904,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -22072,12 +22923,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -22091,12 +22942,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -22110,12 +22961,12 @@
           "not_null": true,
           "collation": null,
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": "68934a3e9455fa72420237eb05902327",
           "has_default": true,
           "array_dimensions": 0
@@ -22129,12 +22980,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -22148,12 +22999,12 @@
           "not_null": true,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": "3daeaa9d45824153e44ad73a1ce76472",
           "has_default": true,
           "array_dimensions": 0
@@ -22167,12 +23018,12 @@
           "not_null": true,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -22186,12 +23037,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -22205,12 +23056,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -22224,12 +23075,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -22243,12 +23094,12 @@
           "not_null": true,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -22262,12 +23113,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -22281,12 +23132,12 @@
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -22300,12 +23151,12 @@
           "not_null": true,
           "collation": null,
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": "68934a3e9455fa72420237eb05902327",
           "has_default": true,
           "array_dimensions": 0
@@ -22319,12 +23170,12 @@
           "not_null": true,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -22338,12 +23189,12 @@
           "not_null": true,
           "collation": null,
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": "c4ca4238a0b923820dcc509a6f75849b",
           "has_default": true,
           "array_dimensions": 0
@@ -22357,12 +23208,12 @@
           "not_null": true,
           "collation": null,
           "generated": "",
-          "anon_insert": true,
+          "anon_insert": false,
           "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
+          "anon_update": false,
+          "auth_insert": false,
           "auth_select": true,
-          "auth_update": true,
+          "auth_update": false,
           "default_md5": "cfcd208495d565ef66e7dff9f98764da",
           "has_default": true,
           "array_dimensions": 0
@@ -22374,6 +23225,25 @@
           "schema": "public",
           "identity": "",
           "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "abnormal_flag",
+          "type": "text",
+          "table": "labs_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
           "collation": "pg_catalog.\"default\"",
           "generated": "",
           "anon_insert": true,
@@ -22577,6 +23447,25 @@
           "array_dimensions": 0
         },
         {
+          "name": "notes",
+          "type": "text",
+          "table": "labs_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "patient_code",
           "type": "text",
           "table": "labs_long",
@@ -22616,6 +23505,44 @@
         },
         {
           "name": "qc_reason",
+          "type": "text",
+          "table": "labs_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "ref_range",
+          "type": "text",
+          "table": "labs_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "result_text",
           "type": "text",
           "table": "labs_long",
           "schema": "public",
@@ -22805,6 +23732,44 @@
           "array_dimensions": 0
         },
         {
+          "name": "dose_unit",
+          "type": "text",
+          "table": "meds_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "dose_value",
+          "type": "numeric",
+          "table": "meds_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "drug_class",
           "type": "text",
           "table": "meds_long",
@@ -22897,6 +23862,44 @@
           "auth_update": true,
           "default_md5": "f3b72bb359a50b640590970a2ab8e514",
           "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "indication",
+          "type": "text",
+          "table": "meds_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "table": "meds_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
           "array_dimensions": 0
         },
         {
@@ -25351,6 +26354,44 @@
           "array_dimensions": 0
         },
         {
+          "name": "chunk_index",
+          "type": "integer",
+          "table": "registry_import_batches",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "chunk_total",
+          "type": "integer",
+          "table": "registry_import_batches",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "content_sha256",
           "type": "text",
           "table": "registry_import_batches",
@@ -25386,6 +26427,44 @@
           "auth_update": false,
           "default_md5": "75230039beb12ce952f24927f2bfa2f2",
           "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "file_name",
+          "type": "text",
+          "table": "registry_import_batches",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "file_sha256",
+          "type": "text",
+          "table": "registry_import_batches",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
           "array_dimensions": 0
         },
         {
@@ -25433,6 +26512,139 @@
           "schema": "public",
           "identity": "",
           "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "undo_reason",
+          "type": "text",
+          "table": "registry_import_batches",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "undo_result",
+          "type": "jsonb",
+          "table": "registry_import_batches",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "undo_tracked",
+          "type": "boolean",
+          "table": "registry_import_batches",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": "68934a3e9455fa72420237eb05902327",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "undone_at",
+          "type": "timestamp with time zone",
+          "table": "registry_import_batches",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "undone_by",
+          "type": "uuid",
+          "table": "registry_import_batches",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "action",
+          "type": "text",
+          "table": "registry_import_records",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "batch_id",
+          "type": "uuid",
+          "table": "registry_import_records",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
           "collation": null,
           "generated": "",
           "anon_insert": false,
@@ -25529,6 +26741,25 @@
           "identity": "",
           "not_null": true,
           "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "record_sha256",
+          "type": "text",
+          "table": "registry_import_records",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
           "generated": "",
           "anon_insert": false,
           "anon_select": false,
@@ -28952,6 +30183,68 @@
         },
         {
           "live": true,
+          "name": "registry_import_batches_project_created_idx",
+          "ready": true,
+          "table": "registry_import_batches",
+          "valid": true,
+          "schema": "public",
+          "unique": false,
+          "columns": [
+            {
+              "column": "project_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "created_at",
+              "included": false,
+              "position": 2,
+              "expression": false
+            }
+          ],
+          "primary": false,
+          "immediate": true,
+          "key_count": 2,
+          "predicate_md5": null,
+          "definition_md5": "abaafd77b5185a507e37ab85fc1ab3bf",
+          "attribute_count": 2,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
+          "name": "registry_import_records_batch_idx",
+          "ready": true,
+          "table": "registry_import_records",
+          "valid": true,
+          "schema": "public",
+          "unique": false,
+          "columns": [
+            {
+              "column": "project_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "batch_id",
+              "included": false,
+              "position": 2,
+              "expression": false
+            }
+          ],
+          "primary": false,
+          "immediate": true,
+          "key_count": 2,
+          "predicate_md5": "ca0355eac64d39deb86c9e8217d5c37c",
+          "definition_md5": "8f0910f3c8ec21f119e60e1b1d29fb0c",
+          "attribute_count": 2,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
           "name": "registry_import_records_pkey",
           "ready": true,
           "table": "registry_import_records",
@@ -30496,6 +31789,13 @@
           "table": "events_long",
           "schema": "public",
           "enabled": "O",
+          "trigger": "registry_audit_event",
+          "definition_md5": "bc510535cd0c02ea3045ddf042e5a54f"
+        },
+        {
+          "table": "events_long",
+          "schema": "public",
+          "enabled": "O",
           "trigger": "tr_events_created_by",
           "definition_md5": "66a6a398c97600751f9bf5eac78ea49b"
         },
@@ -30511,7 +31811,7 @@
           "schema": "public",
           "enabled": "O",
           "trigger": "trg_pii_guard_events",
-          "definition_md5": "48c317cfe950f4aeb1dcd7fac041ea7e"
+          "definition_md5": "118323cde9536235ab239bedf81611d0"
         },
         {
           "table": "ktx_baseline_ext",
@@ -30609,14 +31909,14 @@
           "schema": "public",
           "enabled": "O",
           "trigger": "trg_normalize_lab_row",
-          "definition_md5": "8b5a964b34c02f8148ffdb99e0530c96"
+          "definition_md5": "384fb5bcd18ea60f9647b925bf7cc038"
         },
         {
           "table": "labs_long",
           "schema": "public",
           "enabled": "O",
           "trigger": "trg_pii_guard_labs",
-          "definition_md5": "1c62fd8a184a29eb8df3adb21e03c226"
+          "definition_md5": "8cd0ef2c6571c75bf4d99cc851d63d73"
         },
         {
           "table": "labs_long",
@@ -30631,6 +31931,13 @@
           "enabled": "O",
           "trigger": "a_registry_identity",
           "definition_md5": "b4a46fc1797bde188223514ce4e4ff13"
+        },
+        {
+          "table": "meds_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "registry_audit_med",
+          "definition_md5": "027b808f640e74c5757b756877815096"
         },
         {
           "table": "meds_long",
@@ -30652,6 +31959,13 @@
           "enabled": "O",
           "trigger": "tr_meds_updated_meta",
           "definition_md5": "e1ce507c2f409f8049be2370d0b050cd"
+        },
+        {
+          "table": "meds_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "trg_pii_guard_meds",
+          "definition_md5": "473f54ca8121a6d8005f35968b71bb1a"
         },
         {
           "table": "partner_contracts",
@@ -31130,7 +32444,7 @@
           "signature": "_registry_input_columns(text)",
           "volatility": "i",
           "anon_execute": false,
-          "definition_md5": "e9efa32a4592c092d04737c4cb2506f7",
+          "definition_md5": "0c7f2e11aea23d10dc63dd94336c17cf",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -31142,7 +32456,7 @@
           "signature": "_registry_validate_input(text,jsonb)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "277a428d9a9ad976924203b441208f27",
+          "definition_md5": "cbdf1413ff5885aecdb626976923c7b3",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -31574,7 +32888,7 @@
           "signature": "correct_registry_record(uuid,text,uuid,jsonb,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "78d24940c16c8e084ae45eb44c50b585",
+          "definition_md5": "452baccbc9a0ce4a1d26798305634698",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -31766,7 +33080,7 @@
           "signature": "import_registry_rows(uuid,text,jsonb,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "301a628a806c8f19adc57d9d4a5f3457",
+          "definition_md5": "ecb0a2399f238d085d484835c3a3093f",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -31779,6 +33093,18 @@
           "volatility": "s",
           "anon_execute": false,
           "definition_md5": "f39604f3d2668e6cc2bb84222550ea2d",
+          "security_definer": true,
+          "authenticated_execute": true
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "list_import_batches(uuid,integer)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "c05b98e546d595b11ea0b5cef7f89d3a",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -31967,6 +33293,18 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "register_import_file(uuid,uuid,text,text,integer,integer)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "bdb4923224817891076b0e4b4465a0d9",
+          "security_definer": true,
+          "authenticated_execute": true
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "registry_private.assert_token(patient_tokens,boolean)",
           "volatility": "s",
           "anon_execute": false,
@@ -31995,6 +33333,18 @@
           "volatility": "v",
           "anon_execute": false,
           "definition_md5": "571528ad641ab72949be9598c528dd89",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "registry_private.check_clinical_row(text,jsonb)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "55ecf15a6656607747a1e66081543dde",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -32061,6 +33411,30 @@
         {
           "owner": "postgres",
           "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "registry_private.import_clinical_row(uuid,text,jsonb,integer,uuid)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "bbf2e11aee8733912fbfd4d9c2733c24",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "registry_private.import_record_digest(text,uuid)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "b00e0893a2a6c890546d4c516653114f",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
           "language": "sql",
           "parallel": "u",
           "signature": "registry_private.local_today()",
@@ -32090,7 +33464,7 @@
           "signature": "registry_private.normalize_lab_row()",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "bdf97f9c13842737f69f79c83199dc5e",
+          "definition_md5": "e776b002c85777c586bf635cb2b90964",
           "security_definer": true,
           "authenticated_execute": false
         },
@@ -32255,6 +33629,18 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "registry_private.validate_clinical_input(text,jsonb)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "0fbd4b50cf825cc05b8b74737744d63d",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "remove_project_member(uuid,uuid)",
           "volatility": "v",
           "anon_execute": false,
@@ -32363,6 +33749,18 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "undo_import_batch(uuid,uuid,text)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "0ce0463425290172bd0180cc15f6e1a4",
+          "security_definer": true,
+          "authenticated_execute": true
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "upsert_lab_record(uuid,text,date,text,numeric,text,timestamp with time zone,uuid)",
           "volatility": "v",
           "anon_execute": false,
@@ -32426,7 +33824,7 @@
     }
   },
   "database_contract_protocol": "registry-contract-v3-pg17",
-  "database_contract_reference_sha256": "e8c23123e321b9c60f89e0fb87c375806079ffdbed7b5deaa96583a41fa0ccdd",
+  "database_contract_reference_sha256": "5250fcd5e600bbe55908ae11804393d439d6b432dab228c0a973996f59bdda9f",
   "database_contract_sha256": "aca7000205680905a853fc72280ff60a2f99af32d8b2807bb761de7769ed6b29",
   "database_server_major": 17,
   "files": {
@@ -32443,7 +33841,7 @@
       "old_sha256": "b6df123beb0fda02b77455762cab1cc5065aa7d31f1ca2f08e0f33ede98c3924"
     },
     "app.css": {
-      "new_sha256": "489da9d1c502e6766337343aecc06d196a6f15961a535c61db093aff95e61fb3",
+      "new_sha256": "e2d83bccfeefe801aba450cb41696a8ffa1ecace3692babc43ecdec674cfab92",
       "old_sha256": "3b291e374341e886e0664ee236b40691b589164721d483e19d940092c1851227"
     },
     "assets/registry-tech-hero.png": {
@@ -32471,7 +33869,7 @@
       "old_sha256": "c5c3d5b05e5a1a4fae277911f6bfe4af2c6af94d4bc96adbf61c844d132923e7"
     },
     "assets/sql/batch6_latest.sql": {
-      "new_sha256": "bf063c2acac2bda3eaa5431fb41d4d31d5c16845f628a7267f18143de26dec0c",
+      "new_sha256": "d3076d54b2c34d49b4899b1a17c3a3758ed6335fb3b188ad3153230b0276e6ed",
       "old_sha256": "872074c4a42c986ffcbc368d9c1e06ef126c527ad87eb4ba6e53e7a041165e0b"
     },
     "assets/template/METHODS_TEMPLATE_EN.md": {
@@ -32487,7 +33885,7 @@
       "old_sha256": "f86ba848c57cbf96d9f6bc43d0ddf5410bac06c85d696e20930b61e9d3ec4f06"
     },
     "assets/template/protocol_template.json": {
-      "new_sha256": "ddf54bc70f70553ae2b95bc8f5f56d665242602e3bd5620a2563dc9da30c427e",
+      "new_sha256": "ea3d0944559879803dcd4bbdb30c501457b55279e73dbbbd06f61bcdae606a2c",
       "old_sha256": null
     },
     "assets/template/requirements.txt": {
@@ -32495,7 +33893,7 @@
       "old_sha256": "62e0118334f337d721a7cd8d12cea223b146c792e396ff34a437517716cf30a1"
     },
     "assets/template/run_analysis.py": {
-      "new_sha256": "041a2bd6aaa32534afac4b5e75aab6d7632e39119f9f7f449fa2049a174f2686",
+      "new_sha256": "437d6b7a9efcbbe689367bcd052b4b322d5082bf70c592a58198239615b948d5",
       "old_sha256": "fe506fb678dac9da052f34a7504d69e18cd131dbb3a7a79a4f305472400857eb"
     },
     "auth-callback.html": {
@@ -32558,6 +33956,10 @@
       "new_sha256": "5bfa97ded368de86a54e1963f085bc99d05a7029f2911790135e3428c11ab8d6",
       "old_sha256": null
     },
+    "lib/batch-import.js": {
+      "new_sha256": "275c41eff10b24fa937983a2526979220673d33c388581dbf291b59d74de9913",
+      "old_sha256": null
+    },
     "lib/error-logger.js": {
       "new_sha256": "0131572e8e9a20d43e75623caac9f35280946af4160a6b70e274b1b01247a291",
       "old_sha256": "249a55b8eecf910e3251721d7801a62a3f17de589580aec6ee36dfccfb9b0cab"
@@ -32595,7 +33997,7 @@
       "old_sha256": "815cddf25cfe58cef8fe12e09fa1b1b9cd9f2b30a4efa305d6038a3e13f9dd3e"
     },
     "lib/registry-data.js": {
-      "new_sha256": "1802adfaf1ea12bb4a207e3b65543c2c310de70787a63c882a48621eea2af75c",
+      "new_sha256": "f13d649f285e91927bd69733cd9e45b9b2003888644121518d8f7fc6c3ef89cf",
       "old_sha256": null
     },
     "lib/supabase-client.js": {
@@ -32667,11 +34069,11 @@
       "old_sha256": "77c7306a7e1ad8bdf091cb51240a1646427bcbd80df9847f5b2e3d1ed8b345f4"
     },
     "staff.html": {
-      "new_sha256": "79d1cfd97f9c8df3d92cbab19b360fdff15024ae7fb7019fc4bac1e581a2aba0",
+      "new_sha256": "6c456cb162ac109f775a77638042f100a1c2f3d4bd562df0f3dd1fae08bef34d",
       "old_sha256": "2a26a4bc8cb72208bff88ed9b3f80b9e58f2b6703624cc2f74f65afee5ce0184"
     },
     "staff.js": {
-      "new_sha256": "ca5e9126635d8af7bc27757f64e9afec273e56f396a02655283546b0324d9c07",
+      "new_sha256": "08dc2d7be43f2e042685484c6d1b55b34c10bae304f1bcfafa2d97b61045c523",
       "old_sha256": "9b4565b86046393bf2526281d3ebdb50925a93234ff28e7c15224e43273c2201"
     },
     "terms.html": {
@@ -32684,7 +34086,7 @@
     }
   },
   "format": 2,
-  "migration_manifest_sha256": "9fac1eb43b96e2a5832e4b969451006218a14abc4a6213d4814af5284fc9bce0",
+  "migration_manifest_sha256": "a0e5b96b79ca19c513bf191da18b044bc719d07b2193186b07d9b379aec16e23",
   "project_ref": "etsyglgpiutflethgirs",
   "release": "registry-20261012-adoption-v4",
   "required_db_checks": [
@@ -32719,6 +34121,11 @@
     "plaintext_erasure_audited",
     "study_status_dedicated_action",
     "set_based_project_rls",
+    "0040_batch_import",
+    "batch_import_signatures",
+    "batch_import_columns",
+    "lab_dictionary_read_only",
+    "no_client_truncate",
     "single_billing_order_overload"
   ],
   "required_schema_versions": [
@@ -32729,6 +34136,7 @@
     "0036_project_members",
     "0037_concept_view_security",
     "0038_followup_workflow",
-    "0039_patient_token_hashing"
+    "0039_patient_token_hashing",
+    "0040_batch_import"
   ]
 }

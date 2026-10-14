@@ -158,12 +158,22 @@ try {
       await assert.rejects(db.query('TRUNCATE public.lab_test_unit_map'), denied);
     });
   }
+  for (const user of [null, owner]) {
+    await as(user, async () => {
+      for (const t of ['labs_long', 'meds_long', 'events_long', 'patients_baseline', 'visits_long', 'audit_log']) {
+        await assert.rejects(db.query(`TRUNCATE public.${t}`), denied);
+      }
+    });
+  }
+  assert.equal((await rows(`SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND c.relkind IN ('r','p') AND (has_table_privilege('authenticated',c.oid,'TRUNCATE,TRIGGER,REFERENCES')
+      OR has_table_privilege('anon',c.oid,'TRUNCATE,TRIGGER,REFERENCES'))`)).length, 0);
   for (const user of [null, viewer]) {
     await as(user, async () => {
       for (const t of ['registry_import_batches', 'registry_import_records']) await assert.rejects(db.query(`SELECT * FROM public.${t}`), denied);
     });
   }
-  pass('new RPCs run with a fixed search path for signed-in users only; helpers are private; lab dictionaries are read-only (TRUNCATE too); batch tables are not directly readable');
+  pass('new RPCs run with a fixed search path for signed-in users only; helpers are private; lab dictionaries are read-only (TRUNCATE too); no client role can TRUNCATE any public table; batch tables are not directly readable');
 
   const patientsBefore = await rows('SELECT to_jsonb(b) AS r FROM public.patients_baseline b ORDER BY id');
 

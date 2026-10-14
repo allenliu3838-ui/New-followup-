@@ -1,6 +1,6 @@
 {
-  "build_database_contract_pg17.mjs": "72aa5c2de8d212f5791df8eff93be9fcd22b7da7f2c8031a1e620bccde38d82d",
-  "registry_integrated_release.py": "8fa9664a72b0801922c17ea9cb6f544fcf4c4505338b6e37372afae37ec66a2d",
+  "build_database_contract_pg17.mjs": "49122dc242ae9f3ebe279eece118b3c3883557f1d116d828f478d5cf60953367",
+  "registry_integrated_release.py": "da1e7e4ca570253dabafd0e499f2d7deed16f2fbbe6cef7536c9a4a1a3dad70b",
   "registry_pages_release.py": "111960ba17cd628163fed3f9078e1735d5444eb9fc05025eacb23c401c4df7f8",
   "registry_visual_release.py": "7db8f05153bbda4748caa8bceb27bc6d2f4934119a65a2697d010b673cd35ea4"
 }

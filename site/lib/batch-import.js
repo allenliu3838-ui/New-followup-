@@ -4,7 +4,7 @@
 export const BATCH_KINDS = Object.freeze(['labs', 'meds', 'events']);
 export const CHUNK_SIZE = 500;
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
-export const MAX_FILE_ROWS = 50000;
+export const MAX_FILE_ROWS = 10000;
 export const PII_NOTICE = '不得包含姓名、身份证号、手机号、病案号；研究编号只用项目内编号。';
 export const SKIP_MAPPING = '__skip__';
 

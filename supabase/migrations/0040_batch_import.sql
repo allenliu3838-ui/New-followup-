@@ -213,6 +213,21 @@ CREATE TRIGGER registry_audit_event AFTER UPDATE OR DELETE ON public.events_long
 REVOKE ALL ON public.lab_test_catalog,public.lab_test_unit_map FROM PUBLIC,anon,authenticated;
 GRANT SELECT ON public.lab_test_catalog,public.lab_test_unit_map TO anon,authenticated;
 
+-- ---- No TRUNCATE / TRIGGER / REFERENCES for client roles on any public table -------------
+-- Row-level security does not apply to TRUNCATE, so a default Supabase grant would let any
+-- signed-in user empty every project's data. Client roles never need these privileges; the
+-- owner and service role keep them. Default privileges cover tables created later by postgres.
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN SELECT c.oid::regclass AS rel FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+           WHERE n.nspname='public' AND c.relkind IN ('r','p') LOOP
+    EXECUTE format('REVOKE TRUNCATE,TRIGGER,REFERENCES ON %s FROM PUBLIC,anon,authenticated', r.rel);
+  END LOOP;
+END $$;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+  REVOKE TRUNCATE,TRIGGER,REFERENCES ON TABLES FROM PUBLIC,anon,authenticated;
+
 -- ---- Input columns and validation ----------------------------------------------------------
 -- Baseline and visit columns are 0038's. Labs, medications and events list the columns an
 -- import row may carry; labs keep measured_at, which the audited correction already accepts.
