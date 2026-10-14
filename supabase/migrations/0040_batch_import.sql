@@ -856,8 +856,12 @@ END $$;
 -- content is refused rather than silently skipped. A record that another batch not yet
 -- undone skipped as already present is kept too (kept_referenced): that batch counted it.
 -- When a record is deleted, or was already gone, every content link to it is removed, so
--- the same content can be imported again. Rows the batch skipped belong to existing
--- records and are never deleted. Each deletion is field-audited with the reason
+-- the same content can be imported again. A record the batch skipped is deleted only when
+-- the batch that inserted it is already undone (it was kept then because this batch still
+-- counted it), no other batch not yet undone links it, and it is unchanged since that
+-- import; such records count as deleted, and are otherwise left silently (the counts
+-- kept_changed, kept_referenced and missing describe this batch's own inserted records).
+-- Records skipped as present before any import are never deleted. Each deletion is field-audited with the reason
 -- (_registry_audit_changes) and the undo is written to the project audit log. A batch
 -- already undone returns its earlier result with already_undone = true and changes nothing.
 -- Baseline batches are refused (patients are not removed this way), and so are batches
@@ -865,6 +869,7 @@ END $$;
 CREATE OR REPLACE FUNCTION public.undo_import_batch(p_project_id uuid,p_batch_id uuid,p_reason text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
 DECLARE b public.registry_import_batches%ROWTYPE; reason text := btrim(p_reason); tbl text; m record;
+  ins_sha text; ins_undone boolean;
   n_deleted int := 0; n_kept int := 0; n_referenced int := 0; n_missing int := 0; old_reason text; outcome jsonb; found_id uuid;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication_required'; END IF;
@@ -895,21 +900,30 @@ BEGIN
     WHEN 'meds' THEN 'meds_long' ELSE 'events_long' END;
   old_reason := current_setting('app.registry_change_reason',true);
   PERFORM set_config('app.registry_change_reason','撤销导入批次 ' || p_batch_id::text || '：' || reason,true);
-  FOR m IN SELECT r.record_id,r.record_sha256 FROM public.registry_import_records r
-    WHERE r.project_id=p_project_id AND r.kind=b.kind AND r.batch_id=p_batch_id AND r.action='inserted'
-    ORDER BY r.record_id LOOP
+  -- Candidates: every record this batch inserted or skipped (own = inserted by this batch).
+  FOR m IN SELECT r.record_id,bool_or(r.action='inserted') AS own FROM public.registry_import_records r
+    WHERE r.project_id=p_project_id AND r.kind=b.kind AND r.batch_id=p_batch_id
+    GROUP BY r.record_id ORDER BY r.record_id LOOP
+    -- Digest taken when the record was inserted, and whether its inserting batch is undone.
+    ins_sha := NULL; ins_undone := NULL;
+    SELECT i.record_sha256,(ib.undone_at IS NOT NULL) INTO ins_sha,ins_undone
+      FROM public.registry_import_records i
+      JOIN public.registry_import_batches ib ON ib.project_id=i.project_id AND ib.batch_id=i.batch_id
+      WHERE i.project_id=p_project_id AND i.kind=b.kind AND i.record_id=m.record_id AND i.action='inserted'
+      LIMIT 1;
+    IF NOT m.own AND ins_undone IS NOT TRUE THEN CONTINUE; END IF;
     EXECUTE format('SELECT t.id FROM public.%I t WHERE t.id=$1 AND t.project_id=$2 FOR UPDATE',tbl)
       INTO found_id USING m.record_id,p_project_id;
     IF found_id IS NULL THEN
-      n_missing := n_missing+1;
-    ELSIF registry_private.import_record_digest(tbl,m.record_id) IS DISTINCT FROM m.record_sha256 THEN
-      n_kept := n_kept+1;
+      IF m.own THEN n_missing := n_missing+1; END IF;
+    ELSIF registry_private.import_record_digest(tbl,m.record_id) IS DISTINCT FROM ins_sha THEN
+      IF m.own THEN n_kept := n_kept+1; END IF;
       CONTINUE;
     ELSIF EXISTS (SELECT 1 FROM public.registry_import_records o
         JOIN public.registry_import_batches ob ON ob.project_id=o.project_id AND ob.batch_id=o.batch_id
-        WHERE o.project_id=p_project_id AND o.kind=b.kind AND o.record_id=m.record_id AND o.action='matched'
+        WHERE o.project_id=p_project_id AND o.kind=b.kind AND o.record_id=m.record_id
           AND o.batch_id<>p_batch_id AND ob.undone_at IS NULL) THEN
-      n_referenced := n_referenced+1;
+      IF m.own THEN n_referenced := n_referenced+1; END IF;
       CONTINUE;
     ELSE
       EXECUTE format('DELETE FROM public.%I WHERE id=$1 AND project_id=$2',tbl) USING m.record_id,p_project_id;

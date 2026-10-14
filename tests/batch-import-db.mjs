@@ -546,6 +546,30 @@ try {
   assert.equal((await row("SELECT details FROM public.audit_log WHERE action='import_batch_undone' AND details->>'batch_id'=$1", [refA])).details.kept_referenced, 1);
   assert.deepEqual([(await importRows(editor, 'labs', [kLab(d1)])).skipped, (await importRows(editor, 'labs', [kLab(d1, {notes: '复查'})])).skipped], [1, 1],
     'both contents still import as skipped');
+  // Undoing A first keeps the record for B; undoing B afterwards then deletes it and every link.
+  const d6 = await day(-256), refA6 = randomUUID(), refB6 = randomUUID(), refC6 = randomUUID();
+  assert.equal((await importRows(editor, 'labs', [kLab(d6, {notes: '复查'})], refA6)).inserted, 1);
+  assert.equal((await importRows(editor, 'labs', [kLab(d6)], refB6)).skipped, 1);
+  assert.equal((await importRows(editor, 'labs', [kLab(d6)], refC6)).skipped, 1);
+  const r6 = await labId(d6);
+  assert.deepEqual(await undo(editor, refA6, '文件选错'), {deleted: 0, kept_changed: 0, kept_referenced: 1, missing: 0, already_undone: false});
+  assert.deepEqual(await undo(editor, refB6, '文件选错'), {deleted: 0, kept_changed: 0, kept_referenced: 0, missing: 0, already_undone: false},
+    'still counted by C: B leaves it silently');
+  assert.equal(await labId(d6), r6);
+  assert.deepEqual(await undo(editor, refC6, '文件选错'), {deleted: 1, kept_changed: 0, kept_referenced: 0, missing: 0, already_undone: false},
+    'the last batch counting the record deletes it once its inserting batch is undone');
+  assert.equal(await labId(d6), undefined);
+  assert.equal(await links(r6), 0);
+  assert.equal((await importRows(editor, 'labs', [kLab(d6, {notes: '复查'})])).inserted, 1, 'the content imports again');
+  // A record skipped by the batch whose inserting batch is undone but which was corrected since is kept.
+  const d7 = await day(-257), refA7 = randomUUID(), refB7 = randomUUID();
+  assert.equal((await importRows(editor, 'labs', [kLab(d7)], refA7)).inserted, 1);
+  assert.equal((await importRows(editor, 'labs', [kLab(d7)], refB7)).skipped, 1);
+  assert.equal((await undo(editor, refA7, '文件选错')).kept_referenced, 1);
+  const r7 = await labId(d7);
+  await as(owner, () => db.query("SELECT public.correct_registry_record($1,'labs_long',$2,$3,'按原始化验单更正')", [project, r7, JSON.stringify({value_raw: 4.3})]));
+  assert.deepEqual(await undo(editor, refB7, '文件选错'), {deleted: 0, kept_changed: 0, kept_referenced: 0, missing: 0, already_undone: false});
+  assert.equal(await labId(d7), r7, 'a corrected record is never deleted');
   // Once B is undone, undoing A deletes the record and every link to it: B's content imports again.
   const d2 = await day(-251), refA2 = randomUUID(), refB2 = randomUUID();
   assert.equal((await importRows(editor, 'labs', [kLab(d2, {notes: '复查'})], refA2)).inserted, 1);
