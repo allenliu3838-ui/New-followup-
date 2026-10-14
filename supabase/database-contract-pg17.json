@@ -3,7 +3,7 @@
   "database_server_major": 17,
   "reference_server_version": "17.6",
   "runtime": "@embedded-postgres/linux-x64@17.6.0-beta.15",
-  "migration_manifest_sha256": "a0e5b96b79ca19c513bf191da18b044bc719d07b2193186b07d9b379aec16e23",
+  "migration_manifest_sha256": "0b1e289780feb0e0d34b143b090c206765def21289bab8bb6382d7d30b61379b",
   "database_contract_sha256": "aca7000205680905a853fc72280ff60a2f99af32d8b2807bb761de7769ed6b29",
   "profile_definition": "canonical: all reviewed LF SQL; historical_crlf: first 33 reviewed SQL files encoded CRLF, then nine new LF migrations. UTC and fixed search_path. Synthetic Auth/Storage only.",
   "database_contract_profiles": {
@@ -1810,16 +1810,16 @@
               "definition_md5": "f90f9f74ef63afcb00a18f3bc3085f2d"
             },
             {
+              "name": "registry_import_records_hash_batch_key",
+              "type": "u",
+              "validated": true,
+              "definition_md5": "3e351929698836dd480d226471ef8a3d"
+            },
+            {
               "name": "registry_import_records_kind_check",
               "type": "c",
               "validated": true,
               "definition_md5": "a56d94ed560a2a8cee1ec5fe1c32ecb7"
-            },
-            {
-              "name": "registry_import_records_pkey",
-              "type": "p",
-              "validated": true,
-              "definition_md5": "8a4531dec119e8985321d5b0e9e4f883"
             },
             {
               "name": "registry_import_records_project_id_fkey",
@@ -13340,7 +13340,7 @@
         },
         {
           "live": true,
-          "name": "registry_import_records_pkey",
+          "name": "registry_import_records_hash_batch_key",
           "ready": true,
           "table": "registry_import_records",
           "valid": true,
@@ -13364,13 +13364,56 @@
               "included": false,
               "position": 3,
               "expression": false
+            },
+            {
+              "column": "batch_id",
+              "included": false,
+              "position": 4,
+              "expression": false
             }
           ],
-          "primary": true,
+          "primary": false,
+          "immediate": true,
+          "key_count": 4,
+          "predicate_md5": null,
+          "definition_md5": "660b7c243064bb4b4a112945c9026b01",
+          "attribute_count": 4,
+          "expressions_md5": null,
+          "nulls_not_distinct": true
+        },
+        {
+          "live": true,
+          "name": "registry_import_records_record_idx",
+          "ready": true,
+          "table": "registry_import_records",
+          "valid": true,
+          "schema": "public",
+          "unique": false,
+          "columns": [
+            {
+              "column": "project_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "kind",
+              "included": false,
+              "position": 2,
+              "expression": false
+            },
+            {
+              "column": "record_id",
+              "included": false,
+              "position": 3,
+              "expression": false
+            }
+          ],
+          "primary": false,
           "immediate": true,
           "key_count": 3,
           "predicate_md5": null,
-          "definition_md5": "29552996d95f15c82eac8f0050bde4ca",
+          "definition_md5": "22c267f34aa41ba4aa17859d926931fd",
           "attribute_count": 3,
           "expressions_md5": null,
           "nulls_not_distinct": false
@@ -16175,7 +16218,7 @@
           "signature": "import_registry_rows(uuid,text,jsonb,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "ecb0a2399f238d085d484835c3a3093f",
+          "definition_md5": "44d443e356501b76d7868959101a1788",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -16511,7 +16554,7 @@
           "signature": "registry_private.import_clinical_row(uuid,text,jsonb,integer,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "bbf2e11aee8733912fbfd4d9c2733c24",
+          "definition_md5": "91ecce1f56262c8eb4c6cf9dfe3fb593",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -16847,7 +16890,7 @@
           "signature": "undo_import_batch(uuid,uuid,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "0ce0463425290172bd0180cc15f6e1a4",
+          "definition_md5": "cf987a55aeac1e047fdeb91ed2eb55ad",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -18720,16 +18763,16 @@
               "definition_md5": "f90f9f74ef63afcb00a18f3bc3085f2d"
             },
             {
+              "name": "registry_import_records_hash_batch_key",
+              "type": "u",
+              "validated": true,
+              "definition_md5": "3e351929698836dd480d226471ef8a3d"
+            },
+            {
               "name": "registry_import_records_kind_check",
               "type": "c",
               "validated": true,
               "definition_md5": "a56d94ed560a2a8cee1ec5fe1c32ecb7"
-            },
-            {
-              "name": "registry_import_records_pkey",
-              "type": "p",
-              "validated": true,
-              "definition_md5": "8a4531dec119e8985321d5b0e9e4f883"
             },
             {
               "name": "registry_import_records_project_id_fkey",
@@ -30250,7 +30293,7 @@
         },
         {
           "live": true,
-          "name": "registry_import_records_pkey",
+          "name": "registry_import_records_hash_batch_key",
           "ready": true,
           "table": "registry_import_records",
           "valid": true,
@@ -30274,13 +30317,56 @@
               "included": false,
               "position": 3,
               "expression": false
+            },
+            {
+              "column": "batch_id",
+              "included": false,
+              "position": 4,
+              "expression": false
             }
           ],
-          "primary": true,
+          "primary": false,
+          "immediate": true,
+          "key_count": 4,
+          "predicate_md5": null,
+          "definition_md5": "660b7c243064bb4b4a112945c9026b01",
+          "attribute_count": 4,
+          "expressions_md5": null,
+          "nulls_not_distinct": true
+        },
+        {
+          "live": true,
+          "name": "registry_import_records_record_idx",
+          "ready": true,
+          "table": "registry_import_records",
+          "valid": true,
+          "schema": "public",
+          "unique": false,
+          "columns": [
+            {
+              "column": "project_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "kind",
+              "included": false,
+              "position": 2,
+              "expression": false
+            },
+            {
+              "column": "record_id",
+              "included": false,
+              "position": 3,
+              "expression": false
+            }
+          ],
+          "primary": false,
           "immediate": true,
           "key_count": 3,
           "predicate_md5": null,
-          "definition_md5": "29552996d95f15c82eac8f0050bde4ca",
+          "definition_md5": "22c267f34aa41ba4aa17859d926931fd",
           "attribute_count": 3,
           "expressions_md5": null,
           "nulls_not_distinct": false
@@ -33085,7 +33171,7 @@
           "signature": "import_registry_rows(uuid,text,jsonb,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "ecb0a2399f238d085d484835c3a3093f",
+          "definition_md5": "44d443e356501b76d7868959101a1788",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -33421,7 +33507,7 @@
           "signature": "registry_private.import_clinical_row(uuid,text,jsonb,integer,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "bbf2e11aee8733912fbfd4d9c2733c24",
+          "definition_md5": "91ecce1f56262c8eb4c6cf9dfe3fb593",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -33757,7 +33843,7 @@
           "signature": "undo_import_batch(uuid,uuid,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "0ce0463425290172bd0180cc15f6e1a4",
+          "definition_md5": "cf987a55aeac1e047fdeb91ed2eb55ad",
           "security_definer": true,
           "authenticated_execute": true
         },

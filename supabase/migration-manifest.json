@@ -13,7 +13,7 @@
     "0040_batch_import"
   ],
   "order": "lexicographic filenames; historical duplicate prefixes retained, unique full filenames",
-  "bundle_sha256": "2952cb0326176e8bc1d597b00b73c171d9a8ecb586c89caefa41f814e06fc920",
+  "bundle_sha256": "8b175c24a7f442132069ad980cd6a304370d90af7bc07f4658481db7d5decf04",
   "migrations": [
     {
       "ordinal": 1,
@@ -223,7 +223,7 @@
     {
       "ordinal": 42,
       "file": "0040_batch_import.sql",
-      "sha256": "20db32b139985f92413d67bb16c9dfbd058d5c4a9680a98e6b74695c87195c9d"
+      "sha256": "29160585b06af8266f0fd1661ad43b923c7233fa2aad75b4fb3e0ab8be0da84b"
     }
   ]
 }
