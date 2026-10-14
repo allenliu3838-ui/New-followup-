@@ -6,6 +6,7 @@ import { validatePassword } from "/lib/password-strength.js?v=registry-20261012-
 import { strictDate, finiteNumber, normalizeUpcr, parseRegistryCsv, readAllRows, readKeysetRows, exportColumns, sha256Text, BASELINE_IMPORT_FIELDS, VISIT_IMPORT_FIELDS, normalizeImportRow, registryErrorMessage, containsPII, assertNoPII, fieldLabel, creatinineUmol, correctionReasonError, CLINICAL_LIMITS, SCR_MGDL_TO_UMOL } from "/lib/registry-data.js?v=registry-20261012-adoption-v4";
 import { renderOverviewHtml, renderBoardHtml, renderFilterBar, sortBoardRows } from "/lib/followup-board.js?v=registry-20261012-adoption-v4";
 import { createFollowupDialogs } from "/lib/followup-dialogs.js?v=registry-20261012-adoption-v4";
+import { BATCH_KINDS, TEMPLATES as BATCH_TEMPLATES, KIND_LABELS, PII_NOTICE, SKIP_MAPPING, CHUNK_SIZE, MAX_FILE_BYTES, MAX_FILE_ROWS, EVIDENCE_SOURCES, IMPORTABLE_EVENTS, templateCsv, validateBatch, buildChunks, errorReportCsv, piiHeaderColumns, baseFileName, beijingToday } from "/lib/batch-import.js?v=registry-20261012-adoption-v4";
 
 const sb = supabase();
 // 基因数据涉及人类遗传资源管理：默认关闭，仅当服务器配置 CONFIG.FEATURES.GENETICS === true 时显示。
@@ -139,7 +140,10 @@ function injectAuthGatedContent() {
   el.medPatientCode = qs("#medPatientCode");
   el.medName = qs("#medName");
   el.medClass = qs("#medClass");
-  el.medDose = qs("#medDose");
+  el.medDoseValue = qs("#medDoseValue");
+  el.medDoseUnit = qs("#medDoseUnit");
+  el.medIndication = qs("#medIndication");
+  el.medNotes = qs("#medNotes");
   el.medRoute = qs("#medRoute");
   el.medFrequency = qs("#medFrequency");
   el.medStart = qs("#medStart");
@@ -151,6 +155,8 @@ function injectAuthGatedContent() {
   el.evtType = qs("#evtType");
   el.evtDate = qs("#evtDate");
   el.evtNotes = qs("#evtNotes");
+  el.evtEvidence = qs("#evtEvidence");
+  el.evtDetail = qs("#evtDetail");
   el.btnAddEvent = qs("#btnAddEvent");
   el.eventsPreview = qs("#eventsPreview");
 
@@ -268,11 +274,22 @@ function bindAuthGatedEvents() {
   el.importFile?.addEventListener("change", handleImportFile);
   el.btnConfirmImport?.addEventListener("click", confirmImport);
   el.btnCancelImport?.addEventListener("click", ()=>{
-    el.importPreview.style.display = "none";
-    el.importFile.value = "";
+    const partial=_importParsed?.chunks?.some(c=>c.imported);
+    if(partial&&!confirm("已有部分块写入。取消后将不能用同一预览重试未完成的块（可重新上传同一文件补录，已写入的行会自动跳过）。是否取消？"))return;
+    clearImportPreview();
     el.importProgress.style.display = "none";
-    _importParsed = null;
   });
+  el.importType?.addEventListener("change", syncImportType);
+  qs("#btnImportHelp")?.addEventListener("click", toggleImportHelp);
+  qs("#importUnmapped")?.addEventListener("change", onUnmappedChange);
+  qs("#btnDownloadImportErrors")?.addEventListener("click", downloadImportErrors);
+  qs("#importResult")?.addEventListener("click", e=>{if(e.target.closest("[data-import-errors]"))downloadImportErrors();});
+  qs("#importBatchesDetails")?.addEventListener("toggle", e=>{if(e.target.open)loadImportBatches();});
+  qs("#btnRefreshImportBatches")?.addEventListener("click", loadImportBatches);
+  qs("#importBatchesList")?.addEventListener("click", e=>{const b=e.target.closest("[data-undo-index]");if(b&&!b.disabled)openUndoForm(Number(b.dataset.undoIndex));});
+  qs("#btnConfirmUndoBatch")?.addEventListener("click", confirmUndoBatch);
+  qs("#btnCancelUndoBatch")?.addEventListener("click", closeUndoForm);
+  syncImportType();
 
   el.btnSaveProfile?.addEventListener("click", saveProfile);
   el.btnApplyContract?.addEventListener("click", applyContract);
@@ -301,6 +318,9 @@ function bindAuthGatedEvents() {
 
   [
     { el: el.evtNotes,  label: "事件备注" },
+    { el: el.evtDetail, label: "事件细节" },
+    { el: el.medNotes,  label: "用药备注" },
+    { el: el.medIndication, label: "用药目的" },
     { el: el.varNotes,  label: "基因备注" },
     { el: el.labQcReason, label: "留痕原因" },
   ].forEach(({ el: inp, label }) => {
@@ -350,6 +370,9 @@ function applyProjectAccess(){
   qsa('[data-project-capability]').forEach(node=>{node.disabled=busyButtons.has(node)||!canProject(node.dataset.projectCapability)||node.dataset.blocked==='1';});
   const label=qs('#projectAccessStatus');if(label)label.textContent=!selectedProject?'请先选择项目':!projectAccess?'正在核对项目权限…':`我的项目角色：${({owner:'项目负责人',editor:'录入协作人',analyst:'分析协作人',viewer:'只读协作人'})[projectAccess.role]||'无权限'} · ${projectAccess.can_write?'可录入':'不可录入'} · ${projectAccess.can_export?'可导出':'不可导出'}${projectAccess.write_block_reason&&projectAccess.write_block_reason!=='role_read_only'?' · '+registryErrorMessage(projectAccess.write_block_reason):''}`;
   if(el.projectSettingsDetails)el.projectSettingsDetails.hidden=!canManageProject();
+  // 只读 / 分析角色（及账户只读）不显示批量导入入口；导入记录仍可查看。
+  const canImport=canProject('can_write');const controls=qs('#importControls');if(controls)controls.hidden=!canImport;
+  const note=qs('#importReadonlyNote');if(note)note.hidden=canImport||!projectAccess;
 }
 async function loadProjectAccess(op=captureContext()){
   const {data,error}=await sb.rpc('get_project_access',{p_project_id:op.project.id});if(error)throw error;assertContext(op);
@@ -387,7 +410,7 @@ function renderBaselineScrHint(){
 function clearProjectWorkspace(){
   resetBaseline();_importParsed=null;projectCustomLabs=[];patients=[];patientsLoaded=false;projectOverview=null;
   Object.assign(boardView,{state:'all',consent:'all',search:'',limit:100});
-  ['varPatientCode','labPatientCode','medPatientCode','evtPatientCode','varTestDate','varTestName','varGene','varVariant','varHgvsC','varHgvsP','varZygosity','varClass','varLabName','varNotes','labDate','labValue','labQcReason','labCustomName','labCustomUnit','medName','medClass','medDose','medRoute','medFrequency','medStart','medEnd','evtType','evtDate','evtNotes','importFile','setInterval','setPublicTitle','setInstitution','setEthicsNo','setContact'].forEach(k=>{if(el[k])el[k].value='';});
+  ['varPatientCode','labPatientCode','medPatientCode','evtPatientCode','varTestDate','varTestName','varGene','varVariant','varHgvsC','varHgvsP','varZygosity','varClass','varLabName','varNotes','labDate','labValue','labQcReason','labCustomName','labCustomUnit','medName','medClass','medDoseValue','medDoseUnit','medIndication','medNotes','medRoute','medFrequency','medStart','medEnd','evtType','evtDate','evtNotes','evtEvidence','evtDetail','importFile','setInterval','setPublicTitle','setInstitution','setEthicsNo','setContact'].forEach(k=>{if(el[k])el[k].value='';});
   if(el.settingsFeedback)el.settingsFeedback.replaceChildren();
   if(el.patientCodeOptions)el.patientCodeOptions.replaceChildren();
   if(el.boardFilters)el.boardFilters.replaceChildren();
@@ -398,6 +421,8 @@ function clearProjectWorkspace(){
   if(el.patientSearch)el.patientSearch.value='';
   if(qs('#importUnitsConfirm'))qs('#importUnitsConfirm').checked=false;
   if(qs('#importBaselineUnit'))qs('#importBaselineUnit').value='';
+  resetImportUi();closeImportHelp();closeUndoForm();_importBatches=[];
+  {const box=qs('#importBatchesList');if(box)box.textContent='';const d=qs('#importBatchesDetails');if(d)d.open=false;const u=qs('#importUndoResult');if(u)u.textContent='';}
   ['importPreview','importProgress','snapshotOut'].forEach(k=>{if(el[k]){el[k].style.display='none';if(k!=='importPreview')el[k].textContent='';}});
   ['issueSummary','snapshotsList','patientsList','variantsPreview','labsPreview','medsPreview','eventsPreview'].forEach(k=>{if(el[k])el[k].textContent='请等待当前项目加载。';});
   if(el.issueList)el.issueList.textContent='';
@@ -406,7 +431,7 @@ function clearProjectWorkspace(){
   document.querySelectorAll('[data-registry-modal]').forEach(n=>n.remove());
 }
 function clearSessionWorkspace(){
-  sessionEpoch++;projectEpoch++;renderedForUser=null;projects=[];selectedProject=null;patients=[];patientsLoaded=false;projectOverview=null;_importParsed=null;projectCustomLabs=[];labCatalog=[];unitMap={};projectAccess=null;busyButtons.clear();frozenRequests.clear();isPlatformAdmin=false;
+  sessionEpoch++;projectEpoch++;renderedForUser=null;projects=[];selectedProject=null;patients=[];patientsLoaded=false;projectOverview=null;_importParsed=null;_importBatches=[];_undoTarget=null;_lastImportReport=null;projectCustomLabs=[];labCatalog=[];unitMap={};projectAccess=null;busyButtons.clear();frozenRequests.clear();isPlatformAdmin=false;
   projectMembersController?.clear();projectMembersController=null;
   boardLoad=null;rowRefreshSeq.clear();
   followupDialogs.closeAll();
@@ -869,7 +894,7 @@ async function setNewPassword(){
 async function loadLabCatalog(){
   const identity=captureIdentity();
   const { data, error } = await sb.from("lab_test_catalog")
-    .select("code,name_cn,module,is_core,standard_unit,display_note")
+    .select("code,name_cn,name_en,module,is_core,standard_unit,display_note")
     .order("module").order("name_cn");
   if(!sameIdentity(identity))return;
   if (error || !data) return;
@@ -1534,7 +1559,7 @@ function renderMedsPreview(rows){
     <tr>
       <td><b>${escapeHtml(r.patient_code??"")}</b></td>
       <td>${escapeHtml(r.drug_name??"")}</td>
-      <td class="muted small">${escapeHtml([r.dose,r.frequency,r.route].filter(Boolean).join(" "))}</td>
+      <td class="muted small">${escapeHtml([r.dose_value!=null?`${r.dose_value} ${r.dose_unit||""}`.trim():r.dose,r.frequency,r.route].filter(Boolean).join(" "))}</td>
       <td>${escapeHtml(r.start_date??"")}</td>
       <td>${escapeHtml(r.end_date??"")}</td>
       <td><button class="btn small" style="color:#b91c1c" data-project-capability="can_write" data-delete-table="meds_long" data-record-id="${escapeHtml(r.id??"")}">删除</button></td>
@@ -1551,7 +1576,7 @@ function renderMedsPreview(rows){
 }
 
 
-const EVENT_TYPE_LABELS={egfr_decline_40pct:'eGFR 下降 ≥40%',egfr_decline_57pct:'eGFR 下降 ≥57%',esrd:'终末期肾病',death:'死亡',complete_remission:'完全缓解',partial_remission:'部分缓解',custom:'其他'};
+const EVENT_TYPE_LABELS={egfr_decline_40pct:'eGFR 下降 ≥40%',egfr_decline_57pct:'eGFR 下降 ≥57%',complete_remission:'完全缓解',partial_remission:'部分缓解',...IMPORTABLE_EVENTS};
 const EVENT_SOURCE_LABELS={manual:'手动录入',derived:'脚本推导',import:'批量导入'};
 function renderEventsPreview(rows){
   if (!el.eventsPreview) return;
@@ -1564,15 +1589,15 @@ function renderEventsPreview(rows){
       <td><b>${escapeHtml(r.patient_code??"")}</b></td>
       <td>${escapeHtml(EVENT_TYPE_LABELS[r.event_type]||r.event_type||"")}</td>
       <td>${escapeHtml(r.event_date??"")}</td>
-      <td>${escapeHtml(EVENT_SOURCE_LABELS[r.source||"manual"]||"其他来源")}</td>
-      <td class="muted small">${escapeHtml((r.notes??"").slice(0,30))}</td>
+      <td>${escapeHtml(EVENT_SOURCE_LABELS[r.source||"manual"]||"其他来源")}${r.evidence_source?` · ${escapeHtml(EVIDENCE_SOURCES[r.evidence_source]||"其他")}`:""}</td>
+      <td class="muted small">${escapeHtml(String(r.event_detail||r.notes||"").slice(0,30))}</td>
       <td><button class="btn small" style="color:#b91c1c" data-project-capability="can_write" data-delete-table="events_long" data-record-id="${escapeHtml(r.id??"")}">删除</button></td>
     </tr>
   `).join("");
   el.eventsPreview.innerHTML = `
     <div class="muted small">最近 20 条：</div>
     <table class="table">
-      <thead><tr><th>研究编号</th><th>事件类型</th><th>日期</th><th>来源</th><th>备注</th><th></th></tr></thead>
+      <thead><tr><th>研究编号</th><th>事件类型</th><th>日期</th><th>来源 · 判定依据</th><th>细节 / 备注</th><th></th></tr></thead>
       <tbody>${trs}</tbody>
     </table>
   `;
@@ -1830,22 +1855,37 @@ async function addMed(){
   if (!patient_code) return toast("请填写研究编号");
   const drug_name = el.medName?.value.trim();
   if (!drug_name) return toast("请填写药品名称");
-  // Compose structured dose string: "2 mg bid PO"
-  const doseVal = el.medDose?.value.trim() || "";
-  const routeVal = el.medRoute?.value || "";
-  const freqVal = el.medFrequency?.value || "";
-
-
+  if ([...drug_name].length > 100) return toast("药品名称最多 100 字");
+  // 剂量拆为数值 + 单位（与批量导入一致）；旧的剂量文本列同步写入“数值 单位”，兼容旧导出。
+  const doseRaw = el.medDoseValue?.value.trim() || "";
+  const doseUnit = el.medDoseUnit?.value.trim() || "";
+  let dose_value = null;
+  if (doseRaw) { dose_value = Number(doseRaw); if (!Number.isFinite(dose_value) || dose_value <= 0) return toast("剂量数值须为大于 0 的数字"); }
+  if ([...doseUnit].length > 20) return toast("剂量单位最多 20 个字符");
+  if (!!doseRaw !== !!doseUnit && !confirm("剂量数值与剂量单位只填了其中一项，建议成对填写。仍要保存吗？")) return;
+  const start_date = el.medStart?.value || null, end_date = el.medEnd?.value || null;
+  const today = beijingToday();
+  if ((start_date && start_date > today) || (end_date && end_date > today)) return toast("用药日期不能晚于今天");
+  if (start_date && end_date && end_date < start_date) return toast("结束日期不能早于开始日期");
+  const indication = el.medIndication?.value.trim() || null;
+  const notes = el.medNotes?.value.trim() || null;
+  if (indication && [...indication].length > 100) return toast("用药目的最多 100 字");
+  if (notes && [...notes].length > 500) return toast("备注最多 500 字");
+  try{ if (indication) assertNoPII(indication, "用药目的"); if (notes) assertNoPII(notes, "用药备注"); }catch(e){ return toast(e.message); }
   const payload = {
     project_id: op.project.id,
     patient_code,
     drug_name,
-    drug_class: el.medClass?.value.trim() || null,
-    dose: doseVal || null,
-    route: routeVal || null,
-    frequency: freqVal || null,
-    start_date: el.medStart?.value || null,
-    end_date: el.medEnd?.value || null
+    drug_class: el.medClass?.value || null,
+    dose: dose_value != null && doseUnit ? `${dose_value} ${doseUnit}` : null,
+    dose_value,
+    dose_unit: doseUnit || null,
+    route: el.medRoute?.value || null,
+    frequency: el.medFrequency?.value || null,
+    start_date,
+    end_date,
+    indication,
+    notes
   };
   const btn = el.btnAddMed;
   btn.dataset.label = "添加用药记录";
@@ -1855,10 +1895,7 @@ async function addMed(){
     if (error) throw error;
     assertContext(op);
     toast("已添加用药记录");
-    if (el.medName) el.medName.value = "";
-    if (el.medDose) el.medDose.value = "";
-    if (el.medRoute) el.medRoute.value = "";
-    if (el.medFrequency) el.medFrequency.value = "";
+    ['medName','medDoseValue','medDoseUnit','medRoute','medFrequency','medIndication','medNotes'].forEach(k=>{ if (el[k]) el[k].value = ""; });
     await loadExtras();
   await loadSnapshots();
   }catch(e){
@@ -1878,16 +1915,25 @@ async function addEvent(){
   if (!patient_code) return toast("请填写研究编号");
   const event_type = el.evtType?.value;
   if (!event_type) return toast("请选择事件类型");
+  const evidence_source = el.evtEvidence?.value || "";
+  if (!EVIDENCE_SOURCES[evidence_source]) return toast("请选择判定依据来源");
+  const event_detail = el.evtDetail?.value.trim() || null;
+  if (event_type === "custom" && !event_detail) return toast("事件类型为“其他”时请填写事件细节");
+  if (event_detail && [...event_detail].length > 500) return toast("事件细节最多 500 字");
+  const event_date = el.evtDate?.value || null;
+  if (event_date && event_date > beijingToday()) return toast("事件日期不能晚于今天");
   const payload = {
     project_id: op.project.id,
     patient_code,
     event_type,
-    event_date: el.evtDate?.value || null,
+    event_date,
     confirmed: true,
     source: "manual",
+    evidence_source,
+    event_detail,
     notes: el.evtNotes?.value.trim().slice(0, 500) || null,
   };
-  try{assertNoPII(payload.notes||'','事件备注');}catch(e){return toast(e.message);}
+  try{assertNoPII(payload.notes||'','事件备注');assertNoPII(event_detail||'','事件细节');}catch(e){return toast(e.message);}
   const btn = el.btnAddEvent;
   btn.dataset.label = "录入终点事件";
   setBusy(btn, true);
@@ -1895,9 +1941,8 @@ async function addEvent(){
     const { error } = await sb.from("events_long").insert(payload);
     if (error) throw error;
     assertContext(op);
-    toast("已录入终点事件");
-    if (el.evtDate) el.evtDate.value = "";
-    if (el.evtNotes) el.evtNotes.value = "";
+    toast(["death","esrd","dialysis_start","kidney_transplant"].includes(event_type) ? "已录入终点事件。如患者研究状态有变化（死亡、肾衰竭等），请到该患者的“研究状态”中登记。" : "已录入终点事件");
+    ['evtDate','evtNotes','evtDetail'].forEach(k=>{ if (el[k]) el[k].value = ""; });
     await loadExtras();
   await loadSnapshots();
   }catch(e){
@@ -2876,32 +2921,158 @@ window.adminViewProofs             = adminViewProofs;
 // ============================================================
 
 // Transactional, context-bound imports. Empty cells preserve existing values.
+// 基线 / 随访：单批 ≤500 行，沿用原流程。化验 / 用药 / 终点事件：见 /lib/batch-import.js，两级校验后按 500 行分块，
+// 每块一个批次编号，成功后登记文件信息（register_import_file）；某块失败即停止，重试沿用同一批次编号。
 let _importParsed=null;
+let _importBatches=[];let _undoTarget=null;let _lastImportReport=null;
 const IMPORT_TEMPLATES={
   baseline:{filename:'template_patients_baseline.csv',columns:BASELINE_IMPORT_FIELDS,example:{patient_code:'0001',sex:'F',birth_year:'1985',baseline_date:'2026-09-01',baseline_scr:'88.4',baseline_upcr:'500',baseline_upcr_unit:'mg/g'}},
   visits:{filename:'template_visits_long.csv',columns:VISIT_IMPORT_FIELDS,example:{patient_code:'0001',visit_date:'2026-09-14',sbp:'128',dbp:'78',scr_umol_l:'92',upcr:'450'}}
 };
-function downloadImportTemplate(){const t=IMPORT_TEMPLATES[el.importType.value];if(t)downloadCsvUtf8Bom(t.filename,toCsv([t.example],t.columns));}
+const isBatchKind=type=>BATCH_KINDS.includes(type);
+const UNDOABLE_KINDS=['visits','labs','meds','events'];
+const ROW_STATUS_LABELS={ok:'可写入',warn:'警告',block:'阻断',ignored:'不导入'};
+function downloadImportTemplate(){
+  const type=el.importType.value;
+  if(isBatchKind(type))return downloadCsvUtf8Bom(BATCH_TEMPLATES[type].filename,templateCsv(type));
+  const t=IMPORT_TEMPLATES[type];if(t)downloadCsvUtf8Bom(t.filename,toCsv([t.example],t.columns));
+}
+function closeImportHelp(){const box=qs('#importHelp');if(box){box.hidden=true;box.replaceChildren();}qs('#btnImportHelp')?.setAttribute('aria-expanded','false');}
+function toggleImportHelp(){
+  const box=qs('#importHelp');if(!box)return;
+  if(!box.hidden)return closeImportHelp();
+  const type=el.importType.value;const batch=isBatchKind(type);
+  const fields=batch?BATCH_TEMPLATES[type].fields:IMPORT_TEMPLATES[type].columns.map(c=>[c,fieldLabel(c),c==='patient_code'?'必填':'选填','']);
+  const example=c=>batch?(BATCH_TEMPLATES[type].examples.map(e=>e[c]).find(v=>v)||''):(IMPORT_TEMPLATES[type].example[c]||'');
+  box.innerHTML=`<div><b>${escapeHtml(KIND_LABELS[type])}模板填写说明</b>${batch?`（${escapeHtml(BATCH_TEMPLATES[type].filename)}）`:''}</div>
+    <div class="infobox" style="margin:6px 0" data-pii-notice="help"><b>隐私提示：</b>${escapeHtml(PII_NOTICE)}</div>
+    <div class="muted small">CSV 编码 UTF-8（可带 BOM）；首行为英文列名，列顺序可调，列名须与模板逐字一致；日期格式 YYYY-MM-DD；选填列可留空或整列删除。</div>
+    <table class="table"><thead><tr><th>列名</th><th>中文名</th><th>是否必填</th><th>规则与取值</th><th>示例</th></tr></thead>
+    <tbody>${fields.map(([c,cn,req,rule])=>`<tr><td><code>${escapeHtml(c)}</code></td><td>${escapeHtml(cn)}</td><td>${escapeHtml(req)}</td><td>${escapeHtml(rule)}</td><td>${escapeHtml(example(c))}</td></tr>`).join('')}</tbody></table>`;
+  box.hidden=false;qs('#btnImportHelp')?.setAttribute('aria-expanded','true');
+}
+/** 清除预览（保留结果页）。 */
+function clearImportPreview(){
+  if(el.importPreview)el.importPreview.style.display='none';
+  if(el.importFile)el.importFile.value='';
+  _importParsed=null;
+  ['#importCounts','#importUnmapped'].forEach(s=>{const n=qs(s);if(n){n.hidden=true;n.replaceChildren();}});
+  const w=qs('#importWarnConfirmRow');if(w)w.style.display='none';
+  const c=qs('#importWarnConfirm');if(c){c.checked=false;c.disabled=false;}
+  const d=qs('#btnDownloadImportErrors');if(d)d.style.display='none';
+  if(el.btnConfirmImport){el.btnConfirmImport.dataset.label='确认导入';if(!busyButtons.has(el.btnConfirmImport))el.btnConfirmImport.textContent='确认导入';}
+}
+function resetImportUi(){
+  clearImportPreview();
+  if(el.importProgress){el.importProgress.style.display='none';el.importProgress.textContent='';}
+  const r=qs('#importResult');if(r){r.hidden=true;r.replaceChildren();}
+  _lastImportReport=null;
+}
+function syncImportType(){
+  const type=el.importType?.value;const batch=isBatchKind(type);
+  qsa('[data-import-rules="legacy"]').forEach(n=>{n.hidden=batch;});
+  qsa('[data-import-rules="batch"]').forEach(n=>{n.hidden=!batch;});
+  const legacy=qs('#importLegacyOptions');if(legacy)legacy.hidden=batch;
+  const units=qs('#importUnitsConfirmRow');if(units)units.style.display=batch?'none':'flex';
+  closeImportHelp();resetImportUi();
+}
 async function handleImportFile(evt){
   if(!requireProjectCapability('can_write'))return;
+  if(isBatchKind(el.importType.value))return handleBatchFile(evt.target.files?.[0]);
   _importParsed=null;el.importPreview.style.display='none';
   const file=evt.target.files?.[0];if(!file)return;if(!selectedProject)return toast('请先选择项目');
   const op=captureContext(),type=el.importType.value;
   if(file.size>2*1024*1024)return toast('单次 CSV 不超过2MB、500行，请分为明确的导入批次。');
   try{
     const {headers,data}=parseRegistryCsv(await file.text());assertContext(op);
+    const piiColumns=piiHeaderColumns(headers);
+    if(piiColumns.length)throw new Error(`表头含疑似个人信息列（${piiColumns.join('、')}），整份文件已拒绝。${PII_NOTICE}`);
     if(data.length>500)throw new Error('单次最多500行，防止浏览器中断；请分批准备文件');
     const unit=qs('#importBaselineUnit')?.value||'';
     const results=data.map((row,i)=>{try{assertNoPII(row.patient_code,'研究编号');if(row.notes)assertNoPII(row.notes,'备注');return {row:i+2,ok:true,data:normalizeImportRow(type,row,unit)};}catch(e){return {row:i+2,ok:false,error:e.message,data:row};}});
     const errors=results.filter(r=>!r.ok);
     _importParsed={op,type,results,batchId:crypto.randomUUID(),filename:file.name};
     el.importSummary.textContent=`目标：${op.project.name} / ${op.project.center_code}。${results.length} 行，${errors.length} 行需修正。整批成功或整批拒绝；基线未提供/空白字段保持原值。以下显示前20行及所有错误。`;
-    const preview=results.slice(0,20), cols=[...new Set(preview.flatMap(r=>Object.keys(r.data)))];
+    const preview=[...results.slice(0,20),...errors.filter(r=>r.row>21)];const cols=[...new Set(preview.flatMap(r=>Object.keys(r.data)))];
     el.importTable.innerHTML=`${errors.length?`<div class="warnbox">${errors.map(r=>`第${r.row}行：${escapeHtml(r.error)}`).join('<br>')}</div>`:''}<div style="overflow:auto"><table class="table"><thead><tr><th>行号</th>${cols.map(c=>`<th title="${escapeHtml(c)}">${escapeHtml(fieldLabel(c))}</th>`).join('')}</tr></thead><tbody>${preview.map(r=>`<tr><td>${r.row}${r.ok?'':' ✗'}</td>${cols.map(c=>`<td>${escapeHtml(r.data[c]??'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
     el.btnConfirmImport.dataset.blocked=errors.length?'1':'';el.btnConfirmImport.disabled=!!errors.length||!canProject('can_write');el.importPreview.style.display='block';el.importProgress.style.display='none';
   }catch(e){_importParsed=null;toast('无法预览：'+registryErrorMessage(e));}
 }
+async function sha256Bytes(buffer){
+  const bytes=await crypto.subtle.digest('SHA-256',buffer);
+  return [...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function loadImportPatients(op){
+  const rows=patientsLoaded?patients:await readKeysetRows(sb,'v_patient_followup_status',op.project.id,{key:'patient_id',select:'patient_id,patient_code,followup_status,baseline_date',pageSize:BOARD_PAGE_SIZE,assertCurrent:()=>assertContext(op)});
+  assertContext(op);
+  return new Map(rows.map(r=>[r.patient_code,{followup_status:r.followup_status,baseline_date:r.baseline_date}]));
+}
+async function handleBatchFile(file){
+  resetImportUi();
+  if(!file)return;if(!selectedProject)return toast('请先选择项目');
+  const op=captureContext(),type=el.importType.value;
+  if(file.size>MAX_FILE_BYTES)return toast('单个 CSV 不超过 20 MB，请拆分为多个文件。');
+  const fileName=baseFileName(file.name);
+  if(containsPII(fileName)){if(el.importFile)el.importFile.value='';return toast('文件名疑似包含个人信息（姓名、手机号、身份证号、病案号或 8 位以上连续数字，例如不带分隔符的日期），请重命名后重新选择；日期可写成 2026-10-14。');}
+  try{
+    const buffer=await file.arrayBuffer();
+    const sha256=await sha256Bytes(buffer);
+    const {headers,data}=parseRegistryCsv(new TextDecoder('utf-8').decode(buffer));assertContext(op);
+    if(data.length>MAX_FILE_ROWS)throw new Error(`单个文件最多 ${MAX_FILE_ROWS} 行，请拆分为多个文件`);
+    if(type==='labs'&&!labCatalog.length){await loadLabCatalog();assertContext(op);}
+    if(type==='labs'&&!labCatalog.length)throw new Error('化验项目字典读取失败，请刷新页面后重试');
+    const patientMap=await loadImportPatients(op);
+    _importParsed={op,type,batch:true,headers,data,fileName,sha256,mapping:{},patients:patientMap,today:beijingToday(),result:null,chunks:null};
+    revalidateBatch();
+  }catch(e){if(currentContext(op)){_importParsed=null;toast('无法预览：'+registryErrorMessage(e));}}
+}
+function revalidateBatch(){
+  const b=_importParsed;if(!b?.batch)return;
+  b.result=validateBatch(b.type,b.headers,b.data,{catalog:labCatalog,unitMap,patients:b.patients,today:b.today,mapping:b.mapping,containsPII});
+  _lastImportReport={type:b.type,result:b.result};
+  renderBatchPreview();
+}
+function renderBatchPreview(){
+  const b=_importParsed,r=b.result,c=r.counts;const locked=!!b.chunks;
+  el.importSummary.textContent=`目标：${b.op.project.name} / ${b.op.project.center_code}。文件：${b.fileName}。${KIND_LABELS[b.type]}共 ${c.total} 行${c.ignored?`，其中 ${c.ignored} 行已标记为不导入`:''}。阻断行不会写入；可写入行按每 500 行一块依次提交。`;
+  const counts=qs('#importCounts');
+  counts.innerHTML=`<span data-count="total">总行数 ${Number(c.total)}</span><span class="bi-count-ok" data-count="writable">可写入 ${Number(c.writable)}</span><span class="bi-count-warn" data-count="warn">警告 ${Number(c.warn)}</span><span class="bi-count-block" data-count="block">阻断 ${Number(c.block)}</span>`;
+  counts.hidden=false;
+  const unmappedBox=qs('#importUnmapped');
+  if(b.type==='labs'&&r.unmapped.length){
+    const options=labCatalog.map(x=>`<option value="${escapeHtml(x.code)}">${escapeHtml(x.name_cn)}（${escapeHtml(x.code)}）</option>`).join('');
+    unmappedBox.innerHTML=`<div class="bi-unmapped"><b>未映射项目（${r.unmapped.length} 项）</b><div class="muted small">以下化验项目不在系统字典中，也没有匹配到常见名称或缩写。请逐项选择对应的字典项目，或标记为“不导入”；未处理的行不会写入。</div>
+      <table class="table"><thead><tr><th>文件中的编码</th><th>文件中的名称</th><th>行数</th><th>映射到</th></tr></thead><tbody>${r.unmapped.map((u,i)=>`<tr><td>${escapeHtml(u.code)}</td><td>${escapeHtml(u.name)}</td><td>${Number(u.count)}</td><td><select data-unmapped-index="${i}" aria-label="未映射项目 ${i+1} 映射到"><option value="">-- 请选择 --</option><option value="${SKIP_MAPPING}">不导入</option>${options}</select></td></tr>`).join('')}</tbody></table></div>`;
+    qsa('select[data-unmapped-index]',unmappedBox).forEach(s=>{s.value=b.mapping[r.unmapped[Number(s.dataset.unmappedIndex)].key]||'';s.disabled=locked;});
+    unmappedBox.hidden=false;
+  }else{unmappedBox.hidden=true;unmappedBox.replaceChildren();}
+  if(r.fileIssues.length){
+    el.importTable.innerHTML=`<div class="warnbox">${r.fileIssues.map(f=>`表头问题（${escapeHtml(f.col)}）：${escapeHtml(f.reason)} ${escapeHtml(f.fix)}`).join('<br>')}</div>`;
+  }else{
+    const problems=r.rows.filter(x=>x.status!=='ok'),fine=r.rows.filter(x=>x.status==='ok');
+    const shown=[...problems.slice(0,300),...fine.slice(0,20)].sort((a,b2)=>a.line-b2.line);
+    const cols=b.headers;
+    el.importTable.innerHTML=`<table class="table"><thead><tr><th>行号</th><th>状态</th>${cols.map(h=>`<th title="${escapeHtml(h)}">${escapeHtml(fieldLabel(h))}</th>`).join('')}<th>问题与提示</th></tr></thead><tbody>${shown.map(x=>`<tr class="bi-row-${x.status}" data-line="${Number(x.line)}"><td>${Number(x.line)}</td><td>${ROW_STATUS_LABELS[x.status]}</td>${cols.map(h=>`<td>${escapeHtml(x.cells[h]??'')}</td>`).join('')}<td>${x.issues.map(i=>`<div class="bi-issue-${i.level}">${escapeHtml(fieldLabel(i.col))}：${escapeHtml(i.reason)}${i.fix?' '+escapeHtml(i.fix):''}</div>`).join('')}</td></tr>`).join('')}</tbody></table>${problems.length>300||fine.length>20?`<div class="muted small" style="padding:6px">仅显示前 300 个问题行与前 20 个正常行；完整清单请下载错误报告。</div>`:''}`;
+  }
+  const warnRow=qs('#importWarnConfirmRow');warnRow.style.display=c.warn?'flex':'none';
+  const warnBox=qs('#importWarnConfirm');warnBox.disabled=locked;if(!c.warn)warnBox.checked=false;
+  qs('#btnDownloadImportErrors').style.display=r.fileIssues.length||r.rows.some(x=>x.issues.some(i=>i.level!=='info'))?'':'none';
+  el.btnConfirmImport.dataset.blocked=r.fileIssues.length||!c.writable?'1':'';
+  el.btnConfirmImport.disabled=busyButtons.has(el.btnConfirmImport)||el.btnConfirmImport.dataset.blocked==='1'||!canProject('can_write');
+  el.importPreview.style.display='block';
+}
+function onUnmappedChange(e){
+  const s=e.target.closest('select[data-unmapped-index]');const b=_importParsed;if(!s||!b?.batch||b.chunks)return;
+  const entry=b.result.unmapped[Number(s.dataset.unmappedIndex)];if(!entry)return;
+  if(s.value)b.mapping[entry.key]=s.value;else delete b.mapping[entry.key];
+  revalidateBatch();
+}
+function downloadImportErrors(){
+  const report=_importParsed?.batch?{type:_importParsed.type,result:_importParsed.result}:_lastImportReport;if(!report?.result)return;
+  downloadCsvUtf8Bom(`import_errors_${report.type}_${fmtDate(new Date())}.csv`,errorReportCsv(report.result));
+}
 async function confirmImport(){
+  if(_importParsed?.batch)return confirmBatchImport();
   if(!requireProjectCapability('can_write'))return;
   const batch=_importParsed;if(!batch)return;
   const btn=el.btnConfirmImport;
@@ -2915,7 +3086,121 @@ async function confirmImport(){
     el.importProgress.textContent=`导入成功：新增 ${data.inserted}，更新 ${data.updated}，去重跳过 ${data.skipped}；批次 ${batch.batchId}`;
     toast('整批导入已完成');_importParsed=null;el.importFile.value='';el.importPreview.style.display='none';
     await Promise.all([refreshFollowup(batch.op),loadExtras(),loadIssueSummary()]);
+    if(qs('#importBatchesDetails')?.open)loadImportBatches();
   }catch(e){if(batch&&currentContext(batch.op)){el.importProgress.style.display='block';el.importProgress.textContent=`未确认完成：${registryErrorMessage(e)} 批次 ${batch.batchId} 已保留，可修复后用同一预览重试；不要改用新批次重复提交。`;}toast('导入未完成：'+registryErrorMessage(e));}
+  finally{setBusy(btn,false);}
+}
+async function confirmBatchImport(){
+  if(!requireProjectCapability('can_write'))return;
+  const b=_importParsed;if(!b?.result)return;const btn=el.btnConfirmImport;
+  try{
+    assertContext(b.op);
+    const c=b.result.counts;
+    if(b.result.fileIssues.length||!c.writable)throw new Error('没有可写入的行，请先按预览修正文件');
+    if(c.warn&&!qs('#importWarnConfirm')?.checked)throw new Error('有警告行：请逐行核对后勾选“已核对警告”，再确认导入');
+    if(!b.chunks){
+      const n=Math.ceil(c.writable/CHUNK_SIZE);
+      if(!confirm(`将 ${c.writable} 行${KIND_LABELS[b.type]}分 ${n} 块提交到「${b.op.project.name}」？${c.block?`阻断的 ${c.block} 行不会写入。`:''}${c.warn?`其中 ${c.warn} 行警告已核对。`:''}`))return;
+      b.chunks=buildChunks(b.result,()=>crypto.randomUUID());
+      renderBatchPreview();
+    }
+    setBusy(btn,true);
+    await runBatchChunks(b);
+  }catch(e){if(currentContext(b.op))toast('导入未完成：'+registryErrorMessage(e));}
+  finally{setBusy(btn,false);}
+}
+async function runBatchChunks(b){
+  el.importProgress.style.display='block';
+  for(const chunk of b.chunks){
+    if(chunk.registered)continue;
+    assertContext(b.op);
+    el.importProgress.textContent=`正在提交第 ${chunk.index}/${chunk.total} 块（${chunk.rows.length} 行），请保留页面…`;
+    try{
+      if(!chunk.imported){
+        const {data,error}=await sb.rpc('import_registry_rows',{p_project_id:b.op.project.id,p_kind:b.type,p_rows:chunk.rows,p_batch_id:chunk.batchId});
+        if(error)throw error;assertContext(b.op);
+        if(!data||Number(data.total)!==chunk.rows.length)throw new Error('服务器返回数量不一致，请保留本页并联系管理员核对');
+        chunk.imported=true;chunk.reply=data;
+      }
+      const {error:regError}=await sb.rpc('register_import_file',{p_project_id:b.op.project.id,p_batch_id:chunk.batchId,p_file_sha256:b.sha256,p_file_name:b.fileName,p_chunk_index:chunk.index,p_chunk_total:chunk.total});
+      if(regError)throw regError;assertContext(b.op);
+      chunk.registered=true;chunk.error=null;
+    }catch(e){
+      if(!currentContext(b.op))throw e;
+      chunk.error=registryErrorMessage(e,{rowLine:n=>chunk.lines[n-1]??null});
+      renderBatchResult(b,false);
+      el.importProgress.textContent=`第 ${chunk.index}/${chunk.total} 块未完成，已停止提交后续块。${chunk.imported?'该块数据已写入，但文件信息登记未完成。':''}已成功的块不会重复写入。若是网络或登录问题，可点击“重试未完成的块”（沿用同一批次编号）；若需修改数据，请修正文件后重新上传，与已有记录相同的行会自动跳过。`;
+      el.btnConfirmImport.dataset.label='重试未完成的块';
+      return;
+    }
+  }
+  renderBatchResult(b,true);
+  el.importProgress.textContent='导入完成，结果见下方；可在“导入记录”中按批次查看与撤销。';
+  toast(`${KIND_LABELS[b.type]}导入已完成`);
+  _lastImportReport={type:b.type,result:b.result};
+  clearImportPreview();
+  const details=qs('#importBatchesDetails');
+  await Promise.allSettled([loadExtras(),loadIssueSummary(),details?.open?loadImportBatches():Promise.resolve()]);
+}
+function renderBatchResult(b,done){
+  const box=qs('#importResult');if(!box)return;
+  const num=v=>Number(v)||0;
+  const ok=b.chunks.filter(c=>c.registered);
+  const inserted=ok.reduce((s,c)=>s+num(c.reply?.inserted),0),skipped=ok.reduce((s,c)=>s+num(c.reply?.skipped),0);
+  const blocked=b.result.counts.block;
+  const rows=b.chunks.map(c=>{
+    const state=c.registered?`成功：新增 ${num(c.reply?.inserted)}，跳过 ${num(c.reply?.skipped)}${c.reply?.replayed?'（重试时确认已写入）':''}`:c.error?`失败：${c.error}`:'未提交';
+    return `<tr class="${c.registered?'':c.error?'bi-row-block':''}" data-chunk="${c.index}"><td>${c.index}/${c.total}</td><td>第 ${c.lines[0]}–${c.lines[c.lines.length-1]} 行</td><td>${escapeHtml(state)}</td><td><code title="${escapeHtml(c.batchId)}">${escapeHtml(c.batchId.slice(0,8))}</code></td></tr>`;
+  }).join('');
+  box.innerHTML=`<div class="${done?'okbox':'warnbox'}" data-import-outcome="${done?'done':'partial'}">${done?`导入完成（${escapeHtml(KIND_LABELS[b.type])}）：新增 ${inserted}，跳过 ${skipped}（与已有记录相同），共 ${b.chunks.length} 块。`:`导入未全部完成：成功 ${ok.length}/${b.chunks.length} 块，已成功的块已写入。`}${blocked?` 预览中阻断的 ${blocked} 行未写入，可下载错误报告修正后重传同一文件。`:''}</div>
+    <table class="table"><thead><tr><th>块</th><th>行范围</th><th>结果</th><th>批次</th></tr></thead><tbody>${rows}</tbody></table>
+    ${blocked||done===false?'<div class="btnbar"><button class="btn small" data-import-errors>下载错误报告 CSV</button></div>':''}`;
+  box.hidden=false;
+}
+function fmtDateTime(value){
+  const d=new Date(value);if(!value||!Number.isFinite(d.getTime()))return String(value??'');
+  const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+async function loadImportBatches(){
+  const box=qs('#importBatchesList');if(!box||!selectedProject)return;
+  const op=captureContext();box.textContent='正在读取导入记录…';
+  try{
+    const {data,error}=await sb.rpc('list_import_batches',{p_project_id:op.project.id,p_limit:100});if(error)throw error;assertContext(op);
+    _importBatches=Array.isArray(data)?data:[];renderImportBatches();
+  }catch(e){if(currentContext(op))box.textContent='导入记录读取失败：'+registryErrorMessage(e);}
+}
+function renderImportBatches(){
+  const box=qs('#importBatchesList');if(!box)return;
+  if(!_importBatches.length){box.textContent='暂无导入记录。';return;}
+  const canWrite=canProject('can_write');const num=v=>Number(v)||0;
+  box.innerHTML=`<table class="table"><thead><tr><th>类型</th><th>时间</th><th>操作者</th><th>文件名</th><th>块序</th><th>新增 / 跳过</th><th>状态</th><th></th></tr></thead><tbody>${_importBatches.map((r,i)=>`<tr data-batch-row="${i}">
+    <td>${escapeHtml(KIND_LABELS[r.kind]||'其他')}</td><td>${escapeHtml(fmtDateTime(r.created_at))}</td><td>${escapeHtml(r.created_by_email||'—')}</td><td>${escapeHtml(r.file_name||'—')}</td>
+    <td>${r.chunk_index&&r.chunk_total?`${num(r.chunk_index)}/${num(r.chunk_total)}`:'—'}</td><td>${num(r.inserted)} / ${num(r.skipped)}</td>
+    <td>${r.undone_at?`<span class="badge bad">已撤销</span> ${escapeHtml(fmtDateTime(r.undone_at))}${r.undo_reason?`：${escapeHtml(r.undo_reason)}`:''}`:'<span class="badge ok">有效</span>'}</td>
+    <td>${canWrite&&!r.undone_at&&UNDOABLE_KINDS.includes(r.kind)?`<button class="btn small danger" data-project-capability="can_write" data-undo-index="${i}">撤销本批次</button>`:''}</td></tr>`).join('')}</tbody></table>`;
+}
+function openUndoForm(index){
+  const target=_importBatches[index];if(!target||!requireProjectCapability('can_write'))return;
+  _undoTarget=target;
+  const form=qs('#importUndoForm');const label=qs('#importUndoTarget');
+  if(label)label.textContent=`撤销批次：${KIND_LABELS[target.kind]||'其他'}，${fmtDateTime(target.created_at)}，${target.file_name||'未记录文件名'}${target.chunk_index&&target.chunk_total?`（第 ${Number(target.chunk_index)}/${Number(target.chunk_total)} 块）`:''}，新增 ${Number(target.inserted)||0} 条。`;
+  qs('#importUndoReason').value='';qs('#importUndoResult').textContent='';
+  form.hidden=false;qs('#importUndoReason').focus();
+}
+function closeUndoForm(){_undoTarget=null;const form=qs('#importUndoForm');if(form)form.hidden=true;const r=qs('#importUndoReason');if(r)r.value='';}
+async function confirmUndoBatch(){
+  if(!requireProjectCapability('can_write'))return;
+  const target=_undoTarget;if(!target)return;
+  const out=qs('#importUndoResult');const reason=qs('#importUndoReason').value.trim();const n=[...reason].length;
+  if(n<2||n>500){out.textContent='请填写 2–500 字的撤销原因（不含身份信息）。';return;}
+  if(containsPII(reason)){out.textContent='撤销原因中检测到疑似个人身份信息（手机号、身份证号、住院号、姓名等），请删除后再提交。';return;}
+  const op=captureContext();const btn=qs('#btnConfirmUndoBatch');setBusy(btn,true);
+  try{
+    const {data,error}=await sb.rpc('undo_import_batch',{p_project_id:op.project.id,p_batch_id:target.batch_id,p_reason:reason});if(error)throw error;assertContext(op);
+    closeUndoForm();
+    out.textContent=data?.already_undone?'该批次此前已撤销，本次未重复操作。':`已撤销本批次：删除 ${Number(data?.deleted)||0} 条记录；因导入后已被更正而保留 ${Number(data?.kept_changed)||0} 条。`;
+    await Promise.allSettled([loadImportBatches(),loadExtras(),target.kind==='visits'?refreshFollowup(op):Promise.resolve()]);
+  }catch(e){if(currentContext(op))out.textContent='撤销未完成：'+registryErrorMessage(e);}
   finally{setBusy(btn,false);}
 }
 
