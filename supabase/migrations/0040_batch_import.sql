@@ -132,6 +132,23 @@ ALTER TABLE public.registry_import_records
     CONSTRAINT registry_import_records_record_sha256_format CHECK (record_sha256 ~ '^[0-9a-f]{64}$');
 CREATE INDEX IF NOT EXISTS registry_import_records_batch_idx
   ON public.registry_import_records(project_id,batch_id) WHERE batch_id IS NOT NULL;
+-- Several batches may skip the same content as one record; each keeps its own link, so a
+-- record another batch still counts as skipped is not deleted when its inserting batch is
+-- undone. One link per content hash and batch (pre-0040 links have no batch).
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.registry_import_records'::regclass
+    AND conname='registry_import_records_pkey') THEN
+    ALTER TABLE public.registry_import_records DROP CONSTRAINT registry_import_records_pkey;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.registry_import_records'::regclass
+    AND conname='registry_import_records_hash_batch_key') THEN
+    ALTER TABLE public.registry_import_records ADD CONSTRAINT registry_import_records_hash_batch_key
+      UNIQUE NULLS NOT DISTINCT (project_id,kind,content_sha256,batch_id);
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS registry_import_records_record_idx
+  ON public.registry_import_records(project_id,kind,record_id);
 CREATE INDEX IF NOT EXISTS registry_import_batches_project_created_idx
   ON public.registry_import_batches(project_id,created_at DESC);
 
@@ -149,8 +166,8 @@ COMMENT ON COLUMN public.registry_import_batches.file_sha256 IS '导入文件的
 COMMENT ON COLUMN public.registry_import_batches.file_name IS '导入文件名（已去除路径），最多 200 字。';
 COMMENT ON COLUMN public.registry_import_batches.chunk_index IS '本批次是该文件的第几块（从 1 开始）。';
 COMMENT ON COLUMN public.registry_import_batches.undo_tracked IS '是否逐条记录了本批次写入的记录（0040 起的随访、化验、用药、终点事件批次）；只有这样的批次可以撤销。';
-COMMENT ON COLUMN public.registry_import_batches.undo_result IS '撤销结果：deleted 已删除条数，kept_changed 因导入后已更正而保留的条数，missing 撤销前已不存在的条数。';
-COMMENT ON COLUMN public.registry_import_records.action IS 'inserted：该批次新写入的记录；matched：该批次的行与已有记录完全一致而跳过。';
+COMMENT ON COLUMN public.registry_import_batches.undo_result IS '撤销结果：deleted 已删除条数，kept_changed 因导入后已更正而保留的条数，kept_referenced 因其他未撤销批次也导入了该记录（内容一致而跳过）而保留的条数，missing 撤销前已不存在的条数。';
+COMMENT ON COLUMN public.registry_import_records.action IS 'inserted：该批次新写入的记录；matched：该批次的行与已有记录完全一致而跳过（同一内容每个批次各记一条）。';
 COMMENT ON COLUMN public.registry_import_records.record_sha256 IS '新写入记录在批次结束时的整行摘要；撤销时与当前行比对，不一致说明导入后已被更正。';
 
 -- ---- Lab normalization: qualitative rows -------------------------------------------------
@@ -217,11 +234,17 @@ GRANT SELECT ON public.lab_test_catalog,public.lab_test_unit_map TO anon,authent
 -- Row-level security does not apply to TRUNCATE, so a default Supabase grant would let any
 -- signed-in user empty every project's data. Client roles never need these privileges; the
 -- owner and service role keep them. Default privileges cover tables created later by postgres.
+-- Only tables the migrating role owns (directly or through role membership) are changed:
+-- tables of other owners (for example supabase_admin) and of extensions are left to them,
+-- since revoking there is refused and would abort the migration.
 DO $$
 DECLARE r record;
 BEGIN
   FOR r IN SELECT c.oid::regclass AS rel FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-           WHERE n.nspname='public' AND c.relkind IN ('r','p') LOOP
+           WHERE n.nspname='public' AND c.relkind IN ('r','p')
+             AND pg_has_role(current_user,c.relowner,'USAGE')
+             AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid='pg_class'::regclass
+               AND d.objid=c.oid AND d.deptype='e') LOOP
     EXECUTE format('REVOKE TRUNCATE,TRIGGER,REFERENCES ON %s FROM PUBLIC,anon,authenticated', r.rel);
   END LOOP;
 END $$;
@@ -432,7 +455,7 @@ BEGIN
     INTO clean USING clean;
   row_hash := encode(sha256(convert_to(clean::text,'UTF8')),'hex');
   SELECT record_id INTO rec_id FROM public.registry_import_records
-    WHERE project_id=p_project_id AND kind=p_kind AND content_sha256=row_hash;
+    WHERE project_id=p_project_id AND kind=p_kind AND content_sha256=row_hash LIMIT 1;
   IF rec_id IS NOT NULL THEN
     EXECUTE format('SELECT CASE WHEN to_jsonb(t) @> $2 THEN 1 ELSE 0 END FROM public.%I t WHERE t.id=$1 AND t.project_id=$3',tbl)
       INTO k USING rec_id,clean,p_project_id;
@@ -440,6 +463,9 @@ BEGIN
       USING HINT='同样内容曾经导入，但该记录之后被删除；请先核实是否应重新录入。本批次未写入。'; END IF;
     IF k = '0' THEN RAISE EXCEPTION 'row_%_record_changed_since_import',p_row_no
       USING HINT = '记录已在导入后更正，请核对当前记录；不会覆盖更正或默默跳过差异。'; END IF;
+    -- This batch counts the record as skipped: link it so undoing another batch keeps it.
+    INSERT INTO public.registry_import_records(project_id,kind,content_sha256,record_id,batch_id,action)
+      VALUES(p_project_id,p_kind,row_hash,rec_id,p_batch_id,'matched') ON CONFLICT DO NOTHING;
     RETURN 'skipped';
   END IF;
   key_match := (SELECT string_agg(format('t.%1$I=(jsonb_populate_record(NULL::public.%2$I,$2)).%1$I',c,tbl),' AND ')
@@ -640,15 +666,18 @@ BEGIN
                 FROM jsonb_object_keys(clean) AS keys(key));
       row_hash := encode(sha256(convert_to(clean::text,'UTF8')),'hex');
       SELECT record_id INTO rec_id FROM public.registry_import_records
-        WHERE project_id=p_project_id AND kind=p_kind AND content_sha256=row_hash;
+        WHERE project_id=p_project_id AND kind=p_kind AND content_sha256=row_hash LIMIT 1;
       IF rec_id IS NOT NULL THEN
         IF NOT EXISTS(SELECT 1 FROM public.visits_long WHERE id=rec_id AND project_id=p_project_id) THEN
-          RAISE EXCEPTION 'row_%_previously_imported_record_deleted_requires_review',row_no;
+          RAISE EXCEPTION 'row_%_previously_imported_record_deleted_requires_review',row_no
+            USING HINT='同样内容曾经导入，但该记录之后被删除；请先核实是否应重新录入。本批次未写入。';
         END IF;
         IF NOT EXISTS(SELECT 1 FROM public.visits_long v WHERE id=rec_id AND project_id=p_project_id AND to_jsonb(v) @> clean) THEN
           RAISE EXCEPTION 'row_%_record_changed_since_import',row_no
             USING HINT = '记录已在导入后更正，请核对当前记录；不会覆盖更正或默默跳过差异。';
         END IF;
+        INSERT INTO public.registry_import_records(project_id,kind,content_sha256,record_id,batch_id,action)
+          VALUES(p_project_id,p_kind,row_hash,rec_id,p_batch_id,'matched') ON CONFLICT DO NOTHING;
         skipped := skipped+1; CONTINUE;
       END IF;
       SELECT id INTO rec_id FROM public.visits_long v WHERE project_id=p_project_id
@@ -824,8 +853,11 @@ END $$;
 -- write; reason of 2–500 characters without identifying information). Deletes each record
 -- the batch inserted that is unchanged since the batch ended (whole-row digest); a record
 -- corrected since then is kept (kept_changed) and stays linked, so re-importing the old
--- content is refused rather than silently skipped. Rows the batch skipped belong to
--- existing records and are never deleted. Each deletion is field-audited with the reason
+-- content is refused rather than silently skipped. A record that another batch not yet
+-- undone skipped as already present is kept too (kept_referenced): that batch counted it.
+-- When a record is deleted, or was already gone, every content link to it is removed, so
+-- the same content can be imported again. Rows the batch skipped belong to existing
+-- records and are never deleted. Each deletion is field-audited with the reason
 -- (_registry_audit_changes) and the undo is written to the project audit log. A batch
 -- already undone returns its earlier result with already_undone = true and changes nothing.
 -- Baseline batches are refused (patients are not removed this way), and so are batches
@@ -833,7 +865,7 @@ END $$;
 CREATE OR REPLACE FUNCTION public.undo_import_batch(p_project_id uuid,p_batch_id uuid,p_reason text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
 DECLARE b public.registry_import_batches%ROWTYPE; reason text := btrim(p_reason); tbl text; m record;
-  n_deleted int := 0; n_kept int := 0; n_missing int := 0; old_reason text; outcome jsonb; found_id uuid;
+  n_deleted int := 0; n_kept int := 0; n_referenced int := 0; n_missing int := 0; old_reason text; outcome jsonb; found_id uuid;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication_required'; END IF;
   PERFORM public.assert_project_permission(p_project_id,'write');
@@ -863,7 +895,7 @@ BEGIN
     WHEN 'meds' THEN 'meds_long' ELSE 'events_long' END;
   old_reason := current_setting('app.registry_change_reason',true);
   PERFORM set_config('app.registry_change_reason','撤销导入批次 ' || p_batch_id::text || '：' || reason,true);
-  FOR m IN SELECT r.content_sha256,r.record_id,r.record_sha256 FROM public.registry_import_records r
+  FOR m IN SELECT r.record_id,r.record_sha256 FROM public.registry_import_records r
     WHERE r.project_id=p_project_id AND r.kind=b.kind AND r.batch_id=p_batch_id AND r.action='inserted'
     ORDER BY r.record_id LOOP
     EXECUTE format('SELECT t.id FROM public.%I t WHERE t.id=$1 AND t.project_id=$2 FOR UPDATE',tbl)
@@ -873,20 +905,27 @@ BEGIN
     ELSIF registry_private.import_record_digest(tbl,m.record_id) IS DISTINCT FROM m.record_sha256 THEN
       n_kept := n_kept+1;
       CONTINUE;
+    ELSIF EXISTS (SELECT 1 FROM public.registry_import_records o
+        JOIN public.registry_import_batches ob ON ob.project_id=o.project_id AND ob.batch_id=o.batch_id
+        WHERE o.project_id=p_project_id AND o.kind=b.kind AND o.record_id=m.record_id AND o.action='matched'
+          AND o.batch_id<>p_batch_id AND ob.undone_at IS NULL) THEN
+      n_referenced := n_referenced+1;
+      CONTINUE;
     ELSE
       EXECUTE format('DELETE FROM public.%I WHERE id=$1 AND project_id=$2',tbl) USING m.record_id,p_project_id;
       n_deleted := n_deleted+1;
     END IF;
     DELETE FROM public.registry_import_records
-      WHERE project_id=p_project_id AND kind=b.kind AND content_sha256=m.content_sha256;
+      WHERE project_id=p_project_id AND kind=b.kind AND record_id=m.record_id;
   END LOOP;
-  outcome := jsonb_build_object('deleted',n_deleted,'kept_changed',n_kept,'missing',n_missing,'already_undone',false);
+  outcome := jsonb_build_object('deleted',n_deleted,'kept_changed',n_kept,'kept_referenced',n_referenced,
+    'missing',n_missing,'already_undone',false);
   UPDATE public.registry_import_batches SET undone_at=now(),undone_by=auth.uid(),undo_reason=reason,
     undo_result=outcome - 'already_undone'
     WHERE project_id=p_project_id AND batch_id=p_batch_id;
   INSERT INTO public.audit_log(project_id,actor_uid,action,details)
     VALUES(p_project_id,auth.uid(),'import_batch_undone',jsonb_build_object('batch_id',p_batch_id,'kind',b.kind,
-      'reason',reason,'deleted',n_deleted,'kept_changed',n_kept,'missing',n_missing,
+      'reason',reason,'deleted',n_deleted,'kept_changed',n_kept,'kept_referenced',n_referenced,'missing',n_missing,
       'file_sha256',b.file_sha256,'chunk_index',b.chunk_index,'chunk_total',b.chunk_total));
   PERFORM set_config('app.registry_change_reason',coalesce(old_reason,''),true);
   RETURN outcome;
@@ -905,7 +944,7 @@ REVOKE ALL ON FUNCTION public._registry_input_columns(text),public._registry_val
 COMMENT ON FUNCTION public.import_registry_rows(uuid,text,jsonb,uuid) IS
   '原子批量导入（每次 1–500 行，按批次号幂等）：baseline 患者基线、visits 随访、labs 化验、meds 用药、events 终点事件。研究状态只能经 set_patient_study_status 修改；eGFR 下降与缓解终点不接受导入。';
 COMMENT ON FUNCTION public.undo_import_batch(uuid,uuid,text) IS
-  '撤销一个随访/化验/用药/终点事件导入批次：删除该批次新写入且导入后未被修改的记录，已更正的记录保留（kept_changed）；须填写原因并写入审计。';
+  '撤销一个随访/化验/用药/终点事件导入批次：删除该批次新写入且导入后未被修改的记录，已更正的记录保留（kept_changed），其他未撤销批次也导入过的记录保留（kept_referenced）；须填写原因并写入审计。';
 
 INSERT INTO public.registry_schema_versions(version) VALUES('0040_batch_import') ON CONFLICT(version) DO NOTHING;
 COMMIT;

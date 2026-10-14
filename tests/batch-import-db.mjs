@@ -134,6 +134,26 @@ try {
   assert.equal(await count('SELECT count(*) AS n FROM public.registry_schema_versions'), 9);
   pass('0040 keeps every existing value (new columns empty, no data rewritten) and re-runs without effect');
 
+  // ---- Re-run by a non-superuser migrating role next to a table it neither owns nor may use --------
+  // Production migrations run as a role that owns the registry tables but not, for example,
+  // supabase_admin's or an extension's tables in public; 0040 must leave those alone.
+  await db.exec(`CREATE ROLE registry_other_owner NOLOGIN; CREATE ROLE registry_migrator NOLOGIN NOSUPERUSER;
+    GRANT postgres TO registry_migrator;
+    CREATE TABLE public.registry_foreign_owned(id int);
+    ALTER TABLE public.registry_foreign_owned OWNER TO registry_other_owner;
+    REVOKE ALL ON public.registry_foreign_owned FROM PUBLIC,anon,authenticated,service_role,postgres;
+    GRANT TRUNCATE ON public.registry_foreign_owned TO anon;`);
+  assert.equal((await row("SELECT has_table_privilege('registry_migrator','public.registry_foreign_owned','SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') AS p")).p, false);
+  await db.exec('SET ROLE registry_migrator');
+  try { await apply(NEW_MIGRATION); }
+  finally { await db.exec('ROLLBACK; RESET ROLE'); }
+  assert.deepEqual(await snapshot(), after, 're-running 0040 as a non-superuser changes nothing');
+  assert.equal((await row("SELECT has_table_privilege('anon','public.registry_foreign_owned','TRUNCATE') AS p")).p, true,
+    'a table of another owner is left to that owner');
+  await db.exec(`DROP TABLE public.registry_foreign_owned; DROP ROLE registry_other_owner;
+    REVOKE postgres FROM registry_migrator; DROP ROLE registry_migrator;`);
+  pass('0040 re-runs as a non-superuser migrating role and skips public tables it does not own instead of aborting');
+
   // ---- Grants -----------------------------------------------------------------------------
   const fns = ['public.import_registry_rows(uuid,text,jsonb,uuid)', 'public.register_import_file(uuid,uuid,text,text,integer,integer)',
     'public.list_import_batches(uuid,integer)', 'public.undo_import_batch(uuid,uuid,text)', 'public.correct_registry_record(uuid,text,uuid,jsonb,text)'];
@@ -293,7 +313,8 @@ try {
     frequency: 'qd', start_date: await day(-90), end_date: await day(-10), indication: '降低蛋白尿', notes: '耐受良好'});
   assert.equal(meds['达格列净'].dose, null, 'the legacy dose text is filled only when value and unit are both given');
   assert.equal(meds['泼尼松'].dose, '0.5 mg/kg');
-  assert.equal((await importRows(owner, 'meds', medRows)).skipped, 3, 'same file again: all skipped');
+  const medSkipBatch = randomUUID();
+  assert.equal((await importRows(owner, 'meds', medRows, medSkipBatch)).skipped, 3, 'same file again: all skipped');
   await assert.rejects(importRows(editor, 'meds', [{...medRows[1], dose_value: 25}]), is('row_1_same_key_record_conflict'));
   const okMed = {patient_code: 'P-004', drug_name: '呋塞米', drug_class: '利尿剂', start_date: await day(-5)};
   const medCases = [
@@ -338,7 +359,8 @@ try {
   assert.deepEqual(events.map(e => e.event_type), eventRows.map(r => r.event_type), 'every imported event stored');
   assert.deepEqual(events.map(e => e.evidence_source), eventRows.map(r => r.evidence_source));
   assert.ok(events.every(e => e.source === 'manual' && e.confirmed === true), 'imported events are manual and confirmed');
-  assert.equal((await importRows(owner, 'events', eventRows)).skipped, 6, 'same file again: all skipped');
+  const eventSkipBatch = randomUUID();
+  assert.equal((await importRows(owner, 'events', eventRows, eventSkipBatch)).skipped, 6, 'same file again: all skipped');
   await assert.rejects(importRows(editor, 'events', [{...eventRows[0], evidence_source: 'lab_review'}]), is('row_1_same_key_record_conflict'));
   const okEvent = {patient_code: 'P-004', event_type: 'relapse', event_date: await day(-1), evidence_source: 'medical_record'};
   const eventCases = [
@@ -453,9 +475,12 @@ try {
   assert.equal((await importRows(editor, 'baseline', [{patient_code: 'P-006', baseline_date: await day(-50)}], baselineBatch)).inserted, 1);
   await assert.rejects(undo(owner, baselineBatch, '文件选错'), is('batch_kind_not_undoable'));
   await assert.rejects(undo(owner, legacyVisitBatch, '文件选错'), is('batch_undo_not_tracked'));
+  // The batch that skipped the same rows inserted nothing, so its undo deletes nothing; it is
+  // undone first because while it stands the records it counted as skipped are kept.
+  assert.deepEqual(await undo(editor, labSkipBatch, '重复导入'), {deleted: 0, kept_changed: 0, kept_referenced: 0, missing: 0, already_undone: false});
   const auditBefore = await count("SELECT count(*) AS n FROM public.audit_log WHERE action='import_batch_undone'");
   const undone = await undo(editor, labBatch, '导入文件选错');
-  assert.deepEqual(undone, {deleted: 3, kept_changed: 1, missing: 0, already_undone: false});
+  assert.deepEqual(undone, {deleted: 3, kept_changed: 1, kept_referenced: 0, missing: 0, already_undone: false});
   assert.deepEqual((await rows('SELECT lab_test_code,value_raw::float8 AS v FROM public.labs_long WHERE project_id=$1 AND lab_date=$2', [project, labDate])),
     [{lab_test_code: 'CREAT', v: 90}], 'only the corrected record remains');
   assert.equal(await count('SELECT count(*) AS n FROM public.labs_long WHERE id=$1', [qualitative]), 0);
@@ -467,14 +492,12 @@ try {
   assert.equal(audit.actor_uid, editor);
   assert.deepEqual([audit.details.reason, audit.details.kind, audit.details.deleted, audit.details.kept_changed, audit.details.file_sha256],
     ['导入文件选错', 'labs', 3, 1, fileSha]);
-  assert.deepEqual(await undo(owner, labBatch, '再次撤销'), {deleted: 3, kept_changed: 1, missing: 0, already_undone: true});
+  assert.deepEqual(await undo(owner, labBatch, '再次撤销'), {deleted: 3, kept_changed: 1, kept_referenced: 0, missing: 0, already_undone: true});
   assert.equal(await count("SELECT count(*) AS n FROM public.audit_log WHERE action='import_batch_undone'"), auditBefore + 1, 'a repeated undo is not audited again');
   assert.equal(await count("SELECT count(*) AS n FROM public.field_audit_log WHERE table_name='labs_long' AND field_name='__record_deleted__' AND project_id=$1", [project]), 3);
   const undoneEntry = (await listBatches(viewer)).find(b => b.batch_id === labBatch);
-  assert.deepEqual([undoneEntry.undo_supported, undoneEntry.undo_reason, undoneEntry.undo_result], [false, '导入文件选错', {deleted: 3, kept_changed: 1, missing: 0}]);
+  assert.deepEqual([undoneEntry.undo_supported, undoneEntry.undo_reason, undoneEntry.undo_result], [false, '导入文件选错', {deleted: 3, kept_changed: 1, kept_referenced: 0, missing: 0}]);
   assert.ok(undoneEntry.undone_at instanceof Date);
-  // The batch that skipped the same rows inserted nothing, so its undo deletes nothing.
-  assert.deepEqual(await undo(editor, labSkipBatch, '重复导入'), {deleted: 0, kept_changed: 0, missing: 0, already_undone: false});
   assert.equal(await count('SELECT count(*) AS n FROM public.labs_long WHERE id=$1', [creat]), 1);
   // The removed rows can be imported again; the corrected one is not overwritten.
   assert.equal((await importRows(editor, 'labs', labRows.slice(1))).inserted, 3);
@@ -485,26 +508,84 @@ try {
   const medBatch2 = randomUUID();
   assert.deepEqual(await importRows(editor, 'meds', [medRows[0], {...okMed, drug_name: '托伐普坦'}], medBatch2),
     {inserted: 1, updated: 0, skipped: 1, total: 2, replayed: false});
-  assert.deepEqual(await undo(owner, medBatch2, '用药文件重复'), {deleted: 1, kept_changed: 0, missing: 0, already_undone: false});
+  assert.deepEqual(await undo(owner, medBatch2, '用药文件重复'), {deleted: 1, kept_changed: 0, kept_referenced: 0, missing: 0, already_undone: false});
   assert.equal(await count("SELECT count(*) AS n FROM public.meds_long WHERE project_id=$1 AND drug_name='氯沙坦'", [project]), 1);
   // A record changed with a plain table update is kept; one already deleted counts as missing.
   await as(editor, () => db.query("UPDATE public.meds_long SET notes='剂量已核对' WHERE project_id=$1 AND drug_name='达格列净'", [project]));
   assert.equal(await count("SELECT count(*) AS n FROM public.field_audit_log WHERE table_name='meds_long' AND field_name='notes'"), 1, 'medication updates are field-audited');
   await as(editor, () => db.query("DELETE FROM public.meds_long WHERE project_id=$1 AND drug_name='泼尼松'", [project]));
-  assert.deepEqual(await undo(editor, medBatch, '用药文件选错'), {deleted: 1, kept_changed: 1, missing: 1, already_undone: false});
+  assert.deepEqual(await undo(editor, medSkipBatch, '重复导入'), {deleted: 0, kept_changed: 0, kept_referenced: 0, missing: 0, already_undone: false});
+  assert.deepEqual(await undo(editor, medBatch, '用药文件选错'), {deleted: 1, kept_changed: 1, kept_referenced: 0, missing: 1, already_undone: false});
   assert.deepEqual((await rows("SELECT drug_name FROM public.meds_long WHERE project_id=$1 ORDER BY drug_name", [project])).map(r => r.drug_name),
     ['Synthetic medication', '达格列净']);
   // Events and visits.
   await as(editor, () => db.query("UPDATE public.events_long SET event_detail='腹膜透析' WHERE project_id=$1 AND event_type='dialysis_start'", [project]));
-  assert.deepEqual(await undo(editor, eventBatch, '事件文件选错'), {deleted: 5, kept_changed: 1, missing: 0, already_undone: false});
+  assert.deepEqual(await undo(editor, eventSkipBatch, '重复导入'), {deleted: 0, kept_changed: 0, kept_referenced: 0, missing: 0, already_undone: false});
+  assert.deepEqual(await undo(editor, eventBatch, '事件文件选错'), {deleted: 5, kept_changed: 1, kept_referenced: 0, missing: 0, already_undone: false});
   assert.equal(await count("SELECT count(*) AS n FROM public.field_audit_log WHERE table_name='events_long' AND field_name='__record_deleted__'"), 5);
   const visitBatch = randomUUID();
   assert.equal((await importRows(editor, 'visits', [{patient_code: 'P-004', visit_date: await day(-7), sbp: 118, dbp: 76, scr_umol_l: 80}], visitBatch)).inserted, 1);
-  assert.deepEqual(await undo(owner, visitBatch, '随访文件选错'), {deleted: 1, kept_changed: 0, missing: 0, already_undone: false});
+  assert.deepEqual(await undo(owner, visitBatch, '随访文件选错'), {deleted: 1, kept_changed: 0, kept_referenced: 0, missing: 0, already_undone: false});
   assert.equal(await count("SELECT count(*) AS n FROM public.visits_long WHERE project_id=$1 AND patient_code='P-004'", [project]), 0);
   // The 500-row batch is undone in one call.
-  assert.deepEqual(await undo(editor, bigBatch, '整批重复'), {deleted: 500, kept_changed: 0, missing: 0, already_undone: false});
+  assert.deepEqual(await undo(editor, bigBatch, '整批重复'), {deleted: 500, kept_changed: 0, kept_referenced: 0, missing: 0, already_undone: false});
   pass('undo: records matched by a batch survive, records changed by a plain update are kept, already deleted ones count as missing; medication, event, visit and 500-row batches');
+
+  // ---- Undo and records other batches also imported ----------------------------------------------------
+  const links = id => count('SELECT count(*) AS n FROM public.registry_import_records WHERE project_id=$1 AND record_id=$2', [project, id]);
+  const labId = async date => (await row("SELECT id FROM public.labs_long WHERE project_id=$1 AND patient_code='P-004' AND lab_date=$2 AND lab_test_code='K'", [project, date]))?.id;
+  const kLab = (date, extra = {}) => ({patient_code: 'P-004', lab_date: date, lab_test_code: 'K', value_raw: 4.1, unit_symbol: 'mmol/L', ...extra});
+  // A inserts a row with notes; B carries the same row without notes and skips it as present.
+  const d1 = await day(-250), refA = randomUUID(), refB = randomUUID();
+  assert.equal((await importRows(editor, 'labs', [kLab(d1, {notes: '复查'})], refA)).inserted, 1);
+  assert.deepEqual(await importRows(editor, 'labs', [kLab(d1)], refB), {inserted: 0, updated: 0, skipped: 1, total: 1, replayed: false});
+  const r1 = await labId(d1);
+  assert.deepEqual(await undo(editor, refA, '文件选错'), {deleted: 0, kept_changed: 0, kept_referenced: 1, missing: 0, already_undone: false});
+  assert.equal(await labId(d1), r1, 'the record batch B counted as skipped is kept');
+  assert.deepEqual((await listBatches(viewer)).find(b => b.batch_id === refA).undo_result, {deleted: 0, kept_changed: 0, kept_referenced: 1, missing: 0});
+  assert.equal((await row("SELECT details FROM public.audit_log WHERE action='import_batch_undone' AND details->>'batch_id'=$1", [refA])).details.kept_referenced, 1);
+  assert.deepEqual([(await importRows(editor, 'labs', [kLab(d1)])).skipped, (await importRows(editor, 'labs', [kLab(d1, {notes: '复查'})])).skipped], [1, 1],
+    'both contents still import as skipped');
+  // Once B is undone, undoing A deletes the record and every link to it: B's content imports again.
+  const d2 = await day(-251), refA2 = randomUUID(), refB2 = randomUUID();
+  assert.equal((await importRows(editor, 'labs', [kLab(d2, {notes: '复查'})], refA2)).inserted, 1);
+  assert.equal((await importRows(editor, 'labs', [kLab(d2)], refB2)).skipped, 1);
+  const r2 = await labId(d2);
+  assert.deepEqual(await undo(editor, refB2, '文件选错'), {deleted: 0, kept_changed: 0, kept_referenced: 0, missing: 0, already_undone: false});
+  assert.equal(await labId(d2), r2, 'undoing the skipping batch deletes nothing');
+  assert.deepEqual(await undo(editor, refA2, '文件选错'), {deleted: 1, kept_changed: 0, kept_referenced: 0, missing: 0, already_undone: false});
+  assert.equal(await labId(d2), undefined);
+  assert.equal(await links(r2), 0, 'no link to the deleted record is left');
+  assert.equal((await importRows(editor, 'labs', [kLab(d2)])).inserted, 1, 'the content of the undone batches imports again');
+  // A batch with exactly the same content (same hash) also keeps the record.
+  const d3 = await day(-252), refA3 = randomUUID();
+  assert.equal((await importRows(editor, 'labs', [kLab(d3)], refA3)).inserted, 1);
+  assert.equal((await importRows(owner, 'labs', [kLab(d3)])).skipped, 1);
+  assert.deepEqual(await undo(editor, refA3, '文件选错'), {deleted: 0, kept_changed: 0, kept_referenced: 1, missing: 0, already_undone: false});
+  assert.ok(await labId(d3));
+  // The same key twice in one file, once with notes: undo removes it and the same file uploads again.
+  const d4 = await day(-253), dupFile = [kLab(d4, {notes: '复查'}), kLab(d4)], refD = randomUUID();
+  assert.deepEqual(await importRows(editor, 'labs', dupFile, refD), {inserted: 1, updated: 0, skipped: 1, total: 2, replayed: false});
+  const r4 = await labId(d4);
+  assert.deepEqual(await undo(editor, refD, '文件选错'), {deleted: 1, kept_changed: 0, kept_referenced: 0, missing: 0, already_undone: false});
+  assert.equal(await links(r4), 0);
+  assert.deepEqual(await importRows(editor, 'labs', dupFile), {inserted: 1, updated: 0, skipped: 1, total: 2, replayed: false});
+  // A record already deleted by hand: undo counts it missing and clears its links, so it can be re-imported.
+  const d5 = await day(-254), refE = randomUUID(), refF = randomUUID();
+  assert.equal((await importRows(editor, 'labs', [kLab(d5, {notes: '复查'})], refE)).inserted, 1);
+  assert.equal((await importRows(editor, 'labs', [kLab(d5)], refF)).skipped, 1);
+  const r5 = await labId(d5);
+  await as(editor, () => db.query('DELETE FROM public.labs_long WHERE id=$1', [r5]));
+  assert.deepEqual(await undo(editor, refE, '文件选错'), {deleted: 0, kept_changed: 0, kept_referenced: 0, missing: 1, already_undone: false});
+  assert.equal(await links(r5), 0);
+  assert.equal((await importRows(editor, 'labs', [kLab(d5)])).inserted, 1);
+  // Visits follow the same rule.
+  const v1 = {patient_code: 'P-004', visit_date: await day(-255), sbp: 121, dbp: 79}, refV = randomUUID();
+  assert.equal((await importRows(editor, 'visits', [v1], refV)).inserted, 1);
+  assert.equal((await importRows(owner, 'visits', [v1])).skipped, 1);
+  assert.deepEqual(await undo(editor, refV, '文件选错'), {deleted: 0, kept_changed: 0, kept_referenced: 1, missing: 0, already_undone: false});
+  assert.equal(await count('SELECT count(*) AS n FROM public.visits_long WHERE project_id=$1 AND patient_code=$2 AND visit_date=$3', [project, 'P-004', v1.visit_date]), 1);
+  pass('undo keeps a record another batch not yet undone skipped as present (kept_referenced); a deleted or missing record loses every link, so undone content, including a file with the same key twice, imports again');
 
   // ---- Corrections of imported lab rows ----------------------------------------------------------------
   const dsdna = (await row("SELECT id FROM public.labs_long WHERE project_id=$1 AND lab_date=$2 AND lab_test_code='DSDNA'", [project, labDate])).id;
