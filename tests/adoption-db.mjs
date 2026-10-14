@@ -81,8 +81,8 @@ const day = async offset => (await row('SELECT (CURRENT_DATE + $1::int)::text AS
 
 try {
   const upTo37 = migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) <= 37);
-  assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 37), NEW_MIGRATIONS,
-    'exactly the two reviewed increments follow 0037');
+  assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 37).slice(0, 2), NEW_MIGRATIONS,
+    'the two reviewed increments directly follow 0037 (0040 has its own acceptance, tests/batch-import-db.mjs)');
   await applyReviewed(upTo37);
   assert.equal(Number((await row('SELECT count(*) AS n FROM public.registry_schema_versions')).n), 6);
 
