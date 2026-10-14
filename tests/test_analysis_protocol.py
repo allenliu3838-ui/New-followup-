@@ -469,11 +469,12 @@ class AnalysisProtocolTests(unittest.TestCase):
             with self.subTest(message=message):
                 with self.assertRaisesRegex(ra.DataContractError, message):
                     ra.load_protocol(self.variant_protocol(mutate))
-        for event_type in ra.EVENT_TYPES:  # the database vocabulary (0002_events.sql) is accepted
+        for event_type in ra.EVENT_TYPES:  # the database vocabulary (0002_events.sql + 0040_batch_import.sql) is accepted
             ra.load_protocol(self.variant_protocol(lambda p, t=event_type: p["censoring"].update(event_types=[t])))
         self.assertIn("esrd", ra.EVENT_TYPES)
         self.assertNotIn("eskd", ra.EVENT_TYPES)
-        migration = (ROOT / "supabase" / "migrations" / "0002_events.sql").read_text(encoding="utf-8")
+        migration = "".join((ROOT / "supabase" / "migrations" / name).read_text(encoding="utf-8")
+                            for name in ("0002_events.sql", "0040_batch_import.sql"))
         for event_type in ra.EVENT_TYPES:
             self.assertIn(f"'{event_type}'", migration)
         modules_sql = (ROOT / "supabase" / "migrations" / "0033_billing_registration.sql").read_text(encoding="utf-8")

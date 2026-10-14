@@ -29,7 +29,7 @@
   "_timepoints说明": "按 timepoints_days 中的名义天数，在 ±visit_window_days 天内选离名义日最近的一整条随访，输出到 timepoints_per_protocol.csv。",
   "egfr_decline": {
     "_说明": "持续 eGFR 下降：随访 eGFR ≤ 基线 ×(1-阈值%)。confirmation：至少 min_measurements 次连续测量均满足、首末相隔至少 min_interval_days 天；require_last_below=true 时还要求截至最后一次测量仍满足。来源未核实或无法使用的 eGFR 记为“未知”，会打断连续串，不会被跳过。示例阈值 40% 与 57%（57% 约相当于血肌酐倍增），确认间隔示例 28 天。",
-    "_肾衰竭或死亡说明": "kidney_failure_or_death_before_confirmation：在确认 eGFR 下降之前发生已确认的 esrd 或 death 事件（事件表 events_long，且类型列在 censoring.event_types 中）时如何处理。count_as_event：计为终点事件（复合终点，结果列名为 egfr_decline_<阈值>pct_sustained_or_kidney_failure_death，事件日期为该事件日期），避免把肾衰竭/死亡当作截尾而低估下降；censor：在该日期截尾（信息性截尾，会低估下降，仅在方案明确如此定义时使用）。随访状态 kidney_failure/deceased 只作截尾，不计为事件（数据字典说明随访状态不等同于经核实的临床终点事件），请在事件表登记已确认事件。示例取 count_as_event，需 PI 确认。",
+    "_肾衰竭或死亡说明": "kidney_failure_or_death_before_confirmation：在确认 eGFR 下降之前发生已确认的 esrd、dialysis_start（开始透析）、kidney_transplant（肾移植）或 death 事件（事件表 events_long，且类型列在 censoring.event_types 中）时如何处理。count_as_event：计为终点事件（复合终点，结果列名为 egfr_decline_<阈值>pct_sustained_or_kidney_failure_death，事件日期为该事件日期），避免把肾衰竭/死亡当作截尾而低估下降；censor：在该日期截尾（信息性截尾，会低估下降，仅在方案明确如此定义时使用）。随访状态 kidney_failure/deceased 只作截尾，不计为事件（数据字典说明随访状态不等同于经核实的临床终点事件），请在事件表登记已确认事件。示例取 count_as_event，需 PI 确认。",
     "requires_pi_confirmation": true,
     "thresholds_pct_decline": [40, 57],
     "confirmation": {"min_measurements": 2, "min_interval_days": 28, "require_last_below": false},
@@ -90,7 +90,7 @@
     }
   },
   "censoring": {
-    "_说明": "截尾日期取以下各项中最早者：随访状态（followup_status 属于 followup_status_values）的状态日期；事件表中类型属于 event_types 的事件日期（require_event_confirmed=true 时只用已确认事件）。截尾日当天的测量仍使用，之后的测量不参与终点判定。event_types 只能取登记系统事件表的取值：egfr_decline_40pct、egfr_decline_57pct、esrd、death、complete_remission、partial_remission、custom（肾衰竭为 esrd，不是 eskd）。状态日期早于基线日期时该日期不用于截尾，并写入质控。数据中没有随访状态列时，RUN_LOG 会注明。",
+    "_说明": "截尾日期取以下各项中最早者：随访状态（followup_status 属于 followup_status_values）的状态日期；事件表中类型属于 event_types 的事件日期（require_event_confirmed=true 时只用已确认事件）。截尾日当天的测量仍使用，之后的测量不参与终点判定。event_types 只能取登记系统事件表的取值：egfr_decline_40pct、egfr_decline_57pct、esrd、death、complete_remission、partial_remission、custom、dialysis_start、kidney_transplant、relapse（肾衰竭为 esrd，不是 eskd；如方案把开始透析、肾移植计入截尾，请把它们加入 event_types）。状态日期早于基线日期时该日期不用于截尾，并写入质控。数据中没有随访状态列时，RUN_LOG 会注明。",
     "use_followup_status": true,
     "followup_status_values": ["lost", "withdrawn", "deceased", "kidney_failure", "transferred"],
     "event_types": ["esrd", "death"],
