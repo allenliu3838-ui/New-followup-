@@ -1,0 +1,501 @@
+// 化验 / 用药 / 终点事件批量导入的浏览器冒烟测试（合成数据，不连接任何真实数据库）。
+// 运行：node tests/ui/batch-import-smoke.mjs   成功时打印 BATCH_IMPORT_UI_OK。
+// 与 staff-smoke.mjs 相同的方式：本地静态服务器提供 site/，Playwright 打开 staff.html，
+// 对 Supabase 域名的请求用 page.route 返回合成数据；其他外部主机的请求一律拦截并记为失败。
+import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
+import { chromium } from '@playwright/test';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../site');
+const CONFIG_SOURCE = fs.readFileSync(path.join(ROOT, 'config.js'), 'utf8');
+const SUPABASE_URL = CONFIG_SOURCE.match(/SUPABASE_URL:\s*["']([^"']+)["']/)?.[1];
+assert.ok(SUPABASE_URL, 'config.js 中没有 SUPABASE_URL');
+const SUPABASE_HOST = new URL(SUPABASE_URL).host;
+const STORAGE_KEY = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`;
+const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+// ── 合成数据 ────────────────────────────────────────────────
+const USER = { id: '00000000-0000-4000-8000-0000000000a1', aud: 'authenticated', role: 'authenticated', email: 'pi.synthetic@example.test', app_metadata: { provider: 'email' }, user_metadata: {}, created_at: '2026-01-01T00:00:00Z' };
+const PROJECT = { id: '10000000-0000-4000-8000-000000000001', name: '合成测试队列', center_code: 'TST01', module: 'IGAN', registry_type: 'igan', description: null, created_by: USER.id, created_at: '2026-02-01T00:00:00Z', followup_interval_days: 90, public_title: '合成随访研究', institution_name: '测试医院肾内科', ethics_approval_no: 'TEST-2026-001', contact_display: '研究护士 测试老师' };
+const OWNER = { role: 'owner', can_read: true, can_write: true, can_export: true, can_manage_tokens: true, can_manage_members: true, can_manage_project: true, write_block_reason: null };
+const VIEWER = { role: 'viewer', can_read: true, can_write: false, can_export: false, can_manage_tokens: false, can_manage_members: false, can_manage_project: false, write_block_reason: 'role_read_only' };
+const ANALYST = { ...VIEWER, role: 'analyst', can_export: true };
+const OVERVIEW = { project_id: PROJECT.id, followup_interval_days: 90, n_patients: 3, n_active: 2, n_visits: 0, n_visits_30d: 0, n_core_complete_visits: 0, core_completeness: null, n_overdue: 0, n_due_soon: 0, n_no_visit: 3, last_visit_date: null, n_consent_confirmed: 0, n_consent_unconfirmed: 3, n_open_issues: 0 };
+const boardRow = (n, extra) => ({ project_id: PROJECT.id, patient_id: `20000000-0000-4000-8000-00000000000${n}`, center_code: 'TST01', patient_code: `P00${n}`, baseline_date: '2024-01-01', consent_status: 'consented', followup_status: 'active', visit_count: 0, first_visit_date: null, last_visit_date: null, days_since_last_visit: null, next_due_date: '2024-04-01', active_link_count: 0, last_link_created_at: null, last_link_expires_at: null, last_patient_submission_at: null, followup_state: 'no_visit', ...extra });
+const BOARD = [boardRow(1), boardRow(2, { followup_status: 'deceased', followup_state: 'inactive' }), boardRow(3)];
+// 以迁移 0013 的字典为准（节选）。
+const CATALOG = [
+  { code: 'CREAT', name_cn: '血肌酐', name_en: 'Serum Creatinine', module: 'GENERAL', is_core: true, standard_unit: 'mg/dL', display_note: null },
+  { code: 'UPCR', name_cn: '尿蛋白/肌酐比', name_en: 'Urine PCR', module: 'GENERAL', is_core: true, standard_unit: 'g/g', display_note: null },
+  { code: 'EGFR', name_cn: 'eGFR（实验室报告）', name_en: 'eGFR (lab report)', module: 'GENERAL', is_core: false, standard_unit: 'mL/min/1.73m²', display_note: null },
+  { code: 'HGB', name_cn: '血红蛋白', name_en: 'Hemoglobin', module: 'GENERAL', is_core: false, standard_unit: 'g/dL', display_note: null },
+  { code: 'ALT', name_cn: '谷丙转氨酶', name_en: 'ALT', module: 'GENERAL', is_core: false, standard_unit: 'U/L', display_note: null },
+  { code: 'ALB', name_cn: '血清白蛋白', name_en: 'Albumin', module: 'GENERAL', is_core: false, standard_unit: 'g/dL', display_note: null },
+  { code: 'IGA', name_cn: '血清IgA', name_en: 'Serum IgA', module: 'IGAN', is_core: false, standard_unit: 'g/L', display_note: null },
+];
+const u = (code, unit, standard) => ({ lab_test_code: code, unit_symbol: unit, is_standard: standard, multiplier: 1 });
+const UNIT_MAP = [u('CREAT', 'mg/dL', true), u('CREAT', 'μmol/L', false), u('CREAT', 'umol/L', false), u('UPCR', 'g/g', true), u('UPCR', 'mg/g', false), u('UPCR', 'mg/mmol', false),
+  u('EGFR', 'mL/min/1.73m²', true), u('HGB', 'g/dL', true), u('HGB', 'g/L', false), u('ALT', 'U/L', true), u('ALB', 'g/dL', true), u('ALB', 'g/L', false), u('IGA', 'g/L', true)];
+const X = n => `<img src=x onerror=window.__xss=(window.__xss||[]).concat('${n}')>`;
+const BATCHES = [
+  { batch_id: '50000000-0000-4000-8000-000000000001', kind: 'labs', created_at: '2026-10-13T02:00:00Z', created_by_email: `crc${X('email')}@example.test`, inserted: 7, skipped: 1, total: 8, file_sha256: 'a'.repeat(64), file_name: `labs${X('file')}.csv`, chunk_index: 1, chunk_total: 1, undone_at: null, undo_reason: null },
+  { batch_id: '50000000-0000-4000-8000-000000000002', kind: 'baseline', created_at: '2026-10-12T02:00:00Z', created_by_email: USER.email, inserted: 3, skipped: 0, total: 3, file_sha256: null, file_name: null, chunk_index: null, chunk_total: null, undone_at: null, undo_reason: null },
+  { batch_id: '50000000-0000-4000-8000-000000000003', kind: 'meds', created_at: '2026-10-11T02:00:00Z', created_by_email: USER.email, inserted: 2, skipped: 0, total: 2, file_sha256: 'b'.repeat(64), file_name: 'meds.csv', chunk_index: 2, chunk_total: 3, undone_at: '2026-10-12T03:00:00Z', undo_reason: `重复导入${X('reason')}` },
+];
+
+// ── 本地静态服务器与浏览器 ───────────────────────────────────
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.json': 'application/json', '.txt': 'text/plain; charset=utf-8', '.svg': 'image/svg+xml' };
+function startServer() {
+  const server = http.createServer((req, res) => {
+    let rel = decodeURIComponent(new URL(req.url, 'http://127.0.0.1').pathname);
+    if (rel === '/') rel = '/index.html';
+    if (rel === '/staff' || rel.startsWith('/staff/')) rel = '/staff.html';
+    const file = path.normalize(path.join(ROOT, rel));
+    if (!file.startsWith(ROOT + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); res.end('not found'); return; }
+    res.writeHead(200, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' });
+    fs.createReadStream(file).pipe(res);
+  });
+  return new Promise(resolve => server.listen(0, '127.0.0.1', () => resolve(server)));
+}
+function chromiumExecutable() {
+  if (process.env.STAFF_UI_CHROMIUM) return process.env.STAFF_UI_CHROMIUM;
+  try { if (fs.existsSync(chromium.executablePath())) return undefined; } catch { /* 使用本机已安装的版本 */ }
+  const root = process.env.PLAYWRIGHT_BROWSERS_PATH || '/opt/pw-browsers';
+  const found = (fs.existsSync(root) ? fs.readdirSync(root) : [])
+    .filter(name => /^chromium-\d+$/.test(name))
+    .sort((a, b) => Number(b.split('-')[1]) - Number(a.split('-')[1]))
+    .map(name => path.join(root, name, 'chrome-linux', 'chrome'))
+    .find(file => fs.existsSync(file));
+  if (!found) throw new Error('未找到已安装的 Chromium。请设置 PLAYWRIGHT_BROWSERS_PATH 或 STAFF_UI_CHROMIUM；本测试不会下载浏览器。');
+  return found;
+}
+async function eventually(check, message, timeout = 8000) {
+  const started = Date.now(); let last;
+  while (Date.now() - started < timeout) {
+    try { const value = await check(); if (value) return value; } catch (error) { last = error; }
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  throw new Error(`${message}${last ? '：' + last.message : ''}`);
+}
+function sessionFor() {
+  const now = Math.floor(Date.now() / 1000);
+  const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
+  const accessToken = `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({ sub: USER.id, role: 'authenticated', aud: 'authenticated', email: USER.email, exp: now + 86400, iat: now })}.synthetic-signature`;
+  return { access_token: accessToken, token_type: 'bearer', expires_in: 86400, expires_at: now + 86400, refresh_token: 'synthetic-refresh-token', user: USER };
+}
+
+// ── Supabase 模拟 ───────────────────────────────────────────
+function createMock({ access }) {
+  const requests = []; const external = []; const unknown = [];
+  const importReplies = []; const registerReplies = [];
+  const cors = origin => ({ 'access-control-allow-origin': origin || '*', 'access-control-allow-credentials': 'true', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,PATCH,PUT,DELETE,OPTIONS', 'access-control-expose-headers': 'content-range,x-total-count' });
+  const filters = (url, op) => Object.fromEntries([...url.searchParams].filter(([, v]) => v.startsWith(`${op}.`)).map(([k, v]) => [k, v.slice(op.length + 1)]));
+  function restRows(table, url) {
+    const f = filters(url, 'eq'); const gt = filters(url, 'gt');
+    switch (table) {
+      case 'projects': return [PROJECT];
+      case 'v_project_overview': return [OVERVIEW];
+      case 'v_patient_followup_status': {
+        let rows = BOARD.filter(r => !f.patient_code || r.patient_code === f.patient_code);
+        if (gt.patient_id) rows = rows.filter(r => r.patient_id > gt.patient_id);
+        return rows;
+      }
+      case 'lab_test_catalog': return CATALOG;
+      case 'lab_test_unit_map': return UNIT_MAP;
+      case 'patient_tokens': case 'visits_long': case 'patients_baseline': case 'user_profiles': case 'project_custom_labs':
+      case 'labs_long': case 'meds_long': case 'events_long': case 'variants_long': case 'data_issues':
+        return [];
+      default: unknown.push(`GET ${table}`); return [];
+    }
+  }
+  function rpc(name, body) {
+    switch (name) {
+      case 'get_project_access': return access;
+      case 'check_project_quota': return { plan: 'trial', can_write: true, ends_at: new Date(Date.now() + 60 * 86400000).toISOString(), quota: 3, used: 1 };
+      case 'is_platform_admin': return false;
+      case 'get_my_contract': return [];
+      case 'list_project_members': return [{ user_id: USER.id, email: USER.email, display_name: null, role: access.role, created_at: '2026-01-01T00:00:00Z', is_owner: access.role === 'owner' }];
+      case 'list_project_snapshots': return [];
+      case 'get_issue_summary': return { total_open: 0, total_in_prog: 0, total_resolved: 0, total_wontfix: 0 };
+      case 'import_registry_rows': { const n = body.p_rows.length; return { inserted: n, updated: 0, skipped: 0, total: n, replayed: false, ...(importReplies.shift() || {}) }; }
+      case 'register_import_file': return null;
+      case 'list_import_batches': return BATCHES;
+      case 'undo_import_batch': return { deleted: 5, kept_changed: 2, already_undone: false };
+      default: unknown.push(`RPC ${name}`); return null;
+    }
+  }
+  async function handle(route, localOrigin) {
+    const request = route.request(); const url = new URL(request.url());
+    if (url.origin === localOrigin) return route.continue();
+    if (url.host !== SUPABASE_HOST) { external.push(request.url()); return route.abort('blockedbyclient'); }
+    const headers = cors(request.headers().origin);
+    if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+    let body = null;
+    try { body = request.postData() ? JSON.parse(request.postData()) : null; } catch { body = request.postData(); }
+    requests.push({ method: request.method(), path: url.pathname, params: url.searchParams, body });
+    const settle = promise => promise.catch(() => {});
+    const json = (status, value, extra = {}) => settle(route.fulfill({ status, headers: { ...headers, 'content-type': 'application/json; charset=utf-8', ...extra }, body: JSON.stringify(value) }));
+    if (url.pathname.startsWith('/auth/v1/')) {
+      if (url.pathname.endsWith('/user')) return json(200, USER);
+      if (url.pathname.endsWith('/token')) return json(200, sessionFor());
+      if (url.pathname.endsWith('/logout')) return settle(route.fulfill({ status: 204, headers }));
+      unknown.push(`AUTH ${url.pathname}`); return json(200, {});
+    }
+    const rpcName = url.pathname.match(/^\/rest\/v1\/rpc\/([a-z0-9_]+)$/)?.[1];
+    if (rpcName) {
+      const queue = rpcName === 'import_registry_rows' ? importReplies : rpcName === 'register_import_file' ? registerReplies : null;
+      if (queue && queue[0]?.postgrestError) return json(400, queue.shift().postgrestError);
+      if (queue && queue[0]?.abort) { queue.shift(); return settle(route.abort('failed')); }
+      if (rpcName === 'register_import_file') { registerReplies.shift(); return settle(route.fulfill({ status: 204, headers })); }
+      return json(200, rpc(rpcName, body || {}));
+    }
+    const table = url.pathname.match(/^\/rest\/v1\/([a-z0-9_]+)$/)?.[1];
+    if (table && request.method() === 'POST' && ['meds_long', 'events_long'].includes(table)) return settle(route.fulfill({ status: 201, headers }));
+    if (table && request.method() === 'GET') {
+      const rows = restRows(table, url);
+      const offset = Number(url.searchParams.get('offset') || 0);
+      const limit = url.searchParams.get('limit') ? Number(url.searchParams.get('limit')) : rows.length;
+      const page = rows.slice(offset, offset + limit);
+      if (/vnd\.pgrst\.object/.test(request.headers().accept || '')) return page.length === 1 ? json(200, page[0]) : json(406, { code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned', details: null, hint: null });
+      return json(200, page, { 'content-range': page.length ? `${offset}-${offset + page.length - 1}/${rows.length}` : `*/${rows.length}` });
+    }
+    unknown.push(`${request.method()} ${url.pathname}`);
+    return json(200, null);
+  }
+  return { requests, external, unknown, importReplies, registerReplies, handle, rpcCalls: name => requests.filter(r => r.path === `/rest/v1/rpc/${name}`) };
+}
+
+async function openWorkspace(browser, origin, { access = OWNER } = {}) {
+  const mock = createMock({ access });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, serviceWorkers: 'block', locale: 'zh-CN', acceptDownloads: true });
+  await context.addInitScript(([key, value]) => { try { localStorage.setItem(key, value); } catch { /* 忽略 */ } }, [STORAGE_KEY, JSON.stringify(sessionFor())]);
+  await context.route('**/*', route => mock.handle(route, origin));
+  const page = await context.newPage();
+  const pageErrors = []; const dialogs = []; const toasts = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+  page.on('dialog', dialog => { dialogs.push(dialog.message()); dialog.accept(); });
+  await page.goto(`${origin}/staff.html`);
+  await page.locator('#patientsList tbody tr[data-patient-code]').first().waitFor({ timeout: 15000 });
+  return { context, page, mock, pageErrors, dialogs, toasts };
+}
+
+const text = async locator => (await locator.textContent())?.replace(/\s+/g, ' ').trim();
+const csvFile = (name, lines) => ({ name, mimeType: 'text/csv', buffer: Buffer.from('\ufeff' + lines.join('\r\n'), 'utf8') });
+const counts = async page => Object.fromEntries(await page.locator('#importCounts [data-count]').evaluateAll(nodes => nodes.map(n => [n.dataset.count, Number(n.textContent.replace(/\D/g, ''))])));
+async function download(page, action) {
+  const [file] = await Promise.all([page.waitForEvent('download'), action()]);
+  return { name: file.suggestedFilename(), text: fs.readFileSync(await file.path(), 'utf8') };
+}
+const loadModule = async file => import(`data:text/javascript;base64,${fs.readFileSync(path.join(ROOT, file)).toString('base64')}`);
+const sha256 = buffer => crypto.createHash('sha256').update(buffer).digest('hex');
+const toastText = page => page.locator('.toast').innerText().catch(() => '');
+
+async function checkPureHelpers() {
+  const data = await loadModule('lib/registry-data.js');
+  const bi = await loadModule('lib/batch-import.js');
+  const warn = console.warn; console.warn = () => {};
+  for (const code of ['derived_endpoint_not_importable', 'same_key_record_conflict', 'unit_not_allowed', 'file_name_contains_pii', 'batch_kind_not_undoable', 'event_detail_required', 'invalid_evidence_source', 'end_date_before_start_date', 'undo_reason_required', 'value_or_text_required']) {
+    const message = data.registryErrorMessage({ message: `row_4_${code}` });
+    assert.match(message, /^第 5 行：.*[\u4e00-\u9fa5]/, `${code} 应翻译并带行号：${message}`);
+    assert.ok(!/[a-z]+_[a-z]+/.test(message), `不得显示代码：${message}`);
+  }
+  console.warn = warn;
+  assert.equal(data.registryErrorMessage({ message: 'row_7_unit_not_allowed: unit_symbol' }, { rowLine: n => 500 + n + 1 }), '第 508 行：单位：所选单位不在该化验项目允许的单位范围内，请重新选择。', '分块时按文件行号显示');
+  assert.ok(data.registryErrorMessage({ message: 'baseline_upcr_unit_required' }).includes('基线 UPCR'), '原有错误码不受新增条目影响');
+  // 化验别名表只使用字典中存在的编码。
+  const index = bi.buildLabIndex(CATALOG);
+  for (const name of ['Scr', '肌酐', '血肌酐', 'creatinine']) assert.equal(index.byKey.get(bi.labKey(name))?.size, 1, name);
+  assert.ok(!index.byKey.has(bi.labKey('糖化血红蛋白')), '字典中没有的编码不进入别名映射');
+  assert.equal(bi.normalizeUnitText('\u00b5mol/L'), 'μmol/L');
+  assert.equal(bi.normalizeUnitText('mL/min/1.73m2'), 'mL/min/1.73m²');
+  assert.deepEqual(bi.piiHeaderColumns(['patient_code', '姓名', 'drug_name', 'Phone', 'patient_name', 'lab_item_name']), ['姓名', 'Phone', 'patient_name']);
+  assert.equal(bi.beijingToday(Date.parse('2026-10-14T17:00:00Z')), '2026-10-15', '“今天”按北京时间');
+}
+
+async function main() {
+  await checkPureHelpers();
+  const server = await startServer();
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const browser = await chromium.launch({ executablePath: chromiumExecutable(), args: ['--no-sandbox'] });
+  try {
+    const { context, page, mock, pageErrors, dialogs } = await openWorkspace(browser, origin);
+    assert.equal(await page.locator('#importControls').isVisible(), true, '负责人可见导入入口');
+    assert.equal(await page.locator('#importPiiNotice').isVisible(), true, '上传页显示隐私提示');
+    assert.ok((await text(page.locator('#importPiiNotice'))).includes('不得包含姓名、身份证号、手机号、病案号'));
+    assert.deepEqual(await page.locator('#importType option').evaluateAll(o => o.map(x => x.value)), ['baseline', 'visits', 'labs', 'meds', 'events']);
+
+    // 1. 三类模板：UTF-8 BOM、英文表头逐字一致、2–3 行虚构示例；填写说明含中文列说明与隐私提示。
+    const HEADERS = {
+      labs: ['template_labs_v1.csv', 'patient_code,lab_date,lab_test_code,lab_item_name,value_raw,unit_symbol,result_text,ref_range,abnormal_flag,notes'],
+      meds: ['template_meds_v1.csv', 'patient_code,drug_name,drug_class,dose_value,dose_unit,route,frequency,start_date,end_date,indication,notes'],
+      events: ['template_events_v1.csv', 'patient_code,event_type,event_date,event_detail,evidence_source,notes'],
+    };
+    for (const [kind, [filename, header]] of Object.entries(HEADERS)) {
+      await page.selectOption('#importType', kind);
+      const file = await download(page, () => page.click('#btnDownloadTemplate'));
+      assert.equal(file.name, filename);
+      assert.ok(file.text.startsWith('\ufeff'), `${kind} 模板应带 UTF-8 BOM`);
+      const lines = file.text.slice(1).split('\r\n');
+      assert.equal(lines[0], header, `${kind} 模板表头逐字一致`);
+      assert.ok(lines.length >= 3 && lines.length <= 4, `${kind} 模板含 2–3 行示例`);
+      assert.ok(lines.slice(1).every(l => l.split(',').length === header.split(',').length && l.startsWith('DEMO-')), `${kind} 示例行列数一致且为虚构编号`);
+      await page.click('#btnImportHelp');
+      const help = await text(page.locator('#importHelp'));
+      assert.ok(help.includes('不得包含姓名、身份证号、手机号、病案号') && help.includes('是否必填'), `${kind} 填写说明`);
+      for (const col of header.split(',')) assert.ok(help.includes(col), `${kind} 填写说明应列出 ${col}`);
+      await page.click('#btnImportHelp');
+      assert.equal(await page.locator('#importHelp').isVisible(), false);
+    }
+    assert.equal(await page.locator('#importUnitsConfirmRow').isVisible(), false, '新类型不显示基线/随访单位确认');
+
+    // 2. 化验：别名映射、单位校验、两级校验与计数、未映射清单手动映射。
+    await page.selectOption('#importType', 'labs');
+    const LAB_HEADER = HEADERS.labs[1];
+    const labLines = [LAB_HEADER,
+      'P001,2025-06-01,,Scr,88,μmol/L,,,,',                    // 2 名称别名 → CREAT
+      'P001,2025-06-01,eGFR,,60,mL/min/1.73m2,,,,',            // 3 编码大小写 → EGFR，单位写法统一
+      'P003,2025-06-01,,尿蛋白肌酐比,500,mg/g,,,,',             // 4 → UPCR，将自动换算
+      'P001,2025-06-01,XYZ1,神秘指标Q,3,U/L,,,,SENTINEL-A',     // 5 未映射
+      'P001,2025-06-02,CREAT,,1.0,mmol/L,,,,',                 // 6 单位不允许
+      'P999,2025-06-01,HGB,,120,g/L,,,,',                      // 7 患者不存在
+      'P001,2099-01-01,HGB,,120,g/L,,,,',                      // 8 日期晚于今天
+      'P001,2025-06-03,ALB,,40,g/L,,35-55,H,',                 // 9 警告：异常标志与参考范围不一致
+      'P002,2025-06-01,IGA,,2.1,g/L,,,,',                      // 10 警告：患者已死亡
+      'P001,2025-06-04,CREAT,,abc,μmol/L,,,,SENTINEL-B',       // 11 数值非数值
+      'P003,2025-06-05,IGA,,,,阴性,,N,',                        // 12 定性结果
+      `P001,2025-06-06,,${X('labname')},1,U/L,,,,${X('labnote')}`, // 13 恶意内容，未映射
+    ];
+    const labBuffer = Buffer.from('\ufeff' + labLines.join('\r\n'), 'utf8');
+    await page.setInputFiles('#importFile', { name: 'labs-oct.csv', mimeType: 'text/csv', buffer: labBuffer });
+    await page.locator('#importCounts').waitFor({ state: 'visible' });
+    assert.deepEqual(await counts(page), { total: 12, writable: 6, warn: 2, block: 6 });
+    const rowText = async line => text(page.locator(`#importTable tr[data-line="${line}"]`));
+    assert.match(await page.locator('#importTable tr[data-line="6"]').getAttribute('class'), /bi-row-block/, '阻断行标红');
+    assert.ok((await rowText(6)).includes('单位不在该化验项目允许的单位中') && (await rowText(6)).includes('可选单位：mg/dL、μmol/L、umol/L'), await rowText(6));
+    assert.ok((await rowText(4)).includes('将自动换算为 g/g'), '允许但非标准单位给换算提示');
+    assert.match(await page.locator('#importTable tr[data-line="4"]').getAttribute('class'), /bi-row-ok/, '换算提示不是警告');
+    assert.ok((await rowText(7)).includes('本项目中没有该研究编号'));
+    assert.ok((await rowText(8)).includes('晚于今天'));
+    assert.ok((await rowText(9)).includes('异常标志与参考范围不一致'));
+    assert.ok((await rowText(10)).includes('随访状态为死亡'));
+    assert.ok((await rowText(11)).includes('结果数值不是数字'));
+    assert.equal(await page.locator('#importUnmapped select[data-unmapped-index]').count(), 2, '两个未映射项目');
+    assert.ok((await text(page.locator('#importUnmapped'))).includes('神秘指标Q'));
+    // 错误报告：列固定，只含行号与研究编号，不含其他单元格内容。
+    const report = await download(page, () => page.click('#btnDownloadImportErrors'));
+    assert.ok(report.text.startsWith('\ufeff'), '错误报告带 BOM');
+    const reportLines = report.text.slice(1).split('\r\n');
+    assert.equal(reportLines[0], '行号,patient_code,出错列,级别,原因,修正建议');
+    assert.ok(reportLines.some(l => l.startsWith('7,P999,patient_code,阻断,')), '报告含行号与研究编号');
+    assert.ok(reportLines.some(l => l.startsWith('9,P001,abnormal_flag,警告,')), '报告含警告行');
+    assert.ok(reportLines.at(-1).includes('不得包含姓名、身份证号、手机号、病案号'), '报告含隐私提示');
+    for (const secret of ['神秘指标Q', 'XYZ1', 'SENTINEL', 'abc', 'mmol/L,', '2099', '<img', 'Scr', '35-55']) assert.ok(!report.text.includes(secret), `错误报告不应包含单元格内容：${secret}`);
+    // 有警告时须勾选“已核对警告”。
+    assert.equal(await page.locator('#importWarnConfirmRow').isVisible(), true);
+    await page.click('#btnConfirmImport');
+    await eventually(async () => (await toastText(page)).includes('已核对警告'), '未勾选警告时应提示');
+    assert.equal(mock.rpcCalls('import_registry_rows').length, 0, '未核对警告时不提交');
+    // 手动映射：XYZ1 → ALT；恶意名称 → 不导入。
+    await page.selectOption('#importUnmapped select[data-unmapped-index="0"]', 'ALT');
+    await eventually(async () => (await counts(page)).writable === 7, '映射后可写入行增加');
+    await page.selectOption('#importUnmapped select[data-unmapped-index="1"]', '__skip__');
+    await eventually(async () => (await counts(page)).block === 4, '标记不导入后不再计为阻断');
+    assert.match(await page.locator('#importTable tr[data-line="13"]').getAttribute('class'), /bi-row-ignored/);
+    await page.check('#importWarnConfirm');
+    await page.click('#btnConfirmImport');
+    await eventually(() => mock.rpcCalls('register_import_file').length === 1, '提交后应登记文件信息');
+    const labCall = mock.rpcCalls('import_registry_rows')[0].body;
+    assert.equal(labCall.p_kind, 'labs');
+    assert.match(labCall.p_batch_id, UUID_V4);
+    assert.deepEqual(labCall.p_rows, [
+      { patient_code: 'P001', lab_date: '2025-06-01', lab_test_code: 'CREAT', value_raw: 88, unit_symbol: 'μmol/L' },
+      { patient_code: 'P001', lab_date: '2025-06-01', lab_test_code: 'EGFR', value_raw: 60, unit_symbol: 'mL/min/1.73m²' },
+      { patient_code: 'P003', lab_date: '2025-06-01', lab_test_code: 'UPCR', value_raw: 500, unit_symbol: 'mg/g' },
+      { patient_code: 'P001', lab_date: '2025-06-01', lab_test_code: 'ALT', value_raw: 3, unit_symbol: 'U/L', notes: 'SENTINEL-A' },
+      { patient_code: 'P001', lab_date: '2025-06-03', lab_test_code: 'ALB', value_raw: 40, unit_symbol: 'g/L', ref_range: '35-55', abnormal_flag: 'H' },
+      { patient_code: 'P002', lab_date: '2025-06-01', lab_test_code: 'IGA', value_raw: 2.1, unit_symbol: 'g/L' },
+      { patient_code: 'P003', lab_date: '2025-06-05', lab_test_code: 'IGA', result_text: '阴性', abnormal_flag: 'N' },
+    ], '只提交可写入行，化验名称列不写入');
+    assert.deepEqual(mock.rpcCalls('register_import_file')[0].body, { p_project_id: PROJECT.id, p_batch_id: labCall.p_batch_id, p_file_sha256: sha256(labBuffer), p_file_name: 'labs-oct.csv', p_chunk_index: 1, p_chunk_total: 1 });
+    await eventually(async () => (await text(page.locator('#importResult')))?.includes('导入完成'), '应显示结果页');
+    assert.ok((await text(page.locator('#importResult'))).includes('新增 7'));
+    assert.ok(dialogs.some(d => d.includes('阻断的 4 行不会写入')), '确认框说明阻断行不写入');
+
+    // 3. 终点事件：派生终点阻断、死亡 + 在访患者给警告、“其他”须填细节。
+    await page.selectOption('#importType', 'events');
+    await page.setInputFiles('#importFile', csvFile('events.csv', [HEADERS.events[1],
+      'P001,egfr_decline_40pct,2025-03-01,,lab_review,',
+      'P001,complete_remission,2025-03-01,,medical_record,',
+      'P001,death,2025-04-01,,death_certificate,',
+      'P003,custom,2025-04-01,,phone_followup,',
+      'P003,开始透析,2025-05-01,血液透析,病历记录,',
+      'P003,lost_followup,2025-05-02,,other,',
+      'P001,relapse,2023-12-01,,medical_record,']));
+    await page.locator('#importCounts').waitFor({ state: 'visible' });
+    assert.deepEqual(await counts(page), { total: 7, writable: 3, warn: 3, block: 4 });
+    assert.ok((await rowText(2)).includes('不接受导入') && (await rowText(3)).includes('不接受导入'), '派生终点阻断');
+    assert.ok((await rowText(4)).includes('请到该患者的研究状态登记'), '死亡事件 + 在访患者给警告');
+    assert.match(await page.locator('#importTable tr[data-line="4"]').getAttribute('class'), /bi-row-warn/);
+    assert.ok((await rowText(5)).includes('须填写事件细节'));
+    assert.ok((await rowText(6)).includes('请到该患者的研究状态登记'), '开始透析也提示登记研究状态');
+    assert.ok((await rowText(7)).includes('改用 custom'));
+    assert.ok((await rowText(8)).includes('早于该患者的基线日期'));
+    await page.click('#btnCancelImport');
+
+    // 4. 表头含个人信息列：整份文件阻断，不能提交。
+    await page.selectOption('#importType', 'meds');
+    await page.setInputFiles('#importFile', csvFile('meds.csv', ['patient_code,姓名,drug_name,start_date', 'P001,张三,缬沙坦,2025-01-01']));
+    await page.locator('#importCounts').waitFor({ state: 'visible' });
+    assert.ok((await text(page.locator('#importTable'))).includes('疑似个人信息列'));
+    assert.ok(!(await text(page.locator('#importTable'))).includes('张三'), '不显示疑似个人信息的单元格');
+    assert.equal((await counts(page)).block, 1);
+    assert.equal(await page.locator('#btnConfirmImport').isDisabled(), true, '表头含个人信息时不能提交');
+    await page.setInputFiles('#importFile', csvFile('meds.csv', ['patient_code,drug_name,start_date,name', 'P001,缬沙坦,2025-01-01,x']));
+    await eventually(async () => (await text(page.locator('#importTable')))?.includes('疑似个人信息列'), '英文 name 列同样阻断');
+    // 文件名含 8 位以上连续数字（可能是病案号）：不读取文件。
+    const before = mock.requests.length;
+    await page.setInputFiles('#importFile', csvFile('meds_20261014.csv', ['patient_code,drug_name,start_date', 'P001,缬沙坦,2025-01-01']));
+    await eventually(async () => (await toastText(page)).includes('文件名疑似包含个人信息'), '文件名疑似个人信息时提示重命名');
+    assert.equal(mock.requests.length, before);
+
+    // 5. 1203 行用药：分 3 块依次提交，每块一个新批次，均登记同一文件 SHA-256。
+    const MED_HEADER = HEADERS.meds[1];
+    const bigLines = prefix => [MED_HEADER, ...Array.from({ length: 1203 }, (_, i) => `P00${(i % 3) + 1},${prefix}${i + 1},其他,10,mg,PO,qd,2025-01-01,,,`)];
+    const bigBuffer = Buffer.from('\ufeff' + bigLines('药A').join('\r\n'), 'utf8');
+    await page.setInputFiles('#importFile', { name: 'C:\\fakepath\\meds-big.csv', mimeType: 'text/csv', buffer: bigBuffer });
+    await eventually(async () => (await counts(page)).writable === 1203, '1203 行均可写入');
+    const importsBefore = mock.rpcCalls('import_registry_rows').length;
+    const regsBefore = mock.rpcCalls('register_import_file').length;
+    await page.click('#btnConfirmImport');
+    await eventually(() => mock.rpcCalls('register_import_file').length === regsBefore + 3, '3 块均应登记文件信息', 15000);
+    const bigCalls = mock.rpcCalls('import_registry_rows').slice(importsBefore).map(r => r.body);
+    assert.deepEqual(bigCalls.map(c => c.p_rows.length), [500, 500, 203]);
+    assert.equal(new Set(bigCalls.map(c => c.p_batch_id)).size, 3, '每块一个新批次编号');
+    assert.deepEqual(bigCalls[0].p_rows[0], { patient_code: 'P001', drug_name: '药A1', drug_class: '其他', dose_value: 10, dose_unit: 'mg', route: 'PO', frequency: 'qd', start_date: '2025-01-01' });
+    const regs = mock.rpcCalls('register_import_file').slice(regsBefore).map(r => r.body);
+    assert.deepEqual(regs.map(r => [r.p_batch_id, r.p_chunk_index, r.p_chunk_total]), bigCalls.map((c, i) => [c.p_batch_id, i + 1, 3]));
+    assert.ok(regs.every(r => r.p_file_sha256 === sha256(bigBuffer) && r.p_file_name === 'meds-big.csv'), '各块文件 SHA-256 相同，文件名去掉路径');
+    await eventually(async () => (await text(page.locator('#importResult')))?.includes('共 3 块'), '结果页列出 3 块');
+
+    // 6. 某块失败：停止后续块并报告；网络失败重试沿用同一批次编号。
+    await page.setInputFiles('#importFile', csvFile('meds-big2.csv', bigLines('药B')));
+    await eventually(async () => (await counts(page)).writable === 1203, '第二个文件预览');
+    const i2 = mock.rpcCalls('import_registry_rows').length;
+    mock.importReplies.push({}, { postgrestError: { code: 'P0001', message: 'row_7_same_key_record_conflict', details: null, hint: '同一患者同一业务键已有不同数据，请先在记录纠错中核实' } });
+    await page.click('#btnConfirmImport');
+    await eventually(async () => (await text(page.locator('#importResult')))?.includes('导入未全部完成'), '失败后结果页报告');
+    await page.waitForTimeout(300);
+    assert.equal(mock.rpcCalls('import_registry_rows').length, i2 + 2, '第 2 块失败后不再提交第 3 块');
+    const resultText = await text(page.locator('#importResult'));
+    assert.ok(resultText.includes('成功 1/3 块') && resultText.includes('第 508 行') && resultText.includes('已有不同数据'), resultText);
+    assert.ok(resultText.includes('未提交'), '第 3 块显示未提交');
+    assert.ok((await text(page.locator('#importProgress'))).includes('已停止提交后续块'));
+    await page.click('#btnCancelImport');
+
+    await page.setInputFiles('#importFile', csvFile('meds-small.csv', [MED_HEADER, 'P001,缬沙坦,RAS 阻断剂,80,mg,口服,qd,2025-01-01,2024-12-01,降蛋白尿,', 'P001,达格列净,SGLT2抑制剂,10,,PO,qd,2025-01-01,,,', 'P003,泼尼松,激素,30,mg,PO,qd,2025-01-01,,,']));
+    await page.locator('#importCounts').waitFor({ state: 'visible' });
+    assert.deepEqual(await counts(page), { total: 3, writable: 1, warn: 1, block: 2 });
+    assert.ok((await rowText(2)).includes('结束日期早于起始日期'));
+    assert.ok((await rowText(3)).includes('只填了其中一项'));
+    assert.ok((await rowText(4)).includes('药物类别不在允许的枚举中'));
+    await page.check('#importWarnConfirm');
+    const i3 = mock.rpcCalls('import_registry_rows').length;
+    mock.importReplies.push({ abort: true });
+    await page.click('#btnConfirmImport');
+    await eventually(async () => (await text(page.locator('#importProgress')))?.includes('重试未完成的块'), '网络失败应提示重试');
+    assert.ok((await text(page.locator('#importResult'))).includes('网络连接失败'));
+    assert.equal(await text(page.locator('#btnConfirmImport')), '重试未完成的块');
+    mock.importReplies.push({ replayed: true });
+    await page.click('#btnConfirmImport');
+    await eventually(async () => (await text(page.locator('#importResult')))?.includes('导入完成'), '重试后完成');
+    const [failed, retried] = mock.rpcCalls('import_registry_rows').slice(i3).map(r => r.body);
+    assert.equal(retried.p_batch_id, failed.p_batch_id, '网络失败重试沿用同一批次编号');
+    assert.deepEqual(retried.p_rows, [{ patient_code: 'P001', drug_name: '达格列净', drug_class: 'SGLT2抑制剂', dose_value: 10, route: 'PO', frequency: 'qd', start_date: '2025-01-01' }]);
+
+    // 7. 导入记录与撤销：数据库返回值只作为文字显示；撤销须填写原因；基线批次不能撤销。
+    await page.click('#importBatchesDetails summary');
+    await page.locator('#importBatchesList tr[data-batch-row="0"]').waitFor();
+    const listText = await text(page.locator('#importBatchesList'));
+    assert.ok(listText.includes('化验记录') && listText.includes('患者基线') && listText.includes('已撤销') && listText.includes('2/3'), listText);
+    assert.ok(listText.includes('<img src=x'), '恶意文件名按文字显示');
+    assert.equal(await page.locator('#importBatchesList img').count(), 0);
+    assert.equal(await page.locator('#importBatchesList [data-undo-index]').count(), 1, '只有未撤销的非基线批次可撤销');
+    await page.click('#importBatchesList [data-undo-index="0"]');
+    await page.locator('#importUndoForm').waitFor({ state: 'visible' });
+    await page.click('#btnConfirmUndoBatch');
+    assert.ok((await text(page.locator('#importUndoResult'))).includes('2–500 字'), '原因必填');
+    assert.equal(mock.rpcCalls('undo_import_batch').length, 0);
+    await page.fill('#importUndoReason', '电话13812345678');
+    await page.click('#btnConfirmUndoBatch');
+    assert.ok((await text(page.locator('#importUndoResult'))).includes('个人身份信息'));
+    await page.fill('#importUndoReason', '化验日期整列错位，撤销后重新导入');
+    await page.click('#btnConfirmUndoBatch');
+    await eventually(() => mock.rpcCalls('undo_import_batch').length === 1, '没有提交撤销');
+    assert.deepEqual(mock.rpcCalls('undo_import_batch')[0].body, { p_project_id: PROJECT.id, p_batch_id: BATCHES[0].batch_id, p_reason: '化验日期整列错位，撤销后重新导入' });
+    await eventually(async () => (await text(page.locator('#importUndoResult')))?.includes('删除 5 条'), '应显示撤销结果');
+    assert.ok((await text(page.locator('#importUndoResult'))).includes('保留 2 条'));
+
+    // 8. 手工录入：终点事件新增类型与判定依据来源；用药剂量数值 + 单位、用药目的、备注。
+    await page.fill('#evtPatientCode', 'P003');
+    await page.selectOption('#evtType', 'dialysis_start');
+    await page.click('#btnAddEvent');
+    await eventually(async () => (await toastText(page)).includes('请选择判定依据来源'), '判定依据来源必填');
+    assert.equal(mock.requests.filter(r => r.method === 'POST' && r.path === '/rest/v1/events_long').length, 0);
+    await page.selectOption('#evtEvidence', 'medical_record');
+    await page.fill('#evtDetail', '维持性血液透析');
+    await page.fill('#evtDate', '2025-05-01');
+    await page.click('#btnAddEvent');
+    await eventually(() => mock.requests.some(r => r.method === 'POST' && r.path === '/rest/v1/events_long'), '没有提交终点事件');
+    const evt = mock.requests.find(r => r.method === 'POST' && r.path === '/rest/v1/events_long').body;
+    assert.deepEqual({ ...evt }, { project_id: PROJECT.id, patient_code: 'P003', event_type: 'dialysis_start', event_date: '2025-05-01', confirmed: true, source: 'manual', evidence_source: 'medical_record', event_detail: '维持性血液透析', notes: null });
+    const evtOptions = await page.locator('#evtType option').evaluateAll(o => o.map(x => x.value));
+    for (const v of ['dialysis_start', 'kidney_transplant', 'relapse', 'egfr_decline_40pct', 'egfr_decline_57pct']) assert.ok(evtOptions.includes(v), v);
+    assert.ok(!evtOptions.some(v => v.includes('50')), '不新增 ≥50%');
+    assert.ok((await page.locator('#evtType option[value="egfr_decline_40pct"]').textContent()).includes('建议由分析脚本按研究方案计算'));
+    await page.fill('#medPatientCode', 'P001');
+    await page.fill('#medName', '缬沙坦');
+    await page.selectOption('#medClass', 'RAS阻断剂');
+    await page.fill('#medDoseValue', '80');
+    await page.fill('#medDoseUnit', 'mg');
+    await page.fill('#medStart', '2025-01-01');
+    await page.fill('#medIndication', '降蛋白尿');
+    await page.fill('#medNotes', '耐受良好');
+    await page.click('#btnAddMed');
+    await eventually(() => mock.requests.some(r => r.method === 'POST' && r.path === '/rest/v1/meds_long'), '没有提交用药');
+    const med = mock.requests.find(r => r.method === 'POST' && r.path === '/rest/v1/meds_long').body;
+    assert.deepEqual({ ...med }, { project_id: PROJECT.id, patient_code: 'P001', drug_name: '缬沙坦', drug_class: 'RAS阻断剂', dose: '80 mg', dose_value: 80, dose_unit: 'mg', route: null, frequency: null, start_date: '2025-01-01', end_date: null, indication: '降蛋白尿', notes: '耐受良好' });
+
+    // 恶意内容（CSV 单元格、未映射名称、导入记录）均未执行。
+    assert.equal(await page.evaluate(() => window.__xss), undefined, '恶意内容不得执行');
+    assert.deepEqual(pageErrors, [], '页面不应有未捕获异常');
+    assert.deepEqual(mock.external, [], '不应请求 Supabase 以外的外部主机');
+    assert.deepEqual(mock.unknown, [], '不应调用未模拟的接口');
+    await context.close();
+
+    // 9. 只读 / 分析协作人：不显示导入入口，仍可查看导入记录但不能撤销。
+    for (const access of [VIEWER, ANALYST]) {
+      const w = await openWorkspace(browser, origin, { access });
+      assert.equal(await w.page.locator('#importControls').isVisible(), false, `${access.role} 不显示导入入口`);
+      assert.equal(await w.page.locator('#importType').isVisible(), false);
+      assert.equal(await w.page.locator('#btnDownloadTemplate').isVisible(), false);
+      assert.equal(await w.page.locator('#importReadonlyNote').isVisible(), true);
+      await w.page.click('#importBatchesDetails summary');
+      await w.page.locator('#importBatchesList tr[data-batch-row="0"]').waitFor();
+      assert.equal(await w.page.locator('#importBatchesList [data-undo-index]').count(), 0, `${access.role} 不能撤销`);
+      assert.equal(await w.page.evaluate(() => window.__xss), undefined);
+      assert.deepEqual(w.pageErrors, []);
+      assert.deepEqual(w.mock.unknown, []);
+      await w.context.close();
+    }
+  } finally {
+    await browser.close();
+    server.close();
+  }
+  console.log('BATCH_IMPORT_UI_OK');
+}
+
+main().catch(error => { console.error(error); process.exit(1); });

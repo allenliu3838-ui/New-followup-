@@ -229,3 +229,20 @@ button.fu-tile:hover{border-color:rgba(37,99,235,.4);background:rgba(37,99,235,.
 .idle-warning{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:10000;width:min(560px,calc(100vw - 32px));box-sizing:border-box;background:#fff7ed;color:#7c2d12;border:1px solid #fdba74;border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.22);padding:14px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;}
 .idle-warning[hidden]{display:none;}
 .idle-warning p{margin:0;flex:1 1 260px;font-size:14px;line-height:1.6;}
+
+/* 批量导入（化验 / 用药 / 终点事件）预览 */
+.bi-counts{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 8px;}
+.bi-counts span{font-size:13px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:rgba(2,6,23,.02);}
+.bi-counts .bi-count-block{background:rgba(220,38,38,.10);border-color:rgba(220,38,38,.25);color:#7f1d1d;}
+.bi-counts .bi-count-warn{background:rgba(217,119,6,.10);border-color:rgba(217,119,6,.25);color:#7c2d12;}
+.bi-counts .bi-count-ok{background:rgba(22,163,74,.08);border-color:rgba(22,163,74,.25);color:#14532d;}
+tr.bi-row-block td{background:rgba(220,38,38,.08);color:#7f1d1d;}
+tr.bi-row-warn td{background:rgba(217,119,6,.08);}
+tr.bi-row-ignored td{color:var(--muted);text-decoration:line-through;}
+.bi-issue-block{color:#b91c1c;}
+.bi-issue-warn{color:#b45309;}
+.bi-issue-info{color:var(--muted);}
+.bi-help{margin-top:10px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:#fff;overflow-x:auto;}
+.bi-undo{margin-top:8px;border:1px solid rgba(220,38,38,.25);border-radius:12px;padding:8px 12px;}
+.bi-unmapped{margin:8px 0;border:1px solid rgba(217,119,6,.35);border-radius:12px;padding:8px 12px;background:rgba(217,119,6,.05);}
+.bi-unmapped select{max-width:320px;}

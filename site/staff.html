@@ -396,37 +396,67 @@
       <!-- ===== 批量导入 ===== -->
       <section id="importSection" class="ws-section" aria-labelledby="importHeading">
         <h2 id="importHeading">批量导入（CSV）</h2>
-        <div class="muted small">先下载模板、预览单位和变更，再确认提交到当前项目。一次最多 500 行，服务器整批校验；失败可保留同一批次重试。</div>
-        <div class="warnbox" style="margin-top:8px">
-          <b>导入规则：</b>基线只更新文件中提供的非空字段，缺失列及空格保持现有值；需要清空或更正时，请在看板中打开该患者的“随访记录”，使用“核对 / 更正基线”并填写原因。随访按服务器规则去重。未知列、重复表头及有错误的行会阻止整批导入。基线文件可包含知情同意状态与随访状态列（可填中文，如“已同意”“失访”），请先按原始知情同意记录核对；拒绝或撤回同意、退出研究、死亡不能通过导入登记，请先建档，再在患者的“研究状态”中登记并填写原因。
+        <p id="importReadonlyNote" class="muted small" hidden>当前项目角色或账户状态不能导入数据；可在下方查看导入记录。</p>
+        <div id="importControls" hidden>
+        <div class="muted small">先下载模板、预览单位和变更，再确认提交到当前项目。服务器按批次整批校验；失败可保留同一批次重试。</div>
+        <div class="warnbox" style="margin-top:8px" data-import-rules="legacy">
+          <b>导入规则：</b>基线只更新文件中提供的非空字段，缺失列及空格保持现有值；需要清空或更正时，请在看板中打开该患者的“随访记录”，使用“核对 / 更正基线”并填写原因。随访按服务器规则去重。未知列、重复表头及有错误的行会阻止整批导入。基线文件可包含知情同意状态与随访状态列（可填中文，如“已同意”“失访”），请先按原始知情同意记录核对；拒绝或撤回同意、退出研究、死亡不能通过导入登记，请先建档，再在患者的“研究状态”中登记并填写原因。基线与随访一次最多 500 行。
         </div>
+        <div class="warnbox" style="margin-top:8px" data-import-rules="batch" hidden>
+          <b>导入规则：</b>一行一条记录；研究编号须为本项目已建档的患者。预览分为“可写入”“警告”“阻断”：阻断行不会写入，警告行须勾选“已核对警告”后才会写入。与已有记录完全相同的行自动跳过；同一患者同一业务键（化验：日期 + 项目；用药：药物 + 起始日期；终点：类型 + 日期）已有不同数据时，该块整块不写入，请先在记录纠错中核实。大文件按 500 行分块依次提交，某块失败即停止，可修正后重传同一文件补录。导入不会修改患者的研究状态；死亡、肾衰竭等请在“研究状态”中登记。eGFR 下降与缓解由分析脚本按研究方案计算，不接受导入。
+        </div>
+        <div class="infobox" style="margin-top:8px" id="importPiiNotice"><b>隐私提示：</b>不得包含姓名、身份证号、手机号、病案号；研究编号只用项目内编号。表头含“姓名、身份证、手机、电话、病案号、住院号”等列的文件会被拒绝。</div>
         <div class="row" style="margin-top:10px;align-items:flex-end;flex-wrap:wrap;gap:8px">
           <div class="col" style="min-width:180px">
             <label for="importType">导入类型</label>
             <select id="importType">
               <option value="baseline">患者基线</option>
               <option value="visits">随访记录</option>
+              <option value="labs">化验记录</option>
+              <option value="meds">用药记录</option>
+              <option value="events">终点事件</option>
             </select>
-            <label for="importBaselineUnit">CSV 未标注时的基线 UPCR 单位</label><select id="importBaselineUnit"><option value="">请明确选择（有 UPCR 时必需）</option><option value="mg/g">mg/g</option><option value="g/g">g/g</option></select>
+            <div id="importLegacyOptions"><label for="importBaselineUnit">CSV 未标注时的基线 UPCR 单位</label><select id="importBaselineUnit"><option value="">请明确选择（有 UPCR 时必需）</option><option value="mg/g">mg/g</option><option value="g/g">g/g</option></select></div>
           </div>
           <div class="col" style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
             <button class="btn" id="btnDownloadTemplate">下载模板 CSV</button>
+            <button class="btn" id="btnImportHelp" aria-expanded="false" aria-controls="importHelp">填写说明</button>
             <label class="btn" style="cursor:pointer;margin:0">
               选择 CSV 文件
               <input id="importFile" type="file" accept=".csv,text/csv" style="display:none"/>
             </label>
           </div>
         </div>
-        <label style="display:flex;gap:8px;align-items:flex-start"><input id="importUnitsConfirm" type="checkbox" style="width:auto;margin-top:5px"/>我已核对：血肌酐列为 μmol/L，随访 UPCR 为 mg/g；基线 UPCR 按文件列或页面所选单位换算。</label>
+        <div id="importHelp" class="bi-help" hidden></div>
+        <label id="importUnitsConfirmRow" style="display:flex;gap:8px;align-items:flex-start"><input id="importUnitsConfirm" type="checkbox" style="width:auto;margin-top:5px"/>我已核对：血肌酐列为 μmol/L，随访 UPCR 为 mg/g；基线 UPCR 按文件列或页面所选单位换算。</label>
         <div id="importPreview" style="margin-top:12px;display:none">
           <div id="importSummary" class="muted small" style="margin-bottom:6px"></div>
-          <div id="importTable" style="overflow-x:auto;max-height:260px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px"></div>
+          <div id="importCounts" class="bi-counts" hidden></div>
+          <div id="importUnmapped" hidden></div>
+          <div id="importTable" style="overflow-x:auto;max-height:360px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px"></div>
+          <label id="importWarnConfirmRow" style="display:none;gap:8px;align-items:flex-start"><input id="importWarnConfirm" type="checkbox" style="width:auto;margin-top:5px"/>已核对警告：警告行按原样写入。</label>
           <div class="btnbar" style="margin-top:8px">
             <button class="btn primary" id="btnConfirmImport">确认导入</button>
             <button class="btn" id="btnCancelImport">取消</button>
+            <button class="btn" id="btnDownloadImportErrors" style="display:none">下载错误报告 CSV</button>
           </div>
         </div>
         <div id="importProgress" class="muted small" style="margin-top:8px;display:none"></div>
+        <div id="importResult" style="margin-top:8px" hidden></div>
+        </div>
+        <details id="importBatchesDetails" style="margin-top:12px">
+          <summary>导入记录（按批次查看与撤销）</summary>
+          <div class="muted small" style="margin-top:6px">每个批次对应一次提交（大文件每 500 行一块）。撤销会删除该批次新增、且导入后未被更正的记录；已更正的记录保留，基线批次不能撤销。</div>
+          <div class="btnbar"><button class="btn small" id="btnRefreshImportBatches">刷新导入记录</button></div>
+          <div id="importBatchesList" class="muted small" style="margin-top:6px"></div>
+          <div id="importUndoForm" class="bi-undo" hidden>
+            <div id="importUndoTarget" class="small"></div>
+            <label for="importUndoReason">撤销原因（必填，2–500 字，勿填身份信息）</label>
+            <textarea id="importUndoReason" maxlength="500" placeholder="例如：文件中化验日期整列错位，撤销后重新导入"></textarea>
+            <div class="btnbar"><button class="btn danger" id="btnConfirmUndoBatch" data-project-capability="can_write">确认撤销本批次</button><button class="btn" id="btnCancelUndoBatch">取消</button></div>
+          </div>
+          <div id="importUndoResult" class="small" style="margin-top:6px" role="status"></div>
+        </details>
       </section>
 
       <!-- ===== 导出与数据快照 ===== -->
@@ -594,11 +624,28 @@
             <label for="medName">药品名称</label>
             <input id="medName" placeholder="例如：泼尼松 / 吗替麦考酚酯 / ACEI"/>
             <label for="medClass">药物类别（可选）</label>
-            <input id="medClass" placeholder="例如：糖皮质激素 / 免疫抑制剂 / RAAS 阻断剂"/>
+            <select id="medClass">
+              <option value="">-- 选择 --</option>
+              <option value="RAS阻断剂">RAS阻断剂</option>
+              <option value="SGLT2抑制剂">SGLT2抑制剂</option>
+              <option value="糖皮质激素">糖皮质激素</option>
+              <option value="免疫抑制剂">免疫抑制剂</option>
+              <option value="利尿剂">利尿剂</option>
+              <option value="降压药（其他）">降压药（其他）</option>
+              <option value="降糖药（其他）">降糖药（其他）</option>
+              <option value="降脂药">降脂药</option>
+              <option value="抗凝/抗血小板">抗凝/抗血小板</option>
+              <option value="其他">其他</option>
+            </select>
             <div class="row">
               <div class="col">
-                <label for="medDose">剂量（可选）</label>
-                <input id="medDose" placeholder="例如：2 mg / 500 mg / 10 mg/kg"/>
+                <label for="medDoseValue">单次剂量数值（可选）</label>
+                <input id="medDoseValue" type="number" min="0" step="any" inputmode="decimal" placeholder="例如：80"/>
+              </div>
+              <div class="col">
+                <label for="medDoseUnit">剂量单位（与数值成对）</label>
+                <input id="medDoseUnit" list="medDoseUnitOptions" maxlength="20" placeholder="例如：mg"/>
+                <datalist id="medDoseUnitOptions"><option value="mg"></option><option value="g"></option><option value="μg"></option><option value="IU"></option><option value="mL"></option><option value="mg/kg"></option><option value="mg/m²"></option></datalist>
               </div>
               <div class="col">
                 <label for="medRoute">给药途径（可选）</label>
@@ -639,6 +686,10 @@
                 <input id="medEnd" type="date"/>
               </div>
             </div>
+            <label for="medIndication">用药目的（可选）</label>
+            <input id="medIndication" maxlength="100" placeholder="例如：降蛋白尿 / 控制血压"/>
+            <label for="medNotes">备注（可选，勿填身份信息）</label>
+            <input id="medNotes" maxlength="500" placeholder="例如：停药原因、不良反应；剂量调整请新起一条"/>
             <div class="btnbar">
               <button class="btn" id="btnAddMed">添加用药记录</button>
             </div>
@@ -647,7 +698,7 @@
         </div>
 
         <h3 class="fu-h3">临床终点事件</h3>
-        <div class="muted small" style="margin-bottom:10px">手动录入经核实的终点事件。事件定义与判定标准以研究方案为准；eGFR 下降等候选终点需导出分析包后运行脚本，并由研究团队按方案核对与确认。</div>
+        <div class="muted small" style="margin-bottom:10px">手动录入经核实的终点事件，须注明判定依据来源。事件定义与判定标准以研究方案为准；eGFR 下降与缓解建议由分析脚本按研究方案计算，导出分析包后运行脚本，并由研究团队按方案核对与确认。死亡、肾衰竭等研究状态请另在看板的“研究状态”中登记。</div>
         <div class="row">
           <div class="col">
             <label for="evtPatientCode">研究编号</label>
@@ -657,13 +708,16 @@
                 <label for="evtType">事件类型</label>
                 <select id="evtType">
                   <option value="">-- 选择事件类型 --</option>
-                  <option value="egfr_decline_40pct">eGFR 下降 ≥40%（按方案确认）</option>
-                  <option value="egfr_decline_57pct">eGFR 下降 ≥57%（按方案确认）</option>
                   <option value="esrd">终末期肾病（ESRD）</option>
+                  <option value="dialysis_start">开始透析</option>
+                  <option value="kidney_transplant">肾移植</option>
                   <option value="death">死亡</option>
-                  <option value="complete_remission">完全缓解</option>
-                  <option value="partial_remission">部分缓解</option>
-                  <option value="custom">其他（在备注中说明）</option>
+                  <option value="relapse">复发</option>
+                  <option value="egfr_decline_40pct">eGFR 下降 ≥40%（建议由分析脚本按研究方案计算）</option>
+                  <option value="egfr_decline_57pct">eGFR 下降 ≥57%（建议由分析脚本按研究方案计算）</option>
+                  <option value="complete_remission">完全缓解（建议由分析脚本按研究方案计算）</option>
+                  <option value="partial_remission">部分缓解（建议由分析脚本按研究方案计算）</option>
+                  <option value="custom">其他（在事件细节中说明）</option>
                 </select>
               </div>
               <div class="col">
@@ -671,8 +725,19 @@
                 <input id="evtDate" type="date"/>
               </div>
             </div>
+            <label for="evtEvidence">判定依据来源（必填）</label>
+            <select id="evtEvidence">
+              <option value="">-- 选择 --</option>
+              <option value="medical_record">病历记录</option>
+              <option value="lab_review">化验数据复核</option>
+              <option value="phone_followup">电话随访</option>
+              <option value="death_certificate">死亡证明</option>
+              <option value="other">其他</option>
+            </select>
+            <label for="evtDetail">事件细节（“其他”时必填，勿填身份信息）</label>
+            <input id="evtDetail" maxlength="500" placeholder="例如：血液透析 / 活体供肾移植"/>
             <label for="evtNotes">备注（可选，勿填身份信息）</label>
-            <input id="evtNotes" placeholder="例如：透析起始 / 缓解确认日期"/>
+            <input id="evtNotes" maxlength="500" placeholder="例如：缓解确认日期"/>
             <div class="btnbar">
               <button class="btn" id="btnAddEvent">录入终点事件</button>
             </div>
