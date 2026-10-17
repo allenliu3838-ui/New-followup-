@@ -10,10 +10,11 @@
     "0037_concept_view_security",
     "0038_followup_workflow",
     "0039_patient_token_hashing",
-    "0040_batch_import"
+    "0040_batch_import",
+    "0041_followup_board"
   ],
   "order": "lexicographic filenames; historical duplicate prefixes retained, unique full filenames",
-  "bundle_sha256": "8b175c24a7f442132069ad980cd6a304370d90af7bc07f4658481db7d5decf04",
+  "bundle_sha256": "f504bdb10e088dd6afb515e23f7725659977fda55a9b568421ea69ad9e820c69",
   "migrations": [
     {
       "ordinal": 1,
@@ -224,6 +225,11 @@
       "ordinal": 42,
       "file": "0040_batch_import.sql",
       "sha256": "29160585b06af8266f0fd1661ad43b923c7233fa2aad75b4fb3e0ab8be0da84b"
+    },
+    {
+      "ordinal": 43,
+      "file": "0041_followup_board.sql",
+      "sha256": "84595439f470ff4144b93f841504b1e029325afc83fa341400d9ff6d9e7b6e53"
     }
   ]
 }

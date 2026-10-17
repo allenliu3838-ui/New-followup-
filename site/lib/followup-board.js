@@ -201,7 +201,7 @@ export function renderOverviewHtml(o) {
     ]],
   ];
   const notes = [
-    Number.isFinite(interval) ? `随访间隔按项目设置为 ${interval} 天，“下次应随访日期”= 最近一次随访（无随访时为基线日期）+ 随访间隔；尚无随访的患者到期后同样计入“逾期”或“14 天内到期”。拒绝或撤回知情同意、或已停止随访的患者不再提醒。日期按北京时间计算。` : '',
+    Number.isFinite(interval) ? `随访间隔按项目设置为 ${interval} 天，“下次应随访日期”= 最近一次随访（无随访时为基线日期）+ 随访间隔；历史补录的患者设置了“提醒起算日”的，取提醒起算日与最近一次随访中较晚的一天起算；尚无随访的患者到期后同样计入“逾期”或“14 天内到期”。拒绝或撤回知情同意、或已停止随访的患者不再提醒。日期按北京时间计算。` : '',
     o.last_visit_date ? `最近一次随访：${escapeHtml(o.last_visit_date)}。` : '',
     '核心四项指收缩压、舒张压、血肌酐、尿蛋白肌酐比均已填写（且有随访日期）的随访。点击数字可在下方看板中筛选。',
   ].filter(Boolean).join('');
@@ -212,6 +212,24 @@ export function renderOverviewHtml(o) {
 
 function badge(label, tone) {
   return `<span class="fu-badge tone-${escapeHtml(tone || 'muted')}">${escapeHtml(label)}</span>`;
+}
+
+/** 有效链接多于这个数时，看板提示撤销不用的链接。 */
+export const LINK_COUNT_WARN_ABOVE = 2;
+export const LINK_COUNT_WARNING = '有效链接较多，建议撤销不用的链接';
+export function linkCountWarning(count) {
+  return Number(count) > LINK_COUNT_WARN_ABOVE ? LINK_COUNT_WARNING : '';
+}
+
+/** 提醒起算日说明：看板“下次应随访”按什么日期计算（与视图 v_patient_followup_status 一致）。 */
+export function dueBasisText(row) {
+  if (!row) return '';
+  const start = row.followup_start_date;
+  const last = row.last_visit_date;
+  if (start && (!last || start >= last)) return `按提醒起算日 ${start} 计算`;
+  if (last) return `按最近随访 ${last} 计算${start ? `（提醒起算日 ${start} 早于最近随访）` : ''}`;
+  if (row.baseline_date) return `按基线日期 ${row.baseline_date} 计算`;
+  return '';
 }
 
 function dueText(row, today) {
@@ -225,10 +243,11 @@ function dueText(row, today) {
     else if (row.followup_state === 'due_soon') suffix = diff <= 0 ? '（今天到期）' : `（还有 ${diff} 天）`;
   }
   const tone = row.followup_state === 'overdue' ? ' is-bad' : '';
-  return `${escapeHtml(due)}${suffix ? `<span class="fu-sub${tone}">${suffix}</span>` : ''}`;
+  const start = row.followup_start_date ? `<span class="fu-sub" data-start-date>提醒起算日 ${escapeHtml(row.followup_start_date)}</span>` : '';
+  return `${escapeHtml(due)}${suffix ? `<span class="fu-sub${tone}">${suffix}</span>` : ''}${start}`;
 }
 
-export function renderBoardRow(row, { showLinks = false, today = localToday() } = {}) {
+export function renderBoardRow(row, { showLinks = false, today = localToday(), selectable = false, selected = null } = {}) {
   const state = FOLLOWUP_STATES[row.followup_state];
   const consent = CONSENT_STATUSES[row.consent_status] || { label: '—', tone: 'muted' };
   const why = row.followup_state === 'inactive' ? inactiveReason(row) : '';
@@ -236,13 +255,18 @@ export function renderBoardRow(row, { showLinks = false, today = localToday() } 
   const code = escapeHtml(row.patient_code);
   const days = row.days_since_last_visit === null || row.days_since_last_visit === undefined ? '—' : `${escapeHtml(row.days_since_last_visit)} 天`;
   const linkTitle = row.last_link_created_at ? `最近生成：${formatLocalDate(row.last_link_created_at)}${row.last_link_expires_at ? '，到期：' + formatLocalDate(row.last_link_expires_at) : ''}` : '尚未生成随访链接';
-  const linkCell = showLinks ? `<td class="fu-num" data-label="有效链接" title="${escapeHtml(linkTitle)}">${escapeHtml(formatCount(row.active_link_count ?? 0))}</td>` : '';
-  return `<tr data-patient-code="${code}" data-state="${escapeHtml(row.followup_state || '')}">`
+  const linkWarn = linkCountWarning(row.active_link_count);
+  const linkCell = showLinks ? `<td class="fu-num${linkWarn ? ' fu-link-warn' : ''}" data-label="有效链接" title="${escapeHtml(linkWarn ? `${linkWarn}。${linkTitle}` : linkTitle)}"${linkWarn ? ' data-link-warn' : ''}>${escapeHtml(formatCount(row.active_link_count ?? 0))}${linkWarn ? `<span class="fu-sub">${escapeHtml(linkWarn)}</span>` : ''}</td>` : '';
+  const isSelected = !!selected?.has?.(row.patient_code);
+  const selectCell = selectable ? `<td class="fu-select" data-label="选择"><input type="checkbox" data-select-code="${code}" aria-label="选择 ${code}"${isSelected ? ' checked' : ''}/></td>` : '';
+  const basis = dueBasisText(row);
+  return `<tr data-patient-code="${code}" data-state="${escapeHtml(row.followup_state || '')}"${isSelected ? ' data-selected="1"' : ''}>`
+    + selectCell
     + `<th scope="row">${code}</th>`
     + `<td data-label="中心">${escapeHtml(row.center_code || '—')}</td>`
     + `<td class="fu-date" data-label="最近随访">${escapeHtml(row.last_visit_date || '—')}</td>`
     + `<td class="fu-num" data-label="距今">${days}</td>`
-    + `<td class="fu-date" data-label="下次应随访">${dueText(row, today)}</td>`
+    + `<td class="fu-date" data-label="下次应随访"${basis ? ` title="${escapeHtml(basis)}"` : ''}>${dueText(row, today)}</td>`
     + `<td data-label="状态">${state ? badge(stateBadgeLabel(row), state.tone) : badge('—', 'muted')}${stopped}</td>`
     + linkCell
     + `<td data-label="知情同意">${badge(consent.label, consent.tone)}</td>`
@@ -255,7 +279,7 @@ export function renderBoardRow(row, { showLinks = false, today = localToday() } 
     + `</td></tr>`;
 }
 
-export function renderBoardHtml(rows, { state = 'all', consent = 'all', search = '', limit = 100, showLinks = false, today = localToday() } = {}) {
+export function renderBoardHtml(rows, { state = 'all', consent = 'all', search = '', limit = 100, showLinks = false, today = localToday(), selectable = false, selected = null } = {}) {
   const all = rows || [];
   if (!all.length) return { html: '<p class="muted small">本项目还没有患者。请先在下方“新增患者”中建立基线，或使用批量导入。</p>', shown: 0, matched: 0 };
   const matched = filterBoardRows(all, { state, consent, search });
@@ -264,10 +288,13 @@ export function renderBoardHtml(rows, { state = 'all', consent = 'all', search =
   const consentLabel = consent && consent !== 'all' ? `；知情同意：${CONSENT_FILTERS.find(([k]) => k === consent)?.[1] || ''}` : '';
   const summary = `<p class="muted small fu-board-summary" role="status">共 ${all.length} 位患者，符合当前筛选（${escapeHtml(stateLabel)}${escapeHtml(consentLabel)}${search ? `；研究编号含“${escapeHtml(search)}”` : ''}）的 ${matched.length} 位${matched.length > visible.length ? `，显示前 ${visible.length} 位` : ''}。</p>`;
   if (!matched.length) return { html: `${summary}<p class="muted small">没有符合条件的患者。</p>`, shown: 0, matched: 0 };
-  const head = `<thead><tr><th scope="col">研究编号</th><th scope="col">中心</th><th scope="col">最近随访</th><th scope="col">距今</th><th scope="col">下次应随访</th><th scope="col">状态</th>${showLinks ? '<th scope="col">有效链接</th>' : ''}<th scope="col">知情同意</th><th scope="col">操作</th></tr></thead>`;
+  const allChecked = selectable && visible.length > 0 && visible.every(r => selected?.has?.(r.patient_code));
+  const selectHead = selectable ? `<th scope="col" class="fu-select"><input type="checkbox" data-select-all aria-label="选择本页显示的全部患者"${allChecked ? ' checked' : ''}/></th>` : '';
+  const head = `<thead><tr>${selectHead}<th scope="col">研究编号</th><th scope="col">中心</th><th scope="col">最近随访</th><th scope="col">距今</th><th scope="col">下次应随访</th><th scope="col">状态</th>${showLinks ? '<th scope="col">有效链接</th>' : ''}<th scope="col">知情同意</th><th scope="col">操作</th></tr></thead>`;
   const more = matched.length > visible.length ? `<div class="btnbar"><button type="button" class="btn small" data-act="more">再显示 100 位</button></div>` : '';
   return {
-    html: `${summary}<div class="fu-table-wrap"><table class="table fu-board-table">${head}<tbody>${visible.map(r => renderBoardRow(r, { showLinks, today })).join('')}</tbody></table></div>${more}`,
+    visibleCodes: visible.map(r => r.patient_code),
+    html: `${summary}<div class="fu-table-wrap"><table class="table fu-board-table">${head}<tbody>${visible.map(r => renderBoardRow(r, { showLinks, today, selectable, selected })).join('')}</tbody></table></div>${more}`,
     shown: visible.length,
     matched: matched.length,
   };

@@ -3,9 +3,9 @@
   "database_server_major": 17,
   "reference_server_version": "17.6",
   "runtime": "@embedded-postgres/linux-x64@17.6.0-beta.15",
-  "migration_manifest_sha256": "0b1e289780feb0e0d34b143b090c206765def21289bab8bb6382d7d30b61379b",
+  "migration_manifest_sha256": "9641b129073cbf5f924aac052de6666b8c324c59bb33c4e66120e78e6e333878",
   "database_contract_sha256": "aca7000205680905a853fc72280ff60a2f99af32d8b2807bb761de7769ed6b29",
-  "profile_definition": "canonical: all reviewed LF SQL; historical_crlf: first 33 reviewed SQL files encoded CRLF, then nine new LF migrations. UTC and fixed search_path. Synthetic Auth/Storage only.",
+  "profile_definition": "canonical: all reviewed LF SQL; historical_crlf: first 33 reviewed SQL files encoded CRLF, then ten new LF migrations. UTC and fixed search_path. Synthetic Auth/Storage only.",
   "database_contract_profiles": {
     "canonical": {
       "views": [
@@ -274,6 +274,17 @@
               "auth_insert": false,
               "auth_select": true,
               "auth_update": false
+            },
+            {
+              "name": "followup_start_date",
+              "type": "date",
+              "position": 18,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
             }
           ],
           "options": [
@@ -287,7 +298,7 @@
           "auth_insert": false,
           "auth_select": true,
           "auth_update": false,
-          "definition_md5": "241515f9745ac193342b0785cd54e816"
+          "definition_md5": "8f78521efd83e4985fa3eec9a40296ab"
         },
         {
           "name": "v_project_overview",
@@ -2132,6 +2143,28 @@
               "type": "f",
               "validated": true,
               "definition_md5": "217c19f5f18697c8e57e5452c011104e"
+            }
+          ]
+        },
+        {
+          "rls": true,
+          "table": "followup_start_rpc_rows",
+          "schema": "registry_private",
+          "force_rls": false,
+          "anon_delete": false,
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_delete": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "constraints": [
+            {
+              "name": "followup_start_rpc_rows_pkey",
+              "type": "p",
+              "validated": true,
+              "definition_md5": "84e00489f3778b4b4a152f0ccbf279cc"
             }
           ]
         },
@@ -7967,6 +8000,25 @@
           "array_dimensions": 0
         },
         {
+          "name": "followup_start_date",
+          "type": "date",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "followup_status",
           "type": "text",
           "table": "patients_baseline",
@@ -11444,6 +11496,44 @@
           "array_dimensions": 0
         },
         {
+          "name": "record_id",
+          "type": "uuid",
+          "table": "followup_start_rpc_rows",
+          "schema": "registry_private",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "xact_id",
+          "type": "xid8",
+          "table": "followup_start_rpc_rows",
+          "schema": "registry_private",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "actor_id",
           "type": "uuid",
           "table": "member_add_attempts",
@@ -13924,6 +14014,37 @@
         },
         {
           "live": true,
+          "name": "followup_start_rpc_rows_pkey",
+          "ready": true,
+          "table": "followup_start_rpc_rows",
+          "valid": true,
+          "schema": "registry_private",
+          "unique": true,
+          "columns": [
+            {
+              "column": "xact_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "record_id",
+              "included": false,
+              "position": 2,
+              "expression": false
+            }
+          ],
+          "primary": true,
+          "immediate": true,
+          "key_count": 2,
+          "predicate_md5": null,
+          "definition_md5": "d678aa180334c0d4f77decf60dc15ad1",
+          "attribute_count": 2,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
           "name": "member_add_attempts_actor_time_idx",
           "ready": true,
           "table": "member_add_attempts",
@@ -15167,6 +15288,13 @@
           "enabled": "O",
           "trigger": "registry_consent_research_derived",
           "definition_md5": "81a990a6b0629d6cd765eda70a5f8024"
+        },
+        {
+          "table": "patients_baseline",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "registry_followup_start_checks",
+          "definition_md5": "4b36cc19df33f7513518f6cb141a8288"
         },
         {
           "table": "patients_baseline",
@@ -16491,6 +16619,18 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "registry_private.check_followup_start_date()",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "4f7675b6efdd86f2f6532ad828bd6022",
+          "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "registry_private.check_research_dates()",
           "volatility": "v",
           "anon_execute": false,
@@ -16520,6 +16660,18 @@
           "anon_execute": false,
           "definition_md5": "0c5738cc7084aef1c95808846349f008",
           "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "signature": "registry_private.followup_start_rpc_active(uuid)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "d17adf236100be7ebce03bb7411a1be6",
+          "security_definer": true,
           "authenticated_execute": false
         },
         {
@@ -16844,6 +16996,30 @@
           "anon_execute": false,
           "definition_md5": "0c17a34d86f0aa5efc29491b79d82448",
           "security_definer": false,
+          "authenticated_execute": true
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "set_consent_bulk(uuid,text[],text,text,date,text)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "b0415694bc5178306dd80e59c0e19bf2",
+          "security_definer": true,
+          "authenticated_execute": true
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "set_followup_start_date(uuid,text[],date,text)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "aadba60b4a41b9c5edbff48060feca20",
+          "security_definer": true,
           "authenticated_execute": true
         },
         {
@@ -17227,6 +17403,17 @@
               "auth_insert": false,
               "auth_select": true,
               "auth_update": false
+            },
+            {
+              "name": "followup_start_date",
+              "type": "date",
+              "position": 18,
+              "anon_insert": false,
+              "anon_select": false,
+              "anon_update": false,
+              "auth_insert": false,
+              "auth_select": true,
+              "auth_update": false
             }
           ],
           "options": [
@@ -17240,7 +17427,7 @@
           "auth_insert": false,
           "auth_select": true,
           "auth_update": false,
-          "definition_md5": "241515f9745ac193342b0785cd54e816"
+          "definition_md5": "8f78521efd83e4985fa3eec9a40296ab"
         },
         {
           "name": "v_project_overview",
@@ -19085,6 +19272,28 @@
               "type": "f",
               "validated": true,
               "definition_md5": "217c19f5f18697c8e57e5452c011104e"
+            }
+          ]
+        },
+        {
+          "rls": true,
+          "table": "followup_start_rpc_rows",
+          "schema": "registry_private",
+          "force_rls": false,
+          "anon_delete": false,
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_delete": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "constraints": [
+            {
+              "name": "followup_start_rpc_rows_pkey",
+              "type": "p",
+              "validated": true,
+              "definition_md5": "84e00489f3778b4b4a152f0ccbf279cc"
             }
           ]
         },
@@ -24920,6 +25129,25 @@
           "array_dimensions": 0
         },
         {
+          "name": "followup_start_date",
+          "type": "date",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "followup_status",
           "type": "text",
           "table": "patients_baseline",
@@ -28397,6 +28625,44 @@
           "array_dimensions": 0
         },
         {
+          "name": "record_id",
+          "type": "uuid",
+          "table": "followup_start_rpc_rows",
+          "schema": "registry_private",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "xact_id",
+          "type": "xid8",
+          "table": "followup_start_rpc_rows",
+          "schema": "registry_private",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": false,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": false,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "actor_id",
           "type": "uuid",
           "table": "member_add_attempts",
@@ -30877,6 +31143,37 @@
         },
         {
           "live": true,
+          "name": "followup_start_rpc_rows_pkey",
+          "ready": true,
+          "table": "followup_start_rpc_rows",
+          "valid": true,
+          "schema": "registry_private",
+          "unique": true,
+          "columns": [
+            {
+              "column": "xact_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "record_id",
+              "included": false,
+              "position": 2,
+              "expression": false
+            }
+          ],
+          "primary": true,
+          "immediate": true,
+          "key_count": 2,
+          "predicate_md5": null,
+          "definition_md5": "d678aa180334c0d4f77decf60dc15ad1",
+          "attribute_count": 2,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
           "name": "member_add_attempts_actor_time_idx",
           "ready": true,
           "table": "member_add_attempts",
@@ -32120,6 +32417,13 @@
           "enabled": "O",
           "trigger": "registry_consent_research_derived",
           "definition_md5": "81a990a6b0629d6cd765eda70a5f8024"
+        },
+        {
+          "table": "patients_baseline",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "registry_followup_start_checks",
+          "definition_md5": "4b36cc19df33f7513518f6cb141a8288"
         },
         {
           "table": "patients_baseline",
@@ -33444,6 +33748,18 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "registry_private.check_followup_start_date()",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "4f7675b6efdd86f2f6532ad828bd6022",
+          "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "registry_private.check_research_dates()",
           "volatility": "v",
           "anon_execute": false,
@@ -33473,6 +33789,18 @@
           "anon_execute": false,
           "definition_md5": "0c5738cc7084aef1c95808846349f008",
           "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "signature": "registry_private.followup_start_rpc_active(uuid)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "d17adf236100be7ebce03bb7411a1be6",
+          "security_definer": true,
           "authenticated_execute": false
         },
         {
@@ -33797,6 +34125,30 @@
           "anon_execute": false,
           "definition_md5": "f3fbdf756ede04b34f2bc583caf9aed3",
           "security_definer": false,
+          "authenticated_execute": true
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "set_consent_bulk(uuid,text[],text,text,date,text)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "b0415694bc5178306dd80e59c0e19bf2",
+          "security_definer": true,
+          "authenticated_execute": true
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "set_followup_start_date(uuid,text[],date,text)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "aadba60b4a41b9c5edbff48060feca20",
+          "security_definer": true,
           "authenticated_execute": true
         },
         {
