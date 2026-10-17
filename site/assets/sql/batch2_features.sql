@@ -1,715 +1,5 @@
--- P0 Guardrails: strict input validation, PII blocking, server-side audit,
--- update metadata, anti-abuse limits, receipt token, and visit history.
-
--- 1) Unified updated_at/updated_by metadata (server-side)
-create or replace function public._set_updated_meta()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  new.updated_at := now();
-  new.updated_by := auth.uid();
-  return new;
-end;
-$$;
-
--- Add columns if missing
-alter table public.projects          add column if not exists updated_at timestamptz not null default now();
-alter table public.projects          add column if not exists updated_by uuid;
-alter table public.patients_baseline add column if not exists updated_at timestamptz not null default now();
-alter table public.patients_baseline add column if not exists updated_by uuid;
-alter table public.visits_long       add column if not exists updated_at timestamptz not null default now();
-alter table public.visits_long       add column if not exists updated_by uuid;
-alter table public.labs_long         add column if not exists updated_at timestamptz not null default now();
-alter table public.labs_long         add column if not exists updated_by uuid;
-alter table public.meds_long         add column if not exists updated_at timestamptz not null default now();
-alter table public.meds_long         add column if not exists updated_by uuid;
-alter table public.variants_long     add column if not exists updated_at timestamptz not null default now();
-alter table public.variants_long     add column if not exists updated_by uuid;
-alter table public.patient_tokens    add column if not exists updated_at timestamptz not null default now();
-alter table public.patient_tokens    add column if not exists updated_by uuid;
-
--- Triggers
- drop trigger if exists tr_projects_updated_meta on public.projects;
-create trigger tr_projects_updated_meta before update on public.projects
-for each row execute function public._set_updated_meta();
-
-drop trigger if exists tr_patients_updated_meta on public.patients_baseline;
-create trigger tr_patients_updated_meta before update on public.patients_baseline
-for each row execute function public._set_updated_meta();
-
-drop trigger if exists tr_visits_updated_meta on public.visits_long;
-create trigger tr_visits_updated_meta before update on public.visits_long
-for each row execute function public._set_updated_meta();
-
-drop trigger if exists tr_labs_updated_meta on public.labs_long;
-create trigger tr_labs_updated_meta before update on public.labs_long
-for each row execute function public._set_updated_meta();
-
-drop trigger if exists tr_meds_updated_meta on public.meds_long;
-create trigger tr_meds_updated_meta before update on public.meds_long
-for each row execute function public._set_updated_meta();
-
-drop trigger if exists tr_vars_updated_meta on public.variants_long;
-create trigger tr_vars_updated_meta before update on public.variants_long
-for each row execute function public._set_updated_meta();
-
-drop trigger if exists tr_tokens_updated_meta on public.patient_tokens;
-create trigger tr_tokens_updated_meta before update on public.patient_tokens
-for each row execute function public._set_updated_meta();
-
--- 2) PII detection + audit log
-create table if not exists public.security_audit_logs (
-  id uuid primary key default gen_random_uuid(),
-  created_at timestamptz not null default now(),
-  project_id uuid,
-  patient_code text,
-  token_hash text,
-  actor_uid uuid,
-  event_type text not null,
-  severity text not null default 'warn',
-  details jsonb not null default '{}'::jsonb
-);
-
-create index if not exists security_audit_logs_created_idx on public.security_audit_logs(created_at desc);
-create index if not exists security_audit_logs_project_idx on public.security_audit_logs(project_id, created_at desc);
-
-alter table public.security_audit_logs enable row level security;
-
-drop policy if exists sec_audit_select_own on public.security_audit_logs;
-create policy sec_audit_select_own
-on public.security_audit_logs for select
-to authenticated
-using (exists (select 1 from public.projects p where p.id = project_id and p.created_by = auth.uid()));
-
-create or replace function public._contains_pii(p_text text)
-returns boolean
-language plpgsql
-immutable
-as $$
-declare
-  v text;
-begin
-  if p_text is null then
-    return false;
-  end if;
-  v := lower(trim(p_text));
-  if v = '' then
-    return false;
-  end if;
-
-  -- China mobile phone (11 digits, common prefixes)
-  if v ~ '(?:^|\D)1[3-9][0-9]{9}(?:\D|$)' then return true; end if;
-  -- China ID (18)
-  if v ~ '(?:^|\D)[1-9]\d{5}(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[0-9xX](?:\D|$)' then return true; end if;
-  -- MRN / 病案号 / 住院号 keywords + id-like tail
-  if v ~ '(mrn|病案号|住院号|门诊号|身份证|phone|手机号|电话)' then return true; end if;
-  -- Suspicious long numeric identifier (8+ consecutive digits)
-  if v ~ '\d{8,}' then return true; end if;
-  -- Chinese personal name-like pattern after explicit label
-  if v ~ '(姓名|患者|病人)[:： ]?[\x{4e00}-\x{9fa5}]{2,4}' then return true; end if;
-
-  return false;
-end;
-$$;
-
--- 3) Visit history for admin traceability
-create table if not exists public.visits_long_history (
-  id uuid primary key default gen_random_uuid(),
-  visit_id uuid not null,
-  project_id uuid not null,
-  patient_code text not null,
-  action text not null,
-  changed_at timestamptz not null default now(),
-  changed_by uuid,
-  old_row jsonb,
-  new_row jsonb
-);
-
-create index if not exists visits_hist_visit_idx on public.visits_long_history(visit_id, changed_at desc);
-create index if not exists visits_hist_project_idx on public.visits_long_history(project_id, changed_at desc);
-
-alter table public.visits_long_history enable row level security;
-
-drop policy if exists visits_hist_select_own on public.visits_long_history;
-create policy visits_hist_select_own
-on public.visits_long_history for select
-to authenticated
-using (exists (select 1 from public.projects p where p.id = project_id and p.created_by = auth.uid()));
-
-create or replace function public._audit_visits_long_changes()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  if tg_op = 'UPDATE' then
-    insert into public.visits_long_history(visit_id, project_id, patient_code, action, changed_by, old_row, new_row)
-    values (new.id, new.project_id, new.patient_code, 'UPDATE', auth.uid(), to_jsonb(old), to_jsonb(new));
-    return new;
-  elsif tg_op = 'DELETE' then
-    insert into public.visits_long_history(visit_id, project_id, patient_code, action, changed_by, old_row, new_row)
-    values (old.id, old.project_id, old.patient_code, 'DELETE', auth.uid(), to_jsonb(old), null);
-    return old;
-  end if;
-  return null;
-end;
-$$;
-
-drop trigger if exists tr_visits_history on public.visits_long;
-create trigger tr_visits_history
-after update or delete on public.visits_long
-for each row execute function public._audit_visits_long_changes();
-
--- 4) Receipt token (no PII/clinical payload)
-create table if not exists public.visit_receipts (
-  visit_id uuid primary key references public.visits_long(id) on delete cascade,
-  receipt_token text not null unique,
-  expires_at timestamptz not null,
-  created_at timestamptz not null default now()
-);
-
-drop function if exists public.patient_submit_visit_v2(text, date, numeric, numeric, numeric, numeric, numeric, text);
-create or replace function public.patient_submit_visit_v2(
-  p_token text,
-  p_visit_date date,
-  p_sbp numeric,
-  p_dbp numeric,
-  p_scr_umol_l numeric,
-  p_upcr numeric,
-  p_egfr numeric,
-  p_notes text default null
-)
-returns table (
-  visit_id uuid,
-  server_time timestamptz,
-  receipt_token text,
-  receipt_expires_at timestamptz
-)
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_project_id uuid;
-  v_patient_code text;
-  v_visit_id uuid;
-  v_now timestamptz := now();
-  v_receipt_token text;
-  v_receipt_exp timestamptz;
-  v_min_count int;
-  v_same_day_count int;
-begin
-  select t.project_id, t.patient_code into v_project_id, v_patient_code
-  from public.patient_tokens t
-  where t.token = p_token
-    and t.active = true
-    and (t.expires_at is null or t.expires_at > v_now)
-  limit 1;
-
-  if v_project_id is null then
-    raise exception 'token_invalid_or_expired';
-  end if;
-
-  -- required core fields
-  if p_visit_date is null or p_sbp is null or p_dbp is null or p_scr_umol_l is null or p_upcr is null then
-    insert into public.security_audit_logs(project_id, patient_code, token_hash, event_type, severity, details)
-    values (
-      v_project_id,
-      v_patient_code,
-      encode(digest(coalesce(p_token,''), 'sha256'), 'hex'),
-      'visit_submit_blocked_missing_core',
-      'warn',
-      jsonb_build_object('visit_date', p_visit_date, 'sbp', p_sbp, 'dbp', p_dbp, 'scr_umol_l', p_scr_umol_l, 'upcr', p_upcr)
-    );
-    raise exception 'missing_core_fields';
-  end if;
-
-  -- PII blocking (strict)
-  if public._contains_pii(v_patient_code) or public._contains_pii(p_notes) then
-    insert into public.security_audit_logs(project_id, patient_code, token_hash, event_type, severity, details)
-    values (
-      v_project_id,
-      v_patient_code,
-      encode(digest(coalesce(p_token,''), 'sha256'), 'hex'),
-      'pii_detected_blocked',
-      'high',
-      jsonb_build_object('notes_len', coalesce(length(p_notes),0), 'patient_code', v_patient_code)
-    );
-    raise exception 'pii_detected_blocked';
-  end if;
-
-  -- anti-abuse: per-token/minute
-  select count(*)::int into v_min_count
-  from public.visits_long v
-  where v.project_id = v_project_id
-    and v.patient_code = v_patient_code
-    and v.created_at > (v_now - interval '1 minute');
-
-  if v_min_count >= 12 then
-    update public.patient_tokens set active = false where token = p_token;
-    insert into public.security_audit_logs(project_id, patient_code, token_hash, event_type, severity, details)
-    values (
-      v_project_id,
-      v_patient_code,
-      encode(digest(coalesce(p_token,''), 'sha256'), 'hex'),
-      'token_auto_frozen_rate_limit',
-      'high',
-      jsonb_build_object('count_1m', v_min_count)
-    );
-    raise exception 'rate_limited_token_frozen';
-  end if;
-
-  select count(*)::int into v_same_day_count
-  from public.visits_long v
-  where v.project_id = v_project_id
-    and v.patient_code = v_patient_code
-    and v.visit_date = p_visit_date;
-
-  if v_same_day_count >= 6 then
-    update public.patient_tokens set active = false where token = p_token;
-    insert into public.security_audit_logs(project_id, patient_code, token_hash, event_type, severity, details)
-    values (
-      v_project_id,
-      v_patient_code,
-      encode(digest(coalesce(p_token,''), 'sha256'), 'hex'),
-      'token_auto_frozen_same_day_spike',
-      'high',
-      jsonb_build_object('visit_date', p_visit_date, 'same_day_count', v_same_day_count)
-    );
-    raise exception 'abnormal_duplicate_spike_token_frozen';
-  end if;
-
-  perform public.assert_project_write_allowed(v_project_id);
-
-  insert into public.visits_long(project_id, patient_code, visit_date, sbp, dbp, scr_umol_l, upcr, egfr, notes)
-  values (v_project_id, v_patient_code, p_visit_date, p_sbp, p_dbp, p_scr_umol_l, p_upcr, p_egfr, left(p_notes, 500))
-  returning id into v_visit_id;
-
-  v_receipt_token := replace(gen_random_uuid()::text, '-', '');
-  v_receipt_exp := v_now + interval '24 hours';
-
-  insert into public.visit_receipts(visit_id, receipt_token, expires_at)
-  values (v_visit_id, v_receipt_token, v_receipt_exp)
-  on conflict (visit_id) do update
-    set receipt_token = excluded.receipt_token,
-        expires_at = excluded.expires_at;
-
-  insert into public.security_audit_logs(project_id, patient_code, token_hash, actor_uid, event_type, severity, details)
-  values (
-    v_project_id,
-    v_patient_code,
-    encode(digest(coalesce(p_token,''), 'sha256'), 'hex'),
-    auth.uid(),
-    'visit_submit_ok',
-    'info',
-    jsonb_build_object('visit_id', v_visit_id, 'visit_date', p_visit_date)
-  );
-
-  visit_id := v_visit_id;
-  server_time := v_now;
-  receipt_token := v_receipt_token;
-  receipt_expires_at := v_receipt_exp;
-  return next;
-end;
-$$;
-
-grant execute on function public.patient_submit_visit_v2(text, date, numeric, numeric, numeric, numeric, numeric, text) to anon, authenticated;
-
--- Admin read history helper
-drop function if exists public.admin_get_visit_history(uuid, text, int);
-create or replace function public.admin_get_visit_history(
-  p_project_id uuid,
-  p_patient_code text default null,
-  p_limit int default 200
-)
-returns table (
-  changed_at timestamptz,
-  action text,
-  visit_id uuid,
-  patient_code text,
-  changed_by uuid,
-  old_row jsonb,
-  new_row jsonb
-)
-language sql
-security definer
-set search_path = public
-as $$
-  select
-    h.changed_at,
-    h.action,
-    h.visit_id,
-    h.patient_code,
-    h.changed_by,
-    h.old_row,
-    h.new_row
-  from public.visits_long_history h
-  where h.project_id = p_project_id
-    and (p_patient_code is null or h.patient_code = p_patient_code)
-    and exists (
-      select 1 from public.projects p
-      where p.id = p_project_id and p.created_by = auth.uid()
-    )
-  order by h.changed_at desc
-  limit greatest(1, least(p_limit, 1000));
-$$;
-
-grant execute on function public.admin_get_visit_history(uuid, text, int) to authenticated;
-
--- 5) Admin one-click token revoke
-create or replace function public.revoke_patient_token(p_token text)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_project_id uuid;
-  v_patient_code text;
-begin
-  select project_id, patient_code into v_project_id, v_patient_code
-  from public.patient_tokens
-  where token = p_token
-  limit 1;
-
-  if v_project_id is null then
-    raise exception 'token_not_found';
-  end if;
-
-  if not exists (
-    select 1 from public.projects p
-    where p.id = v_project_id and p.created_by = auth.uid()
-  ) then
-    raise exception 'admin_only';
-  end if;
-
-  update public.patient_tokens
-  set active = false,
-      expires_at = least(coalesce(expires_at, now()), now())
-  where token = p_token;
-
-  insert into public.security_audit_logs(project_id, patient_code, actor_uid, event_type, severity, details)
-  values (
-    v_project_id,
-    v_patient_code,
-    auth.uid(),
-    'token_revoked_by_admin',
-    'warn',
-    jsonb_build_object('token_hash', encode(digest(coalesce(p_token,''), 'sha256'), 'hex'))
-  );
-end;
-$$;
-
-grant execute on function public.revoke_patient_token(text) to authenticated;
--- Snapshot / Export IDs + audit trail + KTx template extension (minimal)
-
-create table if not exists public.project_snapshots (
-  id uuid primary key default gen_random_uuid(),
-  snapshot_id text not null unique,
-  project_id uuid not null references public.projects(id) on delete cascade,
-  status text not null default 'draft' check (status in ('draft','locked','deprecated')),
-  kind text not null default 'snapshot' check (kind in ('snapshot','paper_package','export')),
-  filter_summary jsonb not null default '{}'::jsonb,
-  schema_version text not null default 'core_v1',
-  n_patients int not null default 0,
-  n_visits int not null default 0,
-  missing_rate numeric not null default 0,
-  qc_summary jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now(),
-  created_by uuid,
-  locked_at timestamptz,
-  locked_by uuid,
-  notes text
-);
-
-create index if not exists project_snapshots_project_created_idx on public.project_snapshots(project_id, created_at desc);
-
-create table if not exists public.audit_log (
-  id uuid primary key default gen_random_uuid(),
-  project_id uuid,
-  actor_uid uuid,
-  action text not null,
-  snapshot_id text,
-  details jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now()
-);
-
-create index if not exists audit_log_project_created_idx on public.audit_log(project_id, created_at desc);
-
-alter table public.project_snapshots enable row level security;
-alter table public.audit_log enable row level security;
-
-drop policy if exists snapshots_select_own on public.project_snapshots;
-create policy snapshots_select_own on public.project_snapshots
-for select to authenticated
-using (exists (select 1 from public.projects p where p.id = project_id and p.created_by = auth.uid()));
-
-drop policy if exists audit_select_own on public.audit_log;
-create policy audit_select_own on public.audit_log
-for select to authenticated
-using (exists (select 1 from public.projects p where p.id = project_id and p.created_by = auth.uid()));
-
-create or replace function public._new_snapshot_code()
-returns text
-language plpgsql
-as $$
-declare
-  v text;
-begin
-  v := 'KS-' || to_char(now(),'YYYY') || '-' || upper(substr(replace(gen_random_uuid()::text,'-',''),1,8));
-  return v;
-end;
-$$;
-
-drop function if exists public.create_project_snapshot(uuid, text, jsonb, text);
-create or replace function public.create_project_snapshot(
-  p_project_id uuid,
-  p_kind text default 'snapshot',
-  p_filter_summary jsonb default '{}'::jsonb,
-  p_schema_version text default 'core_v1'
-)
-returns table (
-  id uuid,
-  snapshot_id text,
-  status text,
-  created_at timestamptz,
-  n_patients int,
-  n_visits int,
-  missing_rate numeric,
-  qc_summary jsonb
-)
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_uid uuid := auth.uid();
-  v_snapshot_id text;
-  v_n_patients int := 0;
-  v_n_visits int := 0;
-  v_missing_rate numeric := 0;
-  v_qc jsonb;
-  v_id uuid;
-begin
-  if not exists (select 1 from public.projects p where p.id = p_project_id and p.created_by = v_uid) then
-    raise exception 'admin_only';
-  end if;
-
-  if p_kind not in ('snapshot','paper_package','export') then
-    raise exception 'invalid_kind';
-  end if;
-
-  select count(distinct patient_code) into v_n_patients from public.patients_baseline where project_id = p_project_id;
-  select count(*) into v_n_visits from public.visits_long where project_id = p_project_id;
-
-  select jsonb_build_object(
-    'visits_missing_sbp', count(*) filter (where sbp is null),
-    'visits_missing_dbp', count(*) filter (where dbp is null),
-    'visits_missing_scr', count(*) filter (where scr_umol_l is null),
-    'visits_missing_upcr', count(*) filter (where upcr is null)
-  ) into v_qc
-  from public.visits_long
-  where project_id = p_project_id;
-
-  if v_n_visits > 0 then
-    select (
-      ((count(*) filter (where sbp is null or dbp is null or scr_umol_l is null or upcr is null))::numeric / count(*)::numeric) * 100
-    ) into v_missing_rate
-    from public.visits_long
-    where project_id = p_project_id;
-  end if;
-
-  v_snapshot_id := public._new_snapshot_code();
-
-  insert into public.project_snapshots(
-    snapshot_id, project_id, status, kind, filter_summary, schema_version,
-    n_patients, n_visits, missing_rate, qc_summary, created_by
-  )
-  values (
-    v_snapshot_id, p_project_id, 'draft', p_kind, coalesce(p_filter_summary,'{}'::jsonb), p_schema_version,
-    v_n_patients, v_n_visits, coalesce(v_missing_rate,0), coalesce(v_qc,'{}'::jsonb), v_uid
-  )
-  returning project_snapshots.id into v_id;
-
-  insert into public.audit_log(project_id, actor_uid, action, snapshot_id, details)
-  values (
-    p_project_id,
-    v_uid,
-    'snapshot_create',
-    v_snapshot_id,
-    jsonb_build_object('kind', p_kind, 'schema_version', p_schema_version, 'filter_summary', coalesce(p_filter_summary,'{}'::jsonb))
-  );
-
-  return query
-  select s.id, s.snapshot_id, s.status, s.created_at, s.n_patients, s.n_visits, s.missing_rate, s.qc_summary
-  from public.project_snapshots s where s.id = v_id;
-end;
-$$;
-
-grant execute on function public.create_project_snapshot(uuid, text, jsonb, text) to authenticated;
-
-create or replace function public.list_project_snapshots(p_project_id uuid)
-returns setof public.project_snapshots
-language sql
-security definer
-set search_path = public
-as $$
-  select s.*
-  from public.project_snapshots s
-  where s.project_id = p_project_id
-    and exists (select 1 from public.projects p where p.id = p_project_id and p.created_by = auth.uid())
-  order by s.created_at desc;
-$$;
-
-grant execute on function public.list_project_snapshots(uuid) to authenticated;
-
-create or replace function public.lock_project_snapshot(p_snapshot_id uuid)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_project uuid;
-  v_snapshot text;
-begin
-  select project_id, snapshot_id into v_project, v_snapshot
-  from public.project_snapshots
-  where id = p_snapshot_id
-  limit 1;
-
-  if v_project is null then
-    raise exception 'snapshot_not_found';
-  end if;
-
-  if not exists (select 1 from public.projects p where p.id = v_project and p.created_by = auth.uid()) then
-    raise exception 'admin_only';
-  end if;
-
-  update public.project_snapshots
-  set status = 'locked', locked_at = now(), locked_by = auth.uid()
-  where id = p_snapshot_id and status <> 'locked';
-
-  insert into public.audit_log(project_id, actor_uid, action, snapshot_id, details)
-  values (v_project, auth.uid(), 'snapshot_lock', v_snapshot, '{}'::jsonb);
-end;
-$$;
-
-grant execute on function public.lock_project_snapshot(uuid) to authenticated;
-
-create or replace function public.log_project_audit(
-  p_project_id uuid,
-  p_action text,
-  p_snapshot_id text default null,
-  p_details jsonb default '{}'::jsonb
-)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  if not exists (select 1 from public.projects p where p.id = p_project_id and p.created_by = auth.uid()) then
-    raise exception 'admin_only';
-  end if;
-
-  insert into public.audit_log(project_id, actor_uid, action, snapshot_id, details)
-  values (p_project_id, auth.uid(), p_action, p_snapshot_id, coalesce(p_details,'{}'::jsonb));
-end;
-$$;
-
-grant execute on function public.log_project_audit(uuid, text, text, jsonb) to authenticated;
-
--- KTx structured extension tables
-create table if not exists public.ktx_baseline_ext (
-  id uuid primary key default gen_random_uuid(),
-  project_id uuid not null references public.projects(id) on delete cascade,
-  patient_code text not null,
-  transplant_date date,
-  donor_type text,
-  induction_therapy text,
-  maintenance_immuno jsonb not null default '[]'::jsonb,
-  hla_mismatch_count int,
-  pra_status text,
-  dsa_status text,
-  dsa_titer text,
-  baseline_creatinine numeric,
-  baseline_egfr numeric,
-  created_at timestamptz not null default now(),
-  created_by uuid,
-  updated_at timestamptz not null default now(),
-  updated_by uuid,
-  constraint ktx_baseline_unique unique(project_id, patient_code)
-);
-
-create table if not exists public.ktx_visits_ext (
-  id uuid primary key default gen_random_uuid(),
-  project_id uuid not null references public.projects(id) on delete cascade,
-  patient_code text not null,
-  visit_date date not null,
-  tac_trough numeric,
-  csa_trough numeric,
-  weight_kg numeric,
-  infection_event text,
-  rejection_event text,
-  biopsy_banff text,
-  graft_failure_date date,
-  death_date date,
-  return_to_dialysis boolean,
-  return_to_dialysis_date date,
-  created_at timestamptz not null default now(),
-  created_by uuid,
-  updated_at timestamptz not null default now(),
-  updated_by uuid
-);
-
-alter table public.ktx_baseline_ext enable row level security;
-alter table public.ktx_visits_ext enable row level security;
-
-drop policy if exists ktxb_select_own on public.ktx_baseline_ext;
-create policy ktxb_select_own on public.ktx_baseline_ext for select to authenticated
-using (exists (select 1 from public.projects p where p.id = project_id and p.created_by = auth.uid()));
-
-drop policy if exists ktxb_insert_own on public.ktx_baseline_ext;
-create policy ktxb_insert_own on public.ktx_baseline_ext for insert to authenticated
-with check (exists (select 1 from public.projects p where p.id = project_id and p.created_by = auth.uid()));
-
-drop policy if exists ktxb_update_own on public.ktx_baseline_ext;
-create policy ktxb_update_own on public.ktx_baseline_ext for update to authenticated
-using (exists (select 1 from public.projects p where p.id = project_id and p.created_by = auth.uid()))
-with check (exists (select 1 from public.projects p where p.id = project_id and p.created_by = auth.uid()));
-
-drop policy if exists ktxv_select_own on public.ktx_visits_ext;
-create policy ktxv_select_own on public.ktx_visits_ext for select to authenticated
-using (exists (select 1 from public.projects p where p.id = project_id and p.created_by = auth.uid()));
-
-drop policy if exists ktxv_insert_own on public.ktx_visits_ext;
-create policy ktxv_insert_own on public.ktx_visits_ext for insert to authenticated
-with check (exists (select 1 from public.projects p where p.id = project_id and p.created_by = auth.uid()));
-
-drop policy if exists ktxv_update_own on public.ktx_visits_ext;
-create policy ktxv_update_own on public.ktx_visits_ext for update to authenticated
-using (exists (select 1 from public.projects p where p.id = project_id and p.created_by = auth.uid()))
-with check (exists (select 1 from public.projects p where p.id = project_id and p.created_by = auth.uid()));
-
--- metadata triggers
- drop trigger if exists tr_ktxb_created_by on public.ktx_baseline_ext;
-create trigger tr_ktxb_created_by before insert on public.ktx_baseline_ext
-for each row execute function public._set_created_by();
-drop trigger if exists tr_ktxb_updated_meta on public.ktx_baseline_ext;
-create trigger tr_ktxb_updated_meta before update on public.ktx_baseline_ext
-for each row execute function public._set_updated_meta();
-
-drop trigger if exists tr_ktxv_created_by on public.ktx_visits_ext;
-create trigger tr_ktxv_created_by before insert on public.ktx_visits_ext
-for each row execute function public._set_created_by();
-drop trigger if exists tr_ktxv_updated_meta on public.ktx_visits_ext;
-create trigger tr_ktxv_updated_meta before update on public.ktx_visits_ext
-for each row execute function public._set_updated_meta();
+-- GENERATED compatibility batch 2/6; execute all six in order, stop on error.
+-- MIGRATION 007: 0006_demo_requests.sql
 -- Demo booking requests table
 -- Stores requests submitted via /demo page
 
@@ -741,6 +31,8 @@ create policy "allow_auth_select" on demo_requests
 DROP POLICY IF EXISTS "allow_auth_update" ON demo_requests;
 create policy "allow_auth_update" on demo_requests
   for update to authenticated using (true);
+
+-- MIGRATION 008: 0007_trial_30days.sql
 -- KidneySphere AI — Trial Period Update (v7)
 --
 -- Changes:
@@ -784,6 +76,8 @@ WHERE
 -- their original schedule.
 
 -- END
+
+-- MIGRATION 009: 0008_rct_phase1.sql
 -- RCT Phase 1：在 patients_baseline 增加随机化字段
 -- 观察性队列可全部留空（NULL）；无破坏性变更。
 
@@ -797,3 +91,751 @@ comment on column public.patients_baseline.treatment_arm      is '干预组别�
 comment on column public.patients_baseline.randomization_id   is '随机号（盲底管理编号）；观察性队列留空';
 comment on column public.patients_baseline.randomization_date is '随机化日期；观察性队列留空';
 comment on column public.patients_baseline.stratification_factors is '分层因素 JSON，如 {"中心":"BJ01","eGFR分层":"高风险"}；观察性队列留空';
+
+-- MIGRATION 010: 0009_platform_admins.sql
+-- ============================================================
+-- 0009_platform_admins.sql
+-- 平台管理员体系
+--
+-- 新增内容：
+--   1. platform_admins 表      — 记录平台管理员邮箱
+--   2. partner 订阅计划        — 合作机构/友好单位，由管理员手动授权
+--   3. is_platform_admin()     — 判断当前登录用户是否为平台管理员
+--   4. admin_list_projects()   — 按邮箱搜索某用户的全部项目
+--   5. admin_adjust_trial()    — 延长试用天数
+--   6. admin_set_partner()     — 设为合作伙伴（长期免费）
+--   7. admin_reset_to_trial()  — 撤回为普通试用
+-- ============================================================
+
+-- ──────────────────────────────────────────────────────────
+-- 1. platform_admins 表
+-- ──────────────────────────────────────────────────────────
+create table if not exists public.platform_admins (
+  email       text        not null primary key,
+  note        text,
+  created_at  timestamptz not null default now()
+);
+
+-- 仅 postgres / service_role 可直接操作该表；前端用户通过 RPC 间接访问
+alter table public.platform_admins enable row level security;
+-- 不授予 authenticated / anon 任何直接访问权限（RPC 走 SECURITY DEFINER）
+
+-- ──────────────────────────────────────────────────────────
+-- 2. 把 'partner' 加入 subscription_plan 允许值
+--    旧约束：('trial', 'pro', 'institution')
+--    新约束：('trial', 'pro', 'institution', 'partner')
+-- ──────────────────────────────────────────────────────────
+alter table public.projects
+  drop constraint if exists subscription_plan_check;
+
+alter table public.projects
+  add constraint subscription_plan_check
+  check (subscription_plan in ('trial', 'pro', 'institution', 'partner'));
+
+-- ──────────────────────────────────────────────────────────
+-- 3. 更新 assert_project_write_allowed：
+--    partner 计划视同 pro/institution，按 active_until 判断
+-- ──────────────────────────────────────────────────────────
+create or replace function public.assert_project_write_allowed(p_project_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_trial_enabled  boolean;
+  v_trial_expires  timestamptz;
+  v_plan           text;
+  v_sub_until      timestamptz;
+begin
+  select trial_enabled, trial_expires_at, subscription_plan, subscription_active_until
+  into   v_trial_enabled, v_trial_expires, v_plan, v_sub_until
+  from   public.projects
+  where  id = p_project_id;
+
+  if not found then
+    raise exception 'project_not_found';
+  end if;
+
+  -- Rule A: 管理员已关闭试用限制
+  if not v_trial_enabled then
+    return;
+  end if;
+
+  -- Rule B: 付费订阅或合作伙伴计划有效
+  if v_plan in ('pro', 'institution', 'partner') and
+     (v_sub_until is null or now() <= v_sub_until) then
+    return;
+  end if;
+
+  -- Rule C: 在试用期内
+  if v_trial_expires is not null and now() <= v_trial_expires then
+    return;
+  end if;
+
+  -- 以上均不满足 → 拒绝写入
+  raise exception 'subscription_required';
+end;
+$$;
+
+-- ──────────────────────────────────────────────────────────
+-- 4. is_platform_admin() — 当前用户是否为平台管理员
+-- ──────────────────────────────────────────────────────────
+create or replace function public.is_platform_admin()
+returns boolean
+language sql
+security definer
+set search_path = public, auth
+stable
+as $$
+  select exists (
+    select 1 from public.platform_admins pa
+    join auth.users u on u.email = pa.email
+    where u.id = auth.uid()
+  );
+$$;
+
+grant execute on function public.is_platform_admin() to authenticated;
+
+-- ──────────────────────────────────────────────────────────
+-- 5. admin_list_projects(p_email)
+--    按邮箱搜索该用户名下所有项目（模糊匹配，ILIKE）
+-- ──────────────────────────────────────────────────────────
+drop function if exists public.admin_list_projects(text);
+create or replace function public.admin_list_projects(p_email text)
+returns table (
+  project_id             uuid,
+  project_name           text,
+  center_code            text,
+  module                 text,
+  owner_email            text,
+  subscription_plan      text,
+  subscription_active_until timestamptz,
+  trial_expires_at       timestamptz,
+  trial_grace_until      timestamptz,
+  created_at             timestamptz
+)
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+begin
+  if not public.is_platform_admin() then
+    raise exception 'platform_admin_only';
+  end if;
+
+  return query
+  select
+    p.id,
+    p.name,
+    p.center_code,
+    p.module,
+    u.email::text,
+    p.subscription_plan,
+    p.subscription_active_until,
+    p.trial_expires_at,
+    p.trial_grace_until,
+    p.created_at
+  from public.projects p
+  join auth.users u on u.id = p.created_by
+  where u.email ilike '%' || p_email || '%'
+  order by p.created_at desc;
+end;
+$$;
+
+grant execute on function public.admin_list_projects(text) to authenticated;
+
+-- ──────────────────────────────────────────────────────────
+-- 6. admin_adjust_trial(p_project_id, p_extra_days)
+--    从「现在」或「当前到期日」两者较大值起，延长 N 天
+-- ──────────────────────────────────────────────────────────
+create or replace function public.admin_adjust_trial(
+  p_project_id uuid,
+  p_extra_days  int default 30
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_base timestamptz;
+begin
+  if not public.is_platform_admin() then
+    raise exception 'platform_admin_only';
+  end if;
+
+  select greatest(trial_expires_at, now())
+  into   v_base
+  from   public.projects
+  where  id = p_project_id;
+
+  if not found then
+    raise exception 'project_not_found';
+  end if;
+
+  update public.projects
+  set
+    trial_expires_at  = v_base + make_interval(days => p_extra_days),
+    trial_grace_until = v_base + make_interval(days => p_extra_days) + interval '7 days',
+    subscription_plan = 'trial'        -- 确保计划还是 trial（不影响已付费计划）
+  where id = p_project_id
+    and subscription_plan = 'trial';   -- 只改 trial 状态的项目，不覆盖 pro/institution
+
+  -- 如果是付费计划，改写 active_until
+  update public.projects
+  set
+    subscription_active_until = greatest(subscription_active_until, now())
+                                + make_interval(days => p_extra_days)
+  where id = p_project_id
+    and subscription_plan in ('pro', 'institution');
+end;
+$$;
+
+grant execute on function public.admin_adjust_trial(uuid, int) to authenticated;
+
+-- ──────────────────────────────────────────────────────────
+-- 7. admin_set_partner(p_project_id, p_active_until)
+--    设为合作伙伴计划（默认永久：2099-12-31）
+-- ──────────────────────────────────────────────────────────
+create or replace function public.admin_set_partner(
+  p_project_id  uuid,
+  p_active_until timestamptz default '2099-12-31 23:59:59+00'::timestamptz
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_platform_admin() then
+    raise exception 'platform_admin_only';
+  end if;
+
+  update public.projects
+  set
+    subscription_plan         = 'partner',
+    subscription_active_until = p_active_until
+  where id = p_project_id;
+
+  if not found then
+    raise exception 'project_not_found';
+  end if;
+end;
+$$;
+
+grant execute on function public.admin_set_partner(uuid, timestamptz) to authenticated;
+
+-- ──────────────────────────────────────────────────────────
+-- 8. admin_reset_to_trial(p_project_id)
+--    撤回为普通试用（从今天起 30 天 + 7 天宽限）
+-- ──────────────────────────────────────────────────────────
+create or replace function public.admin_reset_to_trial(p_project_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_platform_admin() then
+    raise exception 'platform_admin_only';
+  end if;
+
+  update public.projects
+  set
+    subscription_plan         = 'trial',
+    subscription_active_until = null,
+    trial_expires_at          = now() + interval '30 days',
+    trial_grace_until         = now() + interval '37 days'
+  where id = p_project_id;
+
+  if not found then
+    raise exception 'project_not_found';
+  end if;
+end;
+$$;
+
+grant execute on function public.admin_reset_to_trial(uuid) to authenticated;
+
+-- ──────────────────────────────────────────────────────────
+-- 初始管理员：在此处插入平台管理员邮箱
+-- （部署时在 Supabase SQL Editor 运行一次）
+-- ──────────────────────────────────────────────────────────
+-- insert into public.platform_admins (email, note)
+-- values ('your-admin@example.com', '平台超级管理员')
+-- on conflict (email) do nothing;
+
+-- MIGRATION 011: 0010_user_profiles.sql
+-- ============================================================
+-- 0010_user_profiles.sql
+-- 用户资料表 + 管理员搜索结果带完整信息
+--
+-- 新增：
+--   1. user_profiles 表         — 研究者姓名/医院/科室/意向/联系方式
+--   2. upsert_my_profile()      — 用户自己保存/更新资料（RPC 供前端调用）
+--   3. 更新 admin_list_projects  — 搜索结果附带所有资料字段
+-- ============================================================
+
+-- ──────────────────────────────────────────────────────────
+-- 1. user_profiles 表
+-- ──────────────────────────────────────────────────────────
+create table if not exists public.user_profiles (
+  user_id         uuid        not null primary key
+                              references auth.users(id) on delete cascade,
+  real_name       text,                        -- 姓名
+  hospital        text,                        -- 医院/单位
+  department      text,                        -- 科室
+  interested_plan text,                        -- 意向套餐（仅参考，实际权益由管理员设置）
+  contact         text,                        -- 联系方式（微信/手机，可选）
+  notes           text,                        -- 备注
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+
+alter table public.user_profiles enable row level security;
+
+-- 用户只能读写自己的资料
+DROP POLICY IF EXISTS "user_own_profile_select" ON user_profiles;
+create policy "user_own_profile_select" on public.user_profiles
+  for select using (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "user_own_profile_insert" ON user_profiles;
+create policy "user_own_profile_insert" on public.user_profiles
+  for insert with check (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "user_own_profile_update" ON user_profiles;
+create policy "user_own_profile_update" on public.user_profiles
+  for update using (auth.uid() = user_id);
+
+-- ──────────────────────────────────────────────────────────
+-- 2. upsert_my_profile() — 用户自己保存资料
+--    前端用 authenticated key 调用即可
+-- ──────────────────────────────────────────────────────────
+create or replace function public.upsert_my_profile(
+  p_real_name       text default null,
+  p_hospital        text default null,
+  p_department      text default null,
+  p_interested_plan text default null,
+  p_contact         text default null,
+  p_notes           text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.user_profiles
+    (user_id, real_name, hospital, department, interested_plan, contact, notes, updated_at)
+  values
+    (auth.uid(), p_real_name, p_hospital, p_department,
+     p_interested_plan, p_contact, p_notes, now())
+  on conflict (user_id) do update set
+    real_name       = excluded.real_name,
+    hospital        = excluded.hospital,
+    department      = excluded.department,
+    interested_plan = excluded.interested_plan,
+    contact         = excluded.contact,
+    notes           = excluded.notes,
+    updated_at      = now();
+end;
+$$;
+
+grant execute on function public.upsert_my_profile(text,text,text,text,text,text)
+  to authenticated;
+
+-- ──────────────────────────────────────────────────────────
+-- 3. 更新 admin_list_projects — 附带 user_profiles 全部字段
+--    （替换 0009 中的同名函数，需先 drop 旧签名）
+-- ──────────────────────────────────────────────────────────
+drop function if exists public.admin_list_projects(text);
+
+create or replace function public.admin_list_projects(p_email text)
+returns table (
+  -- 项目字段
+  project_id                uuid,
+  project_name              text,
+  center_code               text,
+  module                    text,
+  owner_email               text,
+  subscription_plan         text,
+  subscription_active_until timestamptz,
+  trial_expires_at          timestamptz,
+  trial_grace_until         timestamptz,
+  project_created_at        timestamptz,
+  -- 用户资料字段
+  real_name                 text,
+  hospital                  text,
+  department                text,
+  interested_plan           text,
+  contact                   text,
+  profile_notes             text,
+  profile_updated_at        timestamptz
+)
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+begin
+  if not public.is_platform_admin() then
+    raise exception 'platform_admin_only';
+  end if;
+
+  return query
+  select
+    p.id,
+    p.name,
+    p.center_code,
+    p.module,
+    u.email::text,
+    p.subscription_plan,
+    p.subscription_active_until,
+    p.trial_expires_at,
+    p.trial_grace_until,
+    p.created_at,
+    -- user_profiles（未填写时全部为 NULL）
+    pr.real_name,
+    pr.hospital,
+    pr.department,
+    pr.interested_plan,
+    pr.contact,
+    pr.notes,
+    pr.updated_at
+  from public.projects p
+  join auth.users u on u.id = p.created_by
+  left join public.user_profiles pr on pr.user_id = p.created_by
+  where u.email ilike '%' || p_email || '%'
+  order by p.created_at desc;
+end;
+$$;
+
+grant execute on function public.admin_list_projects(text) to authenticated;
+
+-- MIGRATION 012: 0011_partner_contracts.sql
+-- ============================================================
+-- 0011_partner_contracts.sql
+-- 合作伙伴申请 & 合同管理
+--
+-- 流程：
+--   用户提交申请 → 管理员审批（录价格/折扣）→ 收款后激活 → 自动开通权益
+--
+-- 新增：
+--   1. partner_contracts 表
+--   2. apply_partner_contract()   — 用户提交申请
+--   3. get_my_contract()          — 用户查看自己的最新合同
+--   4. admin_list_contracts()     — 管理员查看所有合同（带用户资料）
+--   5. admin_review_contract()    — 管理员审批（录价格/折扣/备注）
+--   6. admin_reject_contract()    — 管理员拒绝
+--   7. admin_activate_contract()  — 确认收款并激活权益（更新所有该用户项目）
+-- ============================================================
+
+-- ──────────────────────────────────────────────────────────
+-- 1. partner_contracts 表
+-- ──────────────────────────────────────────────────────────
+create table if not exists public.partner_contracts (
+  id               uuid        not null primary key default gen_random_uuid(),
+  user_id          uuid        not null references auth.users(id) on delete cascade,
+
+  -- 用户申请时填写
+  apply_plan       text        not null default 'institution'
+                               check (apply_plan in ('pro','institution')),
+  apply_note       text,                              -- 申请说明（研究方向、中心数等）
+  applied_at       timestamptz not null default now(),
+
+  -- 管理员审批字段
+  status           text        not null default 'pending'
+                               check (status in ('pending','approved','rejected','cancelled')),
+  discount_pct     int         check (discount_pct between 1 and 99),  -- 40 = 6折（优惠40%）
+  plan             text        check (plan in ('pro','institution','partner')),
+  annual_price_cny numeric(10,2),                    -- 协议年费（元）
+  payment_status   text        not null default 'unpaid'
+                               check (payment_status in ('unpaid','paid','overdue')),
+  paid_at          timestamptz,
+  activated_at     timestamptz,
+  expires_at       timestamptz,
+  admin_note       text,                             -- 管理员备注
+
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now()
+);
+
+alter table public.partner_contracts enable row level security;
+
+-- 用户只能读自己的合同
+DROP POLICY IF EXISTS "user_own_contracts_select" ON partner_contracts;
+create policy "user_own_contracts_select" on public.partner_contracts
+  for select using (auth.uid() = user_id);
+
+-- ──────────────────────────────────────────────────────────
+-- 2. apply_partner_contract() — 用户提交申请
+--    每个用户只能有一条 pending/approved 合同
+-- ──────────────────────────────────────────────────────────
+create or replace function public.apply_partner_contract(
+  p_plan text default 'institution',
+  p_note text default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_id uuid;
+begin
+  -- 检查是否已有进行中的申请
+  if exists (
+    select 1 from public.partner_contracts
+    where user_id = auth.uid()
+      and status in ('pending', 'approved')
+  ) then
+    raise exception 'contract_already_active: 已有进行中的申请或合同，如需变更请联系平台';
+  end if;
+
+  if p_plan not in ('pro', 'institution') then
+    raise exception 'invalid_plan';
+  end if;
+
+  insert into public.partner_contracts (user_id, apply_plan, apply_note)
+  values (auth.uid(), p_plan, p_note)
+  returning id into v_id;
+
+  return v_id;
+end;
+$$;
+
+grant execute on function public.apply_partner_contract(text, text) to authenticated;
+
+-- ──────────────────────────────────────────────────────────
+-- 3. get_my_contract() — 用户查看自己最新合同状态
+-- ──────────────────────────────────────────────────────────
+drop function if exists public.get_my_contract();
+create or replace function public.get_my_contract()
+returns table (
+  id               uuid,
+  apply_plan       text,
+  apply_note       text,
+  applied_at       timestamptz,
+  status           text,
+  discount_pct     int,
+  plan             text,
+  annual_price_cny numeric,
+  payment_status   text,
+  paid_at          timestamptz,
+  activated_at     timestamptz,
+  expires_at       timestamptz,
+  admin_note       text
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select id, apply_plan, apply_note, applied_at,
+         status, discount_pct, plan, annual_price_cny,
+         payment_status, paid_at, activated_at, expires_at, admin_note
+  from public.partner_contracts
+  where user_id = auth.uid()
+  order by created_at desc
+  limit 1;
+$$;
+
+grant execute on function public.get_my_contract() to authenticated;
+
+-- ──────────────────────────────────────────────────────────
+-- 4. admin_list_contracts() — 管理员查看所有合同
+--    可按 status 过滤（null = 全部）
+-- ──────────────────────────────────────────────────────────
+drop function if exists public.admin_list_contracts(text);
+create or replace function public.admin_list_contracts(
+  p_status text default null   -- 'pending' / 'approved' / null(全部)
+)
+returns table (
+  contract_id      uuid,
+  user_id          uuid,
+  owner_email      text,
+  -- 用户资料
+  real_name        text,
+  hospital         text,
+  department       text,
+  contact          text,
+  profile_notes    text,
+  -- 申请信息
+  apply_plan       text,
+  apply_note       text,
+  applied_at       timestamptz,
+  -- 合同状态
+  status           text,
+  discount_pct     int,
+  plan             text,
+  annual_price_cny numeric,
+  payment_status   text,
+  paid_at          timestamptz,
+  activated_at     timestamptz,
+  expires_at       timestamptz,
+  admin_note       text,
+  created_at       timestamptz
+)
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+begin
+  if not public.is_platform_admin() then
+    raise exception 'platform_admin_only';
+  end if;
+
+  return query
+  select
+    c.id,
+    c.user_id,
+    u.email::text,
+    pr.real_name,
+    pr.hospital,
+    pr.department,
+    pr.contact,
+    pr.notes,
+    c.apply_plan,
+    c.apply_note,
+    c.applied_at,
+    c.status,
+    c.discount_pct,
+    c.plan,
+    c.annual_price_cny,
+    c.payment_status,
+    c.paid_at,
+    c.activated_at,
+    c.expires_at,
+    c.admin_note,
+    c.created_at
+  from public.partner_contracts c
+  join auth.users u on u.id = c.user_id
+  left join public.user_profiles pr on pr.user_id = c.user_id
+  where (p_status is null or c.status = p_status)
+  order by
+    case c.status when 'pending' then 0 when 'approved' then 1 else 2 end,
+    c.applied_at desc;
+end;
+$$;
+
+grant execute on function public.admin_list_contracts(text) to authenticated;
+
+-- ──────────────────────────────────────────────────────────
+-- 5. admin_review_contract() — 管理员审批（录价格/折扣）
+-- ──────────────────────────────────────────────────────────
+create or replace function public.admin_review_contract(
+  p_contract_id    uuid,
+  p_discount_pct   int          default null,   -- 如 40 = 优惠40% = 6折
+  p_plan           text         default null,   -- 实际授予计划
+  p_annual_price   numeric      default null,   -- 协议年费（元）
+  p_admin_note     text         default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_platform_admin() then
+    raise exception 'platform_admin_only';
+  end if;
+
+  update public.partner_contracts
+  set
+    status           = 'approved',
+    discount_pct     = coalesce(p_discount_pct, discount_pct),
+    plan             = coalesce(p_plan,         apply_plan),
+    annual_price_cny = coalesce(p_annual_price, annual_price_cny),
+    admin_note       = coalesce(p_admin_note,   admin_note),
+    updated_at       = now()
+  where id = p_contract_id
+    and status = 'pending';
+
+  if not found then
+    raise exception 'contract_not_found_or_not_pending';
+  end if;
+end;
+$$;
+
+grant execute on function public.admin_review_contract(uuid,int,text,numeric,text) to authenticated;
+
+-- ──────────────────────────────────────────────────────────
+-- 6. admin_reject_contract() — 管理员拒绝申请
+-- ──────────────────────────────────────────────────────────
+create or replace function public.admin_reject_contract(
+  p_contract_id uuid,
+  p_admin_note  text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_platform_admin() then
+    raise exception 'platform_admin_only';
+  end if;
+
+  update public.partner_contracts
+  set status = 'rejected', admin_note = p_admin_note, updated_at = now()
+  where id = p_contract_id and status = 'pending';
+
+  if not found then
+    raise exception 'contract_not_found_or_not_pending';
+  end if;
+end;
+$$;
+
+grant execute on function public.admin_reject_contract(uuid, text) to authenticated;
+
+-- ──────────────────────────────────────────────────────────
+-- 7. admin_activate_contract() — 确认收款并激活
+--    同时更新该用户名下所有项目的订阅
+-- ──────────────────────────────────────────────────────────
+create or replace function public.admin_activate_contract(
+  p_contract_id uuid,
+  p_expires_at  timestamptz default null   -- 默认一年后
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id  uuid;
+  v_plan     text;
+  v_expires  timestamptz;
+begin
+  if not public.is_platform_admin() then
+    raise exception 'platform_admin_only';
+  end if;
+
+  select user_id, coalesce(plan, apply_plan), coalesce(p_expires_at, now() + interval '1 year')
+  into   v_user_id, v_plan, v_expires
+  from   public.partner_contracts
+  where  id = p_contract_id
+    and  status = 'approved';
+
+  if not found then
+    raise exception 'contract_not_found_or_not_approved';
+  end if;
+
+  -- 更新合同
+  update public.partner_contracts
+  set
+    payment_status = 'paid',
+    paid_at        = now(),
+    activated_at   = now(),
+    expires_at     = v_expires,
+    updated_at     = now()
+  where id = p_contract_id;
+
+  -- 该用户名下所有项目升级
+  update public.projects
+  set
+    subscription_plan         = v_plan,
+    subscription_active_until = v_expires
+  where created_by = v_user_id;
+end;
+$$;
+
+grant execute on function public.admin_activate_contract(uuid, timestamptz) to authenticated;

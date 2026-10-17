@@ -10,3 +10,6 @@ lighthouse-reports/
 
 # Internal documents (moved from docs/ and deploy/)
 .internal/
+
+__pycache__/
+*.py[cod]

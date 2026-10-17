@@ -1,10 +1,10 @@
 User-agent: *
-# 随访填报入口（token 链接），禁止爬虫收录，防止 token 路径被索引
+# 随访链接入口（患者私有链接），禁止爬虫收录，防止链接路径被索引
 Disallow: /p/
 Disallow: /followup
-# 登录后台，无需收录
-# 患者随访页（私有 token 访问），禁止爬虫
+# 患者随访页（仅凭随访链接访问），禁止爬虫
 Disallow: /patient.html
+# 工作台需登录，无需收录
 Disallow: /staff
 Disallow: /staff/
 

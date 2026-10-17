@@ -1,6 +1,6 @@
 [build]
   publish = "site"
-  command = "echo 'no build'"
+  command = "node scripts/refuse_netlify_deploy.cjs"
 
 [[redirects]]
   from = "/login"

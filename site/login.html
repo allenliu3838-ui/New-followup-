@@ -5,11 +5,25 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>登录 · 肾域·科研</title>
   <meta name="robots" content="noindex,nofollow"/>
-  <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
+  <meta name="referrer" content="no-referrer"/>
+  <link rel="stylesheet" href="/lib/product-nav.css?v=registry-20261012-adoption-v4">
+  <script src="/lib/product-nav.js?v=registry-20261012-adoption-v4" defer></script>
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
-  <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
-  <link rel="stylesheet" href="/app.css"/>
+  <link rel="stylesheet" href="/app.css?v=registry-20261012-adoption-v4"/>
   <link rel="icon" href="/assets/kidneysphere-ai.png"/>
+  <style>
+    .mode-tabs { display:flex; gap:6px; flex-wrap:wrap; margin:14px 0 4px; }
+    .mode-tabs button { appearance:none; border:1px solid rgba(15,23,42,.14); background:#fff; color:var(--text); padding:7px 12px; border-radius:999px; cursor:pointer; font-size:13px; }
+    .mode-tabs button[aria-selected="true"] { background:var(--brand); border-color:transparent; color:#fff; }
+    .form-message { margin:12px 0 0; padding:10px 12px; border-radius:10px; background:#eef5fa; color:#24465c; overflow-wrap:anywhere; line-height:1.6; font-size:13px; }
+    .form-message[hidden] { display:none; }
+    .form-message[data-kind="error"] { background:#fff0f0; color:#9f2531; }
+    .form-message[data-kind="warning"] { background:#fff6e6; color:#775000; }
+    .form-message[data-kind="ok"] { background:rgba(22,163,74,.08); color:#14532d; }
+    .form-message .btnbar { margin-top:8px; }
+    [data-mode-only][hidden] { display:none !important; }
+    #loginForm input, #resetFields input { font-size:16px; }
+  </style>
 </head>
 <body>
   <div class="container" style="max-width:480px">
@@ -18,32 +32,49 @@
         <img src="/assets/kidneysphere-ai.png" alt="肾域·科研"/>
         <div>
           <h1 class="brand-title">登录</h1>
-          <div class="brand-sub">肾域·科研 · 科研工作台</div>
+          <div class="brand-sub">肾域·科研 · 研究随访工作台</div>
         </div>
       </div>
 
-      <div id="loginFields">
-        <label>邮箱</label>
-        <input id="email" type="email" placeholder="name@example.com"/>
-        <label>密码</label>
-        <input id="password" type="password" placeholder="请输入密码"/>
-        <div class="btnbar">
-          <button class="btn primary" id="btnLogin">登录</button>
-          <button class="btn" id="btnResetPwd">忘记密码</button>
+      <form id="loginForm" novalidate>
+        <div class="mode-tabs" role="tablist" aria-label="登录方式">
+          <button type="button" role="tab" id="tabPassword" data-mode="password" aria-selected="true">密码登录</button>
+          <button type="button" role="tab" id="tabLink" data-mode="link" aria-selected="false">邮箱登录链接</button>
+          <button type="button" role="tab" id="tabReset" data-mode="reset" aria-selected="false">忘记密码</button>
         </div>
-      </div>
+        <div id="modeHint" class="muted small">用注册时的邮箱和密码登录。</div>
+
+        <div id="loginFields">
+          <label for="email">邮箱</label>
+          <input id="email" type="email" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="name@example.com"/>
+          <div data-mode-only="password">
+            <label for="password">密码</label>
+            <input id="password" type="password" autocomplete="current-password" placeholder="请输入密码"/>
+          </div>
+          <div class="btnbar">
+            <button class="btn primary" id="btnLogin" type="submit" data-mode-only="password" disabled>登录</button>
+            <button class="btn" id="btnResetPwd" type="button" data-mode-only="password">忘记密码</button>
+            <button class="btn primary" id="btnSendLink" type="submit" data-mode-only="link" hidden disabled>发送登录链接</button>
+            <button class="btn primary" id="btnSendReset" type="submit" data-mode-only="reset" hidden disabled>发送重设密码邮件</button>
+          </div>
+        </div>
+      </form>
+
       <div id="resetFields" style="display:none">
-        <label>新密码（至少8位）</label>
-        <input id="newPassword" type="password" placeholder="输入新密码"/>
-        <label>确认新密码</label>
-        <input id="confirmPassword" type="password" placeholder="再次输入新密码"/>
+        <label for="newPassword">新密码</label>
+        <input id="newPassword" type="password" autocomplete="new-password" aria-describedby="newPasswordRules" placeholder="输入新密码"/>
+        <div id="newPasswordRules" class="muted small" style="margin-top:6px">密码要求：至少 8 位，并同时包含大写字母、小写字母、数字和特殊字符（如 !@#$%）。</div>
+        <label for="confirmPassword">确认新密码</label>
+        <input id="confirmPassword" type="password" autocomplete="new-password" placeholder="再次输入新密码"/>
         <div class="btnbar">
-          <button class="btn primary" id="btnSetNewPwd">确认修改密码</button>
+          <button class="btn primary" id="btnSetNewPwd" type="button">确认修改密码</button>
         </div>
       </div>
-      <div id="loginHint" class="muted small" style="margin-top:8px"></div>
+
+      <div id="loginHint" class="form-message" role="status" aria-live="polite" aria-atomic="true" data-kind="info">正在连接登录服务，请稍候。</div>
+      <noscript><p class="form-message" data-kind="error">登录需要启用 JavaScript。请在浏览器设置中启用后重新加载页面。</p></noscript>
       <div class="muted small" style="margin-top:12px">
-        还没有账号？<a href="/signup">注册新账号</a>
+        还没有账号？<a href="/signup">注册新账号</a> · <a href="/guide#quickstart">快速上手</a>
       </div>
     </div>
   </div>
@@ -53,115 +84,261 @@
     <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener">鲁公网安备37091102000922号</a></div>
   </footer>
 
-  <script src="/lib/error-logger.js"></script>
-  <script src="/config.js"></script>
+  <script src="/lib/error-logger.js?v=registry-20261012-adoption-v4"></script>
+  <script src="/config.js?v=registry-20261012-adoption-v4"></script>
   <script type="module">
-    import { supabase } from "/lib/supabase-client.js";
-    import { qs, toast } from "/lib/utils.js";
-    import { throttle } from "/lib/rate-limit.js";
+    const V = "?v=registry-20261012-adoption-v4";
+    const qs = (selector) => document.querySelector(selector);
+    const params = new URLSearchParams(location.search);
+    const MODES = {
+      password: { hint: "用注册时的邮箱和密码登录。", submit: "#btnLogin" },
+      link: { hint: "不用输入密码：我们把一次性登录链接发到你的邮箱，打开链接即可登录。只适用于已注册的邮箱。", submit: "#btnSendLink" },
+      reset: { hint: "输入注册邮箱，我们会发送重设密码的链接；打开链接后设置新密码。", submit: "#btnSendReset" },
+    };
 
-    import { validatePassword } from "/lib/password-strength.js";
-
-    const rlLogin = throttle("login", { maxAttempts: 10, windowMs: 15 * 60_000, message: "登录尝试过于频繁" });
-    const rlReset = throttle("reset", { maxAttempts: 5, windowMs: 15 * 60_000, message: "密码重置请求过于频繁" });
-
-    const sb = supabase();
-    const returnTo = new URLSearchParams(location.search).get("returnTo") || "/staff";
+    let sb = null;
+    let lib = null;
+    let returnTo = "/staff";
+    let mode = MODES[params.get("mode")] ? params.get("mode") : "password";
     let recoveryMode = false;
+    let busy = false;
+    let rlLogin, rlLink, rlReset, rlResend;
+    const pendingReset = params.get("recovery") === "1" || new URLSearchParams(location.hash.slice(1)).get("type") === "recovery";
 
-    // Check localStorage for pending reset
-    let pendingReset = null;
-    try { pendingReset = localStorage.getItem("ks_pending_pwd_reset"); } catch(_){}
+    // ── Persistent messages with optional follow-up actions ──
+    function message(text, kind = "info", actions = []) {
+      const node = qs("#loginHint");
+      node.textContent = "";
+      node.dataset.kind = kind;
+      node.hidden = !text;
+      if (!text) return;
+      const line = document.createElement("div");
+      line.textContent = text;
+      node.appendChild(line);
+      if (actions.length) {
+        const bar = document.createElement("div");
+        bar.className = "btnbar";
+        for (const action of actions) {
+          let item;
+          if (action.href) { item = document.createElement("a"); item.href = action.href; }
+          else { item = document.createElement("button"); item.type = "button"; item.addEventListener("click", action.onClick); }
+          item.className = "btn small" + (action.primary ? " primary" : "");
+          if (action.id) item.id = action.id;
+          item.textContent = action.label;
+          bar.appendChild(item);
+        }
+        node.appendChild(bar);
+      }
+    }
+
+    function withDeadline(promise, milliseconds, label) {
+      let timer;
+      return Promise.race([
+        promise,
+        new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(new Error(label), { code: "request_timeout" })), milliseconds); }),
+      ]).finally(() => clearTimeout(timer));
+    }
+
+    function setMode(next, { keepMessage = false } = {}) {
+      mode = MODES[next] ? next : "password";
+      document.querySelectorAll(".mode-tabs [data-mode]").forEach(tab => tab.setAttribute("aria-selected", String(tab.dataset.mode === mode)));
+      document.querySelectorAll("[data-mode-only]").forEach(node => { node.hidden = node.dataset.modeOnly !== mode; });
+      qs("#modeHint").textContent = MODES[mode].hint;
+      if (!keepMessage) message("");
+    }
+
+    const toMode = (next) => () => { setMode(next); qs("#email").focus(); };
+
+    function readEmail() {
+      const input = qs("#email");
+      const email = input.value.trim().toLowerCase();
+      input.value = email;
+      if (!email || !input.validity.valid) { message("请输入有效的邮箱地址。", "error"); input.focus(); return null; }
+      return email;
+    }
+
+    async function guarded(buttonSelector, busyLabel, work) {
+      if (busy) return;
+      const button = qs(buttonSelector);
+      const label = button.textContent;
+      busy = true;
+      button.disabled = true;
+      button.textContent = busyLabel;
+      try { await work(); }
+      finally { busy = false; button.disabled = false; button.textContent = label; }
+    }
+
+    async function resendConfirmation(email) {
+      if (!rlResend.allow()) { message(rlResend.message, "error"); return; }
+      try {
+        const { error } = await withDeadline(sb.auth.resend({ type: "signup", email, options: { emailRedirectTo: lib.authCallbackUrl(location.origin, returnTo) } }), 30000, "RESEND_TIMEOUT");
+        if (error) throw error;
+        message(`确认邮件已重新发送到 ${email}。请打开最新一封邮件中的链接完成验证。`, "ok");
+      } catch (error) {
+        message("确认邮件未能发送：" + lib.authErrorMessage(error), "error");
+      }
+    }
+
+    // ── Password login ──
+    async function loginWithPassword() {
+      if (busy) return; // one request at a time; a repeated click must not use up an attempt
+      const email = readEmail();
+      if (!email) return;
+      const password = qs("#password").value;
+      if (!password) { message("请输入密码。", "error"); qs("#password").focus(); return; }
+      if (!rlLogin.allow()) { message(rlLogin.message, "error", [{ label: "改用邮箱登录链接", onClick: toMode("link") }]); return; }
+      await guarded("#btnLogin", "正在登录…", async () => {
+        message("正在登录…");
+        try {
+          const { error } = await withDeadline(sb.auth.signInWithPassword({ email, password }), 30000, "LOGIN_TIMEOUT");
+          if (error) throw error;
+          try { localStorage.removeItem("ks_pending_pwd_reset"); } catch (_) {}
+          message("登录成功，正在跳转…", "ok");
+          location.replace(returnTo);
+        } catch (error) {
+          const kind = lib.authErrorKind(error);
+          if (kind === "invalid_credentials") {
+            message(lib.authErrorMessage(error), "error", [
+              { label: "忘记密码", id: "hintForgot", primary: true, onClick: toMode("reset") },
+              { label: "改用邮箱登录链接", onClick: toMode("link") },
+            ]);
+          } else if (kind === "email_not_confirmed") {
+            message(lib.authErrorMessage(error), "warning", [
+              { label: "重新发送确认邮件", primary: true, onClick: () => resendConfirmation(email) },
+            ]);
+          } else {
+            message("登录未完成：" + lib.authErrorMessage(error), "error");
+          }
+        }
+      });
+    }
+
+    // ── E-mail login link (also the recovery path for expired links) ──
+    async function sendLoginLink() {
+      if (busy) return; // one request at a time; a repeated click must not use up an attempt
+      const email = readEmail();
+      if (!email) return;
+      if (!rlLink.allow()) { message(rlLink.message, "error"); return; }
+      await guarded("#btnSendLink", "正在发送…", async () => {
+        message("正在发送登录链接…");
+        try {
+          const { error } = await withDeadline(sb.auth.signInWithOtp({
+            email, options: { shouldCreateUser: false, emailRedirectTo: lib.authCallbackUrl(location.origin, returnTo) },
+          }), 30000, "OTP_TIMEOUT");
+          if (error) throw error;
+          message(`登录链接已发送到 ${email}。请打开邮件中的链接完成登录；链接只能使用一次，请以最新的一封为准。没有收到请检查垃圾邮件。`, "ok");
+        } catch (error) {
+          if (lib.authErrorKind(error) === "not_registered") {
+            message(lib.authErrorMessage(error), "warning", [{ label: "去注册", href: "/signup", primary: true }]);
+          } else {
+            message("登录链接未能发送：" + lib.authErrorMessage(error), "error");
+          }
+        }
+      });
+    }
+
+    // ── Forgot password ──
+    async function sendResetMail() {
+      if (busy) return; // one request at a time; a repeated click must not use up an attempt
+      const email = readEmail();
+      if (!email) return;
+      if (!rlReset.allow()) { message(rlReset.message, "error"); return; }
+      await guarded("#btnSendReset", "正在发送…", async () => {
+        message("正在发送重设密码邮件…");
+        try {
+          const { error } = await withDeadline(sb.auth.resetPasswordForEmail(email, {
+            redirectTo: lib.authCallbackUrl(location.origin, "/staff", { recovery: true }),
+          }), 30000, "RESET_TIMEOUT");
+          if (error) throw error;
+          message(`如果 ${email} 已注册，重设密码邮件已经发出。请打开邮件中的链接设置新密码；没有收到请检查垃圾邮件。`, "ok");
+        } catch (error) {
+          message("重设密码邮件未能发送：" + lib.authErrorMessage(error), "error");
+        }
+      });
+    }
 
     function showResetUI() {
       recoveryMode = true;
-      qs("#loginFields").style.display = "none";
+      qs("#loginForm").style.display = "none";
       qs("#resetFields").style.display = "block";
-      qs("#loginHint").textContent = "请输入新密码并确认，然后点击「确认修改密码」。";
+      message("请输入新密码并确认，然后点“确认修改密码”。");
     }
 
-    // If already logged in
-    const { data: { session } } = await sb.auth.getSession();
-    if (session && pendingReset) {
-      // Logged in with pending reset — show reset UI
-      showResetUI();
-    } else if (session) {
-      location.replace(returnTo);
-    }
-
-    sb.auth.onAuthStateChange((_event, s) => {
-      if (_event === "PASSWORD_RECOVERY") {
-        showResetUI();
-        return;
-      }
-      if (recoveryMode) return; // Don't redirect during password reset
-      if (s && pendingReset) {
-        showResetUI();
-        return;
-      }
-      if (s) location.replace(returnTo);
-    });
-
-    // Login
-    qs("#btnLogin").addEventListener("click", async () => {
-      if (!rlLogin.allow()) { toast(rlLogin.message); return; }
-      const email = qs("#email").value.trim().toLowerCase();
-      const password = qs("#password").value;
-      if (!email) { toast("请输入邮箱"); return; }
-      if (!password) { toast("请输入密码"); return; }
-      const btn = qs("#btnLogin");
-      btn.disabled = true;
-      try {
-        const { error } = await sb.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        try { localStorage.removeItem("ks_pending_pwd_reset"); } catch(_){}
-        toast("登录成功");
-      } catch (e) {
-        toast("登录失败：" + (e?.message || e));
-      } finally {
-        btn.disabled = false;
-      }
-    });
-
-    // Forgot password
-    qs("#btnResetPwd").addEventListener("click", async () => {
-      if (!rlReset.allow()) { toast(rlReset.message); return; }
-      const email = qs("#email").value.trim().toLowerCase();
-      if (!email) { toast("请先输入邮箱"); return; }
-      try {
-        const { error } = await sb.auth.resetPasswordForEmail(email, {
-          redirectTo: location.origin + "/auth-callback?returnTo=/staff"
-        });
-        if (error) throw error;
-        try { localStorage.setItem("ks_pending_pwd_reset", email); } catch(_){}
-        qs("#loginHint").textContent = "密码重置邮件已发送，请查看收件箱。";
-      } catch (e) {
-        toast("发送失败：" + (e?.message || e));
-      }
-    });
-
-    // Set new password
-    qs("#btnSetNewPwd").addEventListener("click", async () => {
+    async function setNewPassword() {
       const newPwd = qs("#newPassword").value;
-      const confirmPwd = qs("#confirmPassword").value;
-      const pwCheck = validatePassword(newPwd);
-      if (!pwCheck.valid) { toast(pwCheck.message); return; }
-      if (newPwd !== confirmPwd) { toast("两次输入的密码不一致"); qs("#confirmPassword").value = ""; return; }
-      const btn = qs("#btnSetNewPwd");
-      btn.disabled = true;
-      try {
-        const { error } = await sb.auth.updateUser({ password: newPwd });
-        if (error) throw error;
-        try { localStorage.removeItem("ks_pending_pwd_reset"); } catch(_){}
-        toast("密码修改成功，正在跳转…");
-        recoveryMode = false;
-        setTimeout(() => location.replace(returnTo), 800);
-      } catch (e) {
-        toast("修改失败：" + (e?.message || e));
-      } finally {
-        btn.disabled = false;
-      }
+      const check = lib.validatePassword(newPwd);
+      if (!check.valid) { message(check.message + "。", "error"); qs("#newPassword").focus(); return; }
+      if (newPwd !== qs("#confirmPassword").value) { message("两次输入的密码不一致。", "error"); qs("#confirmPassword").value = ""; qs("#confirmPassword").focus(); return; }
+      await guarded("#btnSetNewPwd", "正在保存…", async () => {
+        try {
+          const { error } = await withDeadline(sb.auth.updateUser({ password: newPwd }), 30000, "UPDATE_TIMEOUT");
+          if (error) throw error;
+          try { localStorage.removeItem("ks_pending_pwd_reset"); } catch (_) {}
+          message("密码已修改，正在跳转…", "ok");
+          recoveryMode = false;
+          setTimeout(() => location.replace(returnTo), 800);
+        } catch (error) {
+          const kind = lib.authErrorKind(error);
+          message("密码未修改：" + lib.authErrorMessage(error), "error", kind === "session_missing" ? [
+            { label: "重新发送重设邮件", primary: true, onClick: () => { qs("#resetFields").style.display = "none"; qs("#loginForm").style.display = "block"; recoveryMode = false; setMode("reset"); } },
+          ] : []);
+        }
+      });
+    }
+
+    // Bound before the network-dependent initialization.
+    document.querySelectorAll(".mode-tabs [data-mode]").forEach(tab => tab.addEventListener("click", toMode(tab.dataset.mode)));
+    qs("#btnResetPwd").addEventListener("click", toMode("reset"));
+    qs("#loginForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!lib || !sb) { message("登录服务尚未连接，请稍候；如果长时间没有连接，请刷新页面。", "error"); return; }
+      if (mode === "link") return sendLoginLink();
+      if (mode === "reset") return sendResetMail();
+      return loginWithPassword();
     });
+    qs("#btnSetNewPwd").addEventListener("click", () => { if (lib && sb) setNewPassword(); });
+    setMode(mode);
+    message("正在连接登录服务，请稍候。");
+
+    async function initialize() {
+      try {
+        const [clientModule, passwordModule, rateModule, authModule] = await withDeadline(Promise.all([
+          import("/lib/supabase-client.js" + V),
+          import("/lib/password-strength.js" + V),
+          import("/lib/rate-limit.js" + V),
+          import("/lib/auth-navigation.js" + V),
+        ]), 15000, "INIT_TIMEOUT");
+        lib = { ...passwordModule, ...rateModule, ...authModule };
+        returnTo = lib.safeReturnTo(params.get("returnTo"));
+        qs("#newPasswordRules").textContent = "密码要求：" + lib.passwordRuleText() + "。";
+        rlLogin = lib.throttle("login", { maxAttempts: 10, windowMs: 15 * 60_000, message: "登录尝试过于频繁" });
+        rlLink = lib.throttle("loginLink", { maxAttempts: 5, windowMs: 15 * 60_000, message: "登录链接发送过于频繁" });
+        rlReset = lib.throttle("reset", { maxAttempts: 5, windowMs: 15 * 60_000, message: "密码重置请求过于频繁" });
+        rlResend = lib.throttle("loginResend", { maxAttempts: 3, windowMs: 15 * 60_000, message: "确认邮件发送过于频繁" });
+        sb = clientModule.supabase();
+        sb.auth.onAuthStateChange((event, session) => {
+          if (event === "PASSWORD_RECOVERY") { setTimeout(showResetUI, 0); return; }
+          if (recoveryMode) return; // Don't redirect during password reset
+          if (session && pendingReset) { setTimeout(showResetUI, 0); return; }
+          if (session && event === "SIGNED_IN") setTimeout(() => location.replace(returnTo), 0);
+        });
+        const { data } = await withDeadline(sb.auth.getSession(), 15000, "INIT_TIMEOUT");
+        ["#btnLogin", "#btnSendLink", "#btnSendReset"].forEach(selector => { qs(selector).disabled = false; });
+        message("");
+        if (data?.session && pendingReset) showResetUI();
+        else if (data?.session) { message("你已登录，正在跳转…", "ok"); location.replace(returnTo); }
+        else if (pendingReset) {
+          setMode("reset");
+          message("重设密码的链接已失效或未能识别，请重新发送重设密码邮件。", "warning");
+        }
+      } catch (error) {
+        message("登录服务未能连接。请检查网络后刷新页面；如果持续出现，请联系 china@kidneysphere.com。", "error", [
+          { label: "刷新页面", primary: true, onClick: () => location.reload() },
+        ]);
+        if (window.ErrorLogger) window.ErrorLogger.log("login.init", error);
+      }
+    }
+    initialize();
   </script>
 </body>
 </html>

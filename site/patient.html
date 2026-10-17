@@ -2,121 +2,252 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>肾域·记录 — 随访填报</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>研究随访填报</title>
   <meta name="robots" content="noindex,nofollow"/>
-  <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
-  <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
-  <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
-  <link rel="stylesheet" href="/app.css"/>
+  <meta name="referrer" content="no-referrer"/>
+  <meta name="format-detection" content="telephone=no"/>
+  <link rel="stylesheet" href="/app.css?v=registry-20261012-adoption-v4"/>
   <link rel="icon" href="/assets/kidneysphere-ai.png"/>
+  <style>
+    /* Patient page: readable on phones; every form control >=16px so iOS does not zoom. */
+    body{font-size:16px;line-height:1.6}
+    .container{max-width:760px}
+    .study-eyebrow{margin:0 0 4px;font-size:14px;color:var(--muted);letter-spacing:.5px}
+    .study-title{margin:0;font-size:22px;line-height:1.4;overflow-wrap:anywhere;word-break:break-word}
+    .study-kv{display:grid;grid-template-columns:7.5em minmax(0,1fr);gap:6px 12px;margin:12px 0 0;font-size:15px}
+    .study-kv:empty{display:none}
+    .study-kv dt{color:var(--muted)}
+    .study-kv dd{margin:0;word-break:break-word}
+    .link-status{margin-top:12px;font-size:15px}
+    .link-status:empty{display:none}
+    .notice{margin-top:12px;font-size:15px;line-height:1.6}
+    .about{margin-top:12px;border:1px solid var(--border);border-radius:12px;padding:0 12px;font-size:15px}
+    .about summary{cursor:pointer;padding:12px 0;font-weight:600;min-height:44px}
+    .about dl{margin:0 0 12px}
+    .about dt{font-weight:600;margin-top:8px}
+    .about dd{margin:2px 0 0}
+    .card h2{font-size:19px;margin:0 0 6px}
+    .card .small,.card .muted.small{font-size:14px}
+    #visitForm label{font-size:15px;color:var(--text)}
+    #visitForm input,#visitForm select,#visitForm textarea{min-height:48px;font-size:16px}
+    #visitFields{border:0;padding:0;margin:0;min-width:0}
+    #visitFields:disabled{opacity:.72}
+    #visitForm[hidden],#doneBox[hidden],#reviewBox[hidden],#btnBack[hidden],#btnNextVisit[hidden],#btnVerifyContext[hidden],#btnReload[hidden],#formSection[hidden],#historySection[hidden],#dupBox[hidden]{display:none!important}
+    .submit-bar{position:sticky;bottom:0;z-index:2;display:flex;gap:10px;flex-wrap:wrap;background:#fff;padding:12px 0 calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--border);margin-top:12px}
+    .submit-bar .btn,.done-actions .btn,#btnVerifyContext,#btnReload{min-height:48px;font-size:16px;justify-content:center}
+    .submit-bar .btn.primary{flex:1 1 220px}
+    #unitReview{margin-top:12px;font-size:15px;line-height:1.7}
+    #unitReview:empty{display:none}
+    #qcBox{margin-top:10px;font-size:15px}
+    #qcBox:empty{display:none}
+    .qc-warning{margin-top:6px;color:#92400e}
+    .qc-warning:empty{display:none}
+    #reviewBox{margin-top:12px;font-size:15px}
+    #reviewBox dl{display:grid;grid-template-columns:7em minmax(0,1fr);gap:4px 10px;margin:8px 0}
+    #reviewBox dd{margin:0;font-weight:600}
+    #dupBox{margin-top:10px;font-size:15px}
+    #dupBox label{display:flex;align-items:center;gap:10px;min-height:44px;margin-top:6px;font-weight:600;color:inherit;cursor:pointer}
+    #dupBox input{width:22px;height:22px;flex:0 0 auto;margin:0}
+    #submitHint{margin-top:10px;font-size:15px}
+    #submitHint:empty{display:none}
+    #doneBox{font-size:15px}
+    #doneBox h2{color:#14532d}
+    .done-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    #receiptText{width:100%;min-height:150px;font-size:14px}
+    .patient-table-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+    .patient-table-wrap table{min-width:520px}
+    .more-records summary{cursor:pointer;font-weight:600;padding:8px 0;min-height:44px}
+    .more-records h3{font-size:16px;margin:14px 0 4px}
+    /* Footer text sits on the page background: keep contrast >= 4.5:1 (WCAG AA). */
+    .patient-footer{text-align:center;padding:24px 16px 16px;font-size:13px;color:#475569;line-height:1.8}
+    .patient-footer a{color:#334155;text-decoration:underline}
+    @media(max-width:640px){
+      .container{padding:12px}
+      .card{padding:14px}
+      .row{display:block}
+      .row .col{width:100%;min-width:0}
+      .inline-field{display:flex;gap:8px}
+      .inline-field input{min-width:0;flex:1}
+      .inline-field select{max-width:120px}
+      .study-kv{grid-template-columns:6.5em minmax(0,1fr)}
+      .study-title{font-size:20px}
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <div class="card">
-      <div class="brand">
-        <img src="/assets/kidneysphere-ai.png" alt="KidneySphere"/>
-        <div>
-          <h1 class="brand-title">肾域·记录</h1>
-          <div class="brand-sub" id="ctxSub">加载中…</div>
-        </div>
+  <main class="container">
+    <header class="card" aria-labelledby="studyTitle">
+      <p class="study-eyebrow">研究信息</p>
+      <h1 class="study-title" id="studyTitle">正在读取研究信息…</h1>
+      <dl id="studyInfo" class="study-kv"></dl>
+      <div id="linkStatus" class="link-status" role="status" aria-live="polite"></div>
+      <button id="btnVerifyContext" type="button" class="btn" style="margin-top:12px" hidden>重新验证链接</button>
+      <button id="btnReload" type="button" class="btn" style="margin-top:12px" hidden>重新加载</button>
+
+      <div class="warnbox notice">
+        <b>请勿</b>在本页填写姓名、电话、病案号或身份证号。这个链接只给您本人使用：拿到链接的人都能看到本页显示的记录，请不要转发给其他人。本页只用于研究随访登记，不提供诊疗建议，看病用药请遵医嘱。
       </div>
 
-      <div class="warnbox" style="margin-top:12px">
-        <b>重要：</b>本页仅用于科研随访登记，不提供诊疗建议。
-        <b>请勿</b>填写姓名/电话/病案号/身份证等任何可识别信息（PII）。
-      </div>
+      <details class="about" id="aboutStudy">
+        <summary>关于本页（谁能看到数据、填错了怎么办、如何退出）</summary>
+        <dl>
+          <dt>这是什么</dt>
+          <dd>这是您参加的临床研究的随访登记页。研究团队请您按约定时间，把化验单和血压等结果填在这里。</dd>
+          <dt>谁能看到这些数据</dt>
+          <dd id="dataAccess">
+            <p style="margin:0">研究团队的授权人员，以及为本研究提供技术服务的平台，在各自的职责范围内可以访问这些数据。研究资料用研究编号登记，不使用您的姓名。</p>
+            <p style="margin:6px 0 0">持有本链接的人都可以看到本页显示的历史记录，请不要转发链接。</p>
+            <p style="margin:6px 0 0"><span id="dataLocationNote">数据当前的存储地点请见</span><a href="/privacy" target="_blank" rel="noopener noreferrer">隐私政策</a>。</p>
+          </dd>
+          <dt>不要填写的内容</dt>
+          <dd>姓名、电话、病案号、身份证号等能认出您本人的信息，请不要填写，备注里也不要写。</dd>
+          <dt>填错了怎么办</dt>
+          <dd>提交后本页不能修改。请联系研究团队，由研究人员核对后更正，系统会保留更正记录。</dd>
+          <dt>可以退出吗</dt>
+          <dd>可以。您可以随时联系研究团队退出研究，不影响您的正常就医。</dd>
+        </dl>
+      </details>
+    </header>
 
-      <div class="hr"></div>
+    <section class="card" id="formSection" aria-labelledby="formTitle">
+      <h2 id="formTitle">填写本次随访</h2>
+      <div class="muted small">请对照化验单填写随访日期、血压、血清肌酐和 UPCR。先选择化验单上的单位，再核对下方换算后的数值。</div>
 
-      <div id="ctxBox" class="kv"></div>
-    </div>
-
-    <div class="card">
-      <h2 style="margin:0 0 6px 0">填写本次随访（核心 4 项必填）</h2>
-      <div class="muted small">最少录：日期 / 血压 / Scr / UPCR。Scr 默认单位 μmol/L；eGFR 将自动估算（如提供出生年与性别）。</div>
-
+      <form id="visitForm" novalidate>
+      <fieldset id="visitFields" disabled>
       <div class="row" style="margin-top:8px">
         <div class="col">
-          <label>随访日期（必填）</label>
-          <input id="visitDate" type="date"/>
+          <label for="visitDate">随访日期（必填）</label>
+          <input id="visitDate" type="date" required/>
         </div>
         <div class="col">
-          <label>收缩压 SBP（mmHg）</label>
-          <input id="sbp" type="number" step="1" placeholder="例如：128"/>
+          <label for="sbp">收缩压（高压，mmHg，必填）</label>
+          <input id="sbp" type="number" step="any" min="0" inputmode="numeric" enterkeyhint="next" autocomplete="off" required placeholder="例如 128"/>
         </div>
         <div class="col">
-          <label>舒张压 DBP（mmHg）</label>
-          <input id="dbp" type="number" step="1" placeholder="例如：78"/>
+          <label for="dbp">舒张压（低压，mmHg，必填）</label>
+          <input id="dbp" type="number" step="any" min="0" inputmode="numeric" enterkeyhint="next" autocomplete="off" required placeholder="例如 78"/>
         </div>
       </div>
 
       <div class="row">
         <div class="col">
-          <label>Scr</label>
-          <div class="inline-field"><input id="scr" type="number" step="0.1" placeholder="例如：98"/><select id="scrUnit"><option value="umol">μmol/L</option><option value="mgdl">mg/dL</option></select></div>
+          <label for="scr">血清肌酐（必填）</label>
+          <div class="inline-field"><input id="scr" type="number" step="any" min="0" inputmode="decimal" enterkeyhint="next" autocomplete="off" required placeholder="化验单上的数值"/><select id="scrUnit" aria-label="肌酐单位"><option value="umol">μmol/L</option><option value="mgdl">mg/dL</option></select></div>
         </div>
         <div class="col">
-          <label>UPCR</label>
-          <div class="inline-field"><input id="upcr" type="number" step="0.01" placeholder="例如：800"/><select id="upcrUnit"><option value="mgg">mg/g</option><option value="gg">g/g</option></select></div>
+          <label for="upcr">尿蛋白/肌酐比值 UPCR（必填）</label>
+          <div class="inline-field"><input id="upcr" type="number" step="any" min="0" inputmode="decimal" enterkeyhint="next" autocomplete="off" required placeholder="化验单上的数值"/><select id="upcrUnit" aria-label="UPCR 单位"><option value="mgg">mg/g</option><option value="gg">g/g</option></select></div>
         </div>
         <div class="col">
-          <label>eGFR（自动估算）</label>
-          <input id="egfr" type="number" step="0.1" disabled/>
+          <label for="egfr">eGFR（自动估算，mL/min/1.73m²）</label>
+          <input id="egfr" type="number" step="0.1" readonly tabindex="-1" aria-describedby="egfrHelp"/>
+          <p id="egfrHelp" class="small muted">按出生年份和成人 CKD-EPI 2021 公式粗略估算，仅供核对，不用于诊疗；未满 18 岁或资料不足时不计算。</p>
         </div>
       </div>
 
-      <label>备注（可选，不要写任何 PII）</label>
-      <textarea id="notes" placeholder="例如：本次随访采血时间、检测方式等（不要写姓名/电话/MRN）"></textarea>
+      <p class="small muted">UPCR 不是尿白蛋白/肌酐比值，也不是 24 小时尿蛋白总量。没有做的检查请联系研究团队，不要用 0 代替。</p>
+      <label for="notes">备注（可选，请勿填写姓名、电话等）</label>
+      <textarea id="notes" maxlength="500" rows="3" placeholder="例如：采血时间、检测医院等"></textarea>
 
-      <div class="btnbar">
-        <button class="btn primary" id="btnSubmit">提交随访</button>
-        <button class="btn" id="btnRefresh">刷新历史</button>
+      <div id="unitReview" class="infobox" aria-live="polite"></div>
+      </fieldset>
+
+      <div id="reviewBox" class="infobox" role="region" aria-labelledby="reviewTitle" hidden>
+        <b id="reviewTitle">请对照化验单核对以下内容，无误后点击“确认提交”</b>
+        <dl id="reviewList"></dl>
+        <div id="reviewWarnings" class="qc-warning"></div>
+        <div id="dupBox" class="warnbox" hidden>
+          <div id="dupText">这一天已经有一条随访记录，确定还要再提交一条吗？</div>
+          <div class="small">同一次化验不需要重复提交；之前填错了请联系研究团队更正。</div>
+          <label for="dupConfirm"><input type="checkbox" id="dupConfirm"/>确定，再提交一条</label>
+        </div>
       </div>
 
-      <div id="submitHint" class="muted small" style="margin-top:10px"></div>
-      <div id="qcBox" class="infobox" style="margin-top:10px">QC：待填写</div>
+      <div id="qcBox" class="infobox" aria-live="polite"></div>
 
-      <div id="receiptBox" class="okbox" style="margin-top:10px;display:none"></div>
+      <div class="submit-bar">
+        <button class="btn primary" id="btnSubmit" type="submit" disabled>核对并提交</button>
+        <button class="btn" id="btnBack" type="button" hidden>返回修改</button>
+      </div>
+      </form>
 
-    </div>
+      <div id="submitHint" role="status" aria-live="polite"></div>
 
-    <div class="card">
-      <h2 style="margin:0 0 6px 0">近期随访记录</h2>
-      <div class="muted small">用于核对是否重复录入（同一天多条会影响趋势/结局计算）。</div>
+      <div id="doneBox" class="okbox" hidden>
+        <h2>已提交</h2>
+        <dl class="study-kv" id="doneList"></dl>
+        <p id="doneNote" class="small"></p>
+        <div class="done-actions">
+          <button class="btn primary" id="btnNextVisit" type="button" hidden>再填一次</button>
+        </div>
+        <details style="margin-top:10px">
+          <summary class="small">查看 / 复制提交回执</summary>
+          <textarea id="receiptText" readonly aria-label="随访提交回执" rows="6"></textarea>
+          <button type="button" class="btn" id="btnCopyReceipt">复制回执</button>
+          <p class="small muted">回执只在研究团队核对记录时使用，请不要发到公开群聊。</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="card" id="historySection" aria-labelledby="historyTitle">
+      <h2 id="historyTitle">已提交的随访记录</h2>
+      <div class="muted small">最多显示最近 30 条，用于核对是否已经提交。读取失败不代表没有记录；如有疑问请联系研究团队。</div>
       <div id="visitsBox" style="margin-top:10px"></div>
-    </div>
+      <button class="btn small" id="btnRefresh" type="button" style="margin-top:10px" disabled>刷新记录</button>
 
-    <div class="card">
-      <h2 style="margin:0 0 6px 0">化验记录</h2>
-      <div class="muted small">由研究人员录入的化验检查结果。</div>
-      <div id="labsBox" style="margin-top:10px"></div>
-    </div>
+      <details class="more-records" id="moreRecords" style="margin-top:14px">
+        <summary>其他研究记录（化验、用药、基因检测、临床事件）</summary>
+        <p class="small muted">由研究团队登记，仅供核对，不构成诊疗或用药建议；如有疑问请联系研究团队。</p>
+        <h3>化验记录</h3>
+        <div id="labsBox"></div>
+        <h3>用药记录</h3>
+        <div id="medsBox"></div>
+        <h3>基因检测</h3>
+        <div id="variantsBox"></div>
+        <h3>临床事件</h3>
+        <div id="eventsBox"></div>
+      </details>
+    </section>
+  </main>
 
-    <div class="card">
-      <h2 style="margin:0 0 6px 0">用药记录</h2>
-      <div class="muted small">由研究人员录入的用药方案。</div>
-      <div id="medsBox" style="margin-top:10px"></div>
-    </div>
-
-    <div class="card">
-      <h2 style="margin:0 0 6px 0">基因变异</h2>
-      <div class="muted small">由研究人员录入的基因检测结果。</div>
-      <div id="variantsBox" style="margin-top:10px"></div>
-    </div>
-
-    <div class="card">
-      <h2 style="margin:0 0 6px 0">临床终点事件</h2>
-      <div class="muted small">由研究人员录入的终点事件（ESRD / 死亡 / 缓解等）。</div>
-      <div id="eventsBox" style="margin-top:10px"></div>
-    </div>
-  </div>
-
-  <script src="/config.js"></script>
-  <script type="module" src="/patient.js"></script>
-  <footer class="site-footer">
-    <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
-    <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·记录 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener">鲁公网安备37091102000922号</a></div>
+  <footer class="patient-footer">
+    <div>对本研究或本页有任何疑问，请联系研究团队。</div>
+    <div>技术支持：肾域科研平台 · <a href="/privacy" target="_blank" rel="noopener noreferrer">隐私政策</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener noreferrer">鲁公网安备37091102000922号</a></div>
   </footer>
+
+  <script src="/config.js?v=registry-20261012-adoption-v4"></script>
+  <script type="module" id="patientModule" src="/patient.js?v=registry-20261012-adoption-v4"></script>
+  <script>
+    // If the page program (or a module it imports) fails to load or start, do not leave the
+    // participant on "正在读取研究信息…" forever: say so and offer a reload.
+    (function () {
+      var failed = false;
+      function fail() {
+        if (failed || window.__patientPageStarted) return;
+        failed = true;
+        document.title = "页面没有加载完整";
+        var title = document.getElementById("studyTitle");
+        var status = document.getElementById("linkStatus");
+        var reload = document.getElementById("btnReload");
+        if (title) title.textContent = "页面没有加载完整";
+        if (status) {
+          status.className = "link-status warnbox";
+          status.textContent = "本页需要的程序没有加载成功，可能是网络不稳定。请点击“重新加载”；仍不行请稍后再试，或联系研究团队。";
+        }
+        if (reload) reload.hidden = false;
+      }
+      window.__patientBootFailed = function () { return failed; };
+      var reload = document.getElementById("btnReload");
+      if (reload) reload.addEventListener("click", function () { window.location.reload(); });
+      var entry = document.getElementById("patientModule");
+      if (entry) entry.addEventListener("error", fail);
+      window.addEventListener("error", function (event) {
+        if (event instanceof ErrorEvent) fail();
+      });
+      setTimeout(fail, 20000);
+    })();
+  </script>
 </body>
 </html>

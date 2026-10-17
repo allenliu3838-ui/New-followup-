@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>注册 · 肾域·科研</title>
   <meta name="robots" content="noindex,nofollow"/>
-  <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-topbar.css">
+  <meta name="referrer" content="no-referrer"/>
+  <link rel="stylesheet" href="/lib/product-nav.css?v=registry-20261012-adoption-v4">
+  <script src="/lib/product-nav.js?v=registry-20261012-adoption-v4" defer></script>
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
-  <script src="https://kidneysphere.com/shared/ks-topbar.js" defer></script>
-  <link rel="stylesheet" href="/app.css"/>
+  <link rel="stylesheet" href="/app.css?v=registry-20261012-adoption-v4"/>
   <link rel="icon" href="/assets/kidneysphere-ai.png"/>
   <style>
     .onboarding-steps { display:flex; gap:0; margin:16px 0 12px; }
@@ -17,6 +18,17 @@
     .ob-step.done { color:var(--ok); border-bottom-color:var(--ok); }
     .ob-panel { display:none; }
     .ob-panel.active { display:block; }
+    .form-message { margin:12px 0 0; padding:10px 12px; border-radius:10px; background:#eef5fa; color:#24465c; overflow-wrap:anywhere; line-height:1.6; font-size:13px; }
+    .form-message[hidden] { display:none; }
+    .form-message[data-kind="error"] { background:#fff0f0; color:#9f2531; }
+    .form-message[data-kind="warning"] { background:#fff6e6; color:#775000; }
+    .form-message[data-kind="ok"] { background:rgba(22,163,74,.08); color:#14532d; }
+    .form-message .btnbar { margin-top:8px; }
+    .pw-checklist { list-style:none; padding:0; margin:6px 0 0; display:flex; flex-wrap:wrap; gap:4px 12px; font-size:12px; color:var(--muted); }
+    .pw-checklist li::before { content:"○ "; }
+    .pw-checklist li[data-ok="true"] { color:#15803d; }
+    .pw-checklist li[data-ok="true"]::before { content:"✓ "; }
+    #registerForm input:not([type="checkbox"]) { font-size:16px; }
   </style>
 </head>
 <body>
@@ -27,67 +39,81 @@
         <img src="/assets/kidneysphere-ai.png" alt="肾域·科研"/>
         <div>
           <h1 class="brand-title">注册账号</h1>
-          <div class="brand-sub">30 天免费试用，核心功能可用</div>
+          <div class="brand-sub" data-pricing="trialSummary">30 天免费试用 · 含 1 个项目 · 注册无需付款信息 · 到期后转为只读，已录数据可继续查看和导出</div>
         </div>
       </div>
 
-      <label>邮箱</label>
-      <input id="email" type="email" placeholder="name@example.com"/>
-      <label>密码（至少 8 位）</label>
-      <input id="password" type="password" placeholder="请设置密码"/>
-      <label>确认密码</label>
-      <input id="confirmPwd" type="password" placeholder="再次输入密码"/>
+      <form id="registerForm" novalidate>
+        <label for="email">邮箱</label>
+        <input id="email" name="email" type="email" required autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="name@example.com"/>
+        <label for="password">密码</label>
+        <input id="password" name="password" type="password" autocomplete="new-password" aria-describedby="passwordRules" placeholder="请设置密码"/>
+        <div id="passwordRules" class="muted small" style="margin-top:6px">密码要求：至少 8 位，并同时包含大写字母、小写字母、数字和特殊字符（如 !@#$%）。</div>
+        <ul id="passwordChecklist" class="pw-checklist" aria-hidden="true"></ul>
+        <label for="confirmPwd">确认密码</label>
+        <input id="confirmPwd" name="confirmPassword" type="password" autocomplete="new-password" placeholder="再次输入密码"/>
 
-      <div id="consentBox" style="margin-top:12px">
-        <label style="display:flex;align-items:flex-start;gap:6px;cursor:pointer;margin:0">
-          <input type="checkbox" id="agreeTerms" style="width:auto;margin-top:2px"/>
-          <span class="small">我已阅读并同意 <a href="/terms" target="_blank">用户协议</a> 和 <a href="/privacy" target="_blank">隐私政策</a></span>
-        </label>
-      </div>
+        <div id="consentBox" style="margin-top:12px">
+          <label style="display:flex;align-items:flex-start;gap:6px;cursor:pointer;margin:0">
+            <input type="checkbox" id="agreeTerms" style="width:auto;margin-top:2px"/>
+            <span class="small">我已阅读并同意 <a href="/terms" target="_blank" rel="noopener">用户协议</a> 和 <a href="/privacy" target="_blank" rel="noopener">隐私政策</a></span>
+          </label>
+        </div>
 
-      <div class="btnbar">
-        <button class="btn primary" id="btnRegister">注册并开始试用</button>
-      </div>
-      <div id="registerHint" class="muted small" style="margin-top:8px"></div>
+        <div class="btnbar">
+          <button class="btn primary" id="btnRegister" type="submit" disabled>正在连接注册服务…</button>
+        </div>
+        <div id="registerHint" class="form-message" role="status" aria-live="polite" aria-atomic="true" data-kind="info">正在连接注册服务，请稍候。</div>
+        <noscript><p class="form-message" data-kind="error">注册需要启用 JavaScript。请在浏览器设置中启用后重新加载页面。</p></noscript>
+      </form>
       <div class="muted small" style="margin-top:12px">
-        已有账号？<a href="/login">直接登录</a>
+        已有账号？<a href="/login">直接登录</a> · 不想输入密码？<a href="/login?mode=link">用邮箱登录链接登录</a>
       </div>
     </div>
 
-    <!-- Onboarding container (content injected from template after auth) -->
+    <!-- Onboarding container (content inserted from template after sign-in) -->
     <div id="onboardingCard" class="card" style="display:none"></div>
 
     <template id="onboardingTpl">
       <h2 style="margin:0 0 4px">快速上手</h2>
-      <div class="muted small">完成以下 3 步，即可开始使用。</div>
+      <div class="muted small">可按以下 3 步设置；每一步都可以点“稍后”，之后在工作台完成。完整步骤见<a href="/guide#quickstart" target="_blank" rel="noopener">使用说明 · 快速上手</a>。</div>
 
+      <div class="warnbox small" style="margin-top:10px">
+        <label style="display:flex;align-items:flex-start;gap:6px;margin:0;color:inherit;font-size:13px">
+          <input type="checkbox" id="onboardingConsent" style="width:auto;margin-top:2px"/>
+          <span>我确认已阅读并同意 <a href="/terms" target="_blank" rel="noopener">用户协议</a> 和 <a href="/privacy" target="_blank" rel="noopener">隐私政策</a>。建议先用模拟数据熟悉流程。</span>
+        </label>
+      </div>
+
+      <div id="onboardingHint" class="form-message" role="status" aria-live="polite" aria-atomic="true" hidden></div>
       <div class="onboarding-steps">
         <div class="ob-step active" id="obDot1">1. 研究者资料</div>
         <div class="ob-step" id="obDot2">2. 创建项目</div>
-        <div class="ob-step" id="obDot3">3. 录入首例患者</div>
+        <div class="ob-step" id="obDot3">3. 录入第一例</div>
       </div>
 
       <!-- Onboarding Step 1: Profile -->
       <div class="ob-panel active" id="obStep1">
-        <label>姓名</label>
+        <label for="obName">姓名</label>
         <input id="obName" placeholder="例如：张三"/>
-        <label>医院 / 单位</label>
-        <input id="obHospital" placeholder="例如：北京协和医院"/>
-        <label>科室</label>
+        <label for="obHospital">医院 / 单位</label>
+        <input id="obHospital" placeholder="例如：某某医院"/>
+        <label for="obDept">科室</label>
         <input id="obDept" placeholder="例如：肾内科"/>
         <div class="btnbar">
-          <button class="btn primary" id="btnObStep1">下一步</button>
-          <button class="btn" id="btnObSkip1">稍后再填</button>
+          <button class="btn primary" id="btnObStep1" type="button">保存并下一步</button>
+          <button class="btn" id="btnObSkip1" type="button">稍后再填</button>
         </div>
       </div>
 
       <!-- Onboarding Step 2: Create Project -->
       <div class="ob-panel" id="obStep2">
-        <label>项目名称</label>
+        <div class="muted small">一个项目对应一个研究队列；同一中心的不同研究也应分别建项目。</div>
+        <label for="obProjName">项目名称</label>
         <input id="obProjName" placeholder="例如：IgA肾病随访（BJ01）"/>
-        <label>中心代码</label>
+        <label for="obProjCenter">中心代码</label>
         <input id="obProjCenter" placeholder="例如：BJ01"/>
-        <label>病种模块</label>
+        <label for="obProjModule">病种模块</label>
         <select id="obProjModule">
           <option value="IGAN">IgAN（IgA 肾病）</option>
           <option value="LN">LN（狼疮性肾炎）</option>
@@ -96,18 +122,19 @@
           <option value="KTX">KTx（肾移植术后）</option>
         </select>
         <div class="btnbar">
-          <button class="btn primary" id="btnObStep2">创建并下一步</button>
-          <button class="btn" id="btnObSkip2">稍后再做</button>
+          <button class="btn primary" id="btnObStep2" type="button">创建项目并下一步</button>
+          <button class="btn" id="btnObSkip2" type="button">稍后再做</button>
         </div>
       </div>
 
       <!-- Onboarding Step 3: First Patient -->
       <div class="ob-panel" id="obStep3">
-        <label>研究编号</label>
+        <div class="muted small">只填研究编号，不填姓名、电话、身份证号或病案号。研究同意状态默认为“未确认”，请之后在工作台的“研究状态”中按实际情况填写。</div>
+        <label for="obPatCode">研究编号</label>
         <input id="obPatCode" placeholder="例如：0001"/>
         <div class="row">
           <div class="col">
-            <label>性别</label>
+            <label for="obPatSex">性别</label>
             <select id="obPatSex">
               <option value="">未填</option>
               <option value="M">男</option>
@@ -115,23 +142,24 @@
             </select>
           </div>
           <div class="col">
-            <label>出生年份</label>
+            <label for="obPatBirthYear">出生年份</label>
             <input id="obPatBirthYear" type="number" placeholder="例如：1985"/>
           </div>
         </div>
         <div class="btnbar">
-          <button class="btn primary" id="btnObStep3">录入并完成</button>
-          <button class="btn" id="btnObSkip3">稍后录入</button>
+          <button class="btn primary" id="btnObStep3" type="button">保存并完成</button>
+          <button class="btn" id="btnObSkip3" type="button">稍后录入</button>
         </div>
       </div>
 
       <!-- Onboarding Done -->
       <div class="ob-panel" id="obDone">
         <div class="okbox" style="margin-top:10px">
-          注册完成！您的 30 天试用已开始。
+          账号已就绪。下一步可在工作台补充基线、生成随访链接，或直接“录入随访”。试用状态与到期时间以工作台显示为准。
         </div>
         <div class="btnbar">
           <a class="btn primary" href="/staff">进入工作台</a>
+          <a class="btn" href="/guide#quickstart">查看快速上手</a>
         </div>
       </div>
     </template>
@@ -142,154 +170,375 @@
     <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener">鲁公网安备37091102000922号</a></div>
   </footer>
 
-  <script src="/lib/error-logger.js"></script>
-  <script src="/config.js"></script>
+  <script src="/lib/error-logger.js?v=registry-20261012-adoption-v4"></script>
+  <script src="/config.js?v=registry-20261012-adoption-v4"></script>
+  <script src="/pricing-config.js?v=registry-20261012-adoption-v4"></script>
   <script type="module">
-    import { supabase } from "/lib/supabase-client.js";
-    import { qs, toast } from "/lib/utils.js";
-    import { throttle } from "/lib/rate-limit.js";
-    import { validatePassword } from "/lib/password-strength.js";
+    const V = "?v=registry-20261012-adoption-v4";
+    const qs = (selector) => document.querySelector(selector);
+    const registerForm = qs("#registerForm");
+    const registerButton = qs("#btnRegister");
+    const REGISTER_LABEL = "注册并开始试用";
+    const SUPPORT = "china@kidneysphere.com";
 
-    const sb = supabase();
-    const rlRegister = throttle("register", { maxAttempts: 5, windowMs: 15 * 60_000, message: "注册请求过于频繁" });
-    const params = new URLSearchParams(location.search);
-    const isTrial = params.get("trial") === "1";
-    let currentObStep = 1;
+    let sb = null;
+    let lib = null;            // password rules, throttle and auth-message helpers (loaded with a deadline)
+    let rlRegister = null;
+    let rlResend = null;
+    let ready = false;
+    let registrationPending = false;
+    let registrationUncertain = false;
+    let lastOutcome = null;    // { email, kind } of the last answered submission
     let createdProjectId = null;
+    let consentSaved = false;
 
-    // If already logged in, go to onboarding or staff
-    const { data: { session } } = await sb.auth.getSession();
-    if (session) { showOnboarding(); }
+    // ── Messages stay on screen until replaced (no disappearing toasts) ──
+    function message(id, text, kind = "info", actions = []) {
+      const node = qs("#" + id);
+      if (!node) return;
+      node.textContent = "";
+      node.dataset.kind = kind;
+      node.hidden = !text;
+      if (!text) return;
+      const line = document.createElement("div");
+      line.className = "form-message-text";
+      line.textContent = text;
+      node.appendChild(line);
+      if (actions.length) {
+        const bar = document.createElement("div");
+        bar.className = "btnbar";
+        for (const action of actions) {
+          let item;
+          if (action.href) {
+            item = document.createElement("a");
+            item.href = action.href;
+          } else {
+            item = document.createElement("button");
+            item.type = "button";
+            item.addEventListener("click", action.onClick);
+          }
+          item.className = "btn small" + (action.primary ? " primary" : "");
+          if (action.id) item.id = action.id;
+          item.textContent = action.label;
+          bar.appendChild(item);
+        }
+        node.appendChild(bar);
+      }
+    }
 
-    sb.auth.onAuthStateChange((_event, s) => {
-      if (s && _event === "SIGNED_IN") showOnboarding();
+    function invalid(text, selector) {
+      message("registerHint", text, "error");
+      qs(selector)?.focus();
+    }
+
+    function withDeadline(promise, milliseconds, label) {
+      let timer;
+      return Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(Object.assign(new Error(label), { code: "request_timeout" })), milliseconds);
+        }),
+      ]).finally(() => clearTimeout(timer));
+    }
+
+    function setButton(disabled, label) {
+      registerButton.disabled = disabled;
+      registerButton.textContent = label;
+    }
+
+    const loginAction = (primary = true) => ({ label: "去登录", href: "/login", primary });
+    const forgotAction = { label: "忘记密码", href: "/login?mode=reset" };
+
+    function renderChecklist() {
+      const list = qs("#passwordChecklist");
+      if (!lib || !list) return;
+      list.textContent = "";
+      for (const rule of lib.passwordChecklist(qs("#password").value)) {
+        const item = document.createElement("li");
+        item.textContent = rule.label;
+        item.dataset.ok = String(rule.ok);
+        list.appendChild(item);
+      }
+    }
+
+    // ── The three answers a sign-up request can get ──
+    function showAlreadyRegistered() {
+      message("registerHint", "该邮箱已注册，请直接登录；如果忘记密码，可以在登录页通过邮件重新设置。", "warning", [loginAction(), forgotAction]);
+    }
+
+    function showConfirmationNeeded(email) {
+      message("registerHint", `注册已提交，需要验证邮箱：确认邮件已发往 ${email}。请打开邮件中的确认链接，验证后会回到本页继续设置。没有收到请先检查垃圾邮件。`, "ok", [
+        { label: "重新发送确认邮件", id: "btnResendConfirm", onClick: () => resendConfirmation(email) },
+        loginAction(false),
+      ]);
+    }
+
+    function showUncertain() {
+      registrationUncertain = true;
+      setButton(true, "请先核对注册结果");
+      message("registerHint", "暂时无法确认注册是否成功（网络中断或服务器没有及时响应）。为避免重复注册，请先检查邮箱是否收到确认邮件，或到登录页尝试登录；确认没有注册成功后，再刷新本页重新提交。", "warning", [
+        loginAction(),
+        { label: "刷新本页", onClick: () => location.reload() },
+      ]);
+    }
+
+    async function resendConfirmation(email) {
+      const button = qs("#btnResendConfirm");
+      if (button?.disabled) return;
+      if (!rlResend.allow()) { message("registerHint", rlResend.message, "error", [loginAction(false)]); return; }
+      if (button) { button.disabled = true; button.textContent = "正在发送…"; }
+      try {
+        const { error } = await withDeadline(sb.auth.resend({
+          type: "signup", email,
+          options: { emailRedirectTo: lib.authCallbackUrl(location.origin, "/signup") },
+        }), 30000, "RESEND_TIMEOUT");
+        if (error) throw error;
+        message("registerHint", `确认邮件已重新发送到 ${email}。邮件中的链接只能使用一次，请以最新的一封为准。`, "ok", [loginAction(false)]);
+      } catch (error) {
+        message("registerHint", "确认邮件未能重新发送：" + lib.authErrorMessage(error), "error", [
+          { label: "再试一次", id: "btnResendConfirm", onClick: () => resendConfirmation(email) },
+          loginAction(false),
+        ]);
+      }
+    }
+
+    // Bound before any network-dependent initialization, so failures stay visible.
+    registerForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (registrationPending) return;
+      if (registrationUncertain) { showUncertain(); return; }
+      if (!ready) {
+        message("registerHint", "注册服务尚未连接，请稍候；如果长时间没有连接，请刷新页面。", "error");
+        return;
+      }
+      const emailInput = qs("#email");
+      const email = emailInput.value.trim().toLowerCase();
+      emailInput.value = email;
+      const password = qs("#password").value;
+      if (!email || !emailInput.validity.valid) { invalid("请输入有效的邮箱地址。", "#email"); return; }
+      const check = lib.validatePassword(password);
+      if (!check.valid) { invalid(check.message + "。", "#password"); return; }
+      if (password !== qs("#confirmPwd").value) { invalid("两次输入的密码不一致。", "#confirmPwd"); return; }
+      if (!qs("#agreeTerms").checked) { invalid("请先阅读并勾选同意用户协议和隐私政策。", "#agreeTerms"); return; }
+      // This address was already answered: repeat the answer instead of sending again.
+      if (lastOutcome && lastOutcome.email === email) {
+        if (lastOutcome.kind === "confirm") showConfirmationNeeded(email);
+        else showAlreadyRegistered();
+        return;
+      }
+      // Invalid input above must not consume a registration attempt.
+      if (!rlRegister.allow()) { message("registerHint", rlRegister.message, "error"); return; }
+
+      registrationPending = true;
+      setButton(true, "正在注册…");
+      registerForm.setAttribute("aria-busy", "true");
+      message("registerHint", "正在提交注册，请不要重复点击或关闭页面。", "info");
+      const slowTimer = setTimeout(() => {
+        message("registerHint", "服务器响应较慢，请继续等待，不要重复提交。", "warning");
+      }, 15000);
+      try {
+        const { data, error } = await withDeadline(sb.auth.signUp({
+          email, password,
+          options: { emailRedirectTo: lib.authCallbackUrl(location.origin, "/signup") },
+        }), 45000, "SIGNUP_TIMEOUT");
+        if (error) throw error;
+        qs("#password").value = "";
+        qs("#confirmPwd").value = "";
+        renderChecklist();
+        if (data?.session) {
+          showOnboarding();
+        } else if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          // An existing address is answered with a placeholder user that has no identities.
+          lastOutcome = { email, kind: "exists" };
+          showAlreadyRegistered();
+        } else if (data?.user) {
+          lastOutcome = { email, kind: "confirm" };
+          showConfirmationNeeded(email);
+        } else {
+          showUncertain();
+        }
+      } catch (error) {
+        const kind = lib.authErrorKind(error);
+        if (kind === "network" || kind === "server") {
+          showUncertain();
+        } else if (kind === "already_registered") {
+          lastOutcome = { email, kind: "exists" };
+          showAlreadyRegistered();
+        } else {
+          message("registerHint", "注册未完成：" + lib.authErrorMessage(error), "error");
+        }
+        if (window.ErrorLogger) window.ErrorLogger.log("signup.submit", kind);
+      } finally {
+        clearTimeout(slowTimer);
+        registrationPending = false;
+        registerForm.setAttribute("aria-busy", "false");
+        if (!registrationUncertain) setButton(false, REGISTER_LABEL);
+      }
     });
+
+    // ── Onboarding (bound only after the template is inserted) ──
+    const RPC_MESSAGES = {
+      project_quota_exceeded: "项目数量已达到当前账户的配额。请进入工作台查看已有项目，或联系平台调整。",
+      subscription_required: "账户试用已结束，项目为只读状态，可以查看和导出；继续录入需先开通。",
+      authentication_required: "登录状态已失效，请重新登录。",
+      project_name_and_center_required: "请填写项目名称和中心代码。",
+      pii_detected_blocked: "内容中疑似包含姓名、电话、证件号等身份信息，请删除后再保存，只使用研究编号。",
+      project_access_denied: "当前账户没有该项目的操作权限。",
+      invalid_consent_version_or_action: "协议版本已更新，请刷新页面后重新确认。",
+    };
+
+    function onboardingError(error) {
+      const raw = String(error?.message || "");
+      for (const [code, text] of Object.entries(RPC_MESSAGES)) if (raw.includes(code)) return text;
+      if (error?.code === "23505") return "该研究编号或项目已存在，请到工作台核对，避免重复创建。";
+      if (error?.code === "42501") return "当前账户暂无该操作权限，请到工作台核对项目与角色。";
+      if (lib.authErrorKind(error) === "network") return "网络连接失败，未能确认是否已保存。请到工作台核对后再继续，避免重复创建。";
+      return `未能完成这一步，请到工作台核对是否已保存；如持续出现，请联系 ${SUPPORT}。`;
+    }
+
+    async function saveConsent() {
+      if (consentSaved) return;
+      if (!qs("#onboardingConsent")?.checked) throw new Error("CONSENT_REQUIRED");
+      const { error } = await sb.rpc("log_consent", { p_action: "register", p_policy_type: "both", p_policy_version: "v2.0", p_user_agent: navigator.userAgent || null });
+      if (error) throw error;
+      consentSaved = true;
+    }
 
     function showOnboarding() {
       const card = qs("#onboardingCard");
-      // Inject onboarding content from template only once (keeps it out of initial DOM)
       if (!card.children.length) {
-        const tpl = document.getElementById("onboardingTpl");
-        card.appendChild(tpl.content.cloneNode(true));
+        card.appendChild(qs("#onboardingTpl").content.cloneNode(true));
+        qs("#onboardingConsent").checked = !!qs("#agreeTerms")?.checked;
+        bindOnboarding();
       }
       qs("#registerCard").style.display = "none";
       card.style.display = "block";
+      // Do not retain passwords once the account has a session.
+      qs("#password").value = "";
+      qs("#confirmPwd").value = "";
     }
 
-    function goObStep(n) {
-      currentObStep = n;
-      ["obStep1","obStep2","obStep3","obDone"].forEach(id => {
-        qs("#"+id).classList.toggle("active", false);
-      });
-      const panels = ["obStep1","obStep2","obStep3","obDone"];
-      const target = n > 3 ? "obDone" : panels[n-1];
-      qs("#"+target).classList.add("active");
-      [1,2,3].forEach(i => {
-        const dot = qs("#obDot"+i);
-        dot.className = i < n ? "ob-step done" : i === n ? "ob-step active" : "ob-step";
-      });
+    function goStep(n) {
+      ["obStep1", "obStep2", "obStep3", "obDone"].forEach((id, index) => qs("#" + id).classList.toggle("active", index === n - 1));
+      [1, 2, 3].forEach(i => { qs("#obDot" + i).className = i < n ? "ob-step done" : i === n ? "ob-step active" : "ob-step"; });
+      message("onboardingHint", "");
     }
 
-    // Registration
-    qs("#btnRegister").addEventListener("click", async () => {
-      if (!rlRegister.allow()) { toast(rlRegister.message); return; }
-      const email = qs("#email").value.trim().toLowerCase();
-      const password = qs("#password").value;
-      const confirm = qs("#confirmPwd").value;
-      if (!email) { toast("请输入邮箱"); return; }
-      const pwCheck = validatePassword(password);
-      if (!pwCheck.valid) { toast(pwCheck.message); return; }
-      if (password !== confirm) { toast("两次密码不一致"); return; }
-      if (!qs("#agreeTerms").checked) { toast("请先阅读并同意用户协议和隐私政策"); return; }
+    const userError = (text) => Object.assign(new Error("USER_INPUT"), { userMessage: text });
 
-      const btn = qs("#btnRegister");
-      btn.disabled = true;
-      try {
-        const { data, error } = await sb.auth.signUp({ email, password });
-        if (error) throw error;
-        if (data?.user?.identities?.length === 0) {
-          qs("#registerHint").textContent = "该邮箱已注册，请直接登录。";
-          return;
-        }
-        // Log consent
+    // One step at a time: every button of the panel is disabled while it saves.
+    function bindStep(buttonId, action, { busyLabel = "正在保存…" } = {}) {
+      const button = qs("#" + buttonId);
+      button.addEventListener("click", async () => {
+        if (button.disabled) return;
+        const panelButtons = Array.from(button.closest(".ob-panel").querySelectorAll("button"));
+        const label = button.textContent;
+        panelButtons.forEach(item => { item.disabled = true; });
+        button.textContent = busyLabel;
+        const slow = setTimeout(() => message("onboardingHint", "保存响应较慢，请不要重复提交；若长时间没有结果，请到工作台核对是否已保存。", "warning"), 15000);
         try {
-          await sb.rpc("log_consent", {
-            p_action: "register",
-            p_policy_type: "both",
-            p_policy_version: "v1.0",
-            p_user_agent: navigator.userAgent || null,
-          });
-        } catch (_) { /* best-effort */ }
-        toast("注册成功");
-      } catch (e) {
-        toast("注册失败：" + (e?.message || e));
-      } finally {
-        btn.disabled = false;
-      }
-    });
+          await saveConsent();
+          await action();
+        } catch (error) {
+          if (error?.message === "CONSENT_REQUIRED") {
+            message("onboardingHint", "请先勾选同意用户协议和隐私政策，再继续。", "error");
+            qs("#onboardingConsent")?.focus();
+          } else {
+            message("onboardingHint", error?.userMessage || onboardingError(error), "error");
+          }
+        } finally {
+          clearTimeout(slow);
+          panelButtons.forEach(item => { item.disabled = false; });
+          button.textContent = label;
+        }
+      });
+    }
 
-    // Onboarding Step 1: Save profile
-    qs("#btnObStep1").addEventListener("click", async () => {
-      try {
-        await sb.rpc("upsert_user_profile", {
+    function bindOnboarding() {
+      bindStep("btnObStep1", async () => {
+        const { error } = await sb.rpc("upsert_my_profile", {
           p_real_name: qs("#obName").value.trim() || null,
           p_hospital: qs("#obHospital").value.trim() || null,
           p_department: qs("#obDept").value.trim() || null,
-          p_interested_plan: "trial",
-          p_contact: null,
-          p_notes: null,
-        });
-      } catch (e) { console.warn("Profile save:", e); }
-      goObStep(2);
-    });
-    qs("#btnObSkip1").addEventListener("click", () => goObStep(2));
-
-    // Onboarding Step 2: Create project
-    qs("#btnObStep2").addEventListener("click", async () => {
-      const name = qs("#obProjName").value.trim();
-      const center = qs("#obProjCenter").value.trim();
-      if (!name) { toast("请填写项目名称"); return; }
-      if (!center) { toast("请填写中心代码"); return; }
-      try {
-        const { data, error } = await sb.rpc("create_project", {
-          p_name: name,
-          p_center_code: center,
-          p_module: qs("#obProjModule").value,
-          p_description: null,
+          p_interested_plan: "trial", p_contact: null, p_notes: null,
         });
         if (error) throw error;
+        goStep(2);
+      });
+      bindStep("btnObSkip1", async () => goStep(2), { busyLabel: "请稍候…" });
+
+      bindStep("btnObStep2", async () => {
+        const name = qs("#obProjName").value.trim();
+        const center = qs("#obProjCenter").value.trim();
+        if (!name || !center) throw userError("请填写项目名称和中心代码。");
+        // Same interface as the workbench "创建项目" button.
+        const { data, error } = await sb.rpc("create_project", { p_name: name, p_center_code: center, p_module: qs("#obProjModule").value, p_description: null });
+        if (error) throw error;
+        if (!data) throw userError("没有收到项目创建结果。请到工作台核对项目列表，避免重复创建。");
         createdProjectId = data;
-        toast("项目创建成功");
-        goObStep(3);
-      } catch (e) {
-        toast("创建失败：" + (e?.message || e));
-      }
-    });
-    qs("#btnObSkip2").addEventListener("click", () => goObStep(4));
+        goStep(3);
+        message("onboardingHint", "项目已创建。", "ok");
+      });
+      bindStep("btnObSkip2", async () => goStep(4), { busyLabel: "请稍候…" });
 
-    // Onboarding Step 3: First patient
-    qs("#btnObStep3").addEventListener("click", async () => {
-      if (!createdProjectId) { toast("请先创建项目"); goObStep(2); return; }
-      const code = qs("#obPatCode").value.trim();
-      if (!code) { toast("请填写研究编号"); return; }
-      try {
-        const { error } = await sb.rpc("create_patient_baseline", {
-          p_project_id: createdProjectId,
-          p_patient_code: code,
-          p_sex: qs("#obPatSex").value || null,
-          p_birth_year: parseInt(qs("#obPatBirthYear").value) || null,
-          p_baseline_date: null,
-          p_baseline_scr: null,
-          p_baseline_upcr: null,
+      bindStep("btnObStep3", async () => {
+        if (!createdProjectId) { goStep(2); throw userError("请先创建项目。"); }
+        const code = qs("#obPatCode").value.trim();
+        if (!code) throw userError("请填写研究编号。");
+        const birthInput = qs("#obPatBirthYear");
+        const birthText = birthInput.value.trim();
+        const birthYear = birthText ? Number(birthText) : null;
+        if (birthInput.validity.badInput || (birthText && (!Number.isInteger(birthYear) || birthYear < 1900 || birthYear > new Date().getFullYear()))) {
+          throw userError("出生年份请填写 1900 至今年之间的整数，或留空。");
+        }
+        // Same interface as the workbench "核对并保存基线" button.
+        const { error } = await sb.from("patients_baseline").insert({
+          project_id: createdProjectId, patient_code: code,
+          sex: qs("#obPatSex").value || null, birth_year: birthYear,
+          baseline_date: null, baseline_scr: null, baseline_upcr: null,
         });
         if (error) throw error;
-        toast("患者录入成功");
-        goObStep(4);
-      } catch (e) {
-        toast("录入失败：" + (e?.message || e));
+        goStep(4);
+        message("onboardingHint", "第一例已保存，可在工作台补充基线日期和化验指标。", "ok");
+      });
+      bindStep("btnObSkip3", async () => goStep(4), { busyLabel: "请稍候…" });
+    }
+
+    // ── Initialization with a deadline: a broken connection never looks like a dead button ──
+    async function initialize() {
+      try {
+        const [clientModule, passwordModule, rateModule, authModule] = await withDeadline(Promise.all([
+          import("/lib/supabase-client.js" + V),
+          import("/lib/password-strength.js" + V),
+          import("/lib/rate-limit.js" + V),
+          import("/lib/auth-navigation.js" + V),
+        ]), 15000, "INIT_TIMEOUT");
+        lib = { ...passwordModule, ...rateModule, ...authModule };
+        qs("#passwordRules").textContent = "密码要求：" + lib.passwordRuleText() + "。";
+        qs("#password").addEventListener("input", renderChecklist);
+        renderChecklist();
+        rlRegister = lib.throttle("register", { maxAttempts: 5, windowMs: 15 * 60_000, message: "注册请求过于频繁" });
+        rlResend = lib.throttle("signupResend", { maxAttempts: 3, windowMs: 15 * 60_000, message: "确认邮件发送过于频繁" });
+        sb = clientModule.supabase();
+        sb.auth.onAuthStateChange((event, session) => {
+          // Never call the auth service inside this callback; defer the UI switch.
+          if (session && event === "SIGNED_IN") setTimeout(() => { if (!registrationPending) showOnboarding(); }, 0);
+        });
+        const { data, error } = await withDeadline(sb.auth.getSession(), 15000, "INIT_TIMEOUT");
+        if (error) throw error;
+        ready = true;
+        setButton(false, REGISTER_LABEL);
+        message("registerHint", "");
+        if (data?.session) showOnboarding();
+      } catch (error) {
+        setButton(true, "暂时无法连接");
+        message("registerHint", `注册服务未能连接，尚未提交任何注册信息。请检查网络后刷新页面；如果持续出现，请联系 ${SUPPORT}。`, "error", [
+          { label: "刷新页面", id: "reloadSignup", primary: true, onClick: () => location.reload() },
+        ]);
+        if (window.ErrorLogger) window.ErrorLogger.log("signup.init", error);
       }
-    });
-    qs("#btnObSkip3").addEventListener("click", () => goObStep(4));
+    }
+    initialize();
   </script>
 </body>
 </html>

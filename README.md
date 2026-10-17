@@ -1,3 +1,5 @@
+> **登记系统整合修复**：当前发布校验已适配 PostgreSQL 17，先阅读 [PG17 发布与验收说明](docs/REGISTRY_PG17_RELEASE.md)。尚未部署生产；已有数据库不要照下方历史安装步骤重跑全量 SQL。
+
 # KidneySphere AI · Follow-up Registry (Clean v1)
 
 A **static** (no-build) research registry for nephrology follow-up:

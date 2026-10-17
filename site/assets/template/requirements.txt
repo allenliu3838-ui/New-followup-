@@ -1,6 +1,5 @@
-pandas>=2.0
-numpy>=1.23
-matplotlib>=3.7
-openpyxl>=3.1
-statsmodels>=0.14
-scipy>=1.11
+# Validated analysis environment; update pins only with synthetic regression tests.
+numpy==2.3.5
+pandas==2.2.3
+openpyxl==3.1.5
+matplotlib==3.10.8

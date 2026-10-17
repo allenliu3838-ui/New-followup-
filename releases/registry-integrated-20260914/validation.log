@@ -1,0 +1,258 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> new-followup-@1.0.0 test
+> python3 scripts/run_unit_tests.py
+
+test_annual_selection_preserves_one_row_and_missing_value (test_registry_analysis.AnalysisIntegrity.test_annual_selection_preserves_one_row_and_missing_value) ... ok
+test_auto_egfr_recomputed_and_original_preserved (test_registry_analysis.AnalysisIntegrity.test_auto_egfr_recomputed_and_original_preserved) ... ok
+test_baseline_missing_is_not_filled_from_later_visit (test_registry_analysis.AnalysisIntegrity.test_baseline_missing_is_not_filled_from_later_visit) ... ok
+test_baseline_only (test_registry_analysis.AnalysisIntegrity.test_baseline_only) ... ok
+test_baseline_units_explicit_and_missing_excluded (test_registry_analysis.AnalysisIntegrity.test_baseline_units_explicit_and_missing_excluded) ... ok
+test_changed_merge_source_fails_before_success (test_registry_analysis.AnalysisIntegrity.test_changed_merge_source_fails_before_success) ... ok
+test_cli_pack_uses_merged_path_and_preserves_formula_like_ids (test_registry_analysis.AnalysisIntegrity.test_cli_pack_uses_merged_path_and_preserves_formula_like_ids) ... ok
+test_endpoint_boundaries_and_prebaseline_exclusion (test_registry_analysis.AnalysisIntegrity.test_endpoint_boundaries_and_prebaseline_exclusion) ... ok
+test_equal_distance_tie_has_deterministic_id_and_count (test_registry_analysis.AnalysisIntegrity.test_equal_distance_tie_has_deterministic_id_and_count) ... ok
+test_impossible_ages_excluded_but_child_age_retained (test_registry_analysis.AnalysisIntegrity.test_impossible_ages_excluded_but_child_age_retained) ... ok
+test_lab_units_are_row_specific_and_code_driven (test_registry_analysis.AnalysisIntegrity.test_lab_units_are_row_specific_and_code_driven) ... ok
+test_literal_identifiers_are_preserved (test_registry_analysis.AnalysisIntegrity.test_literal_identifiers_are_preserved) ... ok
+test_manual_events_retained_without_egfr_and_confirmation_respected (test_registry_analysis.AnalysisIntegrity.test_manual_events_retained_without_egfr_and_confirmation_respected) ... ok
+test_medication_count_uses_full_patient_identity (test_registry_analysis.AnalysisIntegrity.test_medication_count_uses_full_patient_identity) ... ok
+test_merge_different_ids_and_repeated_events_preserved (test_registry_analysis.AnalysisIntegrity.test_merge_different_ids_and_repeated_events_preserved) ... ok
+test_merge_exact_retransmission_idempotent_conflict_blocks (test_registry_analysis.AnalysisIntegrity.test_merge_exact_retransmission_idempotent_conflict_blocks) ... ok
+test_merge_qc_cannot_overwrite_inputs_or_pollute_output (test_registry_analysis.AnalysisIntegrity.test_merge_qc_cannot_overwrite_inputs_or_pollute_output) ... ok
+test_merge_same_file_exact_retransmissions_deduplicated (test_registry_analysis.AnalysisIntegrity.test_merge_same_file_exact_retransmissions_deduplicated) ... ok
+test_mismatched_standard_and_cd19_percentage_not_relabelled (test_registry_analysis.AnalysisIntegrity.test_mismatched_standard_and_cd19_percentage_not_relabelled) ... ok
+test_missing_optional_tables_merge_and_analysis_agree (test_registry_analysis.AnalysisIntegrity.test_missing_optional_tables_merge_and_analysis_agree) ... ok
+test_missing_project_identity_and_orphans_block (test_registry_analysis.AnalysisIntegrity.test_missing_project_identity_and_orphans_block) ... ok
+test_missing_sex_is_not_male (test_registry_analysis.AnalysisIntegrity.test_missing_sex_is_not_male) ... ok
+test_models_methods_and_hashes_match_actual_execution (test_registry_analysis.AnalysisIntegrity.test_models_methods_and_hashes_match_actual_execution) ... ok
+test_no_annual_visit_is_status_not_crash (test_registry_analysis.AnalysisIntegrity.test_no_annual_visit_is_status_not_crash) ... ok
+test_partial_lab_pairs_never_mix_origins (test_registry_analysis.AnalysisIntegrity.test_partial_lab_pairs_never_mix_origins) ... ok
+test_same_day_slope_has_no_estimate (test_registry_analysis.AnalysisIntegrity.test_same_day_slope_has_no_estimate) ... ok
+test_scope_separates_projects_and_centers (test_registry_analysis.AnalysisIntegrity.test_scope_separates_projects_and_centers) ... ok
+test_two_dates_slope_and_patient_month_weighting (test_registry_analysis.AnalysisIntegrity.test_two_dates_slope_and_patient_month_weighting) ... ok
+test_unit_conversion_overflow_is_not_an_analysis_value (test_registry_analysis.AnalysisIntegrity.test_unit_conversion_overflow_is_not_an_analysis_value) ... ok
+test_unverified_egfr_not_used_as_verified (test_registry_analysis.AnalysisIntegrity.test_unverified_egfr_not_used_as_verified) ... ok
+test_zero_patients_and_visits_complete_honestly (test_registry_analysis.AnalysisIntegrity.test_zero_patients_and_visits_complete_honestly) ... ok
+test_database_identity_cannot_be_overridden_by_libpq_environment (test_registry_deployment_gates.DeploymentGates.test_database_identity_cannot_be_overridden_by_libpq_environment) ... ok
+test_final_response_headers_and_status_are_required (test_registry_deployment_gates.DeploymentGates.test_final_response_headers_and_status_are_required) ... ok
+test_five_site_comparison_cannot_overwrite_its_baseline (test_registry_deployment_gates.DeploymentGates.test_five_site_comparison_cannot_overwrite_its_baseline) ... ok
+test_legacy_netlify_path_cannot_publish_without_database_gate (test_registry_deployment_gates.DeploymentGates.test_legacy_netlify_path_cannot_publish_without_database_gate) ... ok
+test_lighthouse_runner_failure_fails_gate_without_browser (test_registry_deployment_gates.DeploymentGates.test_lighthouse_runner_failure_fails_gate_without_browser) ... ok
+test_network_failure_and_empty_url_list_are_not_success (test_registry_deployment_gates.DeploymentGates.test_network_failure_and_empty_url_list_are_not_success) ... ok
+test_only_exact_reviewed_readonly_sql_is_accepted (test_registry_deployment_gates.DeploymentGates.test_only_exact_reviewed_readonly_sql_is_accepted) ... ok
+test_apply_and_rollback_preserve_scope_modes_and_configuration (test_registry_integrated_release.IntegratedRelease.test_apply_and_rollback_preserve_scope_modes_and_configuration) ... ok
+test_atomic_restore_refuses_same_content_replacement_inode (test_registry_integrated_release.IntegratedRelease.test_atomic_restore_refuses_same_content_replacement_inode) ... ok
+test_missing_wrong_stale_or_changed_database_contract_stops_before_write (test_registry_integrated_release.IntegratedRelease.test_missing_wrong_stale_or_changed_database_contract_stops_before_write) ... ok
+test_partial_install_failure_recovers_owned_files (test_registry_integrated_release.IntegratedRelease.test_partial_install_failure_recovers_owned_files) ... ok
+test_recovery_rechecks_new_file_ownership_after_preflight (test_registry_integrated_release.IntegratedRelease.test_recovery_rechecks_new_file_ownership_after_preflight) ... ok
+test_recovery_refuses_later_edits_and_damaged_backups (test_registry_integrated_release.IntegratedRelease.test_recovery_refuses_later_edits_and_damaged_backups) ... ok
+test_symlinks_and_hardlinks_refused (test_registry_integrated_release.IntegratedRelease.test_symlinks_and_hardlinks_refused) ... ok
+test_unknown_baseline_or_concurrent_site_change_blocks (test_registry_integrated_release.IntegratedRelease.test_unknown_baseline_or_concurrent_site_change_blocks) ... ok
+test_bundle_contains_exact_reviewed_pages_and_helper (test_registry_offline_bundle.RegistryOfflineBundleTests.test_bundle_contains_exact_reviewed_pages_and_helper) ... ok
+test_missing_payload_is_rejected_before_any_target_write (test_registry_offline_bundle.RegistryOfflineBundleTests.test_missing_payload_is_rejected_before_any_target_write) ... ok
+test_offline_main_applies_prints_archive_rollback_and_restores (test_registry_offline_bundle.RegistryOfflineBundleTests.test_offline_main_applies_prints_archive_rollback_and_restores) ... ok
+test_tampered_payload_is_rejected_before_any_target_write (test_registry_offline_bundle.RegistryOfflineBundleTests.test_tampered_payload_is_rejected_before_any_target_write) ... ok
+test_concurrent_second_page_deletion_allows_own_first_page_recovery (test_registry_pages_release.RegistryPageReleaseTests.test_concurrent_second_page_deletion_allows_own_first_page_recovery) ... ok
+test_concurrent_third_hash_on_second_page_allows_own_first_page_recovery (test_registry_pages_release.RegistryPageReleaseTests.test_concurrent_third_hash_on_second_page_allows_own_first_page_recovery) ... ok
+test_corrupt_backup_blocks_all_rollback_writes (test_registry_pages_release.RegistryPageReleaseTests.test_corrupt_backup_blocks_all_rollback_writes) ... ok
+test_corrupted_prepared_new_file_is_rejected_before_os_replace (test_registry_pages_release.RegistryPageReleaseTests.test_corrupted_prepared_new_file_is_rejected_before_os_replace) ... ok
+test_directory_fsync_failure_after_replace_still_restores_replaced_page (test_registry_pages_release.RegistryPageReleaseTests.test_directory_fsync_failure_after_replace_still_restores_replaced_page) ... ok
+test_extra_payload_rejects_before_either_page_is_replaced (test_registry_pages_release.RegistryPageReleaseTests.test_extra_payload_rejects_before_either_page_is_replaced) ... ok
+test_fifo_target_is_rejected_without_blocking_or_replacing_other_page (test_registry_pages_release.RegistryPageReleaseTests.test_fifo_target_is_rejected_without_blocking_or_replacing_other_page) ... ok
+test_hardlink_target_rejects_and_leaves_other_link_untouched (test_registry_pages_release.RegistryPageReleaseTests.test_hardlink_target_rejects_and_leaves_other_link_untouched) ... ok
+test_interrupted_one_new_one_old_release_can_be_recovered (test_registry_pages_release.RegistryPageReleaseTests.test_interrupted_one_new_one_old_release_can_be_recovered) ... ok
+test_missing_payload_rejects_before_either_page_is_replaced (test_registry_pages_release.RegistryPageReleaseTests.test_missing_payload_rejects_before_either_page_is_replaced) ... ok
+test_missing_target_rejects_before_other_page_is_replaced (test_registry_pages_release.RegistryPageReleaseTests.test_missing_target_rejects_before_other_page_is_replaced) ... ok
+test_preflight_concurrent_new_page_is_not_rolled_back_by_this_run (test_registry_pages_release.RegistryPageReleaseTests.test_preflight_concurrent_new_page_is_not_rolled_back_by_this_run) ... ok
+test_second_replacement_failure_rolls_back_first_and_keeps_backup (test_registry_pages_release.RegistryPageReleaseTests.test_second_replacement_failure_rolls_back_first_and_keeps_backup) ... ok
+test_success_rerun_and_rollback_preserve_modes_and_unrelated_sites (test_registry_pages_release.RegistryPageReleaseTests.test_success_rerun_and_rollback_preserve_modes_and_unrelated_sites) ... ok
+test_symlink_target_rejects_and_leaves_link_destination_untouched (test_registry_pages_release.RegistryPageReleaseTests.test_symlink_target_rejects_and_leaves_link_destination_untouched) ... ok
+test_third_hash_blocks_all_rollback_writes (test_registry_pages_release.RegistryPageReleaseTests.test_third_hash_blocks_all_rollback_writes) ... ok
+test_wrong_existing_hash_rejects_before_either_page_is_replaced (test_registry_pages_release.RegistryPageReleaseTests.test_wrong_existing_hash_rejects_before_either_page_is_replaced) ... ok
+test_wrong_payload_rejects_before_either_page_is_replaced (test_registry_pages_release.RegistryPageReleaseTests.test_wrong_payload_rejects_before_either_page_is_replaced) ... ok
+test_actual_zip_entry_check_apply_and_printed_rollback (test_registry_visual_release.VisualReleaseTests.test_actual_zip_entry_check_apply_and_printed_rollback) ... ok
+test_apply_rerun_rollback_preserve_unrelated_files_and_modes (test_registry_visual_release.VisualReleaseTests.test_apply_rerun_rollback_preserve_unrelated_files_and_modes) ... ok
+test_bundle_hashes_members_corruption_and_no_network (test_registry_visual_release.VisualReleaseTests.test_bundle_hashes_members_corruption_and_no_network) ... ok
+test_concurrent_html_change_is_retained_with_image (test_registry_visual_release.VisualReleaseTests.test_concurrent_html_change_is_retained_with_image) ... ok
+test_dangling_image_symlink_refused (test_registry_visual_release.VisualReleaseTests.test_dangling_image_symlink_refused) ... ok
+test_existing_asset_refused_even_if_content_matches (test_registry_visual_release.VisualReleaseTests.test_existing_asset_refused_even_if_content_matches) ... ok
+test_html_failure_restores_old_page_and_removes_owned_image (test_registry_visual_release.VisualReleaseTests.test_html_failure_restores_old_page_and_removes_owned_image) ... ok
+test_image_created_concurrently_is_not_overwritten (test_registry_visual_release.VisualReleaseTests.test_image_created_concurrently_is_not_overwritten) ... ok
+test_index_hardlink_refused (test_registry_visual_release.VisualReleaseTests.test_index_hardlink_refused) ... ok
+test_manual_rollback_recovers_old_html_with_owned_image_left (test_registry_visual_release.VisualReleaseTests.test_manual_rollback_recovers_old_html_with_owned_image_left) ... ok
+test_missing_image_after_homepage_change_triggers_recovery (test_registry_visual_release.VisualReleaseTests.test_missing_image_after_homepage_change_triggers_recovery) ... ok
+test_missing_image_after_install_stops_before_homepage_change (test_registry_visual_release.VisualReleaseTests.test_missing_image_after_install_stops_before_homepage_change) ... ok
+test_post_html_replace_sync_failure_recovers_both_files (test_registry_visual_release.VisualReleaseTests.test_post_html_replace_sync_failure_recovers_both_files) ... ok
+test_post_image_install_failure_can_recover (test_registry_visual_release.VisualReleaseTests.test_post_image_install_failure_can_recover) ... ok
+test_rollback_refuses_same_content_image_with_different_inode (test_registry_visual_release.VisualReleaseTests.test_rollback_refuses_same_content_image_with_different_inode) ... ok
+test_symlink_assets_directory_refused (test_registry_visual_release.VisualReleaseTests.test_symlink_assets_directory_refused) ... ok
+test_unknown_homepage_refuses_before_public_writes (test_registry_visual_release.VisualReleaseTests.test_unknown_homepage_refuses_before_public_writes) ... ok
+test_wrong_payloads_refused_before_public_writes (test_registry_visual_release.VisualReleaseTests.test_wrong_payloads_refused_before_public_writes) ... ok
+
+----------------------------------------------------------------------
+Ran 86 tests in 4.771s
+
+OK
+FAIL https://synthetic.invalid/: check incomplete: synthetic network failure
+Completed 1 checks; failed/incomplete 1
+AUTH_NAVIGATION_PASS 14 safe destinations and adversarial redirects
+✔ /workspace/scratch/877472dedb77/registry-integrated-fix/tests/auth-navigation.mjs (65.821626ms)
+PASS Upload failure never submits a fake payment proof
+PASS Successful proof uses the checked account private key and pinned JWT
+PASS RPC failure and invalid paid amount do not report success
+PASS Sign-out then sign-in never revives the previous account form
+PASS getSession mismatch blocks creation even before an auth event is delivered
+PASS Identity is checked again after consent before an order can be created
+PASS An old pending order response cannot populate the new account screen
+PASS Identity change during upload prevents the subsequent proof mutation
+PASS Identity change during proof submission ignores its late success response
+PASS A stale order-list response is never rendered after the account changes
+PASS Same-user token refresh keeps the form usable and uses the refreshed token
+CHECKOUT_REGRESSION_PASS 11 groups
+✔ /workspace/scratch/877472dedb77/registry-integrated-fix/tests/checkout-regression.mjs (79.376411ms)
+PASS Shared projects do not consume an invited editor own-project quota
+PASS An editor expired personal trial does not block a funded shared project
+PASS An editor paid account cannot bypass the shared project owner expiry
+PASS Shared roles cannot claim ownership, edit project metadata or manage membership
+PASS Analyst reads and exports do not grant clinical writes or owner-only billing access
+PASS Project analyst can independently subscribe as self without billing or upgrading its inviter
+PASS Removing an invited member preserves that member independent owned project and subscription
+PASS An editor cannot transfer a patient from an expired shared project into its funded own project
+BILLING_RBAC_PASS 8 groups; 38 strict migrations
+✔ /workspace/scratch/877472dedb77/registry-integrated-fix/tests/db/billing-rbac.test.mjs (3027.608796ms)
+BILLING_UPGRADE_PASS preserved legacy purchase, expired trial with active paid access, safe new project, explicit revocation
+✔ /workspace/scratch/877472dedb77/registry-integrated-fix/tests/db/billing-upgrade.mjs (3471.2009ms)
+BILLING_PASS 28 checks; 38 strict migrations
+✔ /workspace/scratch/877472dedb77/registry-integrated-fix/tests/db/billing.mjs (2919.299444ms)
+✔ read-only production preflight accepts the new schema and detects permission regression (3661.143688ms)
+✔ snapshot includes all nine complete datasets and its exact UTF-8 bytes verify against SHA256 (3169.282491ms)
+✔ subsequent edits do not change the frozen bytes; retry returns the same stored version (16.478575ms)
+✔ foreign and anonymous callers cannot create, download or alter another project export (12.771074ms)
+✔ old metadata-only snapshots are never presented as a frozen historical dataset (7.773503ms)
+✔ expired write access preserves access to research exports (8.269072ms)
+✔ the synchronous export rejects over-limit datasets instead of freezing partial rows (1670.27199ms)
+✔ all migrations execute without skipping errors (3004.397281ms)
+✔ cross-project import and correction fail before any write (9.603176ms)
+✔ whole batch rolls back if any row has an invalid date (13.17793ms)
+✔ ambiguous UPCR is rejected; explicit g/g converts exactly and blank preserves values (22.474538ms)
+✔ batch retries and equivalent visits under a new batch do not duplicate (25.449572ms)
+✔ invalid numbers, unregistered patients and cross-project row identifiers fail closed (10.171025ms)
+✔ corrections preserve identity, recompute derived eGFR and record the actual old/new values and reason (12.762771ms)
+✔ baseline change reasons and lab correction normalization are auditable (15.261971ms)
+✔ imports cannot move a baseline after an existing visit or hide post-import corrections (4.519409ms)
+✔ tiny positive UPCR cannot be flattened to zero and identifiers must remain strings (5.226106ms)
+✔ conflicting patient rows in one baseline batch are rejected before writing (2.374886ms)
+✔ deleting a visit records an actor-linked tombstone without retaining a full clinical payload (9.474791ms)
+✔ anonymous clients cannot invoke import/correction or read import journals (3.433832ms)
+✔ the first-step inventory runs read-only against the old schema before any repair version tables exist (2722.598794ms)
+PASS Owner membership CRUD requires verified registered email and records audit
+PASS Every role capability matches backend authority and owner billing boundary
+PASS Editor can use clinical RPCs, including import, correction, validator and token issuance
+PASS All nine clinical/config tables allow editor CRUD but reject viewer/analyst writes
+PASS Analyst can freeze/retrieve exports; editor/viewer cannot use either export path
+PASS All members can read QC/history; only editor can resolve and comment with immutable provenance
+PASS Separate project authorization is required for every clinical RPC and table
+PASS Changing/removing membership closes subsequent table reads, RPC writes and frozen-export retries
+PASS Expiry blocks all clinical extensions/comments but preserves revocation, reading and authorized export
+PASS Unknown-email attempts are committed and rate-limited across the owner account
+PASS Anonymous membership administration and internal permission helpers have no EXECUTE grants
+PROJECT_MEMBERS_OK 11 groups; 38 strict migrations. No production database used.
+✔ /workspace/scratch/877472dedb77/registry-integrated-fix/tests/db/project-members.test.mjs (3137.480004ms)
+PASS All migrations execute; no migration failure is skipped
+PASS Later migrations do not reopen privileged functions through PUBLIC
+PASS Direct RLS hides foreign patients and rejects foreign writes
+PASS Cross-project lab RPC cannot insert or modify, owner can
+PASS API clients cannot forge record authorship or creation time
+PASS Anonymous and foreign validators cannot expose clinical history
+PASS QC and field audit helpers reject direct calls, including project owner
+PASS Demo booking submits publicly, contacts visible only to platform admin
+PASS Receipt credentials inaccessible and public dictionaries read-only
+PASS Historical orphan retained; database rejects new orphan records
+PASS Direct writes cannot bypass future-date and baseline/visit ordering rules
+PASS Scr/date/demographic changes recompute eGFR; manual remains explicitly manual
+PASS CD19 percent keeps raw percentage and no false absolute standard value
+PASS Legacy submission RPC unavailable; token flags cannot be overwritten directly
+PASS Single-use token commits once; identical idempotent retry returns same receipt
+PASS Revoked links fail every read and submission, including same-request retry
+PASS Rate-limit response commits deactivation and security audit
+PASS Security revocation remains possible after account/subscription expiry
+SECURITY_REGRESSION_OK 18 groups; 38 migrations. PGlite serializes sessions: burst test is not a multi-connection PostgreSQL concurrency certification.
+✔ /workspace/scratch/877472dedb77/registry-integrated-fix/tests/db/security.test.mjs (2791.579786ms)
+✔ local frontend cannot silently use the production database (2.483979ms)
+✔ committed HTML matches the deterministic authored-card renderer (80.59653ms)
+✔ index.html: static cards retain content, statuses, mail links and unique accessible headings (30.346127ms)
+✔ index.html: enhancement reuses static card nodes and binds copy once (13.58802ms)
+✔ collaboration.html: static cards retain content, statuses, mail links and unique accessible headings (10.584651ms)
+✔ collaboration.html: enhancement reuses static card nodes and binds copy once (5.961965ms)
+✔ category filters toggle existing nodes, preserve details, expose pressed state, and restore all (14.214126ms)
+✔ manual pages have unique IDs, valid local links and retained public anchors (15.335579ms)
+✔ manual explains the actual nine-table freeze and six-table analysis boundary (2.300263ms)
+✔ documented member capabilities match the role contract and copying limitation (1.376503ms)
+✔ UPCR explicit units preserve exact zero/small positives and normalize g/g (1.002823ms)
+✔ strict dates reject impossible dates, nonfinite numbers rejected (0.892397ms)
+✔ CSV parser handles quoted multiline and rejects duplicate headers and malformed shape (1.480194ms)
+✔ Partial baseline import never invents null updates; units have provenance (0.867252ms)
+✔ Visit import requires complete core data and correct BP order (0.412619ms)
+✔ Pagination works with server cap smaller than requested page and retains >1000 records (2.048563ms)
+✔ Pagination fails closed on intermediate errors or changing counts (1.105837ms)
+✔ Spreadsheet export neutralizes formulas; machine export and JSON retain original text (0.455492ms)
+✔ Export column collection preserves new structured fields (0.295311ms)
+✔ Known RPC conflicts tell users what to do and preserve CSV row context (2.238866ms)
+✔ Baseline normalizes g/g and resets every next-patient field (11.947049ms)
+✔ Project switch honors dirty cancel and busy guard, then clears old import and token (3.284077ms)
+✔ Signout destroys injected sensitive DOM and selection (1.995416ms)
+✔ Single-use token uses one atomic RPC, no client flag update (2.218683ms)
+✔ Frozen content is SHA verified and request ID remains stable on retries (10.175095ms)
+✔ Import submits one bound transaction and preserves batch on transport failure (2.098528ms)
+✔ Real ZIP exports the frozen bytes, complete machine CSVs, safe spreadsheet copies and verified manifest (34.492256ms)
+✔ Template HTTP failure produces no partial ZIP/download (4.466165ms)
+✔ Session change while freezing prevents any package construction (2.511755ms)
+✔ Actual DOM correction requires reason, sends only changed fields, and leaves historical unknown units untouched (90.772498ms)
+✔ Actual DOM correction normalizes explicit g/g change, records provenance and rejects stale project save (9.703511ms)
+✔ Viewer and editor cannot invoke exports; viewer cannot write or issue tokens (2.516686ms)
+✔ Analyst exports real frozen ZIP but cannot write or manage tokens; expired editor retains revoke only (11.720903ms)
+✔ Late project access response cannot overwrite the next project permissions (1.771904ms)
+✔ Actual staff HTML injects the complete workspace once and binds controls without missing DOM elements (35.081756ms)
+{ message: 'baseline rejected' }
+✔ Existing token list hides token secrets and lets an expired editor revoke a selected link (4.003128ms)
+✔ Demo baseline failure refreshes the created project and exposes partial-write warning with exact ID (2.915949ms)
+✔ Successful demo selects its returned project ID rather than the first project (1.614031ms)
+✔ Member change hook clears old active link display and refreshes tokens only for its current project (37.833015ms)
+PASS patient workflow: authoritative access, 88.4/1000 units, zero/precision, strict validation, receipt privacy, blank-next, single-use completion, UUID retry, error states, malformed links (Node VM + synthetic DOM; no browser/production).
+✔ /workspace/scratch/877472dedb77/registry-integrated-fix/tests/patient-workflow.test.cjs (86.194558ms)
+PASS owner loads member list and cannot alter owner row
+PASS non-owner roles describe actual limits and expose no management RPC or form
+PASS owner without authoritative manage boolean and unknown roles fail closed
+PASS expired owner can manage members while write restriction is explained
+PASS names, project labels and emails are rendered as text, including hostile markup
+PASS adding registered email uses exact current project and allowed role
+PASS invalid email or injected owner role never reaches mutation RPC
+PASS not_added and rate_limited preserve input without account enumeration
+PASS existing member add keeps prior role and reports it
+PASS save role sends member ID; unchanged selection has no write
+PASS remove confirms access loss and data preservation; cancel does not write
+PASS mutation double clicks and simultaneous role actions send once
+PASS thrown transport failure and structured RPC error restore controls honestly
+PASS unexpected mutation shape or status is never treated as saved
+PASS list failure blocks mutations and allows explicit retry
+PASS malformed list or absent owner row fails closed
+PASS permission error gives current account guidance without raw backend details
+PASS late old-project list cannot replace newly selected project
+PASS late mutation completion cannot clear new-project draft or emit refresh callback
+PASS queued detached old-project actions cannot target the newly selected project
+PASS logout and account switch invalidate pending responses
+PASS same-project context revalidation also invalidates prior mutation
+PASS editor downgrade warns before confirmation, cancel stops mutation and success states revoked count
+PASS editor removal explicitly confirms project-wide token invalidation and returned zero count
+PASS unchanged editor or other role changes do not trigger token-revocation confirmation
+25 project member tests passed (actual module + LinkeDOM, synthetic RPC; no browser or production).
+✔ /workspace/scratch/877472dedb77/registry-integrated-fix/tests/project-members.test.cjs (216.194818ms)
+ℹ tests 69
+ℹ suites 0
+ℹ pass 69
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 31908.806792

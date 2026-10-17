@@ -1,0 +1,99 @@
+{
+  "_说明": "研究方案参数文件模板。这里的数值全部是示例（常用研究定义或文献中的写法），不是本平台推荐，也不会自动生效；文中提到的指南仅供 PI 查找原文，不代表本文件转述了指南条文。使用前：复制本文件并改名；由研究负责人（PI）逐项核对所采用指南版本或研究方案的原文并修改；确认后把对应章节的 requires_pi_confirmation 改为 false，并填写 confirmation 中的确认人和日期。未确认的章节不会被计算。键名以下划线开头的字段是说明，脚本忽略。",
+  "_时间锚点说明": "本脚本以登记基线日期（baseline_date）为时间零点：基线值、随访天数、评估窗口和截尾都相对于 baseline_date 计算。狼疮性肾炎、膜性肾病等的治疗应答通常以治疗开始为锚点；如果登记基线日期不是治疗开始日，评估窗口与“较基线”的含义都会不同。请 PI 确认本研究的 baseline_date 定义（例如登记时把 baseline_date 定为治疗开始日），本版本脚本不支持以其他事件日期作锚点。",
+  "schema": "kidneysphere-analysis-protocol/1",
+  "protocol_id": "EXAMPLE-GN-ENDPOINTS",
+  "version": "0.2-example",
+  "title": "示例：肾小球疾病随访终点定义（需 PI 确认）",
+  "status": "example_requires_pi_confirmation",
+  "confirmation": {
+    "_说明": "确认人填写姓名与角色，日期用 YYYY-MM-DD。任一章节 requires_pi_confirmation=false 时这两项必须填写，否则脚本拒绝运行。",
+    "confirmed_by": "",
+    "role": "研究负责人（PI）",
+    "confirmed_date": "",
+    "statement": ""
+  },
+  "units": {
+    "_说明": "阈值所用单位，必须与数据的显式单位一致。登记系统导出的随访 UPCR 为 mg/g，eGFR 为 mL/min/1.73m2，血肌酐为 umol/L。如果方案原文用 g/g 或 g/24h，请由 PI 换算为 mg/g 后填写（0.3 g/g = 300 mg/g）；单位不一致时脚本拒绝运行，不会自动换算。UPCR 阈值按此处声明的单位检查量级：mg/g 方案中低于 10 的数值（如 0.3）会被拒绝。",
+    "upcr": "mg/g",
+    "egfr": "mL/min/1.73m2",
+    "scr": "umol/L"
+  },
+  "baseline": {
+    "_说明": "source 可选 baseline_record（使用基线表：基线血肌酐按 CKD-EPI 2021 计算 eGFR，基线 UPCR 按其显式单位换算）、visit_window（取基线日期前后 window_days 天内的随访测量）、baseline_record_else_visit_window（基线表缺失时再用窗口）。aggregate 为 nearest（离基线日最近的一次）或 mean（窗口内各日期均值）。使用窗口时，随访测量从窗口结束日之后开始计。",
+    "egfr": {"source": "baseline_record"},
+    "upcr": {"source": "baseline_record_else_visit_window", "window_days": [-90, 0], "aggregate": "nearest"}
+  },
+  "visit_window_days": 60,
+  "timepoints_days": [180, 365, 730],
+  "_timepoints说明": "按 timepoints_days 中的名义天数，在 ±visit_window_days 天内选离名义日最近的一整条随访，输出到 timepoints_per_protocol.csv。",
+  "egfr_decline": {
+    "_说明": "持续 eGFR 下降：随访 eGFR ≤ 基线 ×(1-阈值%)。confirmation：至少 min_measurements 次连续测量均满足、首末相隔至少 min_interval_days 天；require_last_below=true 时还要求截至最后一次测量仍满足。来源未核实或无法使用的 eGFR 记为“未知”，会打断连续串，不会被跳过。示例阈值 40% 与 57%（57% 约相当于血肌酐倍增），确认间隔示例 28 天。",
+    "_肾衰竭或死亡说明": "kidney_failure_or_death_before_confirmation：在确认 eGFR 下降之前发生已确认的 esrd 或 death 事件（事件表 events_long，且类型列在 censoring.event_types 中）时如何处理。count_as_event：计为终点事件（复合终点，结果列名为 egfr_decline_<阈值>pct_sustained_or_kidney_failure_death，事件日期为该事件日期），避免把肾衰竭/死亡当作截尾而低估下降；censor：在该日期截尾（信息性截尾，会低估下降，仅在方案明确如此定义时使用）。随访状态 kidney_failure/deceased 只作截尾，不计为事件（数据字典说明随访状态不等同于经核实的临床终点事件），请在事件表登记已确认事件。示例取 count_as_event，需 PI 确认。",
+    "requires_pi_confirmation": true,
+    "thresholds_pct_decline": [40, 57],
+    "confirmation": {"min_measurements": 2, "min_interval_days": 28, "require_last_below": false},
+    "kidney_failure_or_death_before_confirmation": "count_as_event",
+    "reference": {
+      "citation": "Levey AS, et al. GFR decline as an end point for clinical trials in CKD: a scientific workshop sponsored by the National Kidney Foundation and the US FDA. Am J Kidney Dis. 2014;64(6):821-835. Heerspink HJL, et al. Dapagliflozin in patients with chronic kidney disease (DAPA-CKD). N Engl J Med. 2020;383:1436-1446.",
+      "note": "示例：阈值、确认间隔与肾衰竭/死亡的处理方式请 PI 对照所引文献原文与本研究方案核对后确认"
+    }
+  },
+  "remission": {
+    "_说明": "按病种代码（与数据 module 一致，只能是 IGAN、LN、MN、DKD、CKD、KTX、GENERAL）分别定义。complete/partial 可用条件：upcr_below（UPCR 低于该值，单位同 units.upcr）、upcr_reduction_pct_at_least（较参照值下降至少该百分比，必须同时写 upcr_reduction_reference：baseline 为方案基线值，peak 为基线窗口起至该次测量之前的最高 UPCR，含基线值）、egfr_stable_max_decline_pct（同日 eGFR 较基线下降不超过该百分比；同日无可用 eGFR 时该次测量记为“未知”，不计为满足并打断连续串）。baseline_upcr_at_least：评估缓解的入选条件，基线 UPCR 可得且不低于该值才评估，否则判为不可评估并写入质控；未填写时至少要求基线 UPCR 可得且高于 complete（无 complete 时为 partial）的 upcr_below。assessment_window_days 为评估窗口：只计窗口起点之后的测量，事件日期（窗口内满足条件的连续串的首个测量日）须落入窗口，null 表示不限。additional_criteria_not_computed 列出脚本无法计算的条件，满足其余条件时结果标为 upcr_egfr_criteria_met_other_criteria_not_evaluated，需人工补核。方案里没有列出的病种不计算缓解，并在质控文件中注明。",
+    "IGAN": {
+      "label": "IgA 肾病蛋白尿缓解（示例）",
+      "requires_pi_confirmation": true,
+      "baseline_upcr_at_least": 300,
+      "_baseline_upcr_at_least说明": "示例取完全缓解阈值本身（基线已低于完全缓解阈值者不评估缓解）。如研究纳入标准要求更高的基线蛋白尿，请 PI 修改。",
+      "complete": {"upcr_below": 300},
+      "partial": {"upcr_below": 1000, "upcr_reduction_pct_at_least": 50, "upcr_reduction_reference": "baseline"},
+      "confirmation": {"min_measurements": 2, "min_interval_days": 28, "require_last_below": false},
+      "assessment_window_days": null,
+      "additional_criteria_not_computed": [],
+      "reference": {
+        "citation": "常用研究定义示例，不是指南原文。请 PI 按所采用的指南版本（如 KDIGO 2021 Clinical Practice Guideline for the Management of Glomerular Diseases 或其后更新）及本研究方案核对原文后确认。",
+        "note": "示例：完全缓解 <300 mg/g、部分缓解 较基线下降≥50% 且 <1000 mg/g 是部分临床研究采用的写法；需 PI 确认"
+      }
+    },
+    "LN": {
+      "label": "狼疮性肾炎肾脏应答（示例）",
+      "requires_pi_confirmation": true,
+      "baseline_upcr_at_least": 500,
+      "_baseline_upcr_at_least说明": "示例取完全应答阈值本身。如研究纳入标准要求更高的基线蛋白尿，请 PI 修改。",
+      "_锚点说明": "狼疮性肾炎应答通常以诱导治疗开始为锚点并在规定月数评估；本脚本以登记 baseline_date 为锚点，评估窗口 [90, 365] 也是相对 baseline_date 的天数。请 PI 确认 baseline_date 是否等于治疗开始日。",
+      "complete": {"upcr_below": 500, "egfr_stable_max_decline_pct": 15},
+      "partial": {"upcr_below": 3000, "upcr_reduction_pct_at_least": 50, "upcr_reduction_reference": "baseline", "egfr_stable_max_decline_pct": 15},
+      "confirmation": {"min_measurements": 2, "min_interval_days": 28, "require_last_below": false},
+      "assessment_window_days": [90, 365],
+      "additional_criteria_not_computed": [],
+      "reference": {
+        "citation": "示例数值。请 PI 按所采用的指南版本（如 KDIGO 2021 Clinical Practice Guideline for the Management of Glomerular Diseases、KDIGO 2024 Clinical Practice Guideline for the Management of Lupus Nephritis 或其后更新）核对原文中完全/部分肾脏应答的定义、肾功能稳定的界定与评估时间。",
+        "note": "示例：15%、评估窗口与确认间隔均为示例值，未转述指南条文；需 PI 确认"
+      }
+    },
+    "MN": {
+      "label": "膜性肾病缓解（示例）",
+      "requires_pi_confirmation": true,
+      "baseline_upcr_at_least": 300,
+      "_baseline_upcr_at_least说明": "示例取完全缓解阈值本身。如研究纳入标准要求更高的基线蛋白尿，请 PI 修改。",
+      "_锚点说明": "膜性肾病缓解常以治疗开始为锚点；本脚本以登记 baseline_date 为锚点。部分缓解示例采用较峰值下降（upcr_reduction_reference=peak，峰值取基线窗口起至该次测量之前的最高 UPCR）。",
+      "complete": {"upcr_below": 300},
+      "partial": {"upcr_below": 3500, "upcr_reduction_pct_at_least": 50, "upcr_reduction_reference": "peak"},
+      "confirmation": {"min_measurements": 2, "min_interval_days": 7, "require_last_below": false},
+      "assessment_window_days": null,
+      "additional_criteria_not_computed": ["血清白蛋白恢复正常（完全缓解）或改善（部分缓解）", "血肌酐正常（完全缓解）或稳定（部分缓解）"],
+      "reference": {
+        "citation": "示例数值。请 PI 按所采用的指南版本（如 KDIGO 2021 Clinical Practice Guideline for the Management of Glomerular Diseases 或其后更新）核对原文中膜性肾病完全/部分缓解的定义（包括下降的参照值、确认次数与间隔、血清白蛋白与血肌酐条件）。",
+        "note": "示例：白蛋白与血肌酐条件脚本未计算，结果需人工补核；需 PI 确认"
+      }
+    }
+  },
+  "censoring": {
+    "_说明": "截尾日期取以下各项中最早者：随访状态（followup_status 属于 followup_status_values）的状态日期；事件表中类型属于 event_types 的事件日期（require_event_confirmed=true 时只用已确认事件）。截尾日当天的测量仍使用，之后的测量不参与终点判定。event_types 只能取登记系统事件表的取值：egfr_decline_40pct、egfr_decline_57pct、esrd、death、complete_remission、partial_remission、custom（肾衰竭为 esrd，不是 eskd）。状态日期早于基线日期时该日期不用于截尾，并写入质控。数据中没有随访状态列时，RUN_LOG 会注明。",
+    "use_followup_status": true,
+    "followup_status_values": ["lost", "withdrawn", "deceased", "kidney_failure", "transferred"],
+    "event_types": ["esrd", "death"],
+    "require_event_confirmed": true
+  }
+}

@@ -20,7 +20,8 @@ test.describe("/demo form flow", () => {
     // Fill required fields
     await page.fill("#f_name", "测试用户");
     await page.fill("#f_institution", "测试医院");
-    await page.fill("#f_email", "test@example.com");
+    await page.selectOption("#f_contact_kind", "email");
+    await page.fill("#f_contact", "test@example.com");
     await page.selectOption("#f_inquiry_type", "预约演示");
 
     // Intercept the Supabase request to delay it
@@ -48,7 +49,8 @@ test.describe("/demo form flow", () => {
     // Fill required fields
     await page.fill("#f_name", "测试用户");
     await page.fill("#f_institution", "测试医院");
-    await page.fill("#f_email", "test@example.com");
+    await page.selectOption("#f_contact_kind", "email");
+    await page.fill("#f_contact", "test@example.com");
     await page.selectOption("#f_inquiry_type", "预约演示");
 
     // Mock a failed response
@@ -70,7 +72,7 @@ test.describe("/demo form flow", () => {
     // Button should be re-enabled for retry
     const submitBtn = page.locator("[data-testid=demo-submit]");
     await expect(submitBtn).toBeEnabled();
-    await expect(submitBtn).toHaveText("提交申请");
+    await expect(submitBtn).toHaveText("提交咨询");
 
     // Success should NOT be shown
     const success = page.locator("[data-testid=demo-success]");

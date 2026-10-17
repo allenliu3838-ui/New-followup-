@@ -106,7 +106,8 @@ $$;
 grant execute on function public.create_billing_order(text,text,int,text,text,text,text,text,boolean,text,text,text,text,text) to authenticated;
 
 -- 3. 更新 get_my_orders() — 返回发票相关字段，方便用户确认开票信息
-create or replace function public.get_my_orders()
+drop function if exists public.get_my_orders();
+create function public.get_my_orders()
 returns table (
   id              uuid,
   order_no        text,
@@ -144,7 +145,8 @@ $$;
 grant execute on function public.get_my_orders() to authenticated;
 
 -- 4. 更新 admin_list_orders() — 返回完整发票字段供管理员开票
-create or replace function public.admin_list_orders(
+drop function if exists public.admin_list_orders(text);
+create function public.admin_list_orders(
   p_status text default null
 )
 returns table (

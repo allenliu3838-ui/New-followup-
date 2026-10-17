@@ -1,0 +1,71 @@
+-- Generated read-only catalog check. No patient values or credentials are returned.
+BEGIN READ ONLY;
+SET LOCAL search_path=pg_catalog,public;
+SET LOCAL TimeZone='UTC';
+WITH checks AS (
+ SELECT jsonb_build_object(
+  '0032_security_integrity',EXISTS(SELECT 1 FROM public.registry_schema_versions WHERE version='0032_security_integrity'),
+  '0033_billing_registration',EXISTS(SELECT 1 FROM public.registry_schema_versions WHERE version='0033_billing_registration'),
+  '0034_import_corrections',EXISTS(SELECT 1 FROM public.registry_schema_versions WHERE version='0034_import_corrections'),
+  '0035_frozen_exports',EXISTS(SELECT 1 FROM public.registry_schema_versions WHERE version='0035_frozen_exports'),
+  '0036_project_members',EXISTS(SELECT 1 FROM public.registry_schema_versions WHERE version='0036_project_members'),
+  '0037_concept_view_security',EXISTS(SELECT 1 FROM public.registry_schema_versions WHERE version='0037_concept_view_security'),
+  'concept_view_invoker',COALESCE((SELECT 'security_invoker=true'=ANY(c.reloptions) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname='v_concept_export_mapping' AND c.relkind='v'),false),
+  'frozen_export_signatures',to_regprocedure('public.create_registry_export(uuid,uuid)') IS NOT NULL AND to_regprocedure('public.get_registry_export(uuid)') IS NOT NULL,
+  'frozen_export_private',(SELECT relrowsecurity FROM pg_class WHERE oid='registry_private.export_contents'::regclass) AND NOT has_table_privilege('anon','registry_private.export_contents','SELECT,INSERT,UPDATE,DELETE') AND NOT has_table_privilege('authenticated','registry_private.export_contents','SELECT,INSERT,UPDATE,DELETE'),
+  'patient_idempotent_signature',to_regprocedure('public.patient_submit_visit_v2(text,date,numeric,numeric,numeric,numeric,numeric,text,uuid)') IS NOT NULL,
+  'atomic_import_signature',to_regprocedure('public.import_registry_rows(uuid,text,jsonb,uuid)') IS NOT NULL,
+  'correction_signature',to_regprocedure('public.correct_registry_record(uuid,text,uuid,jsonb,text)') IS NOT NULL,
+  'account_project_signature',to_regprocedure('public.create_project(text,text,text,text)') IS NOT NULL,
+  'legacy_submit_disabled',NOT EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='patient_submit_visit' AND (has_function_privilege('anon',p.oid,'EXECUTE') OR has_function_privilege('authenticated',p.oid,'EXECUTE'))),
+  'internal_anonymous_writes_disabled',NOT EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('upsert_lab_record','log_field_change','raise_or_update_issue','resolve_issue_if_exists','admin_set_subscription','admin_set_expiry') AND has_function_privilege('anon',p.oid,'EXECUTE')),
+  'core_rls',NOT EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN ('projects','patients_baseline','visits_long','labs_long','meds_long','variants_long','events_long','patient_tokens','billing_orders','registry_schema_versions') AND NOT c.relrowsecurity),
+  '0038_followup_workflow',EXISTS(SELECT 1 FROM public.registry_schema_versions WHERE version='0038_followup_workflow'),
+  '0039_patient_token_hashing',EXISTS(SELECT 1 FROM public.registry_schema_versions WHERE version='0039_patient_token_hashing'),
+  'followup_views',COALESCE((SELECT count(*)=2 AND bool_and('security_invoker=true'=ANY(c.reloptions) AND has_table_privilege('authenticated',c.oid,'SELECT') AND NOT has_table_privilege('anon',c.oid,'SELECT') AND NOT has_table_privilege('authenticated',c.oid,'INSERT,UPDATE,DELETE')) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN ('v_patient_followup_status','v_project_overview') AND c.relkind='v'),false),
+  'study_status_signatures',COALESCE((SELECT bool_and(f IS NOT NULL AND has_function_privilege('authenticated',f,'EXECUTE') AND NOT has_function_privilege('anon',f,'EXECUTE')) FROM unnest(ARRAY[to_regprocedure('public.set_patient_study_status(uuid,text,jsonb,text)'),to_regprocedure('public.set_project_settings(uuid,jsonb)')]::oid[]) AS f),false),
+  'consent_research_derived',COALESCE((SELECT NOT a.attnotnull AND NOT a.atthasdef FROM pg_attribute a WHERE a.attrelid='public.patients_baseline'::regclass AND a.attname='consent_research' AND NOT a.attisdropped),false) AND EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='public.patients_baseline'::regclass AND tgname='registry_consent_research_derived' AND tgenabled='O'),
+  'patient_context_settings',EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='patient_get_context' AND p.proargnames @> ARRAY['public_title','institution_name','ethics_approval_no','contact_display']::text[] AND has_function_privilege('anon',p.oid,'EXECUTE')),
+  'token_hash_only',NOT EXISTS(SELECT 1 FROM public.patient_tokens WHERE token IS NOT NULL) AND EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.patient_tokens'::regclass AND conname='patient_tokens_plaintext_not_stored' AND contype='c' AND convalidated) AND COALESCE((SELECT attnotnull FROM pg_attribute WHERE attrelid='public.patient_tokens'::regclass AND attname='token_hash' AND NOT attisdropped),false) AND NOT EXISTS(SELECT 1 FROM pg_index i JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=ANY(i.indkey) WHERE i.indrelid='public.patient_tokens'::regclass AND a.attname='token'),
+  'token_revoke_by_id',COALESCE((SELECT has_function_privilege('authenticated',f,'EXECUTE') AND NOT has_function_privilege('anon',f,'EXECUTE') FROM to_regprocedure('public.revoke_patient_token_by_id(uuid,uuid,text)') AS f WHERE f IS NOT NULL),false),
+  'registry_local_today',COALESCE((SELECT p.provolatile='s' AND has_function_privilege('authenticated',p.oid,'EXECUTE') AND NOT has_function_privilege('anon',p.oid,'EXECUTE') FROM pg_proc p WHERE p.oid=to_regprocedure('registry_private.local_today()')),false),
+  'study_status_guards',(SELECT count(*)=5 FROM pg_trigger WHERE tgrelid='public.patients_baseline'::regclass AND tgenabled='O' AND tgname IN ('registry_study_status_checks','registry_study_exit_links','registry_consent_research_derived','registry_baseline_date_future','tr_patients_trial_lock')) AND (SELECT count(*)=2 FROM pg_trigger WHERE tgrelid='public.visits_long'::regclass AND tgenabled='O' AND tgname IN ('registry_visit_date_future','trg_auto_egfr_range')),
+  'patient_context_minimal',EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='patient_get_context' AND NOT p.proargnames && ARRAY['project_id','module','trial_expires_at','trial_grace_until','subscription_plan','subscription_active_until','write_block_reason']::text[]),
+  'patient_submit_structured_values',EXISTS(SELECT 1 FROM pg_proc p WHERE p.oid=to_regprocedure('public.patient_submit_visit_v2(text,date,numeric,numeric,numeric,numeric,numeric,text,uuid)') AND p.proargnames @> ARRAY['invalid_fields']::text[] AND has_function_privilege('anon',p.oid,'EXECUTE')),
+  'plaintext_erasure_audited',EXISTS(SELECT 1 FROM public.security_audit_logs WHERE event_type='plaintext_tokens_erased'),
+  'study_status_dedicated_action',COALESCE((SELECT c.relrowsecurity AND NOT has_table_privilege('anon',c.oid,'SELECT,INSERT,UPDATE,DELETE') AND NOT has_table_privilege('authenticated',c.oid,'SELECT,INSERT,UPDATE,DELETE') FROM pg_class c WHERE c.oid=to_regclass('registry_private.study_status_rpc_rows')),false) AND (SELECT count(*)=2 FROM pg_trigger WHERE tgrelid='public.patients_baseline'::regclass AND tgenabled='O' AND tgname IN ('registry_study_status_checks','registry_study_status_insert_audit')) AND EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='public.visits_long'::regclass AND tgenabled='O' AND tgname='a_registry_project_lock'),
+  'set_based_project_rls',NOT EXISTS(SELECT 1 FROM pg_policies WHERE schemaname='public' AND (qual ~ 'has_project_permission' OR with_check ~ 'has_project_permission')) AND COALESCE((SELECT p.prosecdef AND p.provolatile='s' AND has_function_privilege('authenticated',p.oid,'EXECUTE') AND NOT has_function_privilege('anon',p.oid,'EXECUTE') FROM pg_proc p WHERE p.oid=to_regprocedure('registry_private.project_ids_with_permission(text)')),false) AND NOT has_schema_privilege('authenticated','registry_private','USAGE') AND NOT has_schema_privilege('anon','registry_private','USAGE'),
+  'single_billing_order_overload',(SELECT count(*)=1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='create_billing_order')
+ ) AS value
+), contract AS (
+ __DATABASE_CONTRACT_QUERY__
+)
+SELECT jsonb_build_object(
+ 'release','registry-20261012-adoption-v4',
+ 'contract_protocol','registry-contract-v3-pg17',
+ 'database_server_major',current_setting('server_version_num')::int/10000,
+ 'database_contract_sha256','__DATABASE_CONTRACT_SHA256__',
+ 'transaction_read_only',current_setting('transaction_read_only'),
+ 'render_timezone',current_setting('TimeZone'),
+ 'render_search_path',current_setting('search_path'),
+ 'migration_manifest_sha256','__MIGRATION_MANIFEST_SHA256__',
+ 'checked_at',clock_timestamp(),
+ 'database',current_database(),
+ 'server_version',current_setting('server_version'),
+ 'server_version_num',current_setting('server_version_num')::int,
+ 'checks',(SELECT value FROM checks),
+ 'schema_versions',(SELECT jsonb_agg(version ORDER BY version) FROM public.registry_schema_versions),
+ 'row_counts',jsonb_build_object('projects',(SELECT count(*) FROM public.projects),'patients_baseline',(SELECT count(*) FROM public.patients_baseline),'visits_long',(SELECT count(*) FROM public.visits_long),'labs_long',(SELECT count(*) FROM public.labs_long),'meds_long',(SELECT count(*) FROM public.meds_long),'variants_long',(SELECT count(*) FROM public.variants_long),'events_long',(SELECT count(*) FROM public.events_long)),
+ 'legacy_entitlements',jsonb_build_object('total',(SELECT count(*) FROM public.account_entitlements WHERE source_type='legacy'),'active',(SELECT count(*) FROM public.account_entitlements WHERE source_type='legacy' AND revoked_at IS NULL AND starts_at<=now() AND (ends_at IS NULL OR ends_at>now())),'review_required',true),
+ 'estimated_rows',(SELECT jsonb_object_agg(c.relname,c.reltuples::bigint) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN ('projects','patients_baseline','visits_long','labs_long','meds_long','variants_long','events_long')),
+ 'functions',(SELECT jsonb_build_object->'functions' FROM contract),
+ 'triggers',(SELECT jsonb_build_object->'triggers' FROM contract),
+ 'policies',(SELECT jsonb_build_object->'policies' FROM contract),
+ 'tables',(SELECT jsonb_build_object->'tables' FROM contract),
+ 'columns',(SELECT jsonb_build_object->'columns' FROM contract),
+ 'indexes',(SELECT jsonb_build_object->'indexes' FROM contract),
+ 'schema_privileges',(SELECT jsonb_build_object->'schema_privileges' FROM contract),
+ 'views',(SELECT jsonb_build_object->'views' FROM contract),
+ 'buckets',(SELECT jsonb_build_object->'buckets' FROM contract)
+);
+ROLLBACK;

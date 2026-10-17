@@ -1,14 +1,28 @@
-import { supabase } from "/lib/supabase-client.js";
-import { qs, toast, fmtDate, daysLeft, escapeHtml } from "/lib/utils.js";
+import { supabase } from "/lib/supabase-client.js?v=registry-20261012-adoption-v4";
+import { qs, toast, escapeHtml } from "/lib/utils.js?v=registry-20261012-adoption-v4";
+import {
+  normalizedNumber, validateVisit, createRequestId, ckdepi2021, DB_LIMITS, SCR_MGDL_TO_UMOL,
+  studyInfo, classifyPatientError, contextErrorMessage, submissionOutcome, dataLocationLead,
+  beijingDateString, formatLocalDateTime, formatLocalDate, linkFromAddress, addressWithoutLink,
+} from "/lib/patient-workflow.js?v=registry-20261012-adoption-v4";
 
-// Patient page never needs Supabase auth session detection —
-// disabling it prevents Supabase from misreading ?pt= as an auth token
+// The participant page never needs Supabase auth session detection —
+// disabling it prevents the client from misreading ?pt= as an auth token
 // and redirecting to the site root.
 const sb = supabase({ detectSessionInUrl: false, persistSession: false, autoRefreshToken: false });
 
 const el = {
-  ctxSub: qs("#ctxSub"),
-  ctxBox: qs("#ctxBox"),
+  studyTitle: qs("#studyTitle"),
+  studyInfo: qs("#studyInfo"),
+  linkStatus: qs("#linkStatus"),
+  btnVerify: qs("#btnVerifyContext"),
+  btnReload: qs("#btnReload"),
+  dataLocationNote: qs("#dataLocationNote"),
+  formSection: qs("#formSection"),
+  historySection: qs("#historySection"),
+  form: qs("#visitForm"),
+  fields: qs("#visitFields"),
+  unitReview: qs("#unitReview"),
   visitDate: qs("#visitDate"),
   sbp: qs("#sbp"),
   dbp: qs("#dbp"),
@@ -18,59 +32,123 @@ const el = {
   upcrUnit: qs("#upcrUnit"),
   egfr: qs("#egfr"),
   notes: qs("#notes"),
-  btnSubmit: qs("#btnSubmit"),
-  btnRefresh: qs("#btnRefresh"),
-  submitHint: qs("#submitHint"),
+  reviewBox: qs("#reviewBox"),
+  reviewList: qs("#reviewList"),
+  reviewWarnings: qs("#reviewWarnings"),
+  dupBox: qs("#dupBox"),
+  dupConfirm: qs("#dupConfirm"),
   qcBox: qs("#qcBox"),
-  receiptBox: qs("#receiptBox"),
+  btnSubmit: qs("#btnSubmit"),
+  btnBack: qs("#btnBack"),
+  submitHint: qs("#submitHint"),
+  doneBox: qs("#doneBox"),
+  doneList: qs("#doneList"),
+  doneNote: qs("#doneNote"),
+  btnNext: qs("#btnNextVisit"),
+  receiptText: qs("#receiptText"),
+  btnCopyReceipt: qs("#btnCopyReceipt"),
   visitsBox: qs("#visitsBox"),
+  btnRefresh: qs("#btnRefresh"),
+  moreRecords: qs("#moreRecords"),
   labsBox: qs("#labsBox"),
   medsBox: qs("#medsBox"),
   variantsBox: qs("#variantsBox"),
   eventsBox: qs("#eventsBox"),
 };
 
+const FIELD_NAMES = ["visitDate", "sbp", "dbp", "scr", "scrUnit", "upcr", "upcrUnit", "notes"];
+const HISTORY_BOXES = ["visitsBox", "labsBox", "medsBox", "variantsBox", "eventsBox"];
+
 let token = null;
 let ctx = null;
+let busy = false;
+let completed = false;
+let reviewing = null;          // validated values awaiting the participant's confirmation
+let pendingSubmission = null;  // exact payload + request UUID kept for safe retries
+let dirty = false;
+let showErrors = false;
+let contextEpoch = 0;
+let contextFailed = false;
+let verifyRetryable = false;
+let linkUnusable = false;      // link could not be verified: hide form and history
+let readOnlyAtLoad = false;    // project not accepting entries when the page opened
+let extraLoaded = false;
+let exited = false;            // the server says the participant has left the study
+let knownVisitDates = new Set(); // visit dates already on record (from the loaded history)
+let submittedDates = new Set();  // dates submitted from this page, in case history lags
+let focusAfterSubmit = null;   // field to focus once a rejected submission unlocks the form
 
-function getToken(){
-  // Hash-based: /followup#TOKEN — token never touches server or Supabase auth
-  const h = window.location.hash;
-  if (h && h.length > 1) {
-    const tok = decodeURIComponent(h.slice(1));
-    if (tok) return tok;
-  }
-  // Path-based fallback: /p/TOKEN
-  const path = window.location.pathname || "";
-  const m = path.match(/\/p\/([^\/]+)$/);
-  if (m && m[1]) return m[1];
-  // Query param fallbacks (?pt= new, ?token= legacy)
-  const q = new URLSearchParams(window.location.search);
-  return q.get("pt") || q.get("token");
+// Read-only calls give up after a while so a stalled network never leaves the page waiting
+// forever. A submission that times out is retried with the same request id (no duplicate).
+const READ_TIMEOUT_MS = 20000;
+const SUBMIT_TIMEOUT_MS = 45000;
+
+const display = value => value === null || value === undefined || value === "" ? "未填写" : String(value);
+const cell = value => escapeHtml(display(value));
+const roundForDisplay = value => Number.isFinite(value) ? String(Math.round(value * 100) / 100) : "未填写";
+
+async function callRpc(name, args, timeoutMs){
+  const request = sb.rpc(name, args);
+  if (typeof AbortController !== "function" || typeof request.abortSignal !== "function") return request;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try { return await request.abortSignal(controller.signal); }
+  finally { clearTimeout(timer); }
 }
 
-function ckdepi2021(scr_mg_dl, age, sex){
-  if (!scr_mg_dl || !age || !sex) return null;
-  const isF = String(sex).toUpperCase() === "F";
-  const k = isF ? 0.7 : 0.9;
-  const alpha = isF ? -0.241 : -0.302;
-  const min = Math.min(scr_mg_dl / k, 1);
-  const max = Math.max(scr_mg_dl / k, 1);
-  let egfr = 142 * Math.pow(min, alpha) * Math.pow(max, -1.200) * Math.pow(0.9938, age);
-  if (isF) egfr *= 1.012;
-  return egfr;
+function linkInAddress(){
+  return linkFromAddress({ hash: window.location.hash, pathname: window.location.pathname, search: window.location.search });
 }
 
-function toInternalScrUmol(){
-  const raw = el.scr.value ? Number(el.scr.value) : null;
-  if (raw === null || Number.isNaN(raw)) return null;
-  return el.scrUnit.value === "mgdl" ? raw * 88.4 : raw;
+// Take the link out of the address bar and the current history entry; from here on it is
+// kept in memory only (token). Re-verifying or retrying uses the in-memory value.
+function removeLinkFromAddress(){
+  try {
+    const clean = addressWithoutLink(window.location.href);
+    if (clean !== window.location.pathname + window.location.search + window.location.hash) window.history.replaceState(null, "", clean);
+  } catch (_) { /* very old browsers: the page still works, the link stays in the address bar */ }
 }
 
-function toInternalUpcrMgG(){
-  const raw = el.upcr.value ? Number(el.upcr.value) : null;
-  if (raw === null || Number.isNaN(raw)) return null;
-  return el.upcrUnit.value === "gg" ? raw * 1000 : raw;
+function canWrite(){
+  return !!ctx && !contextFailed && ctx.can_write === true;
+}
+
+function contactSuffix(){
+  const contact = ctx ? studyInfo(ctx).contact : null;
+  return contact ? `（研究团队联系方式：${contact}）` : "";
+}
+
+function setHint(text){
+  el.submitHint.textContent = text || "";
+}
+
+function updateControls(){
+  const locked = !canWrite();
+  el.formSection.hidden = !completed && (linkUnusable || readOnlyAtLoad || exited);
+  el.historySection.hidden = linkUnusable;
+  el.form.hidden = completed;
+  el.doneBox.hidden = !completed;
+  el.fields.disabled = locked || busy || !!pendingSubmission || !!reviewing;
+  el.btnSubmit.disabled = locked || busy;
+  el.btnSubmit.textContent = busy ? "正在提交…" : pendingSubmission ? "重试提交" : reviewing ? "确认提交" : "核对并提交";
+  el.btnSubmit.setAttribute("aria-busy", busy ? "true" : "false");
+  el.btnBack.hidden = !reviewing || !!pendingSubmission;
+  el.btnBack.disabled = busy;
+  el.reviewBox.hidden = !reviewing || completed;
+  el.dupConfirm.disabled = busy || !!pendingSubmission;
+  el.btnNext.hidden = !completed || ctx?.single_use === true;
+  el.btnNext.disabled = busy;
+  el.btnVerify.hidden = !(contextFailed && verifyRetryable);
+  el.btnVerify.disabled = busy;
+  el.btnRefresh.disabled = busy || !ctx || contextFailed || (completed && ctx.single_use === true);
+}
+
+function clearVisitFields(){
+  for (const name of ["visitDate", "sbp", "dbp", "scr", "upcr", "egfr", "notes"]) el[name].value = "";
+  el.scrUnit.value = "umol";
+  el.upcrUnit.value = "mgg";
+  dirty = false;
+  showErrors = false;
 }
 
 function detectPII(s){
@@ -86,359 +164,500 @@ function detectPII(s){
   return rules.some((r) => r.test(v));
 }
 
-function computeEgfr(){
-  if (!ctx) return;
-  const scr_umol = toInternalScrUmol();
-  if (!scr_umol) { el.egfr.value = ""; return; }
-  const scr_mg = scr_umol / 88.4;
+// Same inputs as the server's eGFR trigger (sex, birth year, visit year), rounded to 0.1.
+function estimateEgfr(){
+  if (!ctx || !el.visitDate.value) return null;
+  const scr = normalizedNumber(el.scr.value, el.scrUnit.value === "mgdl" ? SCR_MGDL_TO_UMOL : 1);
   const year = Number(ctx.birth_year);
-  const vdate = el.visitDate.value ? new Date(el.visitDate.value) : null;
-  const age = (vdate && year) ? (vdate.getFullYear() - year) : null;
-  const egfr = ckdepi2021(scr_mg, age, ctx.sex);
-  if (!egfr || Number.isNaN(egfr)) { el.egfr.value = ""; return; }
-  el.egfr.value = egfr.toFixed(1);
+  const age = year ? Number(el.visitDate.value.slice(0, 4)) - year : null;
+  const value = ckdepi2021(scr === null ? NaN : scr / SCR_MGDL_TO_UMOL, age, ctx.sex);
+  return value === null ? null : Math.round(value * 10) / 10;
+}
+
+function computeEgfr(){
+  const value = estimateEgfr();
+  el.egfr.value = value === null ? "" : value.toFixed(1);
 }
 
 function getQcState(){
-  const visitDate = el.visitDate.value;
-  const sbp = el.sbp.value ? Number(el.sbp.value) : null;
-  const dbp = el.dbp.value ? Number(el.dbp.value) : null;
-  const scr_umol = toInternalScrUmol();
-  const upcr_mgg = toInternalUpcrMgG();
-  const notes = el.notes.value || "";
-
-  const missing = [];
-  if (!visitDate) missing.push("日期");
-  if (sbp === null || Number.isNaN(sbp)) missing.push("SBP");
-  if (dbp === null || Number.isNaN(dbp)) missing.push("DBP");
-  if (scr_umol === null || Number.isNaN(scr_umol)) missing.push("Scr");
-  if (upcr_mgg === null || Number.isNaN(upcr_mgg)) missing.push("UPCR");
-
-  const warnings = [];
-  if (sbp !== null && (sbp < 70 || sbp > 220)) warnings.push(`SBP=${sbp} 超出常见范围(70-220)`);
-  if (dbp !== null && (dbp < 40 || dbp > 130)) warnings.push(`DBP=${dbp} 超出常见范围(40-130)`);
-  if (scr_umol !== null && (scr_umol < 20 || scr_umol > 2000)) warnings.push(`Scr=${scr_umol.toFixed(1)} μmol/L 超出常见范围(20-2000)`);
-  if (upcr_mgg !== null && (upcr_mgg < 0 || upcr_mgg > 10000)) warnings.push(`UPCR=${upcr_mgg.toFixed(2)} mg/g 超出常见范围(0-10000)`);
-
-  const piiHit = detectPII(ctx?.patient_code || "") || detectPII(notes);
-  const status = (missing.length === 0 && !piiHit) ? "达标" : "未达标";
-
-  return { visitDate, sbp, dbp, scr_umol, upcr_mgg, notes, missing, warnings, piiHit, status };
+  const values = Object.fromEntries(FIELD_NAMES.map(name => [name, el[name].value]));
+  const q = validateVisit(values);
+  if (q.visitDate && q.visitDate > beijingDateString()) q.errors.push({field: "visitDate", message: "随访日期不能晚于今天。"});
+  // The database also limits the eGFR it computes from creatinine (0–200).
+  const egfr = estimateEgfr();
+  if (egfr !== null && egfr > DB_LIMITS.egfr[1] && !q.errors.some(error => error.field === "scr")) {
+    q.errors.push({field: "scr", message: `按这个肌酐数值自动估算的 eGFR 为 ${egfr}，超出可接受范围，请核对肌酐数值和单位。`});
+  }
+  // The research code comes from the verified link, never from editable input.
+  if (detectPII(q.notes)) q.errors.push({field: "notes", message: "备注中似乎有姓名、电话、病案号或身份证号等信息，请删除。"});
+  return q;
 }
 
 function renderQc(){
+  if (completed) { el.qcBox.innerHTML = ""; el.unitReview.innerHTML = ""; return; }
   const q = getQcState();
-  let html = `<b>本次随访：${q.status}</b>`;
-  if (q.missing.length) html += `<div style="margin-top:6px;color:#b91c1c">缺失：${escapeHtml(q.missing.join(" / "))}</div>`;
-  if (q.piiHit) html += `<div style="margin-top:6px;color:#b91c1c">检测到疑似 PII（patient_code 或备注），已禁止提交。</div>`;
-  if (q.warnings.length) html += `<div style="margin-top:6px;color:#92400e">QC 警告：${escapeHtml(q.warnings.join("；"))}</div>`;
-  if (!q.missing.length && !q.piiHit && !q.warnings.length) html += `<div style="margin-top:6px;color:#166534">核心四项完整，未见明显异常。</div>`;
+  const visible = showErrors ? q.errors : q.errors.filter(error => error.field === "notes");
+  let html = "";
+  if (visible.length) html += `<b>请补充或核对：</b><ul>${visible.map(error => `<li>${escapeHtml(error.message)}</li>`).join("")}</ul>`;
+  if (q.warnings.length) html += `<div class="qc-warning">请核对：${escapeHtml(q.warnings.join("；"))}</div>`;
   el.qcBox.innerHTML = html;
+  el.unitReview.innerHTML = el.scr.value || el.upcr.value
+    ? `<b>换算后将保存为</b><div>血清肌酐：${escapeHtml(roundForDisplay(q.scr_umol))} μmol/L</div><div>UPCR：${escapeHtml(roundForDisplay(q.upcr_mgg))} mg/g</div>`
+    : "";
 }
 
-function renderReceipt(row, qcWarnings){
-  if (!row) return;
-  const payload = JSON.stringify({ rid: row.visit_id, t: row.receipt_token, exp: row.receipt_expires_at });
-  const qr = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(payload)}`;
-  el.receiptBox.style.display = "block";
-  el.receiptBox.innerHTML = `
-    <div><b>提交回执</b></div>
-    <div class="small" style="margin-top:6px">record_id：<code>${escapeHtml(row.visit_id)}</code></div>
-    <div class="small">服务器时间：${escapeHtml(fmtDate(row.server_time))}</div>
-    <div class="small">摘要：${escapeHtml(el.visitDate.value)} · BP ${escapeHtml(el.sbp.value)}/${escapeHtml(el.dbp.value)} · Scr ${escapeHtml((toInternalScrUmol()||"").toString())} μmol/L · UPCR ${escapeHtml((toInternalUpcrMgG()||"").toString())} mg/g</div>
-    <div class="small">QC：${qcWarnings.length ? `<span style="color:#92400e">${escapeHtml(qcWarnings.join('；'))}</span>` : `<span style="color:#166534">无警告</span>`}</div>
-    <div class="small">校验 token 有效期：至 ${escapeHtml(fmtDate(row.receipt_expires_at))}</div>
-    <img src="${qr}" alt="receipt qr" style="margin-top:8px;border:1px solid rgba(15,23,42,.12);border-radius:8px;background:#fff"/>
-    <div class="small muted">二维码仅包含 record_id + 短期校验 token，不含医学值和身份信息。</div>
-  `;
+function renderReview(q){
+  const scrUnit = el.scrUnit.value === "mgdl" ? "mg/dL" : "μmol/L";
+  const upcrUnit = el.upcrUnit.value === "gg" ? "g/g" : "mg/g";
+  const scrText = scrUnit === "μmol/L" ? `${el.scr.value} μmol/L` : `${el.scr.value} ${scrUnit}（换算为 ${roundForDisplay(q.scr_umol)} μmol/L）`;
+  const upcrText = upcrUnit === "mg/g" ? `${el.upcr.value} mg/g` : `${el.upcr.value} ${upcrUnit}（换算为 ${roundForDisplay(q.upcr_mgg)} mg/g）`;
+  const rows = [
+    ["研究编号", ctx.patient_code],
+    ["随访日期", q.visitDate],
+    ["血压", `${q.sbp}/${q.dbp} mmHg`],
+    ["血清肌酐", scrText],
+    ["UPCR", upcrText],
+    ["备注", q.notes || "无"],
+  ];
+  el.reviewList.innerHTML = rows.map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd>`).join("");
+  el.reviewWarnings.textContent = q.warnings.length ? `请特别核对：${q.warnings.join("；")}` : "";
+  el.dupConfirm.checked = false;
+  el.dupBox.hidden = !q.sameDay;
+}
+
+function renderStudy(){
+  const info = studyInfo(ctx);
+  document.title = `${info.title}｜随访填报`;
+  el.studyTitle.textContent = info.title;
+  const rows = [];
+  // Entered by the study team, not verified by the platform: say who provided them.
+  if (info.institution) rows.push(["研究机构", `${info.institution}（由研究团队提供）`]);
+  if (info.ethics) rows.push(["伦理批件号", `${info.ethics}（由研究团队提供）`]);
+  rows.push(["研究团队联系方式", info.contact || "请联系邀请您参加本研究的医生或研究护士"]);
+  rows.push(["研究编号", ctx.patient_code]);
+  if (ctx.center_code) rows.push(["中心编号", ctx.center_code]);
+  const expires = formatLocalDate(ctx.token_expires_at);
+  rows.push(["随访链接", `${ctx.single_use ? "只能提交一次" : "可按研究安排多次填写"}${expires ? `，有效期至 ${expires}` : ""}`]);
+  el.studyInfo.innerHTML = rows.map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd>`).join("");
+  readOnlyAtLoad = ctx.can_write !== true;
+  el.linkStatus.className = ctx.can_write ? "link-status" : "link-status warnbox";
+  // Never show billing/trial/read-only reasons to participants.
+  el.linkStatus.textContent = ctx.can_write ? "" : `本研究暂时不接受在线填报，请联系研究团队。${contactSuffix()}`;
+}
+
+function showContextError(error){
+  const problem = contextErrorMessage(error);
+  linkUnusable = true;
+  verifyRetryable = problem.kind === "network" || problem.kind === "unknown" || problem.kind === "unavailable";
+  document.title = "随访链接无法使用";
+  el.studyTitle.textContent = "无法打开这个随访链接";
+  el.studyInfo.innerHTML = "";
+  el.linkStatus.className = "link-status warnbox";
+  el.linkStatus.textContent = problem.message;
 }
 
 async function loadContext(){
-  el.ctxSub.textContent = "加载中…";
-  const { data, error } = await sb.rpc("patient_get_context", { p_token: token });
-  if (error){
-    console.error("patient_get_context error:", error);
-    el.ctxSub.textContent = "链接验证失败";
-    el.ctxBox.innerHTML = `<div class='muted small' style='color:#dc2626'>错误：${escapeHtml(error.message || JSON.stringify(error))}。<br>请联系中心研究人员重新生成随访链接。</div>`;
-    el.btnSubmit.disabled = true;
-    return;
+  const epoch = contextEpoch;
+  const requestToken = token;
+  contextFailed = true;
+  verifyRetryable = false;
+  updateControls();
+  try {
+    const {data, error} = await callRpc("patient_get_context", {p_token: requestToken}, READ_TIMEOUT_MS);
+    if (epoch !== contextEpoch) return false;
+    if (error) throw error;
+    const next = Array.isArray(data) ? data[0] : data;
+    if (!next) throw new Error("token_invalid_or_expired");
+    // can_write is authoritative; client clocks and billing fields never decide access.
+    if (typeof next.can_write !== "boolean") throw new Error("context_contract_unavailable");
+    ctx = next;
+    contextFailed = false;
+    linkUnusable = false;
+    renderStudy();
+    computeEgfr(); renderQc(); updateControls();
+    return true;
+  } catch (error) {
+    if (epoch !== contextEpoch) return false;
+    contextFailed = true;
+    ctx = null;
+    showContextError(error);
+    setHint("");
+    updateControls();
+    return false;
   }
-  ctx = data?.[0] || null;
-  if (!ctx){
-    el.ctxSub.textContent = "链接无效或已过期";
-    el.ctxBox.innerHTML = "<div class='muted small'>该链接已失效（可能已被撤销或过期）。请联系中心研究人员获取新的随访链接。</div>";
-    el.btnSubmit.disabled = true;
-    return;
-  }
-
-  const left = ctx.trial_expires_at ? daysLeft(ctx.trial_expires_at) : null;
-  let trialTxt = "未配置";
-  let trialBadge = "";
-  if (left !== null){
-    if (left >= 0){
-      trialTxt = `试用中：剩余 ${left} 天（到期 ${fmtDate(ctx.trial_expires_at)}）`;
-      trialBadge = "<span class='badge ok'>可录入</span>";
-    } else {
-      trialTxt = `已到期：项目只读（${fmtDate(ctx.trial_expires_at)}）`;
-      trialBadge = "<span class='badge bad'>只读</span>";
-      el.btnSubmit.disabled = true;
-      el.submitHint.textContent = "提示：项目试用已到期，当前为只读。";
-    }
-  }
-
-  el.ctxSub.textContent = `${ctx.project_name} · 中心=${ctx.center_code} · 模块=${ctx.module}`;
-  el.ctxBox.innerHTML = `
-    <div>项目</div><div><b>${escapeHtml(ctx.project_name)}</b></div>
-    <div>中心</div><div><code>${escapeHtml(ctx.center_code)}</code></div>
-    <div>模块</div><div><code>${escapeHtml(ctx.module)}</code></div>
-    <div>研究编号</div><div><b>${escapeHtml(ctx.patient_code)}</b></div>
-    <div>试用状态</div><div>${trialBadge} <span class="muted small">${escapeHtml(trialTxt)}</span></div>
-  `;
-
-  if (!el.visitDate.value){
-    el.visitDate.value = new Date().toISOString().slice(0,10);
-  }
-  computeEgfr();
-  renderQc();
 }
 
-async function submitVisit(){
-  if (!ctx) return;
-  const q = getQcState();
+function buildReceipt(row, q){
+  const lines = [
+    "随访提交回执",
+    `研究：${studyInfo(ctx).title}`,
+    `研究编号：${ctx.patient_code}`,
+    `随访日期：${q.visitDate}`,
+    `血压：${q.sbp}/${q.dbp} mmHg`,
+    `血清肌酐：${roundForDisplay(q.scr_umol)} μmol/L`,
+    `UPCR：${roundForDisplay(q.upcr_mgg)} mg/g`,
+    `提交时间：${formatLocalDateTime(row.server_time) || formatLocalDateTime(new Date())}`,
+    `记录编号：${row.visit_id}`,
+  ];
+  if (row.receipt_token) lines.push(`核对码：${row.receipt_token}`);
+  if (row.receipt_expires_at) lines.push(`核对码有效期至：${formatLocalDateTime(row.receipt_expires_at)}`);
+  return lines.join("\n");
+}
 
-  if (q.missing.length){
-    toast(`核心四项缺失：${q.missing.join('/')}`);
-    renderQc();
-    return;
+function renderDone(row, q, outcome){
+  const submittedAt = formatLocalDateTime(row.server_time) || formatLocalDateTime(new Date());
+  const rows = [
+    ["研究编号", ctx.patient_code],
+    ["随访日期", q.visitDate],
+    ["提交时间", submittedAt],
+    ["本次数值", `血压 ${q.sbp}/${q.dbp} mmHg；肌酐 ${roundForDisplay(q.scr_umol)} μmol/L；UPCR ${roundForDisplay(q.upcr_mgg)} mg/g`],
+  ];
+  el.doneList.innerHTML = rows.map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd>`).join("");
+  const lead = outcome.replay ? "这次填写此前已经保存成功，没有重复保存。" : "研究团队已收到本次随访。";
+  el.doneNote.textContent = ctx.single_use
+    ? `${lead}这个随访链接只能提交一次，现已完成；下次随访时研究团队会发给您新的链接。发现填错请联系研究团队更正。${contactSuffix()}`
+    : `${lead}如还有另一次随访（例如另一天的化验结果）需要填写，请点击“再填一次”。发现填错请联系研究团队更正。${contactSuffix()}`;
+  el.receiptText.value = buildReceipt(row, q);
+}
+
+function handleFailure(outcome){
+  const message = `${outcome.message}${outcome.kind === "network" || outcome.kind === "unknown" ? "" : contactSuffix()}`;
+  switch (outcome.kind) {
+    case "token":
+    case "blocked":
+    case "limit":
+      pendingSubmission = null; reviewing = null;
+      if (ctx) ctx.can_write = false;
+      setHint(message);
+      break;
+    case "conflict":
+      // Keep the page as evidence; never let the participant re-enter the same visit.
+      if (ctx) ctx.can_write = false;
+      setHint(message);
+      break;
+    case "exited":
+      // Not an error the participant can fix: stop the form and say so at the top.
+      pendingSubmission = null; reviewing = null; exited = true;
+      if (ctx) ctx.can_write = false;
+      clearVisitFields();
+      el.linkStatus.className = "link-status warnbox";
+      el.linkStatus.textContent = message;
+      setHint(message);
+      focusAfterSubmit = "linkStatus";
+      break;
+    case "input":
+      // Nothing was saved (and a single-use link is not used up): back to the form to fix it.
+      pendingSubmission = null; reviewing = null;
+      showErrors = true;
+      setHint(message);
+      focusAfterSubmit = outcome.fields?.[0] || "sbp";
+      break;
+    default:
+      // Network or unknown result: keep the exact payload and request UUID.
+      // A retry is answered with the existing receipt, never a second record.
+      setHint(`${message}请点击“重试提交”，系统不会重复保存同一次填写。`);
   }
-  if (q.piiHit){
-    toast("检测到疑似 PII，已禁止提交");
-    renderQc();
-    return;
-  }
+  toast(outcome.message);
+}
 
-  if (q.warnings.length){
-    const ok = window.confirm(`检测到数值异常：\n- ${q.warnings.join("\n- ")}\n\n确认仍要提交吗？`);
-    if (!ok) return;
-  }
-
-  const payload = {
-    p_token: token,
-    p_visit_date: q.visitDate,
-    p_sbp: q.sbp,
-    p_dbp: q.dbp,
-    p_scr_umol_l: q.scr_umol,
-    p_upcr: q.upcr_mgg,
-    p_egfr: el.egfr.value ? Number(el.egfr.value) : null,
-    p_notes: q.notes ? q.notes.slice(0, 500) : null,
-  };
-
-  el.btnSubmit.disabled = true;
-  try{
-    const { data, error } = await sb.rpc("patient_submit_visit_v2", payload);
+async function sendSubmission(){
+  const epoch = contextEpoch;
+  busy = true; updateControls();
+  setHint("正在提交，请稍候，不要关闭本页…");
+  try {
+    const {data, error} = await callRpc("patient_submit_visit_v2", pendingSubmission.payload, SUBMIT_TIMEOUT_MS);
+    if (epoch !== contextEpoch) return;
     if (error) throw error;
-    const row = data?.[0];
-    toast("已提交随访");
-    el.notes.value = "";
-    renderReceipt(row, q.warnings);
+    const row = Array.isArray(data) ? data[0] : data;
+    const outcome = submissionOutcome(row);
+    if (outcome.kind !== "submitted") { handleFailure(outcome); return; }
+    const q = pendingSubmission.q;
+    pendingSubmission = null; reviewing = null; completed = true;
+    submittedDates.add(q.visitDate);
+    renderDone(row, q, outcome);
+    clearVisitFields();
+    setHint("");
     renderQc();
-    await loadVisits();
-  }catch(e){
-    console.error(e);
-    const msg = e?.message || String(e);
-    if (msg.includes("pii_detected_blocked")){
-      toast("疑似 PII，提交已被系统阻止");
-    }else if (msg.includes("missing_core_fields")){
-      toast("核心四项缺失，提交已被系统阻止");
-    }else if (msg.includes("rate_limited") || msg.includes("frozen")){
-      toast("提交过于频繁，token 已自动冻结，请联系管理员");
-    }else{
-      toast("提交失败：" + msg);
+    toast("已提交。");
+    // A consumed single-use link must not request protected history again.
+    if (ctx.single_use) clearHistory("这个单次随访链接已完成。历史记录请向研究团队核对。");
+    else { extraLoaded = false; loadVisits(); if (el.moreRecords.open) loadExtras(); }
+  } catch (error) {
+    if (epoch !== contextEpoch) return;
+    handleFailure(classifyPatientError(error));
+  } finally {
+    if (epoch === contextEpoch) {
+      busy = false; updateControls(); renderQc();
+      if (completed) el.doneBox.scrollIntoView?.({block: "start", behavior: "smooth"});
+      const target = focusAfterSubmit && el[focusAfterSubmit];
+      focusAfterSubmit = null;
+      if (target === el.linkStatus) target.scrollIntoView?.({block: "start"});
+      else if (target) target.focus();
     }
-  }finally{
-    el.btnSubmit.disabled = false;
   }
+}
+
+async function onSubmit(event){
+  event?.preventDefault();
+  if (busy || completed || !canWrite()) return;
+  if (pendingSubmission) return sendSubmission();
+  if (!reviewing) {
+    showErrors = true;
+    const q = getQcState();
+    renderQc();
+    if (q.errors.length) {
+      el[q.errors[0].field]?.focus();
+      setHint(q.errors[0].message);
+      return;
+    }
+    q.sameDay = knownVisitDates.has(q.visitDate) || submittedDates.has(q.visitDate);
+    reviewing = q;
+    renderReview(q);
+    setHint("");
+    updateControls();
+    el.reviewBox.scrollIntoView?.({block: "nearest"});
+    el.btnSubmit.focus();
+    return;
+  }
+  if (reviewing.sameDay && !el.dupConfirm.checked) {
+    setHint("这一天已经有一条随访记录。如确定还要再提交一条，请先勾选“确定，再提交一条”；如果是同一次化验，请点击“返回修改”。");
+    el.dupConfirm.focus();
+    return;
+  }
+  try {
+    const q = reviewing;
+    pendingSubmission = {q, payload: {
+      p_token: token, p_visit_date: q.visitDate, p_sbp: q.sbp, p_dbp: q.dbp,
+      p_scr_umol_l: q.scr_umol, p_upcr: q.upcr_mgg, p_egfr: normalizedNumber(el.egfr.value),
+      p_notes: q.notes || null, p_request_id: createRequestId(window.crypto),
+    }};
+  } catch (error) {
+    setHint("当前浏览器版本过旧，不能安全提交。请换用手机自带浏览器或微信的最新版本后再打开链接。");
+    return;
+  }
+  return sendSubmission();
+}
+
+function backToEdit(){
+  if (busy || pendingSubmission) return;
+  reviewing = null;
+  setHint("");
+  updateControls();
+  el.sbp.focus();
+}
+
+async function nextVisit(){
+  if (!completed || busy || ctx?.single_use) return;
+  busy = true; updateControls();
+  const valid = await loadContext();
+  busy = false;
+  if (valid && ctx.can_write) {
+    completed = false; reviewing = null; clearVisitFields();
+    el.doneList.innerHTML = ""; el.receiptText.value = "";
+    setHint("请填写另一次随访：重新填写日期和各项数值。");
+    renderQc(); updateControls(); el.visitDate.focus();
+    return;
+  }
+  if (valid) setHint(`现在不能再次填写。${el.linkStatus.textContent}`);
+  updateControls();
+}
+
+function clearHistory(message){
+  for (const name of HISTORY_BOXES) el[name].textContent = message;
+}
+
+async function historyRows(name, rpc, limit){
+  const epoch = contextEpoch;
+  el[name].textContent = "正在读取…";
+  try {
+    const {data, error} = await callRpc(rpc, {p_token: token, p_limit: limit}, READ_TIMEOUT_MS);
+    if (epoch !== contextEpoch) return null;
+    if (error) throw error;
+    if (!Array.isArray(data)) throw new Error("invalid_history_response");
+    return data;
+  } catch (_) {
+    if (epoch === contextEpoch) el[name].textContent = "暂时没能读取，这不代表没有记录。请点击“刷新记录”重试；仍不行请联系研究团队。";
+    return null;
+  }
+}
+
+function table(headers, rows){
+  return `<div class="patient-table-wrap"><table class="table"><thead><tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
 }
 
 async function loadVisits(){
-  el.visitsBox.innerHTML = "<div class='muted small'>加载中…</div>";
-  const { data, error } = await sb.rpc("patient_list_visits", { p_token: token, p_limit: 30 });
-  if (error){
-    console.error(error);
-    el.visitsBox.innerHTML = "<div class='muted small'>读取失败</div>";
-    return;
-  }
-  const rows = data || [];
-  if (!rows.length){
-    el.visitsBox.innerHTML = "<div class='muted small'>暂无随访记录</div>";
-    return;
-  }
-  const trs = rows.map(r=>`
-    <tr>
-      <td>${escapeHtml(r.visit_date||"")}</td>
-      <td>${escapeHtml(r.sbp||"")}/${escapeHtml(r.dbp||"")}</td>
-      <td>${escapeHtml(r.scr_umol_l||"")}</td>
-      <td>${escapeHtml(r.upcr||"")}</td>
-      <td>${escapeHtml(r.egfr||"")}</td>
-      <td class="muted small">${escapeHtml((r.notes||"").slice(0,60))}</td>
-    </tr>
-  `).join("");
-  el.visitsBox.innerHTML = `
-    <table class="table">
-      <thead><tr><th>日期</th><th>BP</th><th>Scr(μmol/L)</th><th>UPCR(mg/g)</th><th>eGFR</th><th>备注</th></tr></thead>
-      <tbody>${trs}</tbody>
-    </table>
-  `;
+  const rows = await historyRows("visitsBox", "patient_list_visits", 30);
+  if (rows === null) return;
+  // Used to ask before a second record for a date that already has one.
+  knownVisitDates = new Set(rows.map(r => r.visit_date).filter(Boolean).map(String));
+  if (!rows.length) { el.visitsBox.innerHTML = "<div class='muted small'>还没有随访记录</div>"; return; }
+  el.visitsBox.innerHTML = table(["日期", "血压（mmHg）", "肌酐（μmol/L）", "UPCR（mg/g）", "eGFR", "备注"], rows.map(r => `<tr>
+      <td>${escapeHtml(r.visit_date || "")}</td>
+      <td>${cell(r.sbp)}/${cell(r.dbp)}</td>
+      <td>${cell(r.scr_umol_l)}</td>
+      <td>${cell(r.upcr)}</td>
+      <td>${cell(r.egfr)}</td>
+      <td class="muted small">${escapeHtml((r.notes || "").slice(0, 60))}</td>
+    </tr>`));
 }
 
 async function loadLabs(){
-  if (!el.labsBox) return;
-  el.labsBox.innerHTML = "<div class='muted small'>加载中…</div>";
-  const { data, error } = await sb.rpc("patient_list_labs", { p_token: token, p_limit: 20 });
-  if (error){
-    el.labsBox.innerHTML = "<div class='muted small'>读取失败</div>";
-    return;
-  }
-  const rows = data || [];
-  if (!rows.length){
-    el.labsBox.innerHTML = "<div class='muted small'>暂无化验记录</div>";
-    return;
-  }
-  const trs = rows.map(r=>`
-    <tr>
-      <td>${escapeHtml(r.lab_date||"")}</td>
-      <td>${escapeHtml(r.lab_name||"")}</td>
-      <td>${escapeHtml(r.lab_value!=null?String(r.lab_value):"")}</td>
-      <td>${escapeHtml(r.lab_unit||"")}</td>
-    </tr>
-  `).join("");
-  el.labsBox.innerHTML = `
-    <table class="table">
-      <thead><tr><th>日期</th><th>项目</th><th>数值</th><th>单位</th></tr></thead>
-      <tbody>${trs}</tbody>
-    </table>
-  `;
+  const rows = await historyRows("labsBox", "patient_list_labs", 20);
+  if (rows === null) return;
+  if (!rows.length) { el.labsBox.innerHTML = "<div class='muted small'>暂无化验记录</div>"; return; }
+  el.labsBox.innerHTML = table(["日期", "项目", "数值", "单位"], rows.map(r => `<tr>
+      <td>${escapeHtml(r.lab_date || "")}</td>
+      <td>${escapeHtml(r.lab_name || "")}</td>
+      <td>${escapeHtml(r.lab_value != null ? String(r.lab_value) : "")}</td>
+      <td>${escapeHtml(r.lab_unit || "")}</td>
+    </tr>`));
 }
 
 async function loadMeds(){
-  if (!el.medsBox) return;
-  el.medsBox.innerHTML = "<div class='muted small'>加载中…</div>";
-  const { data, error } = await sb.rpc("patient_list_meds", { p_token: token, p_limit: 20 });
-  if (error){
-    el.medsBox.innerHTML = "<div class='muted small'>读取失败</div>";
-    return;
-  }
-  const rows = data || [];
-  if (!rows.length){
-    el.medsBox.innerHTML = "<div class='muted small'>暂无用药记录</div>";
-    return;
-  }
-  const trs = rows.map(r=>`
-    <tr>
-      <td>${escapeHtml(r.drug_name||"")}</td>
-      <td>${escapeHtml(r.drug_class||"")}</td>
-      <td>${escapeHtml(r.dose||"")}</td>
-      <td>${escapeHtml(r.start_date||"")}</td>
-      <td>${escapeHtml(r.end_date||"")}</td>
-    </tr>
-  `).join("");
-  el.medsBox.innerHTML = `
-    <table class="table">
-      <thead><tr><th>药品</th><th>类别</th><th>剂量</th><th>开始</th><th>结束</th></tr></thead>
-      <tbody>${trs}</tbody>
-    </table>
-  `;
+  const rows = await historyRows("medsBox", "patient_list_meds", 20);
+  if (rows === null) return;
+  if (!rows.length) { el.medsBox.innerHTML = "<div class='muted small'>暂无用药记录</div>"; return; }
+  el.medsBox.innerHTML = table(["药品", "类别", "剂量", "开始", "结束"], rows.map(r => `<tr>
+      <td>${escapeHtml(r.drug_name || "")}</td>
+      <td>${escapeHtml(r.drug_class || "")}</td>
+      <td>${escapeHtml(r.dose || "")}</td>
+      <td>${escapeHtml(r.start_date || "")}</td>
+      <td>${escapeHtml(r.end_date || "")}</td>
+    </tr>`));
 }
 
 async function loadVariants(){
-  if (!el.variantsBox) return;
-  el.variantsBox.innerHTML = "<div class='muted small'>加载中…</div>";
-  const { data, error } = await sb.rpc("patient_list_variants", { p_token: token, p_limit: 20 });
-  if (error){
-    el.variantsBox.innerHTML = "<div class='muted small'>读取失败</div>";
-    return;
-  }
-  const rows = data || [];
-  if (!rows.length){
-    el.variantsBox.innerHTML = "<div class='muted small'>暂无基因变异记录</div>";
-    return;
-  }
-  const trs = rows.map(r=>`
-    <tr>
-      <td>${escapeHtml(r.test_date||"")}</td>
-      <td>${escapeHtml(r.test_name||"")}</td>
-      <td>${escapeHtml(r.gene||"")}</td>
-      <td>${escapeHtml(r.variant||"")}</td>
-      <td>${escapeHtml(r.classification||"")}</td>
-      <td>${escapeHtml(r.zygosity||"")}</td>
-    </tr>
-  `).join("");
-  el.variantsBox.innerHTML = `
-    <table class="table">
-      <thead><tr><th>日期</th><th>检测</th><th>基因</th><th>变异</th><th>分类</th><th>合子性</th></tr></thead>
-      <tbody>${trs}</tbody>
-    </table>
-  `;
+  const rows = await historyRows("variantsBox", "patient_list_variants", 20);
+  if (rows === null) return;
+  if (!rows.length) { el.variantsBox.innerHTML = "<div class='muted small'>暂无基因检测记录</div>"; return; }
+  el.variantsBox.innerHTML = table(["日期", "检测", "基因", "变异", "分类", "合子性"], rows.map(r => `<tr>
+      <td>${escapeHtml(r.test_date || "")}</td>
+      <td>${escapeHtml(r.test_name || "")}</td>
+      <td>${escapeHtml(r.gene || "")}</td>
+      <td>${escapeHtml(r.variant || "")}</td>
+      <td>${escapeHtml(r.classification || "")}</td>
+      <td>${escapeHtml(r.zygosity || "")}</td>
+    </tr>`));
 }
 
+const EVENT_LABELS = {
+  egfr_decline_40pct: "eGFR 较基线下降 ≥40%",
+  egfr_decline_57pct: "eGFR 较基线下降 ≥57%",
+  esrd: "肾衰竭 / 透析",
+  death: "死亡",
+  complete_remission: "完全缓解",
+  partial_remission: "部分缓解",
+  custom: "其他",
+};
+
 async function loadEvents(){
-  if (!el.eventsBox) return;
-  el.eventsBox.innerHTML = "<div class='muted small'>加载中…</div>";
-  const { data, error } = await sb.rpc("patient_list_events", { p_token: token, p_limit: 20 });
-  if (error){
-    el.eventsBox.innerHTML = "<div class='muted small'>读取失败</div>";
-    return;
+  const rows = await historyRows("eventsBox", "patient_list_events", 20);
+  if (rows === null) return;
+  if (!rows.length) { el.eventsBox.innerHTML = "<div class='muted small'>暂无临床事件记录</div>"; return; }
+  el.eventsBox.innerHTML = table(["事件", "日期", "来源", "备注"], rows.map(r => `<tr>
+      <td>${escapeHtml(EVENT_LABELS[r.event_type] || "其他")}</td>
+      <td>${escapeHtml(r.event_date || "")}</td>
+      <td>${escapeHtml(r.source === "computed" ? "系统按研究规则计算，待研究人员复核" : "研究人员登记")}</td>
+      <td class="muted small">${escapeHtml((r.notes || "").slice(0, 60))}</td>
+    </tr>`));
+}
+
+function historyAllowed(){
+  return !!ctx && !contextFailed && !(completed && ctx.single_use);
+}
+
+async function loadExtras(){
+  if (!historyAllowed()) return;
+  extraLoaded = true;
+  await Promise.all([loadLabs(), loadMeds(), loadVariants(), loadEvents()]);
+}
+
+async function refreshHistory(){
+  if (busy || !historyAllowed()) return;
+  el.btnRefresh.disabled = true;
+  extraLoaded = false;
+  await Promise.all([loadVisits(), el.moreRecords.open ? loadExtras() : null]);
+  updateControls();
+}
+
+async function copyReceipt(){
+  const text = el.receiptText.value;
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error("clipboard_unavailable");
+    await navigator.clipboard.writeText(text);
+    toast("回执已复制。");
+  } catch (_) {
+    el.receiptText.focus(); el.receiptText.select();
+    toast("已选中回执，请长按或使用浏览器的复制功能。");
   }
-  const rows = data || [];
-  if (!rows.length){
-    el.eventsBox.innerHTML = "<div class='muted small'>暂无终点事件</div>";
-    return;
-  }
-  const typeMap = {
-    egfr_decline_40pct: "eGFR 下降 ≥40%",
-    egfr_decline_57pct: "eGFR 下降 ≥57%",
-    esrd: "ESRD / 透析",
-    death: "死亡",
-    complete_remission: "完全缓解",
-    partial_remission: "部分缓解",
-    custom: "自定义"
-  };
-  const trs = rows.map(r=>`
-    <tr>
-      <td>${escapeHtml(typeMap[r.event_type] || r.event_type || "")}</td>
-      <td>${escapeHtml(r.event_date||"")}</td>
-      <td>${escapeHtml(r.source==="computed"?"系统计算":"手动录入")}</td>
-      <td class="muted small">${escapeHtml((r.notes||"").slice(0,60))}</td>
-    </tr>
-  `).join("");
-  el.eventsBox.innerHTML = `
-    <table class="table">
-      <thead><tr><th>事件类型</th><th>日期</th><th>来源</th><th>备注</th></tr></thead>
-      <tbody>${trs}</tbody>
-    </table>
-  `;
 }
 
 function bind(){
-  el.btnSubmit.addEventListener("click", submitVisit);
-  el.btnRefresh.addEventListener("click", ()=>{ loadVisits(); loadLabs(); loadMeds(); loadVariants(); loadEvents(); });
-  [el.scr, el.scrUnit, el.upcr, el.upcrUnit, el.sbp, el.dbp, el.visitDate, el.notes].forEach((n)=>{
-    n.addEventListener("input", ()=>{ computeEgfr(); renderQc(); });
-    n.addEventListener("change", ()=>{ computeEgfr(); renderQc(); });
+  el.form.addEventListener("submit", onSubmit);
+  el.btnBack.addEventListener("click", backToEdit);
+  el.btnNext.addEventListener("click", nextVisit);
+  el.btnCopyReceipt.addEventListener("click", copyReceipt);
+  el.btnVerify.addEventListener("click", async () => {
+    if (busy || pendingSubmission || completed || !token) return;
+    busy = true; updateControls();
+    const valid = await loadContext();
+    busy = false; updateControls();
+    if (valid) await refreshHistory();
+  });
+  el.btnRefresh.addEventListener("click", refreshHistory);
+  el.moreRecords.addEventListener("toggle", () => {
+    if (el.moreRecords.open && !extraLoaded) loadExtras();
+  });
+  for (const node of [el.scr, el.scrUnit, el.upcr, el.upcrUnit, el.sbp, el.dbp, el.visitDate, el.notes]) {
+    const changed = () => { dirty = true; computeEgfr(); renderQc(); };
+    node.addEventListener("input", changed); node.addEventListener("change", changed);
+  }
+  window.addEventListener("beforeunload", event => {
+    if (dirty || pendingSubmission || busy) { event.preventDefault(); event.returnValue = ""; }
+  });
+  window.addEventListener("hashchange", () => {
+    // Another link opened in this tab. Whatever happens, the address bar keeps no link.
+    const next = linkInAddress();
+    if (!next || next === token || busy || pendingSubmission || dirty && !window.confirm("当前内容还没有提交，确定放弃并打开另一个随访链接吗？")) {
+      removeLinkFromAddress();
+      return;
+    }
+    main();
   });
 }
 
 async function main(){
-  token = getToken();
-  if (!token){
-    el.ctxSub.textContent = "缺少 token";
-    el.ctxBox.innerHTML = "<div class='muted small'>请使用中心提供的随访链接打开本页。</div>";
-    el.btnSubmit.disabled = true;
+  ++contextEpoch;
+  token = linkInAddress(); ctx = null; completed = false; reviewing = null; pendingSubmission = null;
+  removeLinkFromAddress();
+  busy = false; contextFailed = false; verifyRetryable = false; extraLoaded = false;
+  linkUnusable = false; readOnlyAtLoad = false; exited = false; knownVisitDates = new Set(); submittedDates = new Set();
+  focusAfterSubmit = null;
+  clearVisitFields();
+  el.visitDate.max = beijingDateString();
+  document.title = "研究随访填报";
+  el.studyTitle.textContent = "正在读取研究信息…";
+  el.studyInfo.innerHTML = "";
+  el.linkStatus.className = "link-status"; el.linkStatus.textContent = "";
+  el.doneList.innerHTML = ""; el.receiptText.value = "";
+  setHint("");
+  clearHistory("链接验证后显示。");
+  renderQc(); updateControls();
+  if (!token) {
+    contextFailed = true; linkUnusable = true;
+    document.title = "随访链接无法使用";
+    el.studyTitle.textContent = "缺少随访链接";
+    el.linkStatus.className = "link-status warnbox";
+    el.linkStatus.textContent = "请使用研究团队发给您的完整随访链接打开本页。为保护您的信息，打开后地址栏不再保留链接；如刚才刷新了页面，请重新点开研究团队发来的链接。";
+    updateControls();
     return;
   }
-  bind();
-  await loadContext();
-  await Promise.all([loadVisits(), loadLabs(), loadMeds(), loadVariants(), loadEvents()]);
+  if (await loadContext()) await refreshHistory();
 }
 
+// The inline loader in patient.html shows a reload prompt until this flag is set.
+window.__patientPageStarted = true;
+el.btnReload.hidden = true;
+el.dataLocationNote.textContent = dataLocationLead(window.CONFIG);
+bind();
 main();
