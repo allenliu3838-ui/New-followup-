@@ -84,7 +84,7 @@ assert.notEqual(wf.classifyPatientError({ code: '23505', message: 'duplicate key
 assert.equal(wf.classifyPatientError({ message: 'AbortError: signal is aborted without reason' }).kind, 'network');
 assert.equal(wf.beijingDateString(new Date('2026-10-12T16:30:00Z')), '2026-10-13');
 assert.equal(wf.beijingDateString(new Date('2026-10-12T15:59:00Z')), '2026-10-12');
-assert.equal(wf.dataLocationLead(undefined) + '隐私政策', '数据当前存储于境外服务器，计划迁至中国境内，详见隐私政策');
+assert.equal(wf.dataLocationLead(undefined) + '隐私政策', '数据存储在中国境内（阿里云上海）的服务器，详见隐私政策');
 assert.equal(wf.dataLocationLead({ DATA_LOCATION_NOTE: '数据存储于中国境内。' }), '数据存储于中国境内。详见');
 // The link is read from the address once, then removed from it (kept in memory only).
 assert.equal(wf.linkFromAddress({ hash: '#abc_DEF-1', pathname: '/followup' }), 'abc_DEF-1');
@@ -267,7 +267,7 @@ const submits = record => record.calls.filter(c => c.name === 'patient_submit_vi
   // Who can see the data, stated as it is: the team, the technical platform, and anyone holding the link.
   const access = (await page.textContent('#dataAccess')).replace(/\s+/g, '');
   for (const part of ['研究团队的授权人员', '提供技术服务的平台', '持有本链接的人都可以看到本页显示的历史记录', '请不要转发链接',
-    '数据当前存储于境外服务器，计划迁至中国境内，详见隐私政策。']) assert.ok(access.includes(part), 'data access text missing ' + part);
+    '数据存储在中国境内（阿里云上海）的服务器，详见隐私政策。']) assert.ok(access.includes(part), 'data access text missing ' + part);
   assert.ok(!/只有本研究团队/.test(about), 'overstated access claim is back');
   assert.equal(await page.getAttribute('#dataAccess a', 'href'), '/privacy');
   assert.equal(await page.textContent('#dataAccess a'), '隐私政策');

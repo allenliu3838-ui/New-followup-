@@ -6,9 +6,11 @@ Run only after the source changes have been reviewed. It recomputes, never relax
   2. supabase/database-contract-pg17.json (native PG17 rebuild; skip with --no-contract)
   3. the release manifest and reviewed-tool hashes under releases/<release dir>/
 
-Production baselines (old_sha256) are inherited from the previous reviewed manifest, because
-that release was never deployed and production still serves the same bytes. Files new to the
-release get old_sha256 = None, exactly as the previous manifest records new files.
+Production baselines (old_sha256) are the bytes production serves now. The previous manifest
+(registry-adoption-v4-20261012) was applied in full at the 2026-10-17 cutover, so every file's
+baseline is that manifest's new_sha256; files new to this release get old_sha256 = None. If a
+release is pinned again before the previous one has been deployed, set PREVIOUS_DEPLOYED = False
+so the baselines are inherited from the previous manifest's old_sha256 instead.
 CI must only verify (npm test); it must never run this script.
 """
 from pathlib import Path
@@ -23,9 +25,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 import registry_integrated_release as release  # noqa: E402
 
-RELEASE_DIR = ROOT / 'releases/registry-adoption-v4-20261012'
-MANIFEST_NAME = 'registry-adoption-v4-20261012.manifest.json'
-PREVIOUS = ROOT / 'releases/registry-integrated-pg17-v3-20260914/registry-integrated-pg17-v3-20260914.manifest.json'
+RELEASE_DIR = ROOT / 'releases/registry-cn-v5-20261017'
+MANIFEST_NAME = 'registry-cn-v5-20261017.manifest.json'
+PREVIOUS = ROOT / 'releases/registry-adoption-v4-20261012/registry-adoption-v4-20261012.manifest.json'
+# PREVIOUS 已整体上线（2026-10-17 切换，发布包取自提交 f1bd5b7）：线上字节 = 它的 new_sha256。
+PREVIOUS_DEPLOYED = True
+PRODUCTION_BASELINE_COMMIT = 'f1bd5b70f063e81dc8f4b1c4114e7f3004e874f2'
 TOOLS = ['build_database_contract_pg17.mjs', 'registry_integrated_release.py', 'registry_pages_release.py', 'registry_visual_release.py']
 BUNDLE_HEADER = '-- GENERATED from supabase/migrations in canonical filename order.\n-- Fresh/isolated databases only; use reviewed increments for production.\n\n'
 ORDER = 'lexicographic filenames; historical duplicate prefixes retained, unique full filenames'
@@ -100,13 +105,11 @@ def preflight_check_names() -> list:
     return names
 
 
-# 线上文件在上一版审查之后经单独发布改变过的，按实际线上版本登记为发布基线。
+# 线上文件在上一版发布之后经单独发布改变过的，按实际线上版本登记为发布基线。
 # 每一项都必须能在仓库历史中找到对应提交，并在发布前与服务器实测哈希核对。
-PRODUCTION_BASELINE_OVERRIDES = {
-    # 2026-09-24 注册页修复（分支 codex/fix-registry-signup-20260924，提交 376f9c5，
-    # 由 tools/deploy_signup_fix.py 单独部署）。本版 signup.html 已按新数据库接口重写并覆盖其修复点。
-    'signup.html': '81edb4c1a6da287f557e221baa049786814ffa91659bc83d1a38f35402d22d69',
-}
+# v4 曾登记 2026-09-24 单独部署的注册页修复（提交 376f9c5）；v4 已于 2026-10-17 整体上线，
+# 线上 signup.html 即 v4 版本，由 PREVIOUS 的 new_sha256 覆盖，不再需要单项登记。
+PRODUCTION_BASELINE_OVERRIDES = {}
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -128,7 +131,8 @@ def main() -> None:
         path = ROOT / 'site' / name
         if not path.is_file():
             raise SystemExit(f'ALLOWED file missing from site/: {name}')
-        old = previous['files'].get(name, {}).get('old_sha256') if name in previous['files'] else None
+        prior = previous['files'].get(name)
+        old = None if prior is None else (prior['new_sha256'] if PREVIOUS_DEPLOYED else prior['old_sha256'])
         old = PRODUCTION_BASELINE_OVERRIDES.get(name, old)
         files[name] = {'new_sha256': sha(path.read_bytes()), 'old_sha256': old}
 
@@ -137,6 +141,7 @@ def main() -> None:
         'release': release.VERSION,
         # 迁到境内后只需改 registry_integrated_release.PROJECT_REF，清单随之更新，不会沿用旧身份
         'project_ref': release.PROJECT_REF,
+        'baseline_commit': PRODUCTION_BASELINE_COMMIT,
         'files': files,
         'config_sha256': sha((ROOT / 'site/config.js').read_bytes()),
         'migration_manifest_sha256': sha((ROOT / 'supabase/migration-manifest.json').read_bytes()),

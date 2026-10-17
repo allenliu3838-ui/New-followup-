@@ -46,7 +46,7 @@ WITH checks AS (
  __DATABASE_CONTRACT_QUERY__
 )
 SELECT jsonb_build_object(
- 'release','registry-20261012-adoption-v4',
+ 'release','registry-20261017-cn-v5',
  'contract_protocol','registry-contract-v3-pg17',
  'database_server_major',current_setting('server_version_num')::int/10000,
  'database_contract_sha256','__DATABASE_CONTRACT_SHA256__',

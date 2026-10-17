@@ -9,23 +9,23 @@
   <meta property="og:description" content="数据存储位置、项目角色与访问控制、审计记录与支持方式的如实说明。"/>
   <meta property="og:type" content="website"/>
   <link rel="canonical" href="https://kidneysphereregistry.cn/security"/>
-  <link rel="stylesheet" href="/lib/product-nav.css?v=registry-20261012-adoption-v4">
+  <link rel="stylesheet" href="/lib/product-nav.css?v=registry-20261017-cn-v5">
   <link rel="stylesheet" href="https://kidneysphere.com/shared/ks-brand.css">
-  <script src="/lib/product-nav.js?v=registry-20261012-adoption-v4" defer></script>
-  <link rel="stylesheet" href="/app.css?v=registry-20261012-adoption-v4"/>
+  <script src="/lib/product-nav.js?v=registry-20261017-cn-v5" defer></script>
+  <link rel="stylesheet" href="/app.css?v=registry-20261017-cn-v5"/>
 </head>
 <body>
   <div class="container">
     <div class="card">
       <h1 class="brand-title">安全与合规</h1>
-      <div class="small muted" style="margin-top:4px">本页只列出系统已经实现、可以核验的措施；没有证据的事项写明“以实际部署配置为准”。更新：2026 年 10 月 12 日</div>
+      <div class="small muted" style="margin-top:4px">本页只列出系统已经实现、可以核验的措施；没有证据的事项写明“以实际部署配置为准”。更新：2026 年 10 月 17 日</div>
       <div class="btnbar" style="margin-top:10px">
         <a class="btn" href="/">首页</a><a class="btn" href="/pricing">价格</a><a class="btn" href="/privacy">隐私政策</a><a class="btn" href="/deployment">部署方式</a><a class="btn" href="/login">登录</a>
       </div>
       <div class="hr"></div>
 
       <h2>1) 数据存在哪里</h2>
-      <div class="small">网站页面部署于阿里云（中国境内）。账户认证、登记数据库与附件目前使用 Supabase 云服务，数据库位于美国西部区域，即<b>目前登记数据存储在中国境外</b>。我们正在将全部系统迁移至中国境内（阿里云），完成后会更新本页与<a href="/privacy">隐私政策</a>。迁移完成前，计划录入真实研究数据的机构请先按<a href="/privacy">隐私政策</a>第六部分完成评估，或先使用模拟数据。</div>
+      <div class="small">网站页面、账户认证、登记数据库、附件与备份均部署在阿里云中国境内（上海）区域的服务器上，即<b>登记数据存储在中国境内</b>。2026 年 10 月 17 日已从境外云服务整体迁入并核验；迁移前的境外环境在观察期后删除，迁移记录见<a href="/privacy">隐私政策</a>第六部分。录入真实研究数据前，机构仍应按隐私政策完成授权与评估。</div>
 
       <h2>2) 数据最小化</h2>
       <div class="small">研究数据以项目、中心代码和研究编号区分；请勿录入患者姓名、联系方式、病案号、身份证号或身份对照表。系统对常见的直接身份信息格式做录入检查，但检查只能减少误录，不能替代研究团队的管理。以研究编号登记的数据仍可能与个人关联，应按研究方案与敏感个人信息保护要求管理。</div>
@@ -47,7 +47,7 @@
       <div class="small">基线、随访和检验记录的每次修改由数据库逐字段写入审计记录，包含修改前后的值、操作者和时间；删除时记录操作者、时间和原记录的校验指纹；通过更正功能修改时必须填写原因。成员变更、随访链接的发放与撤销、导出都留有记录。冻结数据版本保存同一时点的数据副本及 SHA-256 校验值，可以重新下载核对。审计和导出记录也应纳入机构的保留与删除规则。</div>
 
       <h2>6) 传输、加密与备份</h2>
-      <div class="small">全站通过 HTTPS 访问。存储层静态加密、数据库与附件的备份频率、保留期、可接受数据损失时间和恢复服务时间，<b>以实际部署配置为准</b>，本页不作具体承诺；机构评估时可向我们索取对应项目的配置与恢复演练记录。网页文件的备份不能替代数据库备份。</div>
+      <div class="small">全站通过 HTTPS 访问。数据库与附件每日自动备份一次，备份加密保存于境内服务器，保留 30 天，每次备份自动核对关键表是否齐全。存储层静态加密、异地备份副本、可接受数据损失时间和恢复服务时间，<b>以实际部署配置为准</b>，本页不作具体承诺；机构评估时可向我们索取对应项目的配置与恢复演练记录。网页文件的备份不能替代数据库备份。</div>
 
       <h2>7) 我们没有声明的事项</h2>
       <div class="small">本页没有声明已完成网络安全等级保护定级备案、第三方渗透测试、临床试验电子数据系统相关的合规验证，也没有声明已取得任何伦理批准。机构需要的证明材料，应在合作前以可核验的文件提供；没有文件的，以“尚未提供”对待。</div>
@@ -81,6 +81,6 @@
     <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
     <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener">鲁公网安备37091102000922号</a></div>
   </footer>
-  <script src="/analytics.js?v=registry-20261012-adoption-v4"></script>
+  <script src="/analytics.js?v=registry-20261017-cn-v5"></script>
 </body>
 </html>
