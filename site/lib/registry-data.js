@@ -188,7 +188,7 @@ export function normalizeImportRow(kind,input,defaultUpcrUnit=''){
 }
 
 // Chinese labels for CSV columns and correction fields; users never see raw column keys in messages.
-export const FIELD_LABELS=Object.freeze({patient_code:'研究编号',sex:'性别',birth_year:'出生年份',baseline_date:'基线日期',baseline_scr:'基线血肌酐',baseline_upcr:'基线UPCR',baseline_upcr_unit:'基线UPCR单位',baseline_upcr_raw:'基线UPCR原始值',baseline_upcr_original_unit:'基线UPCR原始单位',biopsy_date:'肾穿日期',oxford_m:'牛津分型M',oxford_e:'牛津分型E',oxford_s:'牛津分型S',oxford_t:'牛津分型T',oxford_c:'牛津分型C',ln_biopsy_date:'LN肾穿日期',ln_class:'LN病理分型',ln_activity_index:'LN活动指数',ln_chronicity_index:'LN慢性指数',ln_podocytopathy:'足细胞病变',treatment_arm:'研究分组',randomization_id:'随机号',randomization_date:'随机化日期',visit_date:'随访日期',sbp:'收缩压',dbp:'舒张压',scr_umol_l:'血肌酐（μmol/L）',upcr:'UPCR（mg/g）',egfr:'eGFR',notes:'备注',consent_status:'知情同意状态',consent_date:'知情同意日期',consent_version:'知情同意书版本',followup_status:'随访状态',followup_status_date:'随访状态日期',
+export const FIELD_LABELS=Object.freeze({patient_code:'研究编号',sex:'性别',birth_year:'出生年份',baseline_date:'基线日期',baseline_scr:'基线血肌酐',baseline_upcr:'基线UPCR',baseline_upcr_unit:'基线UPCR单位',baseline_upcr_raw:'基线UPCR原始值',baseline_upcr_original_unit:'基线UPCR原始单位',biopsy_date:'肾穿日期',oxford_m:'牛津分型M',oxford_e:'牛津分型E',oxford_s:'牛津分型S',oxford_t:'牛津分型T',oxford_c:'牛津分型C',ln_biopsy_date:'LN肾穿日期',ln_class:'LN病理分型',ln_activity_index:'LN活动指数',ln_chronicity_index:'LN慢性指数',ln_podocytopathy:'足细胞病变',treatment_arm:'研究分组',randomization_id:'随机号',randomization_date:'随机化日期',visit_date:'随访日期',sbp:'收缩压',dbp:'舒张压',scr_umol_l:'血肌酐（μmol/L）',upcr:'UPCR（mg/g）',egfr:'eGFR',notes:'备注',consent_status:'知情同意状态',consent_date:'知情同意日期',consent_version:'知情同意书版本',followup_status:'随访状态',followup_status_date:'随访状态日期',followup_start_date:'提醒起算日',
   lab_date:'化验日期',lab_test_code:'化验项目编码',lab_item_name:'化验项目名称',value_raw:'结果数值',unit_symbol:'单位',result_text:'结果文本',ref_range:'参考范围',abnormal_flag:'异常标志',
   drug_name:'药物名称',drug_class:'药物类别',dose_value:'剂量数值',dose_unit:'剂量单位',route:'给药途径',frequency:'频次',start_date:'起始日期',end_date:'结束日期',indication:'用药目的',
   event_type:'事件类型',event_date:'事件日期',event_detail:'事件细节',evidence_source:'判定依据来源',file_name:'文件名',file_sha256:'文件校验值'});
@@ -211,6 +211,13 @@ export function assertNoPII(text, fieldLabel) {
 }
 
 const ERROR_MESSAGES=[
+  // 随访看板批量操作（迁移 0041）。放在最前：bulk_reason_required、invalid_patient_code_list 含有较短的已有代码。
+  ['followup_start_date_requires_dedicated_action','提醒起算日只能在随访看板中勾选患者后，用“设置提醒起算日”修改，不能通过导入、更正或直接写表修改。'],
+  ['followup_start_before_baseline','提醒起算日不能早于所选患者的基线日期，请核对后重试；本次没有修改任何患者。'],
+  ['bulk_reason_required','请填写 2–500 字的原因或依据（不含身份信息）。'],
+  ['patient_codes_required','请先在随访看板中勾选患者。'],
+  ['too_many_patients','每次最多处理 500 位患者，请减少勾选后分批操作。'],
+  ['invalid_patient_code_list','所选患者有重复或为空，请刷新看板后重新勾选。'],
   // 化验 / 用药 / 终点事件批量导入（迁移 0040）。较长、较具体的代码放在前面。
   ['derived_endpoint_not_importable','eGFR 下降与缓解属于由化验数据计算的终点，由分析脚本按研究方案判定，不能导入；请删除这些行后重试。'],
   ['same_key_record_conflict','同一患者同一业务键（化验：日期 + 项目；用药：药物 + 起始日期；终点：类型 + 日期）已有不同数据，本块未写入。请先在记录纠错中核实。'],

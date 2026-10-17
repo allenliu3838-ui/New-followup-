@@ -891,6 +891,33 @@ docker compose -f docker-compose.yml -f docker-compose.loopback.yml \
 
 **仍保留、待按 6.3 处理的文件。** 明文备份与附件副本在 `/root/cn-migration/`（仅 root 可读）；合成演练数据目录 `volumes/db/data.synthetic-20261014`；隔离恢复目录 `/data/registry-isolated-restore/…`。观察期结束后加密保管或销毁并记录。
 
+### C.1 后续增量 0041（随访看板：提醒起算日、批量确认知情同意）
+
+生产库已按上文完成 0032–0040。0041 只新增一列（`patients_baseline.followup_start_date`，现有患者全部为空）、一张私有标记表、一个检查触发器、两个函数（`set_followup_start_date`、`set_consent_bulk`）并替换看板视图 `v_patient_followup_status`（末尾加一列；未设置提醒起算日的患者计算结果不变）。不改任何已有数据，可重复执行（再次执行无变化）；未登记 0040 时会中止并整体回滚。
+
+**顺序：先在生产库执行 0041，确认成功后再发布新版前端。** 新前端读取看板视图的新列并调用新函数；数据库未升级时，看板的批量操作会报“数据库尚未升级”。反过来，先升级数据库、暂不发布前端没有影响（旧前端不使用新对象）。
+
+在数据库主机上（新 ECS，目录 `/data/registry-supabase`），与 0032–0040 相同：以 `postgres` 用户、经 `docker exec` 在数据库容器内执行，遇错即停：
+
+```bash
+cd "$REPO" && python3 -I -c "
+import hashlib, json
+m = next(x for x in json.load(open('supabase/migration-manifest.json'))['migrations'] if x['file'] == '0041_followup_board.sql')
+ok = hashlib.sha256(open('supabase/migrations/' + m['file'], 'rb').read()).hexdigest() == m['sha256']
+print(m['file'], 'OK' if ok else 'MISMATCH')"
+# 预期：0041_followup_board.sql OK
+
+docker exec -i supabase-db psql -U postgres -d postgres -X -q -v ON_ERROR_STOP=1 -f - \
+  < supabase/migrations/0041_followup_board.sql
+docker exec -i supabase-db psql -U postgres -d postgres -X -t -A \
+  -c "SELECT version FROM public.registry_schema_versions WHERE version='0041_followup_board'"
+# 预期：0041_followup_board
+```
+
+然后按 6.12 重新生成只读预检报告（报告中 `0041_followup_board`、`followup_board_signatures`、`followup_start_column` 均须为 `true`，目录契约须与审查过的版本一致），再用发布工具发布前端。0041 失败时整体回滚、生产数据不变：保存错误输出，不要发布新前端。
+
+使用提示：历史补录的患者在看板中勾选后点“设置提醒起算日”（默认今天），之后按“提醒起算日与最近一次随访中较晚的一天 + 随访间隔”计算下次随访；可随时改为其他日期或清除。“批量确认知情同意”按纸质同意书等原始记录登记，须填写依据，每位患者的修改与单个患者“研究状态”中的修改规则相同并逐字段留痕。
+
 ## 附录 B：常见问题
 
 - **用户要重新设置密码吗？** 不需要。密码哈希随账号一起迁移；因为新环境使用新的签名密钥和接口地址，原来的登录状态失效，用户重新登录一次即可。

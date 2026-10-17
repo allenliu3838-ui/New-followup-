@@ -479,13 +479,13 @@ async function main() {
 
     // 3. 随访看板：逾期优先排序、状态徽章、筛选与搜索。
     assert.deepEqual(await boardCodes(page), EXPECTED_ORDER, '看板应按逾期优先排序');
-    const badges = await page.locator('#patientsList tbody tr[data-patient-code] td:nth-child(6) .fu-badge').allTextContents();
+    const badges = await page.locator('#patientsList tbody tr[data-patient-code] td[data-label="状态"] .fu-badge').allTextContents();
     assert.deepEqual(badges, EXPECTED_BADGES, '状态徽章');
-    assert.equal(await text(page.locator('tr[data-patient-code="P009"] td:nth-child(6)')), '已停止随访（撤回同意）', '撤回同意的患者注明原因');
-    assert.equal(await text(page.locator('tr[data-patient-code="P005"] td:nth-child(6)')), '已停止随访（失访）');
-    assert.ok((await text(page.locator('tr[data-patient-code="P007"] td:nth-child(5)'))).includes('已过 110 天'), '从未随访的逾期患者显示已过天数');
-    assert.equal((await text(page.locator('tr[data-patient-code="P002"] td:nth-child(8)'))), '伦理批准豁免', '同意状态列');
-    assert.equal((await text(page.locator('tr[data-patient-code="P001"] td:nth-child(7)'))), '1', '有效链接数');
+    assert.equal(await text(page.locator('tr[data-patient-code="P009"] td[data-label="状态"]')), '已停止随访（撤回同意）', '撤回同意的患者注明原因');
+    assert.equal(await text(page.locator('tr[data-patient-code="P005"] td[data-label="状态"]')), '已停止随访（失访）');
+    assert.ok((await text(page.locator('tr[data-patient-code="P007"] td[data-label="下次应随访"]'))).includes('已过 110 天'), '从未随访的逾期患者显示已过天数');
+    assert.equal((await text(page.locator('tr[data-patient-code="P002"] td[data-label="知情同意"]'))), '伦理批准豁免', '同意状态列');
+    assert.equal((await text(page.locator('tr[data-patient-code="P001"] td[data-label="有效链接"]'))), '1', '有效链接数');
     await page.click('#boardFilters [data-board-filter="overdue"]');
     assert.deepEqual(await boardCodes(page), ['P007', 'P001', 'P006'], '逾期筛选（含从未随访但已逾期的患者）');
     await page.click('#boardFilters [data-board-filter="all"]');
@@ -598,6 +598,9 @@ async function main() {
     let html = await page.content();
     assert.ok(!html.includes(SECRET_TEXT) && !html.includes(SECRET_HASH), '页面不得显示链接文本或摘要');
     await page.fill('#lkDays', '14');
+    // 本段逐条检查手动撤销；“同时作废此前仍有效的链接”（默认勾选）见 tests/ui/board-actions-smoke.mjs。
+    assert.equal(await page.isChecked('#lkRevokeOld'), true, '默认同时作废此前仍有效的链接');
+    await page.uncheck('#lkRevokeOld');
     await page.click('#lkCreate');
     await eventually(() => mock.rpcCalls('create_patient_token_v2').length === 1, '没有调用 create_patient_token_v2');
     assert.deepEqual(mock.rpcCalls('create_patient_token_v2')[0].body, { p_project_id: PROJECT.id, p_patient_code: 'P001', p_expires_in_days: 14, p_single_use: true });

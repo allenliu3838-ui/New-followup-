@@ -213,10 +213,16 @@
           <h2 id="boardHeading">随访看板</h2>
           <button class="btn primary" id="btnOpenVisitEntry" type="button">录入随访</button>
         </div>
-        <p class="muted small">谁该随访、谁还没有随访一目了然：逾期者排在最前。可在每一行直接录入随访、查看与更正随访记录、管理随访链接和研究状态。</p>
+        <p class="muted small">谁该随访、谁还没有随访一目了然：逾期者排在最前。可在每一行直接录入随访、查看与更正随访记录、管理随访链接和研究状态。勾选多位患者后，可批量设置提醒起算日或批量确认知情同意。</p>
         <div class="fu-toolbar">
           <div id="boardFilters"></div>
           <div class="fu-search"><label for="patientSearch">查找研究编号</label><input id="patientSearch" type="search" placeholder="输入研究编号" autocomplete="off"/></div>
+        </div>
+        <div id="boardBulkBar" class="fu-bulkbar" role="region" aria-label="批量操作" hidden>
+          <span id="boardSelectionStatus" class="small" role="status">已选择 0 位患者</span>
+          <button class="btn small" id="btnBulkStartDate" type="button" data-project-capability="can_write">设置提醒起算日</button>
+          <button class="btn small" id="btnBulkConsent" type="button" data-project-capability="can_write">批量确认知情同意</button>
+          <button class="btn small" id="btnClearSelection" type="button">清除选择</button>
         </div>
         <div id="patientsList" class="fu-board"></div>
         <datalist id="patientCodeOptions"></datalist>

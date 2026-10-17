@@ -65,8 +65,8 @@ const sha = text => createHash('sha256').update(text, 'utf8').digest('hex');
 try {
   // ---- Production-like database at 0039 ------------------------------------------------
   const upTo39 = migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) <= 39);
-  assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 39), [NEW_MIGRATION],
-    'exactly one reviewed increment follows 0039');
+  assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 39), [NEW_MIGRATION, '0041_followup_board.sql'],
+    '0040 directly follows 0039; 0041 has its own acceptance (tests/followup-board-db.mjs)');
   for (const file of upTo39) await apply(file);
   assert.equal(await count('SELECT count(*) AS n FROM public.registry_schema_versions'), 8);
   for (const id of [owner, editor, analyst, viewer, outsider]) {
