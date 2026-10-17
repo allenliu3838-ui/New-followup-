@@ -417,8 +417,10 @@ FOLLOWUP_STATUS_VALUES = ("active", "lost", "withdrawn", "deceased", "kidney_fai
 # Registry vocabularies (supabase/migrations): module codes accepted for projects
 # (0033_billing_registration.sql) and the events_long.event_type CHECK (0002_events.sql).
 SUPPORTED_MODULES = ("IGAN", "LN", "MN", "DKD", "CKD", "KTX", "GENERAL")
-EVENT_TYPES = ("egfr_decline_40pct", "egfr_decline_57pct", "esrd", "death", "complete_remission", "partial_remission", "custom")
-KF_DEATH_EVENT_TYPES = ("esrd", "death")
+EVENT_TYPES = ("egfr_decline_40pct", "egfr_decline_57pct", "esrd", "death", "complete_remission", "partial_remission", "custom",
+               "dialysis_start", "kidney_transplant", "relapse")
+# Kidney failure (esrd, start of dialysis, kidney transplant) or death.
+KF_DEATH_EVENT_TYPES = ("esrd", "dialysis_start", "kidney_transplant", "death")
 KF_DEATH_OPTIONS = ("count_as_event", "censor")
 UPCR_REDUCTION_REFERENCES = ("baseline", "peak")
 RECOMPUTED_EGFR = "recomputed_CKD-EPI-2021-Cr_year_age"
@@ -608,7 +610,7 @@ def validate_protocol(raw):
         kf = ed["kidney_failure_or_death_before_confirmation"]
         if kf not in KF_DEATH_OPTIONS:
             _pfail("egfr_decline.kidney_failure_or_death_before_confirmation",
-                   "只能是 count_as_event（确认下降之前发生已确认的 esrd/death 事件时计为终点事件，即复合终点）或 censor（在该日期截尾）")
+                   "只能是 count_as_event（确认下降之前发生已确认的 esrd/dialysis_start/kidney_transplant/death 事件时计为终点事件，即复合终点）或 censor（在该日期截尾）")
         p["egfr_decline"] = {"requires_pi_confirmation": _pbool(ed["requires_pi_confirmation"], "egfr_decline.requires_pi_confirmation"),
                              "thresholds_pct_decline": thresholds,
                              "confirmation": _validate_confirmation(ed["confirmation"], "egfr_decline.confirmation"),
@@ -965,7 +967,7 @@ def censoring_for(r, events, protocol, has_followup_status, issues):
     """Censoring candidates for one patient with a valid baseline date.
 
     Returns (items, reasons): items are (date, reason, kind) where kind is
-    "kf_death_event" for an esrd/death event listed in censoring.event_types (and
+    "kf_death_event" for a kidney failure (esrd/dialysis_start/kidney_transplant) or death event listed in censoring.event_types (and
     confirmed when required) and "other" otherwise; reasons lists, in order, every
     reason found, including ones whose date could not be used.
     """
@@ -1451,7 +1453,8 @@ between the baseline window start and the measurement being assessed.
 All endpoints were anchored at the registry baseline_date (not treatment start).
 Measurements were used up to and including the censoring date (protocol censoring
 rules: follow-up status date and/or confirmed events; a follow-up status date before
-baseline was ignored and reported); later measurements were not used. Handling of confirmed esrd/death
+baseline was ignored and reported); later measurements were not used. Handling of confirmed kidney failure (esrd, dialysis_start,
+kidney_transplant) or death
 events before a decline was confirmed: {p['egfr_decline_kidney_failure_or_death_before_confirmation'] or 'not applicable'}
 (count_as_event: composite endpoint named *_or_kidney_failure_death with the event
 date of that event; censor: censored at that date). UPCR thresholds were applied in

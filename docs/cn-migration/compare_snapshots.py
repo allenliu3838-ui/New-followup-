@@ -6,11 +6,11 @@
   python3 -I docs/cn-migration/compare_snapshots.py --phase upgrade 旧环境.json 新环境-升级后.json
 
 freeze   旧环境在冻结期间没有任何变化（除检查时间外完全一致）。
-restore  新环境恢复后、执行 0032–0039 之前：每张业务表的行数与内容指纹、账号登录指纹、随访链接摘要指纹
+restore  新环境恢复后、执行 0032–0040 之前：每张业务表的行数与内容指纹、账号登录指纹、随访链接摘要指纹
          与旧环境一致；新环境 Auth/Storage 服务的迁移版本必须包含旧环境的全部版本。附件对象此时尚未上传，
          不比较（加 --storage-uploaded 则要求一致）。
-upgrade  执行 0032–0039 并上传附件之后：关键表行数、账号登录指纹、随访链接摘要指纹、附件对象清单与旧环境一致；
-         数据库中明文随访链接为 0；版本登记包含 0032–0039。业务表内容指纹因新增字段而变化，不比较。
+upgrade  执行 0032–0040 并上传附件之后：关键表行数、账号登录指纹、随访链接摘要指纹、附件对象清单与旧环境一致；
+         数据库中明文随访链接为 0；版本登记包含 0032–0040。业务表内容指纹因新增字段而变化，不比较。
 退出码：0 一致；1 不一致；2 参数或文件错误。
 """
 import argparse
@@ -19,7 +19,8 @@ import sys
 
 UPGRADE_VERSIONS = ['0032_security_integrity', '0033_billing_registration', '0034_import_corrections',
                     '0035_frozen_exports', '0036_project_members', '0037_concept_view_security',
-                    '0038_followup_workflow', '0039_patient_token_hashing']
+                    '0038_followup_workflow', '0039_patient_token_hashing',
+                    '0040_batch_import']
 
 
 def load(path):
@@ -82,7 +83,7 @@ def compare(phase, old, new, storage_uploaded=False):
         missing = [v for v in UPGRADE_VERSIONS if v not in versions]
         if missing:
             problems.append('新环境缺少版本登记：' + ', '.join(missing))
-        notes.append('业务表内容指纹因 0032–0039 新增字段而变化，本阶段只比较行数与上述指纹')
+        notes.append('业务表内容指纹因 0032–0040 新增字段而变化，本阶段只比较行数与上述指纹')
     return problems, notes
 
 

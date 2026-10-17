@@ -68,17 +68,21 @@ export function normalizeUpcr(value, unit) {
   if (!Number.isFinite(converted)) throw new Error('UPCR 换算结果超出范围');
   return converted;
 }
+/**
+ * CSV 解析。返回 { headers, data, lines }：lines[i] 是 data[i] 这条记录在文件中开始的物理行号（表头为第 1 行），
+ * 空行被跳过、引号内换行跨多行时仍与 Excel 等编辑器中看到的行号一致。
+ */
 export function parseRegistryCsv(input) {
   const text = String(input).replace(/^\uFEFF/, '');
-  let i=0, field='', row=[], quoted=false, closed=false; const rows=[];
+  let i=0, field='', row=[], quoted=false, closed=false, line=1, rowStart=1; const rows=[]; const starts=[];
   function fieldEnd(){ row.push(field); field='';closed=false; }
-  function rowEnd(){ fieldEnd(); if(row.some(v=>v.trim()!=='')) rows.push(row);row=[]; }
+  function rowEnd(){ fieldEnd(); if(row.some(v=>v.trim()!=='')){rows.push(row);starts.push(rowStart);} row=[]; }
   while(i<text.length){ const c=text[i++];
-    if(quoted){ if(c==='"'){ if(text[i]==='"'){field+='"';i++;}else{quoted=false;closed=true;} } else field+=c; continue; }
-    if(c==='"'){if(field!==''||closed) throw new Error('CSV 引号格式错误');quoted=true;continue;}
+    if(quoted){ if(c==='"'){ if(text[i]==='"'){field+='"';i++;}else{quoted=false;closed=true;} } else { field+=c; if(c==='\n'||(c==='\r'&&text[i]!=='\n'))line++; } continue; }
+    if(c==='"'){if(field!==''||closed) throw new Error(`CSV 第 ${line} 行引号格式错误`);quoted=true;continue;}
     if(c===','){fieldEnd();continue;}
-    if(c==='\n'||c==='\r'){if(c==='\r'&&text[i]==='\n')i++;rowEnd();continue;}
-    if(closed){if(c===' '||c==='\t')continue;throw new Error('CSV 引号结束后有多余字符');}
+    if(c==='\n'||c==='\r'){if(c==='\r'&&text[i]==='\n')i++;line++;rowEnd();rowStart=line;continue;}
+    if(closed){if(c===' '||c==='\t')continue;throw new Error(`CSV 第 ${line} 行引号结束后有多余字符`);}
     field+=c;
   }
   if(quoted) throw new Error('CSV 引号未闭合');
@@ -87,11 +91,12 @@ export function parseRegistryCsv(input) {
   const headers=rows[0].map(h=>h.trim().toLowerCase().replace(/\s+/g,'_'));
   if(headers.some(h=>!h)||new Set(headers).size!==headers.length)throw new Error('CSV 表头不能为空或重复');
   if(headers.some(h=>['__proto__','constructor','prototype'].includes(h)))throw new Error('CSV 包含保留列名');
+  const lines=starts.slice(1);
   const data=rows.slice(1).map((cells,n)=>{
-    if(cells.length!==headers.length)throw new Error(`CSV 第 ${n+2} 行列数与表头不一致`);
+    if(cells.length!==headers.length)throw new Error(`CSV 第 ${lines[n]} 行列数与表头不一致`);
     return Object.fromEntries(headers.map((h,j)=>[h,cells[j].trim()]));
   });
-  return {headers,data};
+  return {headers,data,lines};
 }
 export async function readAllRows(sb, table, projectId, assertCurrent = ()=>{}, pageSize=500, filters={}, options={}) {
   // Views such as v_patient_followup_status have no "id" column; callers name a unique key instead.
@@ -183,7 +188,10 @@ export function normalizeImportRow(kind,input,defaultUpcrUnit=''){
 }
 
 // Chinese labels for CSV columns and correction fields; users never see raw column keys in messages.
-export const FIELD_LABELS=Object.freeze({patient_code:'研究编号',sex:'性别',birth_year:'出生年份',baseline_date:'基线日期',baseline_scr:'基线血肌酐',baseline_upcr:'基线UPCR',baseline_upcr_unit:'基线UPCR单位',baseline_upcr_raw:'基线UPCR原始值',baseline_upcr_original_unit:'基线UPCR原始单位',biopsy_date:'肾穿日期',oxford_m:'牛津分型M',oxford_e:'牛津分型E',oxford_s:'牛津分型S',oxford_t:'牛津分型T',oxford_c:'牛津分型C',ln_biopsy_date:'LN肾穿日期',ln_class:'LN病理分型',ln_activity_index:'LN活动指数',ln_chronicity_index:'LN慢性指数',ln_podocytopathy:'足细胞病变',treatment_arm:'研究分组',randomization_id:'随机号',randomization_date:'随机化日期',visit_date:'随访日期',sbp:'收缩压',dbp:'舒张压',scr_umol_l:'血肌酐（μmol/L）',upcr:'UPCR（mg/g）',egfr:'eGFR',notes:'备注',consent_status:'知情同意状态',consent_date:'知情同意日期',consent_version:'知情同意书版本',followup_status:'随访状态',followup_status_date:'随访状态日期'});
+export const FIELD_LABELS=Object.freeze({patient_code:'研究编号',sex:'性别',birth_year:'出生年份',baseline_date:'基线日期',baseline_scr:'基线血肌酐',baseline_upcr:'基线UPCR',baseline_upcr_unit:'基线UPCR单位',baseline_upcr_raw:'基线UPCR原始值',baseline_upcr_original_unit:'基线UPCR原始单位',biopsy_date:'肾穿日期',oxford_m:'牛津分型M',oxford_e:'牛津分型E',oxford_s:'牛津分型S',oxford_t:'牛津分型T',oxford_c:'牛津分型C',ln_biopsy_date:'LN肾穿日期',ln_class:'LN病理分型',ln_activity_index:'LN活动指数',ln_chronicity_index:'LN慢性指数',ln_podocytopathy:'足细胞病变',treatment_arm:'研究分组',randomization_id:'随机号',randomization_date:'随机化日期',visit_date:'随访日期',sbp:'收缩压',dbp:'舒张压',scr_umol_l:'血肌酐（μmol/L）',upcr:'UPCR（mg/g）',egfr:'eGFR',notes:'备注',consent_status:'知情同意状态',consent_date:'知情同意日期',consent_version:'知情同意书版本',followup_status:'随访状态',followup_status_date:'随访状态日期',
+  lab_date:'化验日期',lab_test_code:'化验项目编码',lab_item_name:'化验项目名称',value_raw:'结果数值',unit_symbol:'单位',result_text:'结果文本',ref_range:'参考范围',abnormal_flag:'异常标志',
+  drug_name:'药物名称',drug_class:'药物类别',dose_value:'剂量数值',dose_unit:'剂量单位',route:'给药途径',frequency:'频次',start_date:'起始日期',end_date:'结束日期',indication:'用药目的',
+  event_type:'事件类型',event_date:'事件日期',event_detail:'事件细节',evidence_source:'判定依据来源',file_name:'文件名',file_sha256:'文件校验值'});
 export function fieldLabel(key){return FIELD_LABELS[key]||key;}
 
 // Front-end PII screen, kept in step with the database _contains_pii rule. The database remains authoritative.
@@ -203,11 +211,61 @@ export function assertNoPII(text, fieldLabel) {
 }
 
 const ERROR_MESSAGES=[
+  // 化验 / 用药 / 终点事件批量导入（迁移 0040）。较长、较具体的代码放在前面。
+  ['derived_endpoint_not_importable','eGFR 下降与缓解属于由化验数据计算的终点，由分析脚本按研究方案判定，不能导入；请删除这些行后重试。'],
+  ['same_key_record_conflict','同一患者同一业务键（化验：日期 + 项目；用药：药物 + 起始日期；终点：类型 + 日期）已有不同数据，本块未写入。请先在记录纠错中核实。'],
+  ['file_name_contains_pii','文件名疑似包含个人信息（姓名、手机号、身份证号、病案号或 8 位以上连续数字），请重命名文件后重新上传。'],
+  ['file_name_too_long','文件名最多 200 个字符，请重命名后重新上传。'],
+  ['invalid_file_sha256','文件校验值格式不正确，请重新选择文件后重试。'],
+  ['batch_kind_not_undoable','患者基线批次不能整批撤销；如需更正基线，请在看板中打开该患者，使用“核对 / 更正基线”并填写原因。'],
+  ['batch_not_owned','只能登记自己创建的导入批次的文件信息。'],
+  ['import_batch_not_found','未找到该导入批次，可能不属于当前项目，请刷新导入记录。'],
+  ['batch_not_found','未找到该导入批次，可能不属于当前项目，请刷新导入记录。'],
+  ['undo_reason_required','请填写 2–500 字的撤销原因（不含身份信息）。'],
+  ['invalid_undo_reason','请填写 2–500 字的撤销原因（不含身份信息）。'],
+  ['value_or_text_required','请填写结果数值或结果文本（至少一项）。'],
+  ['lab_result_required','请填写结果数值或结果文本（至少一项）。'],
+  ['unit_symbol_required','填写结果数值时必须填写单位。'],
+  ['lab_test_code_required','请填写化验项目编码，或在预览页完成映射。'],
+  ['lab_test_not_found','化验项目编码不在系统字典中，请在预览页映射到字典项目。'],
+  ['unknown_lab_test','化验项目编码不在系统字典中，请在预览页映射到字典项目。'],
+  ['invalid_lab_test_code','化验项目编码不在系统字典中，请在预览页映射到字典项目。'],
+  ['lab_date_required','请填写化验日期。'],
+  ['invalid_abnormal_flag','异常标志只能为 H（高）、L（低）或 N（正常）。'],
+  ['drug_name_required','请填写药物名称。'],
+  ['start_date_required','请填写用药起始日期。'],
+  ['invalid_drug_class','药物类别须为模板说明中的取值（如 RAS阻断剂、SGLT2抑制剂、糖皮质激素等）。'],
+  ['invalid_route','给药途径须为 PO、IV、SC、IM、topical 或 other。'],
+  ['invalid_dose_value','剂量数值须为大于 0 的数字。'],
+  ['end_date_before_start_date','结束日期不能早于起始日期。'],
+  ['end_before_start','结束日期不能早于起始日期。'],
+  ['event_type_required','请填写事件类型。'],
+  ['event_date_required','请填写事件日期。'],
+  ['invalid_event_type','事件类型只能为终末期肾病、开始透析、肾移植、死亡、复发或其他；其他须填写事件细节。'],
+  ['evidence_source_required','请填写判定依据来源（病历记录、化验数据复核、电话随访、死亡证明或其他）。'],
+  ['invalid_evidence_source','判定依据来源须为病历记录、化验数据复核、电话随访、死亡证明或其他。'],
+  ['event_detail_required','事件类型为“其他”时须填写事件细节。'],
+  ['date_before_1900','日期不能早于 1900-01-01。'],
+  ['date_too_early','日期不能早于 1900-01-01。'],
+  ['lab_value_or_result_required','请填写结果数值或结果文本（至少一项）。'],
+  ['unit_requires_value','只有定性结果（结果文本）时不要填写单位；如有数值请填写结果数值。'],
+  ['unknown_lab_test_code','化验项目编码不在系统字典中，请在预览页映射到字典项目。'],
+  ['value_must_be_positive','剂量数值须大于 0。'],
+  ['number_out_of_range','数值超出系统允许范围，请核对数值与单位。'],
+  ['invalid_number','该项须为有效数字。'],
+  ['invalid_timestamp','采样时间格式不正确，请使用 YYYY-MM-DD 或 YYYY-MM-DDTHH:MM。'],
+  ['text_too_long','文字超过该列长度上限，请精简后重试。'],
+  ['invalid_text','文字不能为空白或包含控制字符。'],
+  ['invalid_file_name','文件名为空或过长（最多 200 个字符），请重命名后重新上传。'],
+  ['invalid_chunk_info','分块信息不正确，请重新上传文件后重试。'],
+  ['import_batch_not_yours','只能登记自己创建的导入批次的文件信息。'],
+  ['import_file_already_registered','该批次已登记了另一份文件的信息，请重新上传文件后重试。'],
+  ['batch_undo_not_tracked','该批次是在系统支持撤销之前导入的，不能自动撤销；请在记录纠错中逐条处理。'],
   ['visit_validation_failed','随访数据未通过系统校验，请核对数值与日期后重试。'],
   ['baseline_upcr_unit_required','请对照原始报告明确选择基线 UPCR 单位，再保存。'],
   ['conversion_mismatch','UPCR 原始值、单位与换算结果不一致，请重新填写并核对。'],
   ['record_changed_since_import','该记录在上次导入后已被修改。请重新导出核对，再通过“核对 / 更正”处理，避免覆盖新记录。'],
-  ['previously_imported_record_deleted_requires_review','相同内容的随访记录曾录入后又被删除，系统暂停自动保存以便核对，请联系项目负责人确认。'],
+  ['previously_imported_record_deleted_requires_review','相同内容的记录曾导入后又被删除，系统暂停自动保存以便核对，请联系项目负责人确认。'],
   ['same_day_record_conflict','该患者在这一天已有一条数值不同的随访记录。同一天只保留一条，请打开该患者的“随访记录”核对并更正，不能重复录入。'],
   ['duplicate_patient_code_in_batch','同一批基线 CSV 出现重复研究编号，请合并或更正重复行。'],
   ['patient_not_registered','未在本项目找到该研究编号的基线记录，请先在“新增患者”中建立基线并核对编号。'],
@@ -332,7 +390,9 @@ export function registryErrorMessage(error, options = {}){
   const row=raw.match(/row_(\d+)_/);
   // 例如 invalid_iso_date: consent_date —— 用中文字段名说明是哪一项。
   const field=raw.match(/:\s*([a-z_]+)\s*$/)?.[1];const fieldName=field&&(FIELD_LABELS[field]||SETTING_LABELS[field]);
-  const prefix=(row&&options.rowPrefix!==false?`第 ${Number(row[1])+1} 行：`:'')+(fieldName?`${fieldName}：`:'');
+  // rowLine：分块导入时把块内第 n 行换算为 CSV 文件中的行号。
+  const line=row?(typeof options.rowLine==='function'?options.rowLine(Number(row[1])):Number(row[1])+1):null;
+  const prefix=(row&&line!=null&&options.rowPrefix!==false?`第 ${line} 行：`:'')+(fieldName?`${fieldName}：`:'');
   for(const [code,message]of ERROR_MESSAGES)if(raw.includes(code))return prefix+message;
   if(/check constraint|check_violation/i.test(raw)||error?.code==='23514'){const problem=constraintProblem(error,raw);if(problem)return prefix+problem;}
   const haystack=[raw,error?.code,error?.details].filter(Boolean).join(' ');

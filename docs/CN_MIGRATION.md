@@ -1,14 +1,14 @@
 # 登记系统迁往中国境内（阿里云）操作手册
 
 > 适用对象：负责迁移的运维人员、复核人、课题负责人代表、医院信息科与伦理/合规审查人员。
-> 适用代码：PR #110 整合版本 + 本批改动（迁移 0032–0039）。调研基线为提交 749bb5d，2026-10-12。
+> 适用代码：PR #110 整合版本 + 本批改动（迁移 0032–0040；0040 为化验/用药/终点事件批量导入）。调研基线为提交 749bb5d，2026-10-12。
 > 本手册只描述操作和核对方法，不构成法律意见；涉及法律判断的事项列在第 11 节，由运营方与法务决定。
 
 ## 0. 先读
 
 **要做什么。** 登记站网页已经部署在阿里云 ECS（`/var/www/kidneysphere-registry`），但账户认证、登记数据库和附件存储仍在 Supabase 云服务的美国西部区域（us-west-2，项目 `etsyglgpiutflethgirs`）。本手册把数据库、认证、附件和备份整体迁到阿里云，迁移后浏览器只访问境内主机。
 
-**顺序要点。** 线上生产仍是 #110 之前的结构（迁移 0001–0031）。#110 与本批的增量（0032–0039）不在美国旧环境执行，而是在新环境恢复旧数据后执行，再发布新版前端。所以“切换数据库”和“发布新版前端”必须在同一个维护窗口内完成。
+**顺序要点。** 线上生产仍是 #110 之前的结构（迁移 0001–0031）。#110 与本批的增量（0032–0040）不在美国旧环境执行，而是在新环境恢复旧数据后执行，再发布新版前端。所以“切换数据库”和“发布新版前端”必须在同一个维护窗口内完成。
 
 **基本规则。**
 
@@ -28,7 +28,7 @@
 | `selfhost.env.example` | 自托管服务环境变量参考 |
 | `../../scripts/check_external_hosts.py` | 境外依赖检查（附录 A） |
 
-本手册的恢复、升级、清除明文和时区步骤，已在本地两个合成 PostgreSQL 17.6 实例上按同样顺序演练过一次（合成的认证/存储表结构，0001–0031 → 备份 → 恢复 → 0032–0039 → 清除明文 → 改时区，三个阶段的快照比较均一致）。合成演练不能代替第 4.11 节在真实新环境上的全流程演练。
+本手册的恢复、升级、清除明文和时区步骤，已在本地两个合成 PostgreSQL 17.6 实例上按同样顺序演练过一次（合成的认证/存储表结构，0001–0031 → 备份 → 恢复 → 0032–0040 → 清除明文 → 改时区，三个阶段的快照比较均一致）。合成演练不能代替第 4.11 节在真实新环境上的全流程演练。
 
 ## 1. 现状清点（迁移会涉及的全部部分）
 
@@ -36,11 +36,11 @@
 |---|---|---|
 | 网页文件 | 阿里云 ECS，Nginx 站点目录 `/var/www/kidneysphere-registry`（发布工具 `scripts/registry_integrated_release.py` 的 `TARGET`）。同机还有另外四个网站（发布工具 `SENTINELS` 列出的路径） | 不迁移；只替换 `config.js`，并发布新版前端 |
 | `config.js`（服务器专属，发布工具只校验不覆盖） | `SUPABASE_URL=https://etsyglgpiutflethgirs.supabase.co`；`SUPABASE_ANON_KEY` 为新格式公开密钥 `sb_publishable_…`；`BILLING.WECHAT_QR_IMG`、`ALIPAY_QR_IMG` 指向同一 Supabase 项目的公开桶 `billing` | 改为境内地址与新密钥（6.14），模板见 `config.example.js` |
-| 数据库 | Supabase 云，PostgreSQL 17，us-west-2。评估时规模：5 个项目、24 名患者、67 条随访、56 个随访链接、35 个账号、基因变异 0 条（以冻结时实际计数为准） | 备份、恢复到新环境，执行 0032–0039 |
+| 数据库 | Supabase 云，PostgreSQL 17，us-west-2。评估时规模：5 个项目、24 名患者、67 条随访、56 个随访链接、35 个账号、基因变异 0 条（以冻结时实际计数为准） | 备份、恢复到新环境，执行 0032–0040 |
 | 认证（GoTrue） | 密码登录（`login.html`、`staff.js`）；邮箱注册并确认（`signup.html`，回跳 `/auth-callback?returnTo=/signup`）；找回密码（回跳 `/auth-callback?recovery=1&returnTo=/staff` 或 `/auth-callback?returnTo=/staff`）；`auth-callback.html` 同时处理 PKCE `code` 和地址栏 `#access_token` 两种回调。现有代码没有调用邮件魔法链接登录（`staff.js` 的 `sendMagicLink` 实际是密码登录），但认证服务的魔法链接邮件模板仍需按中文配置或停用 | 自托管 GoTrue；恢复 `auth.users`（含密码哈希）和 `auth.identities`；配置回跳白名单与境内 SMTP |
 | 数据接口（PostgREST） | 浏览器经 supabase-js 直接读写十余张表（`.from(...)`）并调用 RPC；没有使用 Realtime（无 `.channel(`），没有使用 Edge Functions（无 `functions.invoke`） | 自托管 PostgREST，只暴露 `public` |
 | 附件（Storage） | 公开桶 `billing`：两张收款码图片（在控制台手工创建，不在迁移脚本里）。私有桶 `payment-proofs`：0027 创建（10MB；png/jpeg/webp/pdf），策略 0027 → 0033（按 `auth.uid()` 目录隔离，平台管理员可读）；`checkout.js` 上传付款凭证，`staff.js` 管理员用 120 秒签名链接查看 | 自托管 Storage（本地文件后端）；桶配置用数据恢复，文件经接口重新上传并逐个核对 SHA-256 |
-| 数据库扩展 | 0001 执行 `create extension pgcrypto`；0028 起函数改用内置 `sha256()`、`gen_random_uuid()`；0032–0039 只用内置函数；0039 用内置 `sha256` 计算随访链接摘要（与 0032 起 `security_audit_logs.token_hash` 算法相同） | 新环境无需额外扩展（pgcrypto 可保留）；6.12 核对没有函数再调用 pgcrypto |
+| 数据库扩展 | 0001 执行 `create extension pgcrypto`；0028 起函数改用内置 `sha256()`、`gen_random_uuid()`；0032–0040 只用内置函数；0039 用内置 `sha256` 计算随访链接摘要（与 0032 起 `security_audit_logs.token_hash` 算法相同） | 新环境无需额外扩展（pgcrypto 可保留）；6.12 核对没有函数再调用 pgcrypto |
 | 浏览器加载的外部主机 | `kidneysphere.com` 共享顶栏 CSS/JS（多数页面）——在允许清单内，但需核实其服务器同在境内（发布工具哨兵包含 `/var/www/kidneysphere/`，推测同机部署，需人工确认）；`plausible.io`（`analytics.js`，11 个页面引用）——境外统计，必须关闭；`beian.miit.gov.cn`、`beian.mps.gov.cn`、`www.cac.gov.cn`、`escholarship.org` 只出现在链接中；`lib/vendor` 内的 `github.com` 等只是库内文档字符串 | 附录 A 的检查器在迁移前后各运行一次 |
 | 发布与核验工具 | `registry_integrated_release.py`：`PROJECT_REF='etsyglgpiutflethgirs'`、`TARGET`、`SENTINELS`；`capture_registry_database.py`：`PROJECT_REF`，且只接受 `db.<ref>.supabase.co` 或 `*.pooler.supabase.com` + 用户 `postgres.<ref>`；`refresh_release_manifest.py` 的 `project_ref` 继承自上一版清单；`tests/pg17-preflight.mjs` 写死了 `project_ref` | 需要代码改动，见第 9 节（不在本手册执行） |
 | 测试夹具 | `tests/helpers/pg17-fixture.mjs` 合成了：`anon`/`authenticated`/`service_role`（BYPASSRLS）三个角色；`extensions` schema 与 pgcrypto；只有 `id/email/created_at/email_confirmed_at` 的 `auth.users`；只读 `request.jwt.claim.sub` 的 `auth.uid()`、`auth.jwt()`；最简 `storage.buckets/objects` 与 `storage.foldername()`；没有 `authenticator`、`supabase_admin`、`supabase_auth_admin`、`supabase_storage_admin` 角色 | 夹具证明 SQL 逻辑，不证明真实 GoTrue/Storage 行为；新环境必须做 4.11 全流程演练 |
@@ -259,7 +259,7 @@ shred -u /root/cn-migration/*.dump                      # 删除演练用备份�
 docker compose up -d                                     # 重新初始化空环境，回到 4.9 自检
 ```
 
-演练中如出现以下情况，迁移推迟：恢复报错、快照比较不一致、0032–0039 任一失败、旧随访链接打不开、测试账号无法登录、发布核验报告不通过。
+演练中如出现以下情况，迁移推迟：恢复报错、快照比较不一致、0032–0040 任一失败、旧随访链接打不开、测试账号无法登录、发布核验报告不通过。
 
 ## 5. 迁移前准备
 
@@ -486,7 +486,7 @@ python3 -I $REPO/docs/cn-migration/compare_snapshots.py --phase restore snapshot
 
 （自托管默认配置中，`postgres`、`supabase_admin` 等内部角色都使用 `POSTGRES_PASSWORD`；以 4.9 自检时实际能登录为准。以下各步同理。）
 
-### 6.8 执行 0032–0039（写入）
+### 6.8 执行 0032–0040（写入）
 
 按 `docs/REGISTRY_PG17_RELEASE.md` 的增量原则：只执行增量，不重跑历史全量 SQL；逐个文件执行，遇错即停。以 `postgres` 用户执行（发布契约要求这些对象的属主为 `postgres`；不要改用 `supabase_admin`）。
 
@@ -499,24 +499,26 @@ for m in json.load(open('supabase/migration-manifest.json'))['migrations']:
     if m['file'][:4] >= '0032':
         ok = hashlib.sha256(open('supabase/migrations/' + m['file'], 'rb').read()).hexdigest() == m['sha256']
         print(m['file'], 'OK' if ok else 'MISMATCH')"
-# 预期：0032 至 0039 共 8 行，全部 OK
+# 预期：0032 至 0040 共 9 行，全部 OK
 ```
 
 ```bash
 for f in 0032_security_integrity 0033_billing_registration 0034_import_corrections 0035_frozen_exports \
-         0036_project_members 0037_concept_view_security 0038_followup_workflow 0039_patient_token_hashing; do
+         0036_project_members 0037_concept_view_security 0038_followup_workflow 0039_patient_token_hashing \
+         0040_batch_import; do
   echo "== $f"
   docker compose -f /opt/registry-supabase/docker-compose.yml exec -T -e PGPASSWORD=$PGPASSWORD db \
     psql -h 127.0.0.1 -U postgres -d postgres -X -q -v ON_ERROR_STOP=1 -f - < supabase/migrations/$f.sql || { echo "STOP at $f"; break; }
 done
 ```
 
-预期：8 个文件全部无错误；每个文件自带 `BEGIN … COMMIT`，失败的文件整体回滚。任一失败：停止，保存错误输出，按第 8 节处理（此时旧环境未受影响）。
+预期：9 个文件全部无错误；每个文件自带 `BEGIN … COMMIT`，失败的文件整体回滚。任一失败：停止，保存错误输出，按第 8 节处理（此时旧环境未受影响）。
 
 升级带来的预期数据变化（不是错误）：
 
 - 0038：`patients_baseline.consent_research` 全部置空，`consent_status` 全部为 `unconfirmed`（旧值只是从未有人填写的默认值）；变化逐条写入字段审计。迁移后由各项目按实际知情同意情况在工作台补录。
 - 0039：`patient_tokens.token` 全部置空，改存 `token_hash`；患者手里的链接继续可用（摘要算法相同）。
+- 0040：只新增列、函数和约束，不改已有数据。它新增“停药日期不早于开始日期”约束：如已有用药记录违反，0040 会中止并整体回滚。执行 0032 之前先查 `SELECT count(*) FROM public.meds_long WHERE end_date < start_date;`，结果须为 0，否则先在旧环境人工更正。
 
 ### 6.9 清除旧明文（写入，必须在上线前完成）
 
@@ -607,7 +609,7 @@ docker compose -f /opt/registry-supabase/docker-compose.yml exec -T -e PGPASSWOR
 python3 -I $REPO/docs/cn-migration/compare_snapshots.py --phase upgrade snapshot-S1-old-after-backup.json snapshot-S3-new-upgraded.json
 ```
 
-预期：`结论（upgrade）：一致`——关键表行数、账号登录指纹、随访链接摘要指纹（旧库由明文计算、新库直接读摘要）、附件清单（桶/名称/大小/类型）均与旧库一致；明文随访链接 0 行；版本登记含 0032–0039。
+预期：`结论（upgrade）：一致`——关键表行数、账号登录指纹、随访链接摘要指纹（旧库由明文计算、新库直接读摘要）、附件清单（桶/名称/大小/类型）均与旧库一致；明文随访链接 0 行；版本登记含 0032–0040。
 
 补充只读检查：
 
@@ -634,7 +636,7 @@ python3 scripts/capture_registry_database.py --sql registry-<新版本>.database
 unset KSR_DATABASE_URL
 ```
 
-预期：报告中全部检查为 `true`（包括 `0038_followup_workflow`、`0039_patient_token_hashing`、`followup_views`、`token_hash_only`、`token_revoke_by_id` 等），数据库主版本 17，版本登记为 0032–0039，目录契约与审查过的某一完整版本一致。不一致时不要发布前端；对差异逐项分析（例如旧库里控制台手工建过的对象），按 `docs/REGISTRY_INTEGRATED_RELEASE.md` 的原则处理，不能删减报告内容绕过。
+预期：报告中全部检查为 `true`（包括 `0038_followup_workflow`、`0039_patient_token_hashing`、`0040_batch_import`、`followup_views`、`token_hash_only`、`token_revoke_by_id` 等），数据库主版本 17，版本登记为 0032–0040，目录契约与审查过的某一完整版本一致。不一致时不要发布前端；对差异逐项分析（例如旧库里控制台手工建过的对象），按 `docs/REGISTRY_INTEGRATED_RELEASE.md` 的原则处理，不能删减报告内容绕过。
 
 ### 6.14 Nginx 与 config.js（写入）
 
@@ -699,7 +701,7 @@ unset PGPASSWORD OLD_DB_URL OLD_KEY
 | 5 | 6.4 | 附件下载 | `objects.tsv` 与 `sha256-old.txt` 行数 | 相等，无 FAILED |
 | 6 | 6.5 | 冻结期间无写入 | `compare_snapshots.py --phase freeze` | 一致 |
 | 7 | 6.7 | 恢复逐表一致 | `--phase restore` | 全部业务表行数与内容指纹、账号登录指纹、随访链接摘要指纹一致；认证/存储版本不低于旧环境 |
-| 8 | 6.8 | 增量迁移 | 逐文件执行 | 0032–0039 全部成功 |
+| 8 | 6.8 | 增量迁移 | 逐文件执行 | 0032–0040 全部成功 |
 | 9 | 6.9 | 明文清除 | 表文件路径变化；`grep` 测试链接 | 路径不同；0 个文件命中 |
 | 10 | 6.10 | 时区 | `SHOW TimeZone` | Asia/Shanghai |
 | 11 | 6.11 | 附件逐个一致 | `diff sha256-old.txt sha256-new.txt` | 无输出 |
@@ -727,7 +729,7 @@ unset PGPASSWORD OLD_DB_URL OLD_KEY
 |---|---|---|---|
 | 6.1–6.13（前端与 `config.js` 未改） | 任一步失败且窗口内无法解决 | 删除维护开关文件并 reload Nginx；如在 6.1 设置了旧库只读，执行 `ALTER DATABASE postgres RESET default_transaction_read_only;`。新环境 `docker compose down` 后清空 `/data/postgres`、`/data/registry-storage`，备份按 6.3 规定保管 | 无。用户继续使用旧系统；另约窗口 |
 | 6.14–6.16（已改 `config.js` 或已发布前端，尚未开放） | 功能验证不通过 | ① `python3 /root/registry-<新版本>.pyz --rollback /root/registry-integrated-releases/capture-<实际目录>`（恢复旧前端文件，不动配置）；② 恢复旧配置：`install -m <原权限> -o <原属主> -g <原属组> /root/cn-migration/config.js.us-west-2.bak /var/www/kidneysphere-registry/config.js`，核对 SHA-256 与 6.14 记录一致；③ Nginx 若改过 CSP，恢复原文件；④ 同上一行撤销旧库只读、关闭维护页 | 无。新环境中只有验证用的合成操作，随新环境一起清空 |
-| 6.17 之后（已开放，观察期内） | 出现无法在线修复的严重问题 | 优先在新环境修复。确需回到旧环境时：重新开启维护页；从新环境导出开放以来新增或修改的记录（按 `created_at`/`updated_at` 与审计表），人工评估后在旧系统补录；再执行上一行的 ①–④ | 有损：0038/0039 之后的新字段（同意状态、随访状态等）在旧结构中无处存放；回到旧环境也意味着数据重新存放在境外。因此观察期内保持旧项目只读、不删除，但回滚只作为最后手段 |
+| 6.17 之后（已开放，观察期内） | 出现无法在线修复的严重问题 | 优先在新环境修复。确需回到旧环境时：重新开启维护页；从新环境导出开放以来新增或修改的记录（按 `created_at`/`updated_at` 与审计表），人工评估后在旧系统补录；再执行上一行的 ①–④ | 有损：0038–0040 之后的新字段（同意状态、随访状态、化验定性结果、用药剂量单位、事件判定依据等）在旧结构中无处存放；回到旧环境也意味着数据重新存放在境外。因此观察期内保持旧项目只读、不删除，但回滚只作为最后手段 |
 
 前端发布工具的回退只恢复本次前端文件，不回退数据库，也不恢复 `config.js`（`docs/REGISTRY_INTEGRATED_RELEASE.md`）；以上步骤中的 `config.js` 恢复是单独操作。
 

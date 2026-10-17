@@ -39,7 +39,7 @@ try{
   ON public.v_concept_export_mapping TO PUBLIC,anon,authenticated;`);
  pass('historical mapping columns and dictionary contents captured with synthetic column grants');
 
- assert.equal(await applyMigrations(db,{phase:'upgrade'}),8);
+ assert.equal(await applyMigrations(db,{phase:'upgrade'}),9);
  assert.deepEqual(await contents(),before,'View names, column types and data stay unchanged');
  const {reloptions}=(await db.query("SELECT reloptions FROM pg_class WHERE oid='public.v_concept_export_mapping'::regclass")).rows[0];
  assert.ok(reloptions.includes('security_invoker=true'));
