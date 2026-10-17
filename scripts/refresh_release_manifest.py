@@ -100,6 +100,14 @@ def preflight_check_names() -> list:
     return names
 
 
+# 线上文件在上一版审查之后经单独发布改变过的，按实际线上版本登记为发布基线。
+# 每一项都必须能在仓库历史中找到对应提交，并在发布前与服务器实测哈希核对。
+PRODUCTION_BASELINE_OVERRIDES = {
+    # 2026-09-24 注册页修复（分支 codex/fix-registry-signup-20260924，提交 376f9c5，
+    # 由 tools/deploy_signup_fix.py 单独部署）。本版 signup.html 已按新数据库接口重写并覆盖其修复点。
+    'signup.html': '81edb4c1a6da287f557e221baa049786814ffa91659bc83d1a38f35402d22d69',
+}
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--no-contract', action='store_true', help='skip the PG17 contract rebuild (iteration only; never for a release)')
@@ -121,6 +129,7 @@ def main() -> None:
         if not path.is_file():
             raise SystemExit(f'ALLOWED file missing from site/: {name}')
         old = previous['files'].get(name, {}).get('old_sha256') if name in previous['files'] else None
+        old = PRODUCTION_BASELINE_OVERRIDES.get(name, old)
         files[name] = {'new_sha256': sha(path.read_bytes()), 'old_sha256': old}
 
     manifest = dict(previous)
