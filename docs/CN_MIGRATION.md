@@ -887,6 +887,8 @@ docker compose -f docker-compose.yml -f docker-compose.loopback.yml \
 
 **核对结果。** 备份前后冻结快照一致；恢复（restore）比对一致；0032–0040 全部成功；明文链接码在数据目录命中 0（含 `pg_statistic`）；时区 Asia/Shanghai；4 个附件 SHA-256 逐个一致；升级（upgrade）比对一致；发布预检全部检查为真、目录契约匹配 `historical_crlf`（旧库函数源码为 CRLF 换行）。数据库 `system_identifier` 为 `7697419573917356067`。
 
+**切换（2026-10-17 10:40 前后，北京时间）。** 原网站服务器按 `nginx-registry-sb.conf` 加入 `/sb/` 转发并更新 CSP，替换 `config.js`，用发布包（提交 f1bd5b7）发布前端；回退命令保存在 `/root/cn-cutover/pre-cutover-2/ROLLBACK.txt`。两点经验：① `systemctl reload nginx` 后要等新配置生效再测，且必须按返回内容核对——旧配置下 `/sb/...` 会落到首页兜底返回 200，造成假通过；② 精确路由页面（`/staff` 等）原无缓存头，浏览器沿用旧 HTML 导致登录后无反应，已在 server 块加 `add_header Cache-Control "no-cache" always;`。线上 `signup.html` 是 9 月 24 日单独部署的修复版（81edb4c1…），已登记为发布基线后覆盖。
+
 **仍保留、待按 6.3 处理的文件。** 明文备份与附件副本在 `/root/cn-migration/`（仅 root 可读）；合成演练数据目录 `volumes/db/data.synthetic-20261014`；隔离恢复目录 `/data/registry-isolated-restore/…`。观察期结束后加密保管或销毁并记录。
 
 ## 附录 B：常见问题
