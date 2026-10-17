@@ -18,6 +18,8 @@ const CONFIG_TEXT = fs.readFileSync(path.join(SITE, 'config.js'), 'utf8');
 const SUPABASE_URL = (CONFIG_TEXT.match(/SUPABASE_URL\s*:\s*"([^"]+)"/) || [])[1];
 if (!SUPABASE_URL) throw new Error('config.js 中没有 SUPABASE_URL');
 const SUPABASE_HOST = new URL(SUPABASE_URL).hostname;
+// 接口挂在站点路径下（如 /sb）时，去掉前缀后按 Supabase 原路径模拟
+const SB_PREFIX = new URL(SUPABASE_URL).pathname.replace(/\/+$/, '');
 const ALLOWED_EXTERNAL = new Set(['kidneysphere.com']);
 const BANNED = ['NEJM', '顶刊', '科研小白', '零风险', '无隐私风险', '宽限', 'Token', 'token', '令牌', 'PII', '后台', 'Issue', '一键'];
 const ENGLISH_ERRORS = ['Invalid login credentials', 'User already registered', 'Email link is invalid', 'Failed to fetch', 'Email not confirmed', 'rate limit', 'Signups not allowed'];
@@ -86,6 +88,7 @@ async function openPage(browser, urlPath, { auth } = {}) {
       return route.fulfill({ status: 200, contentType: TYPES[path.extname(file)] || 'application/octet-stream', body: fs.readFileSync(file) });
     }
     if (url.hostname === SUPABASE_HOST) {
+      if (SB_PREFIX && url.pathname.startsWith(SB_PREFIX + '/')) url.pathname = url.pathname.slice(SB_PREFIX.length);
       let body = null;
       try { body = req.postDataJSON(); } catch (_) { body = req.postData(); }
       supabaseCalls.push({ method: req.method(), path: url.pathname, search: url.search, body });

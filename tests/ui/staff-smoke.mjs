@@ -18,6 +18,8 @@ const CONFIG_SOURCE = fs.readFileSync(path.join(ROOT, 'config.js'), 'utf8');
 const SUPABASE_URL = CONFIG_SOURCE.match(/SUPABASE_URL:\s*["']([^"']+)["']/)?.[1];
 assert.ok(SUPABASE_URL, 'config.js 中没有 SUPABASE_URL');
 const SUPABASE_HOST = new URL(SUPABASE_URL).host;
+// 接口挂在站点路径下（如 /sb）时，去掉前缀后按 Supabase 原路径模拟
+const SB_PREFIX = new URL(SUPABASE_URL).pathname.replace(/\/+$/, '');
 const STORAGE_KEY = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`;
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -209,6 +211,7 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
       return route.continue();
     }
     if (url.host !== SUPABASE_HOST) { external.push(request.url()); return route.abort('blockedbyclient'); }
+    if (SB_PREFIX && url.pathname.startsWith(SB_PREFIX + '/')) url.pathname = url.pathname.slice(SB_PREFIX.length);
     const headers = cors(request.headers().origin);
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
     let body = null;

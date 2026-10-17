@@ -16,7 +16,9 @@ import registry_visual_release as visual
 
 TARGET=Path('/var/www/kidneysphere-registry')
 BACKUPS=Path('/root/registry-integrated-releases')
-PROJECT_REF='etsyglgpiutflethgirs'
+PROJECT_REF='ksr-aliyun-cn-shanghai-1'
+# PostgreSQL system_identifier of the registry database (Aliyun cn-shanghai).
+SYSTEM_IDENTIFIER='7697419573917356067'
 VERSION='registry-20261012-adoption-v4'
 CONTRACT_PROTOCOL='registry-contract-v3-pg17'
 CONTRACT_SERVER_MAJOR=17
@@ -117,8 +119,8 @@ def verify_db(report, manifest, now=None):
     required=manifest['required_db_checks']
     if not isinstance(checks,dict) or not required or any(checks.get(name) is not True for name in required):
         raise Error('Database schema/permission validation incomplete or failed')
-    if report.get('identity_source')!='verified_connection_host':
-        raise Error('Database project identity must be verified from connection host/user; use capture_registry_database.py')
+    if report.get('identity_source')!='verified_system_identifier' or report.get('system_identifier')!=SYSTEM_IDENTIFIER:
+        raise Error('Database identity must be verified by system_identifier; use capture_registry_database.py on the database host')
     if set(report.get('schema_versions',[]))!=set(manifest['required_schema_versions']):
         raise Error('Unexpected database schema version set; re-review before frontend deployment')
     # Profiles describe whole reviewed upgrade paths. Never select a convenient
