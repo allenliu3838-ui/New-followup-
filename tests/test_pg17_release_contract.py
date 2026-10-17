@@ -1,5 +1,6 @@
 """Release-gate regression tests using invented metadata, never production reports."""
 import copy
+import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sys
@@ -53,7 +54,8 @@ def fixture():
         'server_version_num': 170006,
         'database_contract_sha256': manifest['database_contract_sha256'],
         'migration_manifest_sha256': manifest['migration_manifest_sha256'],
-        'identity_source': 'verified_connection_host',
+        'identity_source': 'verified_system_identifier',
+        'system_identifier': release.SYSTEM_IDENTIFIER,
         'checked_at': NOW.isoformat(),
         'transaction_read_only': 'on',
         'render_timezone': 'UTC',
@@ -134,7 +136,7 @@ class Pg17ContractGate(unittest.TestCase):
                 self.deny()
 
     def test_project_identity_and_freshness_remain_required(self):
-        for field, value in [('project_ref', 'other-project'), ('database', 'other-database'), ('identity_source', 'manual'), ('checked_at', (NOW-timedelta(days=2)).isoformat()), ('checked_at', (NOW+timedelta(minutes=10)).isoformat())]:
+        for field, value in [('project_ref', 'other-project'), ('database', 'other-database'), ('identity_source', 'manual'), ('identity_source', 'verified_connection_host'), ('system_identifier', '1234567890123456789'), ('system_identifier', None), ('checked_at', (NOW-timedelta(days=2)).isoformat()), ('checked_at', (NOW+timedelta(minutes=10)).isoformat())]:
             with self.subTest(field=field):
                 self.manifest, self.report = fixture()
                 self.report[field] = value
@@ -233,6 +235,51 @@ class Pg17ContractGate(unittest.TestCase):
         self.report['functions'][0]['definition_md5'] = 'f'*32
         self.deny()
 
+
+
+class CaptureToolIdentity(unittest.TestCase):
+    """The capture tool runs only the reviewed SQL, read-only, against the pinned database."""
+
+    def setUp(self):
+        import capture_registry_database as cap
+        self.cap = cap
+        self.sql = cap.approved_preflight_sql()
+
+    def fake(self, identities, report=None):
+        calls = []
+        idents = list(identities)
+        def runner(command, input, env, **kw):
+            calls.append((command, input, env))
+            out = idents.pop(0) if input == self.cap.IDENTITY_SQL else json.dumps(report or {'checks': {}})
+            return type('R', (), {'returncode': 0, 'stdout': out + '\n'})()
+        return runner, calls
+
+    def test_report_is_labelled_only_after_identity_matches_before_and_after(self):
+        runner, calls = self.fake([self.cap.SYSTEM_IDENTIFIER, self.cap.SYSTEM_IDENTIFIER])
+        report = self.cap.capture(self.sql, runner=runner)
+        self.assertEqual((report['project_ref'], report['identity_source'], report['system_identifier']),
+                         (release.PROJECT_REF, 'verified_system_identifier', release.SYSTEM_IDENTIFIER))
+        self.assertEqual(self.cap.PROJECT_REF, release.PROJECT_REF)
+        self.assertEqual(self.cap.SYSTEM_IDENTIFIER, release.SYSTEM_IDENTIFIER)
+        for command, _, env in calls:
+            self.assertIn('PGOPTIONS=-c default_transaction_read_only=on', command)
+            self.assertFalse(any(k.startswith('PG') for k in env))
+
+    def test_wrong_or_changing_database_is_refused(self):
+        for identities in ([' 1'], ['1234567890123456789'], [self.cap.SYSTEM_IDENTIFIER, '1234567890123456789']):
+            with self.subTest(identities=identities):
+                runner, _ = self.fake(identities)
+                with self.assertRaises(SystemExit):
+                    self.cap.capture(self.sql, runner=runner)
+
+    def test_arbitrary_sql_and_container_names_are_refused(self):
+        runner, calls = self.fake([self.cap.SYSTEM_IDENTIFIER] * 2)
+        with self.assertRaises(ValueError):
+            self.cap.capture('SELECT 1;', runner=runner)
+        for name in ['', 'Supabase-DB', 'db;rm -rf /', '-it', 'x' * 64]:
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                self.cap.container_command(name)
+        self.assertEqual(calls, [])
 
 if __name__ == '__main__':
     unittest.main()

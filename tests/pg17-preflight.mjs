@@ -15,8 +15,9 @@ try{
  assert.ok(Object.values(report.checks).every(x=>x===true));
  // Synthetic transport labels ONLY for testing the verifier. This is never
  // written out as a deployable report or presented as a verified hosted connection.
- report.project_ref='etsyglgpiutflethgirs';
- report.identity_source='verified_connection_host';
+ report.project_ref='ksr-aliyun-cn-shanghai-1';
+ report.identity_source='verified_system_identifier';
+ report.system_identifier='7697419573917356067';
  const manifest=JSON.parse(fs.readFileSync(path.join(root,'releases/registry-adoption-v4-20261012/registry-adoption-v4-20261012.manifest.json')));
  const checked=execFileSync('python3',['-c',"import sys,json;sys.path.insert(0,'scripts');from registry_integrated_release import verify_db;x=json.load(sys.stdin);print(verify_db(x['report'],x['manifest']))"],{cwd:root,input:JSON.stringify({report,manifest}),encoding:'utf8',maxBuffer:4*1024*1024});
  assert.equal(checked.trim(),'canonical');

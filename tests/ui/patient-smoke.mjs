@@ -12,7 +12,10 @@ import { chromium } from 'playwright';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const SITE = path.join(ROOT, 'site');
 const config = fs.readFileSync(path.join(SITE, 'config.js'), 'utf8');
-const SUPABASE_HOST = new URL(config.match(/SUPABASE_URL:\s*"([^"]+)"/)[1]).host;
+const SUPABASE_URL = config.match(/SUPABASE_URL:\s*"([^"]+)"/)[1];
+const SUPABASE_HOST = new URL(SUPABASE_URL).host;
+// 接口挂在站点路径下（如 /sb）时，去掉前缀后按 Supabase 原路径模拟
+const SB_PREFIX = new URL(SUPABASE_URL).pathname.replace(/\/+$/, '');
 
 // ---------- pure helpers ----------
 // Loaded as source text so Node treats the browser module as ESM without a package.json type.
@@ -164,6 +167,7 @@ async function openPage({ token, rpc, staticRoute, beforeGoto, entry = 'p', wait
       return route.continue();
     }
     if (url.host !== SUPABASE_HOST) return route.abort('blockedbyclient');
+    if (SB_PREFIX && url.pathname.startsWith(SB_PREFIX + '/')) url.pathname = url.pathname.slice(SB_PREFIX.length);
     const cors = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS',
       'access-control-allow-headers': request.headers()['access-control-request-headers'] || '*' };
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });

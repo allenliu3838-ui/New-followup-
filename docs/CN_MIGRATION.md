@@ -532,6 +532,8 @@ SELECT pg_relation_filepath('public.patient_tokens') AS before_file;
 ALTER SYSTEM SET wal_recycle = off;
 SELECT pg_reload_conf();
 VACUUM FULL public.patient_tokens;
+ANALYZE public.patient_tokens;                 -- 恢复后自动分析会把链接码样本写进列统计
+VACUUM FULL pg_catalog.pg_statistic;            -- 重写统计表，清除旧样本（2026-10-17 实际迁移中发现）
 SELECT pg_relation_filepath('public.patient_tokens') AS after_file;  -- 预期与 before_file 不同（表已重写）
 CHECKPOINT; SELECT pg_switch_wal();
 CHECKPOINT; SELECT pg_switch_wal();
@@ -626,14 +628,14 @@ SELECT count(*) FILTER (WHERE content_sha256 <> encode(sha256(convert_to(content
 
 ### 6.13 发布核验报告
 
-需要第 9 节的工具适配已经审查合并，并已生成新的发布包（发布身份、`config_sha256`、项目身份都对应新环境）。在现网站 ECS 上：
+需要第 9 节的工具适配已经审查合并，并已生成新的发布包（发布身份、`config_sha256`、项目身份都对应新环境）。
+
+实际采用的方式（见附录 C）：在**数据库所在主机**上运行核验工具。工具通过 `docker exec` 在数据库容器内用本地套接字执行审查过的只读预检，不需要数据库密码，也不开放 5432；身份由 PostgreSQL 的 `system_identifier`（预检前后各核对一次，须等于发布工具中固定的值）确认。报告不含秘密，复制到网站服务器供发布工具使用（24 小时内有效）。
 
 ```bash
-read -rs KSR_DATABASE_URL; export KSR_DATABASE_URL
-# 形如 postgresql://postgres:<密码>@db.registry.internal:5432/postgres?sslmode=verify-full
-python3 scripts/capture_registry_database.py --sql registry-<新版本>.database-preflight.sql \
-  --output /root/db-preflight.json --ssl-root-cert /root/registry-db-ca.crt
-unset KSR_DATABASE_URL
+cd <已核对哈希的发布提交目录>
+python3 -I scripts/capture_registry_database.py --sql registry-<版本>.database-preflight.sql --output /root/cn-migration/db-preflight.json
+# 复制到网站服务器：/root/db-preflight.json（权限 600）
 ```
 
 预期：报告中全部检查为 `true`（包括 `0038_followup_workflow`、`0039_patient_token_hashing`、`0040_batch_import`、`followup_views`、`token_hash_only`、`token_revoke_by_id` 等），数据库主版本 17，版本登记为 0032–0040，目录契约与审查过的某一完整版本一致。不一致时不要发布前端；对差异逐项分析（例如旧库里控制台手工建过的对象），按 `docs/REGISTRY_INTEGRATED_RELEASE.md` 的原则处理，不能删减报告内容绕过。
@@ -862,6 +864,30 @@ python3 -I -m unittest discover -s tests -p test_external_hosts.py   # 规则测
 - 退出码：0 无违规；1 有违规；2 参数或读取错误。
 
 基线 749bb5d 的检查结果：违规 1 处——`analytics.js` 无条件加载 `plausible.io`（为统计加开关的前端改动合入后，该处变为“受开关保护”，退出码为 0）；数据库与两张收款码仍在境外（警告）；`escholarship.org` 仅链接；`lib/vendor` 中的 `github.com` 等为库内字符串。迁移完成后在服务器目录上加 `--require-domestic-db` 运行，预期退出码 0。
+
+## 附录 C：2026-10-17 实际执行记录与差异
+
+本节记录真实迁移中与上文不同的做法，后续维护以本节为准。
+
+**拓扑。** 数据库、认证、接口、存储运行在新 ECS `i-uf68fhsuuawzs5ve1lrv`（上海 g 区，内网 `172.24.34.36`），自托管目录 `/data/registry-supabase`。网站仍在原 ECS（内网 `172.24.33.51`），与新 ECS 同一专有网络。不新增 `api.` 子域：浏览器访问 `https://kidneysphereregistry.cn/sb/`，由原 ECS 的 Nginx 经内网转发到 `172.24.34.36:8000`（配置见 `docs/cn-migration/nginx-registry-sb.conf`）。新 ECS 安全组只允许 `172.24.33.51/32` 访问 8000，网关只绑定本机与该内网地址。
+
+**compose 必须带四个文件。** 任何 `docker compose` 命令都写成：
+
+```bash
+cd /data/registry-supabase
+docker compose -f docker-compose.yml -f docker-compose.loopback.yml \
+  -f docker-compose.versions.yml -f docker-compose.prod.yml --env-file .env <命令>
+```
+
+`docker-compose.versions.yml` 把认证固定为 `gotrue@sha256:1736a630…`（v2.197.0）、存储固定为 `storage-api@sha256:ec2ad414…`（v1.82.1）；只用前两个文件会退回旧版本（v2.196.0 / v1.74.0），低于旧 Supabase 已执行的认证/存储迁移。`docker-compose.prod.yml` 设置网关端口（本机 + 内网地址）并只让认证服务接入可出网的网络（发信用）；其余服务仍在封闭网络。
+
+**认证配置（`.env`）。** `SITE_URL=https://kidneysphereregistry.cn`；`ADDITIONAL_REDIRECT_URLS=https://kidneysphereregistry.cn/**`；`API_EXTERNAL_URL=https://kidneysphereregistry.cn/sb/auth/v1`；四个 `MAILER_URLPATHS_*=/sb/auth/v1/verify`；发信 `smtp.qiye.aliyun.com:465`，发件人 `china@kidneysphere.com`。修改前的副本为 `.env.bak-20261017-preprod`。
+
+**备份方式。** 旧库备份在新 ECS 上用 Supabase PG17 镜像内的 `pg_dump` 经 Session pooler（`verify-full`，Supabase Root 2021 CA）完成；附件清单从备份中读取，附件以新格式 `sb_secret_…` 服务密钥下载。
+
+**核对结果。** 备份前后冻结快照一致；恢复（restore）比对一致；0032–0040 全部成功；明文链接码在数据目录命中 0（含 `pg_statistic`）；时区 Asia/Shanghai；4 个附件 SHA-256 逐个一致；升级（upgrade）比对一致；发布预检全部检查为真、目录契约匹配 `historical_crlf`（旧库函数源码为 CRLF 换行）。数据库 `system_identifier` 为 `7697419573917356067`。
+
+**仍保留、待按 6.3 处理的文件。** 明文备份与附件副本在 `/root/cn-migration/`（仅 root 可读）；合成演练数据目录 `volumes/db/data.synthetic-20261014`；隔离恢复目录 `/data/registry-isolated-restore/…`。观察期结束后加密保管或销毁并记录。
 
 ## 附录 B：常见问题
 

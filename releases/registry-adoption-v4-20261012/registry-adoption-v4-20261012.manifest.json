@@ -1,6 +1,6 @@
 {
   "baseline_commit": "bb2d2aa54eabf8c3e2c3b4098b56143ecf8ab3f2",
-  "config_sha256": "2bcb0211e61529e1f8960375b512cc7de866198ae113163d47f96dfe6c5ed405",
+  "config_sha256": "f8a7f8660454f94b56ceaca9894c3f5d6de59b868d565fa09d8015c88ed30fcf",
   "database_contract_profiles": {
     "canonical": {
       "views": [
@@ -34173,7 +34173,7 @@
   },
   "format": 2,
   "migration_manifest_sha256": "0b1e289780feb0e0d34b143b090c206765def21289bab8bb6382d7d30b61379b",
-  "project_ref": "etsyglgpiutflethgirs",
+  "project_ref": "ksr-aliyun-cn-shanghai-1",
   "release": "registry-20261012-adoption-v4",
   "required_db_checks": [
     "0032_security_integrity",

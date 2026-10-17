@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Run a read-only preflight through psql. Credentials come only from local env."""
+"""Run the reviewed read-only preflight inside the registry database container.
+
+Run on the database host (Aliyun cn-shanghai). psql runs inside the local
+container over its Unix socket, so no database password or network listener is
+involved. The database identity is pinned by PostgreSQL's system_identifier,
+checked before and after the preflight.
+"""
 import argparse
 import json
 import hashlib
@@ -7,10 +13,11 @@ import os
 import re
 from pathlib import Path
 import subprocess
-import ssl
-from urllib.parse import urlparse,unquote,parse_qs
 
-PROJECT_REF='etsyglgpiutflethgirs'
+PROJECT_REF='ksr-aliyun-cn-shanghai-1'
+SYSTEM_IDENTIFIER='7697419573917356067'
+CONTAINER='supabase-db'
+IDENTITY_SQL='SELECT system_identifier FROM pg_control_system();'
 ROOT=Path(__file__).resolve().parents[1]
 
 
@@ -27,42 +34,47 @@ def validate_preflight_sql(sql,root=ROOT):
     return sql
 
 
-def connection_environment(url,base=None,root_cert=None):
-    parsed=urlparse(url)
-    username=unquote(parsed.username or '')
-    host=parsed.hostname or ''
-    direct=host==f'db.{PROJECT_REF}.supabase.co'
-    pooled=host.endswith('.pooler.supabase.com') and username==f'postgres.{PROJECT_REF}'
-    if parsed.scheme not in ('postgres','postgresql') or not (direct or pooled):
-        raise ValueError('Connection must identify the actual registry Supabase project; hostname/user mismatch')
-    if unquote(parsed.path.lstrip('/') or 'postgres')!='postgres':
-        raise ValueError('Only the registry API database postgres may be verified')
-    # libpq PGHOSTADDR/PGSERVICE can redirect the connection independently of the
-    # inspected URL. Never inherit a caller's connection routing or TLS overrides.
-    env={k:v for k,v in (base if base is not None else os.environ).items() if not k.startswith('PG')}
-    env.update(PGHOST=host,PGPORT=str(parsed.port or 5432),PGUSER=username,PGPASSWORD=unquote(parsed.password or ''),PGDATABASE=unquote(parsed.path.lstrip('/') or 'postgres'),PGCONNECT_TIMEOUT='15')
-    mode=parse_qs(parsed.query).get('sslmode',['verify-full'])[0]
-    if mode!='verify-full':raise ValueError('verify-full TLS is required to verify the database host identity')
-    ca=Path(root_cert or ssl.get_default_verify_paths().cafile or '')
-    if not ca.is_file():raise ValueError('Provide the trusted database CA bundle using --ssl-root-cert')
-    env.update(PGSSLMODE='verify-full',PGSSLROOTCERT=str(ca.resolve()),PGOPTIONS='-c default_transaction_read_only=on')
-    return env
+def container_command(container=CONTAINER):
+    if not re.fullmatch(r'[a-z0-9][a-z0-9_.-]{0,62}',container or ''):
+        raise ValueError('Invalid container name')
+    # Every statement runs in a read-only transaction; psql reads SQL from stdin only.
+    return ['docker','exec','-i','-e','PGOPTIONS=-c default_transaction_read_only=on',container,
+            'psql','-U','postgres','-d','postgres','-X','-q','-t','-A','-v','ON_ERROR_STOP=1']
+
+
+def run_sql(command,sql,runner=subprocess.run):
+    # Never pass caller libpq routing/TLS/password variables to the docker client.
+    env={k:v for k,v in os.environ.items() if not k.startswith('PG')}
+    completed=runner(command,input=sql,env=env,text=True,capture_output=True,timeout=90)
+    if completed.returncode:raise SystemExit('Database preflight failed. Check the container locally; no deployment allowed.')
+    return completed.stdout.strip()
+
+
+def database_identity(command,runner=subprocess.run):
+    ident=run_sql(command,IDENTITY_SQL,runner)
+    if ident!=SYSTEM_IDENTIFIER:
+        raise SystemExit('Database system_identifier does not match the registry database; refusing to report')
+    return ident
+
+
+def capture(sql,container=CONTAINER,runner=subprocess.run):
+    sql=validate_preflight_sql(sql)
+    command=container_command(container)
+    before=database_identity(command,runner)
+    report=json.loads(run_sql(command,sql,runner))
+    after=database_identity(command,runner)
+    if before!=after:raise SystemExit('Database identity changed during capture')
+    report.update(project_ref=PROJECT_REF,identity_source='verified_system_identifier',system_identifier=after)
+    return report
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--sql',type=Path,required=True)
     parser.add_argument('--output',type=Path,required=True)
-    parser.add_argument('--ssl-root-cert',type=Path)
+    parser.add_argument('--container',default=CONTAINER)
     args=parser.parse_args()
-    sql=validate_preflight_sql(args.sql.read_text())
-    url=os.environ.get('KSR_DATABASE_URL','')
-    if not url:raise SystemExit('Set KSR_DATABASE_URL locally; never paste credentials into chat')
-    env=connection_environment(url,root_cert=args.ssl_root_cert)
-    completed=subprocess.run(['psql','-X','-q','-t','-A','-v','ON_ERROR_STOP=1'],input=sql,env=env,text=True,capture_output=True,timeout=90)
-    if completed.returncode:raise SystemExit('Database preflight failed. Check psql connectivity/schema locally; no deployment allowed.')
-    report=json.loads(completed.stdout.strip())
-    report.update(project_ref=PROJECT_REF,identity_source='verified_connection_host')
+    report=capture(args.sql.read_text(),args.container)
     with os.fdopen(os.open(args.output,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600),'w') as out:
         json.dump(report,out,indent=2);out.write('\n')
     print('Read-only database report saved; inspect every check before frontend deployment')
