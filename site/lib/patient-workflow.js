@@ -135,10 +135,9 @@ export function studyInfo(ctx) {
   };
 }
 
-// Default wording for where the data is stored. The storage location will change when the
-// database moves to mainland China, so deployments override it with CONFIG.DATA_LOCATION_NOTE
-// instead of the page text hard-coding it.
-export const DEFAULT_DATA_LOCATION_NOTE = "数据当前存储于境外服务器，计划迁至中国境内，详见隐私政策";
+// Default wording for where the data is stored (mainland China since the 2026-10-17 cutover).
+// A deployment elsewhere overrides it with CONFIG.DATA_LOCATION_NOTE instead of editing page text.
+export const DEFAULT_DATA_LOCATION_NOTE = "数据存储在中国境内（阿里云上海）的服务器，详见隐私政策";
 
 export function dataLocationNote(config) {
   return cleanText(config?.DATA_LOCATION_NOTE) || DEFAULT_DATA_LOCATION_NOTE;
