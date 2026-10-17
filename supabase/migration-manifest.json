@@ -14,7 +14,7 @@
     "0041_followup_board"
   ],
   "order": "lexicographic filenames; historical duplicate prefixes retained, unique full filenames",
-  "bundle_sha256": "2ba95df42ebcf50444502b5f901a90af7271cb9c2a3b927b381e1896d218d904",
+  "bundle_sha256": "f504bdb10e088dd6afb515e23f7725659977fda55a9b568421ea69ad9e820c69",
   "migrations": [
     {
       "ordinal": 1,
@@ -229,7 +229,7 @@
     {
       "ordinal": 43,
       "file": "0041_followup_board.sql",
-      "sha256": "30041e5c978c377fc555b6ee931147c8d2a0935b38405348e0692ec41fa73899"
+      "sha256": "84595439f470ff4144b93f841504b1e029325afc83fa341400d9ff6d9e7b6e53"
     }
   ]
 }

@@ -598,9 +598,8 @@ async function main() {
     let html = await page.content();
     assert.ok(!html.includes(SECRET_TEXT) && !html.includes(SECRET_HASH), '页面不得显示链接文本或摘要');
     await page.fill('#lkDays', '14');
-    // 本段逐条检查手动撤销；“同时作废此前仍有效的链接”（默认勾选）见 tests/ui/board-actions-smoke.mjs。
-    assert.equal(await page.isChecked('#lkRevokeOld'), true, '默认同时作废此前仍有效的链接');
-    await page.uncheck('#lkRevokeOld');
+    // “同时撤销此前仍有效的链接”默认不勾选（勾选后的行为见 tests/ui/board-actions-smoke.mjs）；本段逐条检查手动撤销。
+    assert.equal(await page.isChecked('#lkRevokeOld'), false, '默认不同时撤销此前仍有效的链接');
     await page.click('#lkCreate');
     await eventually(() => mock.rpcCalls('create_patient_token_v2').length === 1, '没有调用 create_patient_token_v2');
     assert.deepEqual(mock.rpcCalls('create_patient_token_v2')[0].body, { p_project_id: PROJECT.id, p_patient_code: 'P001', p_expires_in_days: 14, p_single_use: true });

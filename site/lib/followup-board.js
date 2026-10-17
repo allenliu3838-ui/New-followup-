@@ -214,9 +214,9 @@ function badge(label, tone) {
   return `<span class="fu-badge tone-${escapeHtml(tone || 'muted')}">${escapeHtml(label)}</span>`;
 }
 
-/** 有效链接多于这个数时，看板提示作废不用的链接。 */
+/** 有效链接多于这个数时，看板提示撤销不用的链接。 */
 export const LINK_COUNT_WARN_ABOVE = 2;
-export const LINK_COUNT_WARNING = '有效链接较多，建议作废不用的链接';
+export const LINK_COUNT_WARNING = '有效链接较多，建议撤销不用的链接';
 export function linkCountWarning(count) {
   return Number(count) > LINK_COUNT_WARN_ABOVE ? LINK_COUNT_WARNING : '';
 }

@@ -12052,8 +12052,12 @@ COMMIT;
 --    patients at once, all or none, with a stated basis (2–500 characters). Each patient goes
 --    through set_patient_study_status itself, so validation, exit rules, link revocation,
 --    trial exemption and field audit are exactly those of the single-patient path.
--- Lock order is unchanged: projects row (FOR SHARE) first, then baseline rows in id order
--- (set_followup_start_date) or one patient at a time in research-code order (set_consent_bulk).
+-- Lock order: projects row (FOR SHARE) first; then every requested baseline row, locked in
+-- one statement in id order by both functions before anything is changed, so two bulk calls
+-- on overlapping patients wait for each other instead of deadlocking; then, through the exit
+-- trigger of set_patient_study_status, that patient's link rows (as every write path since 0038).
+-- A reason may span several lines (tab, newline and carriage return are accepted, other
+-- control characters are refused), as in the single-patient paths.
 BEGIN;
 
 -- Preconditions. Nothing below runs unless 0040 is in place and the objects this migration
@@ -12155,7 +12159,8 @@ BEGIN
   END IF;
   IF p_start_date > today THEN RAISE EXCEPTION 'invalid_or_future_date: followup_start_date'; END IF;
   IF p_start_date < DATE '1900-01-01' THEN RAISE EXCEPTION 'date_before_1900: followup_start_date'; END IF;
-  IF reason IS NULL OR char_length(reason) NOT BETWEEN 2 AND 500 OR reason ~ '[[:cntrl:]]' THEN
+  IF reason IS NULL OR char_length(reason) NOT BETWEEN 2 AND 500
+    OR regexp_replace(reason,'[\n\r\t]','','g') ~ '[[:cntrl:]]' THEN
     RAISE EXCEPTION 'bulk_reason_required';
   END IF;
   IF public._contains_pii(reason) THEN RAISE EXCEPTION 'pii_detected_blocked'; END IF;
@@ -12196,7 +12201,8 @@ END $$;
 -- ---- set_consent_bulk ----------------------------------------------------------------------
 -- The same consent status (and, when given, form version and date) for 1–500 patients, all
 -- or none. Each patient is updated by set_patient_study_status with the stated basis as
--- reason, in research-code order, exactly as the single-patient dialog submits it:
+-- reason, in research-code order (after every row is locked in id order), exactly as the
+-- single-patient dialog submits it:
 --  * consent_status is always sent;
 --  * consent_version only when p_version is given (NULL keeps the recorded version; an
 --    empty text clears it);
@@ -12225,20 +12231,25 @@ BEGIN
   IF p_status IS NULL OR p_status NOT IN ('unconfirmed','consented','waiver','declined','withdrawn') THEN
     RAISE EXCEPTION 'invalid_consent_status';
   END IF;
-  IF reason IS NULL OR char_length(reason) NOT BETWEEN 2 AND 500 OR reason ~ '[[:cntrl:]]' THEN
+  IF reason IS NULL OR char_length(reason) NOT BETWEEN 2 AND 500
+    OR regexp_replace(reason,'[\n\r\t]','','g') ~ '[[:cntrl:]]' THEN
     RAISE EXCEPTION 'bulk_reason_required';
   END IF;
   IF public._contains_pii(reason) THEN RAISE EXCEPTION 'pii_detected_blocked'; END IF;
-  SELECT count(*) INTO n_found FROM public.patients_baseline b
-    WHERE b.project_id=p_project_id AND b.patient_code = ANY(p_patient_codes);
+  -- Every requested row is locked here, in id order (exactly as set_followup_start_date
+  -- locks), before any patient is changed; the per-patient updates below then run on rows
+  -- this transaction already holds.
+  SELECT count(*) INTO n_found FROM (SELECT b.id FROM public.patients_baseline b
+    WHERE b.project_id=p_project_id AND b.patient_code = ANY(p_patient_codes)
+    ORDER BY b.id FOR UPDATE) AS locked;
   IF n_found <> n_codes THEN
     RAISE EXCEPTION 'patient_not_found'
       USING HINT=format('有 %s 个研究编号未在本项目找到，请刷新看板后重试；本次没有修改。',n_codes-n_found);
   END IF;
-  -- Baseline rows in research-code order, locked before each patient's status is read.
+  -- Patients in research-code order (the rows are already locked above).
   FOR code,current_status IN SELECT b.patient_code,b.consent_status FROM public.patients_baseline b
       WHERE b.project_id=p_project_id AND b.patient_code = ANY(p_patient_codes)
-      ORDER BY b.patient_code COLLATE "C" FOR UPDATE LOOP
+      ORDER BY b.patient_code COLLATE "C" LOOP
     changes := jsonb_build_object('consent_status',p_status);
     IF p_version IS NOT NULL THEN changes := changes || jsonb_build_object('consent_version',p_version); END IF;
     IF p_date IS NOT NULL THEN changes := changes || jsonb_build_object('consent_date',p_date::text);

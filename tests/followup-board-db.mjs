@@ -10,6 +10,17 @@ import {createHash, randomUUID} from 'node:crypto';
 import pg from 'pg';
 import {root, migrations, createDatabase} from './helpers/pg17-fixture.mjs';
 
+// Further sessions on the same synthetic server, for lock-order checks.
+const extraClients = [];
+async function connectOther() {
+  const socket = (await row('SHOW unix_socket_directories')).unix_socket_directories;
+  const client = new pg.Client({host: socket, port: 55432, user: 'postgres', database: 'postgres'});
+  await client.connect();
+  extraClients.push(client);
+  await client.query("SET timezone='Asia/Shanghai'; SET deadlock_timeout='100ms'; SET statement_timeout='10s'");
+  return client;
+}
+
 // Calendar dates are compared as the database's own YYYY-MM-DD text.
 pg.types.setTypeParser(1082, value => value);
 
@@ -215,9 +226,13 @@ try {
   await unchangedStart(async () => assert.rejects(setStart(owner, ['N-NEW', 'H-OLD'], '2014-01-01'), is('followup_start_before_baseline')));
   await unchangedStart(async () => assert.rejects(setStart(owner, ['N-NEW'], await day(-31)), is('followup_start_before_baseline')));
   await unchangedStart(async () => assert.rejects(setStart(owner, ['N-NEW'], '1899-12-31'), is('date_before_1900: followup_start_date')));
-  for (const reason of [null, '', ' 补 ', '补', '补'.repeat(501), '原因\u0007']) {
+  for (const reason of [null, '', ' 补 ', '补', '补'.repeat(501), '原因\u0007', '原因\u001b[0m']) {
     await unchangedStart(async () => assert.rejects(setStart(owner, ['N-NEW'], today, reason), is('bulk_reason_required'), JSON.stringify(reason)));
   }
+  // A reason may span several lines, as in the single-patient paths (tab, newline, carriage return).
+  assert.equal((await setStart(owner, ['N-NEW'], today, '历史补录患者\n\t从今天开始提醒\r\n核对人：研究护士')).changed, 1);
+  assert.equal((await startAudits('N-NEW')).at(-1).change_reason, '历史补录患者\n\t从今天开始提醒\r\n核对人：研究护士');
+  assert.equal((await setStart(owner, ['N-NEW'], null, '恢复\n按基线日期')).changed, 1);
   await unchangedStart(async () => assert.rejects(setStart(owner, ['N-NEW'], today, '患者电话13812345678'), is('pii_detected_blocked')));
   await unchangedStart(async () => assert.rejects(setStart(owner, [], today), is('patient_codes_required')));
   await unchangedStart(async () => assert.rejects(setStart(owner, null, today), is('patient_codes_required')));
@@ -320,7 +335,10 @@ try {
   for (const user of [viewer, analyst, outsider]) await unchangedConsent(async () => assert.rejects(setConsent(user, ['X-1'], 'consented', null, null), is('project_access_denied')));
   await unchangedConsent(async () => assert.rejects(setConsent(owner, ['P-OTHER'], 'consented', null, null, BASIS, otherProject), is('project_access_denied')));
   await unchangedConsent(async () => assert.rejects(setConsent(owner, ['X-1', 'P-OTHER'], 'consented', null, null), is('patient_not_found')));
-  for (const reason of [null, '', '补', '补'.repeat(501)]) await unchangedConsent(async () => assert.rejects(setConsent(owner, ['X-1'], 'consented', null, null, reason), is('bulk_reason_required')));
+  for (const reason of [null, '', '补', '补'.repeat(501), '依据\u0007', '依据\u001b']) await unchangedConsent(async () => assert.rejects(setConsent(owner, ['X-1'], 'consented', null, null, reason), is('bulk_reason_required'), JSON.stringify(reason)));
+  assert.equal((await setConsent(owner, ['X-2'], 'consented', 'V1.0', null, '纸质同意书\n存档于 A 柜\t第 3 盒')).changed, 1);
+  assert.equal((await row("SELECT change_reason FROM public.field_audit_log WHERE patient_code='X-2' AND field_name='consent_status' ORDER BY changed_at DESC LIMIT 1")).change_reason, '纸质同意书\n存档于 A 柜\t第 3 盒');
+  await setStatus(owner, 'X-2', {consent_status: 'unconfirmed', consent_version: '', consent_date: ''}, '恢复为未确认');
   await unchangedConsent(async () => assert.rejects(setConsent(owner, ['X-1'], 'consented', null, null, '身份证 110101199001011234'), is('pii_detected_blocked')));
   await unchangedConsent(async () => assert.rejects(setConsent(owner, [], 'consented', null, null), is('patient_codes_required')));
   await unchangedConsent(async () => assert.rejects(setConsent(owner, ['X-1', 'X-1'], 'consented', null, null), is('invalid_patient_code_list')));
@@ -343,8 +361,56 @@ try {
   await db.query("UPDATE public.user_profiles SET account_trial_expires_at=now()+interval '30 days' WHERE user_id=$1", [owner]);
   pass('after the trial ends bulk consent follows the single-patient exit rules exactly; a refused patient undoes the whole call and is named in the error detail');
 
+  // ---- Lock order: both bulk functions lock every requested row in id order, so two calls on the
+  // same patients wait for each other instead of deadlocking --------------------------------------
+  for (const fn of ['public.set_followup_start_date(uuid,text[],date,text)', 'public.set_consent_bulk(uuid,text[],text,text,date,text)']) {
+    const src = (await row('SELECT pg_get_functiondef($1::regprocedure) AS s', [fn])).s;
+    assert.match(src, /ORDER BY b\.id FOR UPDATE/, `${fn} locks the requested rows in id order`);
+    assert.doesNotMatch(src, /patient_code COLLATE "C" FOR UPDATE/, `${fn} never locks in research-code order`);
+  }
+  // Two patients whose research-code order is the opposite of their id order: a function that
+  // locked in code order would take K-1 first, one that locks in id order takes K-2 first.
+  const lowId = '00000000-0000-4000-8000-00000000c0de', highId = 'ffffffff-ffff-4fff-8fff-ffffffffc0de';
+  await db.query("INSERT INTO public.patients_baseline(id,project_id,patient_code,baseline_date,sex,birth_year,baseline_scr,created_by) VALUES($1,$2,'K-1',CURRENT_DATE-100,'F',1980,88.4,$3),($4,$2,'K-2',CURRENT_DATE-100,'M',1975,90,$3)",
+    [highId, project, owner, lowId]);
+  const other = await connectOther();
+  await db.exec("SET deadlock_timeout='100ms'; SET statement_timeout='10s'");
+  // Session A holds the row that an id-ordered lock takes first (K-2, the lowest id).
+  await other.query('BEGIN');
+  await other.query("SELECT id FROM public.patients_baseline WHERE project_id=$1 AND patient_code='K-2' FOR UPDATE", [project]);
+  // Session B: bulk consent for both patients; it must wait on K-2 before touching K-1.
+  const waiting = setConsent(editor, ['K-1', 'K-2'], 'consented', 'V1.0', await day(-1));
+  await new Promise(resolve => setTimeout(resolve, 300));
+  assert.equal((await other.query("SELECT count(*)::int AS n FROM pg_stat_activity WHERE wait_event_type='Lock' AND query ~ 'set_consent_bulk'")).rows[0].n, 1, 'the bulk call is waiting for the lock');
+  // Session A now runs the other bulk function on the same two patients: it already holds K-2
+  // and takes K-1 freely; with the old code order B would hold K-1 and both would deadlock.
+  await other.query("SELECT set_config('request.jwt.claim.sub',$1,true)", [owner]);
+  await other.query('SET LOCAL ROLE authenticated');
+  const a = (await other.query('SELECT public.set_followup_start_date($1,$2::text[],$3::date,$4) AS r', [project, ['K-1', 'K-2'], today, REASON])).rows[0].r;
+  assert.deepEqual([a.requested, a.changed], [2, 2]);
+  await other.query('RESET ROLE');
+  await other.query('COMMIT');
+  const b = await waiting;
+  assert.deepEqual([b.requested, b.changed], [2, 2], 'the waiting bulk call completes after A commits, without a deadlock (40P01)');
+  assert.deepEqual((await rows("SELECT patient_code,consent_status,followup_start_date FROM public.patients_baseline WHERE project_id=$1 AND patient_code LIKE 'K-%' ORDER BY patient_code", [project])).map(r => [r.patient_code, r.consent_status, r.followup_start_date]),
+    [['K-1', 'consented', today], ['K-2', 'consented', today]]);
+  // The same crossing with the functions swapped.
+  await other.query('BEGIN');
+  await other.query("SELECT id FROM public.patients_baseline WHERE project_id=$1 AND patient_code='K-2' FOR UPDATE", [project]);
+  const waiting2 = setStart(editor, ['K-1', 'K-2'], await day(-10));
+  await new Promise(resolve => setTimeout(resolve, 300));
+  await other.query("SELECT set_config('request.jwt.claim.sub',$1,true)", [owner]);
+  await other.query('SET LOCAL ROLE authenticated');
+  assert.equal((await other.query('SELECT public.set_consent_bulk($1,$2::text[],$3,$4,$5::date,$6) AS r', [project, ['K-1', 'K-2'], 'waiver', null, null, BASIS])).rows[0].r.changed, 2);
+  await other.query('RESET ROLE');
+  await other.query('COMMIT');
+  assert.equal((await waiting2).changed, 2);
+  await db.exec('RESET deadlock_timeout; RESET statement_timeout');
+  pass('both bulk functions lock every requested baseline row in id order before changing anything: two sessions crossing on the same patients wait for each other and both complete');
+
   assert.equal(await count('SELECT count(*) AS n FROM registry_private.study_status_rpc_rows'), 0);
   console.log(`FOLLOWUP_BOARD_DB_OK ${groups} groups; synthetic database only.`);
 } finally {
+  for (const client of extraClients) await client.end().catch(() => {});
   await db.close();
 }

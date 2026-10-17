@@ -895,6 +895,8 @@ docker compose -f docker-compose.yml -f docker-compose.loopback.yml \
 
 生产库已按上文完成 0032–0040。0041 只新增一列（`patients_baseline.followup_start_date`，现有患者全部为空）、一张私有标记表、一个检查触发器、两个函数（`set_followup_start_date`、`set_consent_bulk`）并替换看板视图 `v_patient_followup_status`（末尾加一列；未设置提醒起算日的患者计算结果不变）。不改任何已有数据，可重复执行（再次执行无变化）；未登记 0040 时会中止并整体回滚。
 
+备份与恢复注意：0041 的检查触发器 `registry_followup_start_checks` 拒绝直接写入带有提醒起算日的患者行。因此，对已含 `followup_start_date` 值的数据做**只恢复数据**（`pg_restore --data-only`、`psql` 执行 COPY/INSERT）会被触发器拒绝，须以超级用户加 `--disable-triggers`（或先停用该触发器，恢复后再启用）；**完整 `pg_restore`**（先建表、载入数据、最后建触发器）不受影响，第 6 章的恢复方式即属此类。
+
 **顺序：先在生产库执行 0041，确认成功后再发布新版前端。** 新前端读取看板视图的新列并调用新函数；数据库未升级时，看板的批量操作会报“数据库尚未升级”。反过来，先升级数据库、暂不发布前端没有影响（旧前端不使用新对象）。
 
 在数据库主机上（新 ECS，目录 `/data/registry-supabase`），与 0032–0040 相同：以 `postgres` 用户、经 `docker exec` 在数据库容器内执行，遇错即停：

@@ -2,8 +2,8 @@
 // 运行：node tests/ui/board-actions-smoke.mjs   成功时打印 BOARD_ACTIONS_UI_OK。
 // 与 staff-smoke.mjs 相同的方式：本地静态服务器提供 site/，Playwright 打开 staff.html，
 // 对 Supabase 域名的请求用 page.route 返回合成数据；其他外部主机的请求一律拦截并记为失败。
-// 覆盖：勾选患者、批量设置提醒起算日、批量确认知情同意、生成新链接时作废旧链接、
-// “作废除最新一个以外的全部有效链接”、有效链接过多的提示、只读角色看不到批量操作。
+// 覆盖：勾选患者、批量设置提醒起算日、批量确认知情同意、生成新链接时撤销旧链接（需勾选并确认）、
+// “撤销除最新一条以外的全部有效链接”、有效链接过多的提示、只读角色看不到批量操作。
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -46,8 +46,8 @@ const initialTokens = () => [
   token(5, 'L005'), token(6, 'L005'),
 ];
 const NEW_TOKEN = 'b1b2c3d4e5f60718293a4b5c6d7e8f90';
-const REVOKE_OLD_REASON = '已生成新链接，作废此前仍有效的链接';
-const KEEP_NEWEST_REASON = '整理链接：保留最新一条，作废其余有效链接';
+const REVOKE_OLD_REASON = '已生成新链接，撤销此前仍有效的链接';
+const KEEP_NEWEST_REASON = '整理链接：保留最新一条，撤销其余有效链接';
 
 // ── 本地静态服务器 ──────────────────────────────────────────
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.json': 'application/json', '.txt': 'text/plain; charset=utf-8', '.svg': 'image/svg+xml' };
@@ -213,7 +213,7 @@ const checkbox = (page, code) => page.locator(`tr[data-patient-code="${code}"] i
 async function checkPureHelpers() {
   const board = await loadModule('lib/followup-board.js');
   const data = await loadModule('lib/registry-data.js');
-  assert.equal(board.linkCountWarning(3), '有效链接较多，建议作废不用的链接');
+  assert.equal(board.linkCountWarning(3), '有效链接较多，建议撤销不用的链接');
   assert.equal(board.linkCountWarning(2), '');
   assert.equal(board.linkCountWarning(null), '');
   assert.equal(board.dueBasisText({ followup_start_date: '2026-10-01', last_visit_date: '2015-01-01' }), '按提醒起算日 2026-10-01 计算');
@@ -221,7 +221,7 @@ async function checkPureHelpers() {
   assert.equal(board.dueBasisText({ followup_start_date: '2026-01-01', last_visit_date: '2026-05-01' }), '按最近随访 2026-05-01 计算（提醒起算日 2026-01-01 早于最近随访）');
   assert.equal(board.dueBasisText({ baseline_date: '2014-01-01' }), '按基线日期 2014-01-01 计算');
   const html = board.renderBoardRow(initialBoard()[3], { showLinks: true, selectable: true, selected: new Set(['L004']) });
-  assert.ok(html.includes('data-link-warn') && html.includes('fu-link-warn') && html.includes('有效链接较多，建议作废不用的链接'));
+  assert.ok(html.includes('data-link-warn') && html.includes('fu-link-warn') && html.includes('有效链接较多，建议撤销不用的链接'));
   assert.ok(html.includes('data-select-code="L004"') && html.includes(' checked'));
   assert.ok(!board.renderBoardRow(initialBoard()[3], { showLinks: true }).includes('data-select-code'), '不可批量修改时不显示勾选框');
   const hostile = board.renderBoardRow({ ...initialBoard()[2], patient_code: '<img src=x onerror=alert(1)>', followup_start_date: '<b>x</b>' }, { selectable: true });
@@ -253,7 +253,7 @@ async function main() {
     assert.equal(await page.locator('#boardBulkBar').isHidden(), true, '未勾选时不显示批量操作');
     const warnCell = page.locator('tr[data-patient-code="L004"] td[data-label="有效链接"]');
     assert.equal(await warnCell.getAttribute('data-link-warn'), '');
-    assert.ok((await warnCell.getAttribute('title')).startsWith('有效链接较多，建议作废不用的链接'), '提示文字');
+    assert.ok((await warnCell.getAttribute('title')).startsWith('有效链接较多，建议撤销不用的链接'), '提示文字');
     assert.ok((await warnCell.getAttribute('class')).includes('fu-link-warn'), '警示样式');
     assert.equal(await page.locator('tr[data-patient-code="L005"] td[data-label="有效链接"]').getAttribute('data-link-warn'), null, '2 条不提示');
     const due = page.locator('tr[data-patient-code="P003"] td[data-label="下次应随访"]');
@@ -288,6 +288,8 @@ async function main() {
     assert.ok((await text(startModal)).includes('历史补录的患者，从这一天开始计算下次随访，不再按多年前的基线日期显示逾期'));
     assert.equal(await page.inputValue('#bsDate'), today, '默认今天');
     assert.equal(await page.getAttribute('#bsDate', 'max'), today);
+    assert.equal(await page.inputValue('#bsReason'), '', '原因框不预填');
+    assert.ok((await page.getAttribute('#bsReason', 'placeholder')).includes('历史补录'), '原因框用提示文字');
     assert.equal(await text(page.locator('#bsCodes')), '已选择 2 位患者：H001、H002');
     await page.fill('#bsDate', '2014-04-01');
     await page.click('#bsSave');
@@ -300,16 +302,20 @@ async function main() {
     await page.click('#bsSave');
     assert.ok((await text(page.locator('#bsFeedback'))).includes('个人身份信息'));
     assert.equal(mock.rpcCalls('set_followup_start_date').length, 0, '前端校验未通过时不提交');
-    // 服务器拒绝时显示中文说明。
+    // 服务器拒绝时显示中文说明；批量函数带中文提示（hint）的错误优先显示提示，而不是通用译文。
     mock.errors.set_followup_start_date = { code: 'P0001', message: 'followup_start_before_baseline', details: null, hint: null };
-    await page.fill('#bsReason', '历史补录患者，从今天开始提醒');
+    await page.fill('#bsReason', '历史补录患者\n从今天开始提醒');
     await page.click('#bsSave');
     await eventually(async () => (await text(page.locator('#bsFeedback')))?.includes('提醒起算日不能早于所选患者的基线日期'), '应显示服务器错误的中文说明');
+    mock.errors.set_followup_start_date = { code: 'P0001', message: 'patient_not_found', details: null, hint: '有 1 个研究编号未在本项目找到，请刷新看板后重试；本次没有修改。' };
+    await page.click('#bsSave');
+    await eventually(async () => (await text(page.locator('#bsFeedback')))?.includes('有 1 个研究编号未在本项目找到，请刷新看板后重试'), '应优先显示批量场景的中文提示');
+    assert.ok(!(await text(page.locator('#bsFeedback'))).includes('请先建立患者基线'), '不得显示单个患者场景的译文');
     const readsBefore = fullBoardReads(mock).length;
     await page.click('#bsSave');
     await startModal.waitFor({ state: 'detached' });
     const startCall = mock.rpcCalls('set_followup_start_date').at(-1).body;
-    assert.deepEqual(startCall, { p_project_id: PROJECT.id, p_patient_codes: ['H001', 'H002'], p_start_date: today, p_reason: '历史补录患者，从今天开始提醒' });
+    assert.deepEqual(startCall, { p_project_id: PROJECT.id, p_patient_codes: ['H001', 'H002'], p_start_date: today, p_reason: '历史补录患者\n从今天开始提醒' }, '多行原因原样提交');
     await eventually(() => fullBoardReads(mock).length > readsBefore, '批量修改后应重新读取看板');
     await eventually(async () => (await text(page.locator('tr[data-patient-code="H001"] td[data-label="下次应随访"]')))?.includes(`提醒起算日 ${today}`), '看板显示新的提醒起算日');
     assert.equal(await page.locator('#boardBulkBar').isHidden(), true, '保存后清除勾选');
@@ -322,8 +328,11 @@ async function main() {
     await page.check('input[name="bsMode"][value="clear"]');
     assert.equal(await page.isDisabled('#bsDate'), true);
     await page.click('#bsSave');
+    assert.ok((await text(page.locator('#bsFeedback'))).includes('请填写原因'), '清除也须填写原因');
+    await page.fill('#bsReason', '起算日设置有误，恢复按基线日期');
+    await page.click('#bsSave');
     await startModal.waitFor({ state: 'detached' });
-    assert.deepEqual(mock.rpcCalls('set_followup_start_date').at(-1).body, { p_project_id: PROJECT.id, p_patient_codes: ['P003'], p_start_date: null, p_reason: '历史补录患者，从此日开始提醒随访' });
+    assert.deepEqual(mock.rpcCalls('set_followup_start_date').at(-1).body, { p_project_id: PROJECT.id, p_patient_codes: ['P003'], p_start_date: null, p_reason: '起算日设置有误，恢复按基线日期' });
 
     // 4. 批量确认知情同意。
     await checkbox(page, 'H001').check();
@@ -364,33 +373,42 @@ async function main() {
     await consentModal.waitFor({ state: 'detached' });
     assert.deepEqual(mock.rpcCalls('set_consent_bulk').at(-1).body, { p_project_id: PROJECT.id, p_patient_codes: ['P003'], p_status: 'waiver', p_version: null, p_date: null, p_reason: '伦理委员会批准免除知情同意' });
 
-    // 5. 生成新链接时默认作废此前仍有效的链接（只作废生成前已有的有效链接）。
+    // 5. 生成新链接时可勾选同时撤销此前仍有效的链接：默认不勾选；勾选后生成前确认并写明条数；只撤销生成前已有的有效链接。
     await page.click('tr[data-patient-code="L004"] [data-act="links"]');
     await eventually(async () => (await page.locator('#lkList tbody tr').count()) === 4, '链接列表应有 4 行');
-    assert.equal(await page.isChecked('#lkRevokeOld'), true, '默认勾选“同时作废该患者此前仍有效的链接”');
+    assert.equal(await page.isChecked('#lkRevokeOld'), false, '默认不勾选“同时撤销该患者此前仍有效的链接”');
+    assert.equal(await text(page.locator('#lkKeepNewest')), '撤销除最新一条以外的全部有效链接');
     assert.equal(await page.locator('#lkKeepNewestBar').isVisible(), true, '多条有效链接时显示整理按钮');
+    await page.check('#lkRevokeOld');
+    const dialogsBefore = dialogs.length;
     await page.click('#lkCreate');
-    await eventually(() => mock.rpcCalls('revoke_patient_token_by_id').length === 3, '应作废此前的 3 条有效链接');
+    await eventually(() => mock.rpcCalls('revoke_patient_token_by_id').length === 3, '应撤销此前的 3 条有效链接');
+    assert.ok(dialogs.slice(dialogsBefore).some(d => d.includes('撤销该患者此前仍有效的 3 条链接')), `生成前确认并写明条数：${dialogs.slice(dialogsBefore).join(' | ')}`);
     const revoked = mock.rpcCalls('revoke_patient_token_by_id').map(r => r.body);
-    assert.deepEqual(revoked.map(b => b.p_token_id).sort(), [token(1).id, token(2).id, token(3).id].sort(), '只作废生成前已有的有效链接');
+    assert.deepEqual(revoked.map(b => b.p_token_id).sort(), [token(1).id, token(2).id, token(3).id].sort(), '只撤销生成前已有的有效链接');
     assert.ok(revoked.every(b => b.p_reason === REVOKE_OLD_REASON && b.p_project_id === PROJECT.id));
     const createdAt = mock.requests.findIndex(r => r.path === '/rest/v1/rpc/create_patient_token_v2');
-    assert.ok(mock.requests.findIndex(r => r.path === '/rest/v1/rpc/revoke_patient_token_by_id') > createdAt, '新链接生成成功后才作废旧链接');
-    await eventually(async () => (await text(page.locator('#lkFeedback')))?.includes('此前仍有效的 3 条链接已作废'), '提示已作废旧链接');
+    assert.ok(mock.requests.findIndex(r => r.path === '/rest/v1/rpc/revoke_patient_token_by_id') > createdAt, '新链接生成成功后才撤销旧链接');
+    await eventually(async () => (await text(page.locator('#lkFeedback')))?.includes('此前仍有效的 3 条链接已撤销'), '提示已撤销旧链接');
     assert.ok((await page.inputValue('#lkOnceLink')).endsWith(`#${NEW_TOKEN}`), '新链接仍可复制');
     assert.equal(mock.tokens.filter(t => t.patient_code === 'L004' && !t.revoked_at).length, 1, '只剩新链接有效');
     await eventually(() => page.locator('#lkKeepNewestBar').isHidden(), '只剩一条有效链接时隐藏整理按钮');
     await page.keyboard.press('Escape');
     await page.locator('[data-registry-modal="links"]').waitFor({ state: 'detached' });
 
-    // 6. “作废除最新一个以外的全部有效链接”：确认后保留最新一条。
+    // 6. “撤销除最新一条以外的全部有效链接”：确认后保留最新一条。未勾选“同时撤销”时生成新链接不撤销任何链接。
     await page.click('tr[data-patient-code="L005"] [data-act="links"]');
     await eventually(async () => (await page.locator('#lkList tbody tr').count()) === 2, 'L005 有 2 条链接');
+    assert.equal(await page.isChecked('#lkRevokeOld'), false, '每次打开都默认不勾选');
     const before = mock.rpcCalls('revoke_patient_token_by_id').length;
+    await page.click('#lkCreate');
+    await eventually(async () => (await page.locator('#lkList tbody tr').count()) === 3, '生成后列表有 3 条');
+    assert.equal(mock.rpcCalls('revoke_patient_token_by_id').length, before, '未勾选时不撤销任何链接');
     await page.click('#lkKeepNewest');
-    await eventually(() => mock.rpcCalls('revoke_patient_token_by_id').length === before + 1, '应作废较早的一条');
-    assert.ok(dialogs.some(d => d.includes('将作废该患者除最新一条以外的 1 条有效链接')), '作废前确认');
-    assert.deepEqual(mock.rpcCalls('revoke_patient_token_by_id').at(-1).body, { p_project_id: PROJECT.id, p_token_id: token(6).id, p_reason: KEEP_NEWEST_REASON }, '保留最新的一条（L005 第 5 号）');
+    await eventually(() => mock.rpcCalls('revoke_patient_token_by_id').length === before + 2, '应撤销较早的两条');
+    assert.ok(dialogs.some(d => d.includes('将撤销该患者除最新一条以外的 2 条有效链接')), '撤销前确认');
+    assert.deepEqual(mock.rpcCalls('revoke_patient_token_by_id').slice(-2).map(r => r.body.p_token_id).sort(), [token(5).id, token(6).id].sort(), '保留刚生成的最新一条，撤销原有两条');
+    assert.ok(mock.rpcCalls('revoke_patient_token_by_id').slice(-2).every(r => r.body.p_reason === KEEP_NEWEST_REASON && r.body.p_project_id === PROJECT.id));
     await eventually(async () => (await text(page.locator('#lkFeedback')))?.includes('保留最新的一条'), '提示结果');
     await page.keyboard.press('Escape');
 

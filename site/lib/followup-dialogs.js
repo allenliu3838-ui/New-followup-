@@ -335,13 +335,13 @@ export function createFollowupDialogs(deps) {
     <div><label for="lkDays">有效期（天，1–365）</label><input id="lkDays" type="number" min="1" max="365" step="1" value="30"/></div>
     <div class="fu-check"><label><input id="lkSingle" type="checkbox" checked/> 单次使用（提交一次后自动失效）</label></div>
   </div>
-  <div class="fu-radio"><label><input id="lkRevokeOld" type="checkbox" checked/> 同时作废该患者此前仍有效的链接（新链接生成成功后再作废，已提交的数据不受影响）</label></div>
+  <div class="fu-radio"><label><input id="lkRevokeOld" type="checkbox"/> 同时撤销该患者此前仍有效的链接（新链接生成成功后再撤销，已提交的数据不受影响）</label></div>
   <div class="btnbar"><button type="button" class="btn primary" id="lkCreate" data-project-capability="can_manage_tokens">生成新链接</button></div>
   <div id="lkOnce" class="fu-onetime" hidden></div>
 </fieldset>
 <h3 class="fu-h3">已发放的链接</h3>
 <div id="lkList" aria-live="polite">正在读取…</div>
-<div class="btnbar" id="lkKeepNewestBar" hidden><button type="button" class="btn small danger" id="lkKeepNewest">作废除最新一个以外的全部有效链接</button></div>
+<div class="btnbar" id="lkKeepNewestBar" hidden><button type="button" class="btn small danger" id="lkKeepNewest">撤销除最新一条以外的全部有效链接</button></div>
 <div id="lkRevoke" class="fu-revoke" hidden>
   <p class="small">撤销后该链接立即失效，已提交的数据不受影响。</p>
   <label for="lkReason">撤销原因（必填，不含身份信息）</label>
@@ -447,7 +447,7 @@ export function createFollowupDialogs(deps) {
       }
     }
 
-    /** 依次作废多条链接；返回成功与失败的数量。任一失败不影响其他链接。 */
+    /** 依次撤销多条链接；返回成功与失败的数量。任一失败不影响其他链接。 */
     async function revokeMany(ids, reason) {
       let done = 0;
       const failed = [];
@@ -462,23 +462,23 @@ export function createFollowupDialogs(deps) {
 
     async function keepNewestOnly() {
       if (busy) return;
-      if (!deps.canManageLinks()) { setFeedback(feedback, '仅项目负责人和录入协作人可以作废随访链接。'); return; }
+      if (!deps.canManageLinks()) { setFeedback(feedback, '仅项目负责人和录入协作人可以撤销随访链接。'); return; }
       const active = activeTokens();
-      if (active.length < 2) { setFeedback(feedback, '该患者只有一条或没有有效链接，无需作废。', 'info'); return; }
+      if (active.length < 2) { setFeedback(feedback, '该患者只有一条或没有有效链接，无需撤销。', 'info'); return; }
       const older = active.slice(1).map(t => t.id);
-      if (!window.confirm(`将作废该患者除最新一条以外的 ${older.length} 条有效链接，作废后立即失效，已提交的数据不受影响。确认作废？`)) return;
+      if (!window.confirm(`将撤销该患者除最新一条以外的 ${older.length} 条有效链接，撤销后立即失效，已提交的数据不受影响。确认撤销？`)) return;
       const button = q('#lkKeepNewest');
       try {
         deps.assertCurrent(op);
         markBusy(true); deps.setBusy(button, true);
-        const { done, failed } = await revokeMany(older, '整理链接：保留最新一条，作废其余有效链接');
+        const { done, failed } = await revokeMany(older, '整理链接：保留最新一条，撤销其余有效链接');
         markBusy(false); deps.setBusy(button, false);
         if (!deps.isCurrent(op) || !modal.isOpen()) return;
-        if (done) { deps.toast(`已作废 ${done} 条旧链接`); deps.onSaved('links', { patientCode: code }); }
-        setFeedback(feedback, failed.length ? `已作废 ${done} 条，${failed.length} 条未能作废：${deps.errorMessage(failed[0])}` : `已作废 ${done} 条旧链接，保留最新的一条。`, failed.length ? 'error' : 'ok');
+        if (done) { deps.toast(`已撤销 ${done} 条旧链接`); deps.onSaved('links', { patientCode: code }); }
+        setFeedback(feedback, failed.length ? `已撤销 ${done} 条，${failed.length} 条未能撤销：${deps.errorMessage(failed[0])}` : `已撤销 ${done} 条旧链接，保留最新的一条。`, failed.length ? 'error' : 'ok');
         await loadList();
       } catch (error) {
-        if (deps.isCurrent(op) && modal.isOpen()) setFeedback(feedback, `作废失败：${deps.errorMessage(error)}`);
+        if (deps.isCurrent(op) && modal.isOpen()) setFeedback(feedback, `撤销失败：${deps.errorMessage(error)}`);
       } finally {
         markBusy(false); deps.setBusy(button, false);
       }
@@ -515,6 +515,12 @@ export function createFollowupDialogs(deps) {
       const revokeOld = q('#lkRevokeOld').checked && deps.canManageLinks();
       const button = q('#lkCreate');
       setFeedback(feedback, []);
+      if (revokeOld) {
+        // 勾选了同时撤销：生成前说明将撤销几条，由用户确认；列表没读到时无法确认条数，不生成。
+        if (!listLoaded) { setFeedback(feedback, '链接列表尚未读取，无法确认会撤销哪些链接。请稍后再试，或取消勾选“同时撤销”后再生成。'); return; }
+        const n = activeTokens().length;
+        if (n > 0 && !window.confirm(`将生成新链接，并在生成成功后撤销该患者此前仍有效的 ${n} 条链接；撤销后立即失效，已提交的数据不受影响。确认？`)) return;
+      }
       clearOnce();
       const knownIds = listLoaded ? new Set(tokens.map(t => t.id)) : null;
       try {
@@ -540,17 +546,17 @@ export function createFollowupDialogs(deps) {
           if (fresh.length === 1) { current.tokenId = fresh[0].id; renderList(); }
         }
         if (revokeOld) {
-          // 只作废生成前已存在、仍有效的链接；认不出新链接时不作废，避免误作废刚生成的链接。
+          // 只撤销生成前已存在、仍有效的链接；认不出新链接时不撤销，避免误撤销刚生成的链接。
           if (!(loaded && knownIds && fresh.length === 1)) {
-            setFeedback(feedback, '新链接已生成，但未能确认是哪一条，所以没有作废旧链接。请核对列表后，用“作废除最新一个以外的全部有效链接”处理。', 'info');
+            setFeedback(feedback, '新链接已生成，但未能确认是哪一条，所以没有撤销旧链接。请核对列表后，用“撤销除最新一条以外的全部有效链接”处理。', 'info');
           } else {
             const older = tokens.filter(t => knownIds.has(t.id) && tokenState(t).key === 'active').map(t => t.id);
             if (older.length) {
               markBusy(true);
-              const { done, failed } = await revokeMany(older, '已生成新链接，作废此前仍有效的链接');
+              const { done, failed } = await revokeMany(older, '已生成新链接，撤销此前仍有效的链接');
               markBusy(false);
               if (!deps.isCurrent(op) || !modal.isOpen()) return;
-              setFeedback(feedback, failed.length ? `新链接已生成；此前的有效链接作废了 ${done} 条，${failed.length} 条未能作废：${deps.errorMessage(failed[0])}` : `新链接已生成；此前仍有效的 ${done} 条链接已作废。`, failed.length ? 'error' : 'ok');
+              setFeedback(feedback, failed.length ? `新链接已生成；此前的有效链接撤销了 ${done} 条，${failed.length} 条未能撤销：${deps.errorMessage(failed[0])}` : `新链接已生成；此前仍有效的 ${done} 条链接已撤销。`, failed.length ? 'error' : 'ok');
               if (done) deps.onSaved('links', { patientCode: code });
               await loadList();
             }
@@ -740,10 +746,14 @@ ${exitOnly ? '<p id="ssExitOnly" class="fu-warn-line small">账户当前为只�
   const BULK_MAX = 500;
   /** 所选研究编号的简短列表（最多列出 10 个），只作为文字显示。 */
   const codeSummary = codes => `${codes.slice(0, 10).join('、')}${codes.length > 10 ? ` 等 ${codes.length} 位` : ''}`;
-  /** 数据库错误的中文说明；批量操作中出错的患者编号在 DETAIL 中（中文）。 */
+  /**
+   * 数据库错误的中文说明。批量函数的提示（hint）是针对批量场景写的中文（如“有 2 个研究编号未在本项目找到，
+   * 请刷新看板后重试”），比按错误码翻译的通用说明准确，有则优先；出错的患者编号在 DETAIL 中。
+   */
   const bulkError = error => {
+    const hint = typeof error?.hint === 'string' && /[一-龥]/.test(error.hint) ? error.hint.trim() : '';
     const detail = typeof error?.details === 'string' && /^研究编号 /.test(error.details) ? `（${error.details}）` : '';
-    return `${deps.errorMessage(error)}${detail}`;
+    return `${hint || deps.errorMessage(error)}${detail}`;
   };
   function checkBulkCodes(codes) {
     if (!deps.can('can_write')) { deps.toast('当前项目角色或账户状态不允许批量修改。'); return false; }
@@ -776,7 +786,7 @@ ${exitOnly ? '<p id="ssExitOnly" class="fu-warn-line small">账户当前为只�
 </div>
 <div class="fu-grid"><div><label for="bsDate">提醒起算日</label><input id="bsDate" type="date" value="${today}" max="${today}"/></div></div>
 <label for="bsReason">原因（必填，2–500 字，不含身份信息）</label>
-<textarea id="bsReason" maxlength="500">历史补录患者，从此日开始提醒随访</textarea>
+<textarea id="bsReason" maxlength="500" placeholder="例如：历史补录患者，从今天开始提醒随访。不要填写姓名、电话等身份信息。"></textarea>
 <div id="bsFeedback" class="fu-feedback"></div>
 <div class="btnbar"><button type="button" class="btn primary" id="bsSave">保存</button><button type="button" class="btn" data-modal-close>取消</button></div>`,
     });

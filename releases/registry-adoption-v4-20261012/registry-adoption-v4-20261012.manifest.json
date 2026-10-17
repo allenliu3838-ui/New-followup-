@@ -17001,7 +17001,7 @@
           "signature": "set_consent_bulk(uuid,text[],text,text,date,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "de49987670890fb5e0df82e34cb632ff",
+          "definition_md5": "b0415694bc5178306dd80e59c0e19bf2",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -17013,7 +17013,7 @@
           "signature": "set_followup_start_date(uuid,text[],date,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "463bd2b15e544846b72febaf9bbed22c",
+          "definition_md5": "aadba60b4a41b9c5edbff48060feca20",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -34130,7 +34130,7 @@
           "signature": "set_consent_bulk(uuid,text[],text,text,date,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "de49987670890fb5e0df82e34cb632ff",
+          "definition_md5": "b0415694bc5178306dd80e59c0e19bf2",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -34142,7 +34142,7 @@
           "signature": "set_followup_start_date(uuid,text[],date,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "463bd2b15e544846b72febaf9bbed22c",
+          "definition_md5": "aadba60b4a41b9c5edbff48060feca20",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -34262,7 +34262,7 @@
     }
   },
   "database_contract_protocol": "registry-contract-v3-pg17",
-  "database_contract_reference_sha256": "f0b9551ec9175b0903c598db223c1f39d68046b8ab5310371e3d35371926ba35",
+  "database_contract_reference_sha256": "5e555e116d87c01c60ec07ee7075ba3a53fb604be72200ec5afffec4f653e518",
   "database_contract_sha256": "aca7000205680905a853fc72280ff60a2f99af32d8b2807bb761de7769ed6b29",
   "database_server_major": 17,
   "files": {
@@ -34307,7 +34307,7 @@
       "old_sha256": "c5c3d5b05e5a1a4fae277911f6bfe4af2c6af94d4bc96adbf61c844d132923e7"
     },
     "assets/sql/batch6_latest.sql": {
-      "new_sha256": "4b7b1f011009116bd99f0e0c307e5444e72d816034ff1cc836bf00167c4c1bf2",
+      "new_sha256": "d34c02ef673adbc70228e0177d5ebcba9affd5d3a572e3be1069e98b9cd23e61",
       "old_sha256": "872074c4a42c986ffcbc368d9c1e06ef126c527ad87eb4ba6e53e7a041165e0b"
     },
     "assets/template/METHODS_TEMPLATE_EN.md": {
@@ -34403,11 +34403,11 @@
       "old_sha256": "249a55b8eecf910e3251721d7801a62a3f17de589580aec6ee36dfccfb9b0cab"
     },
     "lib/followup-board.js": {
-      "new_sha256": "a8fe400b631ed5823b427ade62406b87f21f8567fde377992398a3872313d068",
+      "new_sha256": "432d5ccfb1ad9ca4ab380328f870df0123febc2b1ef215b10febb523329dfd1b",
       "old_sha256": null
     },
     "lib/followup-dialogs.js": {
-      "new_sha256": "7056d8df56b5ac1db79b2f4b93ff2595df9655051cdfcd289b91df7fac5dbdbd",
+      "new_sha256": "8963adfda3e224f308c1c63f9dc76198ef6a5ab7f0d5e89466c93c395c8695da",
       "old_sha256": null
     },
     "lib/password-strength.js": {
@@ -34524,7 +34524,7 @@
     }
   },
   "format": 2,
-  "migration_manifest_sha256": "d236502a346d89d407cdbd8d8a4784e8614d50bf287b46023273e9be289a825d",
+  "migration_manifest_sha256": "9641b129073cbf5f924aac052de6666b8c324c59bb33c4e66120e78e6e333878",
   "project_ref": "ksr-aliyun-cn-shanghai-1",
   "release": "registry-20261012-adoption-v4",
   "required_db_checks": [
