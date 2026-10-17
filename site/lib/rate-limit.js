@@ -7,7 +7,7 @@
  * service and database permissions.
  *
  * Usage:
- *   import { throttle } from "/lib/rate-limit.js?v=registry-20261012-adoption-v4";
+ *   import { throttle } from "/lib/rate-limit.js?v=registry-20261017-cn-v5";
  *   const rl = throttle("login", { maxAttempts: 5, windowMs: 15 * 60_000 });
  *   if (!rl.allow()) { toast(rl.message); return; }
  *

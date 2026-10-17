@@ -1,4 +1,4 @@
-import { createClient } from "/lib/vendor/supabase.js?v=registry-20261012-adoption-v4";
+import { createClient } from "/lib/vendor/supabase.js?v=registry-20261017-cn-v5";
 
 let _client = null;
 

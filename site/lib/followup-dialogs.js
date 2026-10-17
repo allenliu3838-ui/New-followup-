@@ -5,7 +5,7 @@ import {
   visitSaveMessage, validationDetails, isSameDayConflict, tokenState, revokeReasonLabel, buildFollowupLink,
   linkMessageText, revokesLinks, newLinkBlockReason, CONSENT_STATUSES, FOLLOWUP_STATUSES, FOLLOWUP_STATUS_OPTIONS, FOLLOWUP_STATES, REASON_REQUIRED_CONSENT, REASON_REQUIRED_FOLLOWUP,
   EXIT_CONSENT_STATUSES, EXIT_FOLLOWUP_STATUSES, consentDateLabel, inactiveReason,
-} from '/lib/followup-board.js?v=registry-20261012-adoption-v4';
+} from '/lib/followup-board.js?v=registry-20261017-cn-v5';
 
 const TOKEN_COLUMNS = 'id,patient_code,created_at,expires_at,single_use,used_at,revoked_at,revoke_reason,active';
 
