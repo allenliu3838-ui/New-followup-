@@ -741,6 +741,8 @@ unset PGPASSWORD OLD_DB_URL OLD_KEY
 
 **状态（2026-10-17）：** 下表各项已随 v4 发布身份（`registry-20261012-adoption-v4`，发布包取自提交 f1bd5b7）完成并于当日整体上线。v4 上线后，`refresh_release_manifest.py` 的生产基线改为继承上一版**已上线**清单的 `new_sha256`（常量 `PREVIOUS_DEPLOYED = True`，`PREVIOUS` 指向 v4 清单），v5（`registry-20261017-cn-v5`）起按此生成，不再需要 `signup.html` 的单项基线登记；若在上一版尚未上线时再次固定发布身份，须把 `PREVIOUS_DEPLOYED` 改回 `False`（继承 `old_sha256`）。
 
+**状态（2026-10-18）：** v5 已于 2026-10-17 整体上线（发布包取自提交 4919961）。v6（`registry-20261018-cn-v6`）以 v5 清单为生产基线，含迁移 0041（随访看板）；上线时须先在生产库执行 0041，再发布前端。
+
 | 文件 | 位置 | 现状 | 需要的改动 |
 |---|---|---|---|
 | `scripts/capture_registry_database.py` | 第 13 行 `PROJECT_REF`；`connection_environment()`（约第 30–49 行） | 只接受 `db.etsyglgpiutflethgirs.supabase.co`，或 `*.pooler.supabase.com` 且用户为 `postgres.etsyglgpiutflethgirs` | 新的项目身份（例如 `ksr-aliyun-<地域>-1`）；主机规则改为精确匹配新数据库主机名（如 `db.registry.internal`）与用户 `postgres`；保留 `verify-full` TLS、清除继承的 `PG*` 变量、只读事务、只接受审查过的预检 SQL 等全部现有约束。可选加强：在预检 SQL 中输出 `pg_control_system()` 的 `system_identifier` 并在工具中固定比对，因为自托管主机名不像 Supabase 项目编号那样全局唯一 |
@@ -896,6 +898,35 @@ docker compose -f docker-compose.yml -f docker-compose.loopback.yml \
 **切换（2026-10-17 10:40 前后，北京时间）。** 原网站服务器按 `nginx-registry-sb.conf` 加入 `/sb/` 转发并更新 CSP，替换 `config.js`，用发布包（提交 f1bd5b7）发布前端；回退命令保存在 `/root/cn-cutover/pre-cutover-2/ROLLBACK.txt`。两点经验：① `systemctl reload nginx` 后要等新配置生效再测，且必须按返回内容核对——旧配置下 `/sb/...` 会落到首页兜底返回 200，造成假通过；② 精确路由页面（`/staff` 等）原无缓存头，浏览器沿用旧 HTML 导致登录后无反应，已在 server 块加 `add_header Cache-Control "no-cache" always;`。线上 `signup.html` 是 9 月 24 日单独部署的修复版（81edb4c1…），已登记为发布基线后覆盖。
 
 **仍保留、待按 6.3 处理的文件。** 明文备份与附件副本在 `/root/cn-migration/`（仅 root 可读）；合成演练数据目录 `volumes/db/data.synthetic-20261014`；隔离恢复目录 `/data/registry-isolated-restore/…`。观察期结束后加密保管或销毁并记录。
+
+### C.1 后续增量 0041（随访看板：提醒起算日、批量确认知情同意）
+
+生产库已按上文完成 0032–0040。0041 只新增一列（`patients_baseline.followup_start_date`，现有患者全部为空）、一张私有标记表、一个检查触发器、两个函数（`set_followup_start_date`、`set_consent_bulk`）并替换看板视图 `v_patient_followup_status`（末尾加一列；未设置提醒起算日的患者计算结果不变）。不改任何已有数据，可重复执行（再次执行无变化）；未登记 0040 时会中止并整体回滚。
+
+备份与恢复注意：0041 的检查触发器 `registry_followup_start_checks` 拒绝直接写入带有提醒起算日的患者行。因此，对已含 `followup_start_date` 值的数据做**只恢复数据**（`pg_restore --data-only`、`psql` 执行 COPY/INSERT）会被触发器拒绝，须以超级用户加 `--disable-triggers`（或先停用该触发器，恢复后再启用）；**完整 `pg_restore`**（先建表、载入数据、最后建触发器）不受影响，第 6 章的恢复方式即属此类。
+
+**顺序：先在生产库执行 0041，确认成功后再发布新版前端。** 新前端读取看板视图的新列并调用新函数；数据库未升级时，看板的批量操作会报“数据库尚未升级”。反过来，先升级数据库、暂不发布前端没有影响（旧前端不使用新对象）。
+
+在数据库主机上（新 ECS，目录 `/data/registry-supabase`），与 0032–0040 相同：以 `postgres` 用户、经 `docker exec` 在数据库容器内执行，遇错即停：
+
+```bash
+cd "$REPO" && python3 -I -c "
+import hashlib, json
+m = next(x for x in json.load(open('supabase/migration-manifest.json'))['migrations'] if x['file'] == '0041_followup_board.sql')
+ok = hashlib.sha256(open('supabase/migrations/' + m['file'], 'rb').read()).hexdigest() == m['sha256']
+print(m['file'], 'OK' if ok else 'MISMATCH')"
+# 预期：0041_followup_board.sql OK
+
+docker exec -i supabase-db psql -U postgres -d postgres -X -q -v ON_ERROR_STOP=1 -f - \
+  < supabase/migrations/0041_followup_board.sql
+docker exec -i supabase-db psql -U postgres -d postgres -X -t -A \
+  -c "SELECT version FROM public.registry_schema_versions WHERE version='0041_followup_board'"
+# 预期：0041_followup_board
+```
+
+然后按 6.12 重新生成只读预检报告（报告中 `0041_followup_board`、`followup_board_signatures`、`followup_start_column` 均须为 `true`，目录契约须与审查过的版本一致），再用发布工具发布前端。0041 失败时整体回滚、生产数据不变：保存错误输出，不要发布新前端。
+
+使用提示：历史补录的患者在看板中勾选后点“设置提醒起算日”（默认今天），之后按“提醒起算日与最近一次随访中较晚的一天 + 随访间隔”计算下次随访；可随时改为其他日期或清除。“批量确认知情同意”按纸质同意书等原始记录登记，须填写依据，每位患者的修改与单个患者“研究状态”中的修改规则相同并逐字段留痕。
 
 ## 附录 B：常见问题
 

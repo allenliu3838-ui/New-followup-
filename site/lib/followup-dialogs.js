@@ -5,7 +5,7 @@ import {
   visitSaveMessage, validationDetails, isSameDayConflict, tokenState, revokeReasonLabel, buildFollowupLink,
   linkMessageText, revokesLinks, newLinkBlockReason, CONSENT_STATUSES, FOLLOWUP_STATUSES, FOLLOWUP_STATUS_OPTIONS, FOLLOWUP_STATES, REASON_REQUIRED_CONSENT, REASON_REQUIRED_FOLLOWUP,
   EXIT_CONSENT_STATUSES, EXIT_FOLLOWUP_STATUSES, consentDateLabel, inactiveReason,
-} from '/lib/followup-board.js?v=registry-20261017-cn-v5';
+} from '/lib/followup-board.js?v=registry-20261018-cn-v6';
 
 const TOKEN_COLUMNS = 'id,patient_code,created_at,expires_at,single_use,used_at,revoked_at,revoke_reason,active';
 
@@ -116,7 +116,7 @@ async function copyText(text, fallbackInput) {
 
 /**
  * deps: { sb, capture, isCurrent, assertCurrent, can, canManageLinks, setBusy, toast, errorMessage,
- *         containsPII, getRow, rowsLoaded, getProject, onSaved, openHistory, linkOrigin }
+ *         containsPII, getRow, rowsLoaded, getProject, onSaved, clearSelection, openHistory, linkOrigin }
  */
 export function createFollowupDialogs(deps) {
   const { sb } = deps;
@@ -209,6 +209,7 @@ export function createFollowupDialogs(deps) {
       const state = FOLLOWUP_STATES[row.followup_state];
       const parts = [
         row.baseline_date ? `基线日期 ${row.baseline_date}` : '',
+        row.followup_start_date ? `提醒起算日 ${row.followup_start_date}` : '',
         row.last_visit_date ? `最近随访 ${row.last_visit_date}` : '尚无随访记录',
         row.next_due_date && row.followup_state !== 'inactive' ? `下次应随访 ${row.next_due_date}${state ? `（${state.label}）` : ''}` : '',
       ].filter(Boolean);
@@ -334,11 +335,13 @@ export function createFollowupDialogs(deps) {
     <div><label for="lkDays">有效期（天，1–365）</label><input id="lkDays" type="number" min="1" max="365" step="1" value="30"/></div>
     <div class="fu-check"><label><input id="lkSingle" type="checkbox" checked/> 单次使用（提交一次后自动失效）</label></div>
   </div>
+  <div class="fu-radio"><label><input id="lkRevokeOld" type="checkbox"/> 同时撤销该患者此前仍有效的链接（新链接生成成功后再撤销，已提交的数据不受影响）</label></div>
   <div class="btnbar"><button type="button" class="btn primary" id="lkCreate" data-project-capability="can_manage_tokens">生成新链接</button></div>
   <div id="lkOnce" class="fu-onetime" hidden></div>
 </fieldset>
 <h3 class="fu-h3">已发放的链接</h3>
 <div id="lkList" aria-live="polite">正在读取…</div>
+<div class="btnbar" id="lkKeepNewestBar" hidden><button type="button" class="btn small danger" id="lkKeepNewest">撤销除最新一条以外的全部有效链接</button></div>
 <div id="lkRevoke" class="fu-revoke" hidden>
   <p class="small">撤销后该链接立即失效，已提交的数据不受影响。</p>
   <label for="lkReason">撤销原因（必填，不含身份信息）</label>
@@ -365,8 +368,13 @@ export function createFollowupDialogs(deps) {
       box.hidden = true;
     }
 
+    /** 仍有效的链接，按创建时间从新到旧。 */
+    const activeTokens = () => tokens.filter(t => tokenState(t).key === 'active')
+      .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+
     function renderList() {
       const box = q('#lkList');
+      q('#lkKeepNewestBar').hidden = activeTokens().length < 2;
       if (!tokens.length) { box.textContent = '该患者还没有随访链接。'; return; }
       const now = Date.now();
       const rows = tokens.map(t => {
@@ -439,6 +447,43 @@ export function createFollowupDialogs(deps) {
       }
     }
 
+    /** 依次撤销多条链接；返回成功与失败的数量。任一失败不影响其他链接。 */
+    async function revokeMany(ids, reason) {
+      let done = 0;
+      const failed = [];
+      for (const id of ids) {
+        if (!deps.isCurrent(op) || !modal.isOpen()) break;
+        const { error } = await sb.rpc('revoke_patient_token_by_id', { p_project_id: op.project.id, p_token_id: id, p_reason: reason });
+        if (error) failed.push(error); else done += 1;
+      }
+      if (done && once && (once.tokenId === null || ids.includes(once.tokenId))) clearOnce();
+      return { done, failed };
+    }
+
+    async function keepNewestOnly() {
+      if (busy) return;
+      if (!deps.canManageLinks()) { setFeedback(feedback, '仅项目负责人和录入协作人可以撤销随访链接。'); return; }
+      const active = activeTokens();
+      if (active.length < 2) { setFeedback(feedback, '该患者只有一条或没有有效链接，无需撤销。', 'info'); return; }
+      const older = active.slice(1).map(t => t.id);
+      if (!window.confirm(`将撤销该患者除最新一条以外的 ${older.length} 条有效链接，撤销后立即失效，已提交的数据不受影响。确认撤销？`)) return;
+      const button = q('#lkKeepNewest');
+      try {
+        deps.assertCurrent(op);
+        markBusy(true); deps.setBusy(button, true);
+        const { done, failed } = await revokeMany(older, '整理链接：保留最新一条，撤销其余有效链接');
+        markBusy(false); deps.setBusy(button, false);
+        if (!deps.isCurrent(op) || !modal.isOpen()) return;
+        if (done) { deps.toast(`已撤销 ${done} 条旧链接`); deps.onSaved('links', { patientCode: code }); }
+        setFeedback(feedback, failed.length ? `已撤销 ${done} 条，${failed.length} 条未能撤销：${deps.errorMessage(failed[0])}` : `已撤销 ${done} 条旧链接，保留最新的一条。`, failed.length ? 'error' : 'ok');
+        await loadList();
+      } catch (error) {
+        if (deps.isCurrent(op) && modal.isOpen()) setFeedback(feedback, `撤销失败：${deps.errorMessage(error)}`);
+      } finally {
+        markBusy(false); deps.setBusy(button, false);
+      }
+    }
+
     function renderOnce(days, single) {
       const box = q('#lkOnce');
       box.hidden = false;
@@ -467,8 +512,15 @@ export function createFollowupDialogs(deps) {
       const days = Number(q('#lkDays').value);
       if (!Number.isInteger(days) || days < 1 || days > 365) { setFeedback(feedback, '有效期须为 1–365 天的整数。'); q('#lkDays').focus(); return; }
       const single = q('#lkSingle').checked;
+      const revokeOld = q('#lkRevokeOld').checked && deps.canManageLinks();
       const button = q('#lkCreate');
       setFeedback(feedback, []);
+      if (revokeOld) {
+        // 勾选了同时撤销：生成前说明将撤销几条，由用户确认；列表没读到时无法确认条数，不生成。
+        if (!listLoaded) { setFeedback(feedback, '链接列表尚未读取，无法确认会撤销哪些链接。请稍后再试，或取消勾选“同时撤销”后再生成。'); return; }
+        const n = activeTokens().length;
+        if (n > 0 && !window.confirm(`将生成新链接，并在生成成功后撤销该患者此前仍有效的 ${n} 条链接；撤销后立即失效，已提交的数据不受影响。确认？`)) return;
+      }
       clearOnce();
       const knownIds = listLoaded ? new Set(tokens.map(t => t.id)) : null;
       try {
@@ -488,9 +540,27 @@ export function createFollowupDialogs(deps) {
         deps.onSaved('links', { patientCode: code });
         const loaded = await loadList();
         // 接口只返回链接全文，不返回编号：按生成前后列表的差异认出新链接；认不出时撤销任一链接都会移除面板。
+        let fresh = [];
         if (once === current && loaded && knownIds) {
-          const fresh = tokens.filter(t => !knownIds.has(t.id));
+          fresh = tokens.filter(t => !knownIds.has(t.id));
           if (fresh.length === 1) { current.tokenId = fresh[0].id; renderList(); }
+        }
+        if (revokeOld) {
+          // 只撤销生成前已存在、仍有效的链接；认不出新链接时不撤销，避免误撤销刚生成的链接。
+          if (!(loaded && knownIds && fresh.length === 1)) {
+            setFeedback(feedback, '新链接已生成，但未能确认是哪一条，所以没有撤销旧链接。请核对列表后，用“撤销除最新一条以外的全部有效链接”处理。', 'info');
+          } else {
+            const older = tokens.filter(t => knownIds.has(t.id) && tokenState(t).key === 'active').map(t => t.id);
+            if (older.length) {
+              markBusy(true);
+              const { done, failed } = await revokeMany(older, '已生成新链接，撤销此前仍有效的链接');
+              markBusy(false);
+              if (!deps.isCurrent(op) || !modal.isOpen()) return;
+              setFeedback(feedback, failed.length ? `新链接已生成；此前的有效链接撤销了 ${done} 条，${failed.length} 条未能撤销：${deps.errorMessage(failed[0])}` : `新链接已生成；此前仍有效的 ${done} 条链接已撤销。`, failed.length ? 'error' : 'ok');
+              if (done) deps.onSaved('links', { patientCode: code });
+              await loadList();
+            }
+          }
         }
       } catch (error) {
         if (deps.isCurrent(op) && modal.isOpen()) setFeedback(feedback, `生成失败：${deps.errorMessage(error)}`);
@@ -500,6 +570,7 @@ export function createFollowupDialogs(deps) {
     }
 
     q('#lkCreate').addEventListener('click', createLink);
+    q('#lkKeepNewest').addEventListener('click', keepNewestOnly);
     q('#lkRevokeConfirm').addEventListener('click', confirmRevoke);
     q('#lkRevokeCancel').addEventListener('click', () => { revokeId = null; q('#lkRevoke').hidden = true; });
     const blocked = newLinkBlockReason(deps.getRow(code));
@@ -671,6 +742,176 @@ ${exitOnly ? '<p id="ssExitOnly" class="fu-warn-line small">账户当前为只�
     return modal;
   }
 
-  return { openVisitEntry, openLinks, openStudyStatus, closeAll: closeAllModals };
+  // ── 批量操作（看板勾选的患者） ─────────────────────────────
+  const BULK_MAX = 500;
+  /** 所选研究编号的简短列表（最多列出 10 个），只作为文字显示。 */
+  const codeSummary = codes => `${codes.slice(0, 10).join('、')}${codes.length > 10 ? ` 等 ${codes.length} 位` : ''}`;
+  /**
+   * 数据库错误的中文说明。批量函数的提示（hint）是针对批量场景写的中文（如“有 2 个研究编号未在本项目找到，
+   * 请刷新看板后重试”），比按错误码翻译的通用说明准确，有则优先；出错的患者编号在 DETAIL 中。
+   */
+  const bulkError = error => {
+    const hint = typeof error?.hint === 'string' && /[一-龥]/.test(error.hint) ? error.hint.trim() : '';
+    const detail = typeof error?.details === 'string' && /^研究编号 /.test(error.details) ? `（${error.details}）` : '';
+    return `${hint || deps.errorMessage(error)}${detail}`;
+  };
+  function checkBulkCodes(codes) {
+    if (!deps.can('can_write')) { deps.toast('当前项目角色或账户状态不允许批量修改。'); return false; }
+    if (!codes.length) { deps.toast('请先在看板中勾选患者。'); return false; }
+    if (codes.length > BULK_MAX) { deps.toast(`每次最多处理 ${BULK_MAX} 位患者，请减少勾选后分批操作。`); return false; }
+    return true;
+  }
+  function checkBulkReason(reason, label) {
+    const n = [...reason].length;
+    if (n < 2 || n > 500) return `请填写${label}（2–500 字）。`;
+    if (deps.containsPII(reason)) return `${label}中检测到疑似个人身份信息（手机号、身份证号、住院号、姓名等），请删除后再保存。`;
+    return '';
+  }
+
+  /** 批量设置（或清除）提醒起算日：历史补录的患者从这一天开始计算下次随访。 */
+  function openBulkStartDate(codes) {
+    const list = [...new Set(codes)];
+    if (!checkBulkCodes(list)) return null;
+    const op = deps.capture();
+    const today = localToday();
+    const modal = openModal({
+      id: 'bulkStartDate',
+      title: '设置提醒起算日',
+      html: `<p class="small">历史补录的患者，从这一天开始计算下次随访，不再按多年前的基线日期显示逾期。</p>
+<p class="muted small">下次应随访日期 = 提醒起算日与最近一次随访中较晚的一天 + 项目随访间隔。之后录入新的随访，就按新的随访日期计算。修改会留痕，可以随时改为其他日期或清除。</p>
+<p class="small" id="bsCodes"></p>
+<div class="fu-radio" role="radiogroup" aria-label="操作">
+  <label><input type="radio" name="bsMode" value="set" checked/> 设置为下面的日期</label>
+  <label><input type="radio" name="bsMode" value="clear"/> 清除提醒起算日（恢复按基线日期或最近随访计算）</label>
+</div>
+<div class="fu-grid"><div><label for="bsDate">提醒起算日</label><input id="bsDate" type="date" value="${today}" max="${today}"/></div></div>
+<label for="bsReason">原因（必填，2–500 字，不含身份信息）</label>
+<textarea id="bsReason" maxlength="500" placeholder="例如：历史补录患者，从今天开始提醒随访。不要填写姓名、电话等身份信息。"></textarea>
+<div id="bsFeedback" class="fu-feedback"></div>
+<div class="btnbar"><button type="button" class="btn primary" id="bsSave">保存</button><button type="button" class="btn" data-modal-close>取消</button></div>`,
+    });
+    const q = modal.q;
+    q('#bsCodes').textContent = `已选择 ${list.length} 位患者：${codeSummary(list)}`;
+    const feedback = q('#bsFeedback');
+    const mode = () => q('input[name="bsMode"]:checked')?.value || 'set';
+    modal.overlay.querySelectorAll('input[name="bsMode"]').forEach(r => r.addEventListener('change', () => { q('#bsDate').disabled = mode() === 'clear'; }));
+    q('#bsSave').addEventListener('click', async () => {
+      setFeedback(feedback, []);
+      const clear = mode() === 'clear';
+      const date = q('#bsDate').value.trim();
+      const reason = q('#bsReason').value.trim();
+      const errors = [];
+      if (!clear) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > localToday()) errors.push('提醒起算日须为有效日期，且不能晚于今天。');
+        else {
+          const early = list.filter(c => { const b = deps.getRow(c)?.baseline_date; return b && date < b; });
+          if (early.length) errors.push(`提醒起算日不能早于基线日期：${codeSummary(early)} 的基线日期晚于所选日期。`);
+        }
+      }
+      const reasonError = checkBulkReason(reason, '原因');
+      if (reasonError) errors.push(reasonError);
+      if (errors.length) { setFeedback(feedback, errors.length === 1 ? errors[0] : ['请先修正以下内容：', ...errors]); return; }
+      const button = q('#bsSave');
+      try {
+        deps.assertCurrent(op);
+        modal.overlay.dataset.busy = '1';
+        deps.setBusy(button, true);
+        const { data, error } = await sb.rpc('set_followup_start_date', { p_project_id: op.project.id, p_patient_codes: list, p_start_date: clear ? null : date, p_reason: reason });
+        if (!deps.isCurrent(op) || !modal.isOpen()) return;
+        if (error) throw error;
+        delete modal.overlay.dataset.busy;
+        const changed = Number(data?.changed ?? 0), unchanged = Number(data?.unchanged ?? 0);
+        deps.toast(`${clear ? '已清除' : '已设置'} ${changed} 位患者的提醒起算日${unchanged ? `，${unchanged} 位原本就是${clear ? '未设置' : '该日期'}` : ''}；修改已留痕。`);
+        deps.clearSelection();
+        deps.onSaved('bulk', {});
+        modal.close();
+      } catch (error) {
+        if (deps.isCurrent(op) && modal.isOpen()) setFeedback(feedback, `未保存：${bulkError(error)}`);
+      } finally {
+        if (modal.isOpen()) delete modal.overlay.dataset.busy;
+        deps.setBusy(button, false);
+      }
+    });
+    q('#bsDate').focus();
+    return modal;
+  }
+
+  /** 批量确认知情同意：同一状态、同意书版本、日期与依据，逐位按“研究状态”的同一规则保存并留痕。 */
+  function openBulkConsent(codes) {
+    const list = [...new Set(codes)];
+    if (!checkBulkCodes(list)) return null;
+    const op = deps.capture();
+    const today = localToday();
+    const options = Object.entries(CONSENT_STATUSES).map(([value, item]) => `<option value="${value}"${value === 'consented' ? ' selected' : ''}>${escapeHtml(item.label)}</option>`).join('');
+    const modal = openModal({
+      id: 'bulkConsent',
+      title: '批量确认知情同意',
+      html: `<p class="muted small">按纸质知情同意书等原始记录，为所选患者登记同一知情同意状态。每位患者的修改都会留痕，规则与单个患者的“研究状态”相同。“伦理批准豁免”仅在伦理委员会书面批准免除知情同意时选择。</p>
+<p class="small" id="bcCodes"></p>
+<div class="fu-grid">
+  <div><label for="bcStatus">同意状态</label><select id="bcStatus">${options}</select></div>
+  <div><label for="bcDate" id="bcDateLabel">${escapeHtml(consentDateLabel('consented'))}（可选）</label><input id="bcDate" type="date" max="${today}"/></div>
+  <div><label for="bcVersion">知情同意书版本（可选）</label><input id="bcVersion" maxlength="100" placeholder="例如：V2.0（2026-03-01）"/></div>
+</div>
+<p class="muted small">版本留空：保留各患者已登记的版本。日期留空：状态不变的患者保留原日期，状态改变的患者清空原日期（原日期保留在修改记录中）。各患者签署日期不同时，请按日期分批登记。</p>
+<p id="bcLinkNote" class="fu-warn-line small" hidden>登记为拒绝或撤回后，这些患者不再提醒随访，仍有效的随访链接将被系统自动撤销；已提交的数据不受影响。</p>
+<label for="bcReason">依据（必填，2–500 字，不含身份信息）</label>
+<textarea id="bcReason" maxlength="500" placeholder="例如：纸质同意书存档于研究办公室 A 柜第 3 盒"></textarea>
+<div id="bcFeedback" class="fu-feedback"></div>
+<div class="btnbar"><button type="button" class="btn primary" id="bcSave">保存</button><button type="button" class="btn" data-modal-close>取消</button></div>`,
+    });
+    const q = modal.q;
+    q('#bcCodes').textContent = `已选择 ${list.length} 位患者：${codeSummary(list)}`;
+    const feedback = q('#bcFeedback');
+    const sync = () => {
+      const status = q('#bcStatus').value;
+      q('#bcDateLabel').textContent = `${consentDateLabel(status)}（可选）`;
+      q('#bcLinkNote').hidden = !REASON_REQUIRED_CONSENT.includes(status);
+    };
+    q('#bcStatus').addEventListener('change', sync);
+    sync();
+    q('#bcSave').addEventListener('click', async () => {
+      setFeedback(feedback, []);
+      const status = q('#bcStatus').value;
+      const date = q('#bcDate').value.trim();
+      const version = q('#bcVersion').value.trim();
+      const reason = q('#bcReason').value.trim();
+      const errors = [];
+      if (!CONSENT_STATUSES[status]) errors.push('请选择同意状态。');
+      if (date && (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > localToday())) errors.push(`${consentDateLabel(status)}须为有效日期，且不能晚于今天。`);
+      if ([...version].length > 100) errors.push('知情同意书版本最多 100 个字符。');
+      if (version && deps.containsPII(version)) errors.push('知情同意书版本中检测到疑似个人身份信息，请删除后再保存。');
+      const reasonError = checkBulkReason(reason, '依据');
+      if (reasonError) errors.push(reasonError);
+      if (errors.length) { setFeedback(feedback, errors.length === 1 ? errors[0] : ['请先修正以下内容：', ...errors]); return; }
+      const label = CONSENT_STATUSES[status].label;
+      const linkWarning = REASON_REQUIRED_CONSENT.includes(status) ? '这些患者仍有效的随访链接将被自动撤销。' : '';
+      if (!window.confirm(`将把 ${list.length} 位患者的知情同意状态登记为“${label}”。${linkWarning}确认保存？`)) return;
+      const button = q('#bcSave');
+      try {
+        deps.assertCurrent(op);
+        modal.overlay.dataset.busy = '1';
+        deps.setBusy(button, true);
+        const { data, error } = await sb.rpc('set_consent_bulk', { p_project_id: op.project.id, p_patient_codes: list, p_status: status, p_version: version || null, p_date: date || null, p_reason: reason });
+        if (!deps.isCurrent(op) || !modal.isOpen()) return;
+        if (error) throw error;
+        delete modal.overlay.dataset.busy;
+        const changed = Number(data?.changed ?? 0), unchanged = Number(data?.unchanged ?? 0);
+        deps.toast(`已为 ${changed} 位患者登记知情同意“${label}”${unchanged ? `，${unchanged} 位原本已是相同记录` : ''}；修改已留痕。`);
+        deps.clearSelection();
+        deps.onSaved('bulk', {});
+        modal.close();
+      } catch (error) {
+        if (deps.isCurrent(op) && modal.isOpen()) setFeedback(feedback, `未保存：${bulkError(error)}`);
+      } finally {
+        if (modal.isOpen()) delete modal.overlay.dataset.busy;
+        deps.setBusy(button, false);
+      }
+    });
+    q('#bcStatus').focus();
+    return modal;
+  }
+
+  return { openVisitEntry, openLinks, openStudyStatus, openBulkStartDate, openBulkConsent, closeAll: closeAllModals };
 }
 

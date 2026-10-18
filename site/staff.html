@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>科研工作台 · 肾域·科研</title>
   <meta name="robots" content="noindex,nofollow"/>
-  <link rel="stylesheet" href="/app.css?v=registry-20261017-cn-v5"/>
-  <link rel="stylesheet" href="/lib/product-nav.css?v=registry-20261017-cn-v5">
-  <script src="/lib/product-nav.js?v=registry-20261017-cn-v5" defer></script>
+  <link rel="stylesheet" href="/app.css?v=registry-20261018-cn-v6"/>
+  <link rel="stylesheet" href="/lib/product-nav.css?v=registry-20261018-cn-v6">
+  <script src="/lib/product-nav.js?v=registry-20261018-cn-v6" defer></script>
   <link rel="icon" href="/assets/kidneysphere-ai.png"/>
   <style>
     /* 字段提示气泡 */
@@ -213,10 +213,16 @@
           <h2 id="boardHeading">随访看板</h2>
           <button class="btn primary" id="btnOpenVisitEntry" type="button">录入随访</button>
         </div>
-        <p class="muted small">谁该随访、谁还没有随访一目了然：逾期者排在最前。可在每一行直接录入随访、查看与更正随访记录、管理随访链接和研究状态。</p>
+        <p class="muted small">谁该随访、谁还没有随访一目了然：逾期者排在最前。可在每一行直接录入随访、查看与更正随访记录、管理随访链接和研究状态。勾选多位患者后，可批量设置提醒起算日或批量确认知情同意。</p>
         <div class="fu-toolbar">
           <div id="boardFilters"></div>
           <div class="fu-search"><label for="patientSearch">查找研究编号</label><input id="patientSearch" type="search" placeholder="输入研究编号" autocomplete="off"/></div>
+        </div>
+        <div id="boardBulkBar" class="fu-bulkbar" role="region" aria-label="批量操作" hidden>
+          <span id="boardSelectionStatus" class="small" role="status">已选择 0 位患者</span>
+          <button class="btn small" id="btnBulkStartDate" type="button" data-project-capability="can_write">设置提醒起算日</button>
+          <button class="btn small" id="btnBulkConsent" type="button" data-project-capability="can_write">批量确认知情同意</button>
+          <button class="btn small" id="btnClearSelection" type="button">清除选择</button>
         </div>
         <div id="patientsList" class="fu-board"></div>
         <datalist id="patientCodeOptions"></datalist>
@@ -848,10 +854,10 @@
     </template>
   </div>
 
-  <script src="/lib/error-logger.js?v=registry-20261017-cn-v5"></script>
-  <script src="/config.js?v=registry-20261017-cn-v5"></script>
-  <script src="/lib/vendor/jszip.min.js?v=registry-20261017-cn-v5"></script>
-  <script type="module" src="/staff.js?v=registry-20261017-cn-v5"></script>
+  <script src="/lib/error-logger.js?v=registry-20261018-cn-v6"></script>
+  <script src="/config.js?v=registry-20261018-cn-v6"></script>
+  <script src="/lib/vendor/jszip.min.js?v=registry-20261018-cn-v6"></script>
+  <script type="module" src="/staff.js?v=registry-20261018-cn-v6"></script>
   <footer class="site-footer">
     <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
     <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener">鲁公网安备37091102000922号</a></div>

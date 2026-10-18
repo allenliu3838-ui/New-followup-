@@ -1,12 +1,12 @@
-import { supabase } from "/lib/supabase-client.js?v=registry-20261017-cn-v5";
-import { createProjectMembers } from "/lib/project-members.js?v=registry-20261017-cn-v5";
-import { qs, qsa, toast, toCsv, downloadText, downloadCsvUtf8Bom, fmtDate, daysLeft, escapeHtml } from "/lib/utils.js?v=registry-20261017-cn-v5";
-import { throttle } from "/lib/rate-limit.js?v=registry-20261017-cn-v5";
-import { validatePassword } from "/lib/password-strength.js?v=registry-20261017-cn-v5";
-import { strictDate, finiteNumber, normalizeUpcr, parseRegistryCsv, readAllRows, readKeysetRows, exportColumns, sha256Text, BASELINE_IMPORT_FIELDS, VISIT_IMPORT_FIELDS, normalizeImportRow, registryErrorMessage, containsPII, assertNoPII, fieldLabel, creatinineUmol, correctionReasonError, CLINICAL_LIMITS, SCR_MGDL_TO_UMOL } from "/lib/registry-data.js?v=registry-20261017-cn-v5";
-import { renderOverviewHtml, renderBoardHtml, renderFilterBar, sortBoardRows } from "/lib/followup-board.js?v=registry-20261017-cn-v5";
-import { createFollowupDialogs } from "/lib/followup-dialogs.js?v=registry-20261017-cn-v5";
-import { BATCH_KINDS, TEMPLATES as BATCH_TEMPLATES, KIND_LABELS, PII_NOTICE, SKIP_MAPPING, CHUNK_SIZE, MAX_FILE_BYTES, MAX_FILE_ROWS, EVIDENCE_SOURCES, IMPORTABLE_EVENTS, templateCsv, validateBatch, buildChunks, errorReportCsv, piiHeaderColumns, baseFileName, beijingToday, MASKED_CODE } from "/lib/batch-import.js?v=registry-20261017-cn-v5";
+import { supabase } from "/lib/supabase-client.js?v=registry-20261018-cn-v6";
+import { createProjectMembers } from "/lib/project-members.js?v=registry-20261018-cn-v6";
+import { qs, qsa, toast, toCsv, downloadText, downloadCsvUtf8Bom, fmtDate, daysLeft, escapeHtml } from "/lib/utils.js?v=registry-20261018-cn-v6";
+import { throttle } from "/lib/rate-limit.js?v=registry-20261018-cn-v6";
+import { validatePassword } from "/lib/password-strength.js?v=registry-20261018-cn-v6";
+import { strictDate, finiteNumber, normalizeUpcr, parseRegistryCsv, readAllRows, readKeysetRows, exportColumns, sha256Text, BASELINE_IMPORT_FIELDS, VISIT_IMPORT_FIELDS, normalizeImportRow, registryErrorMessage, containsPII, assertNoPII, fieldLabel, creatinineUmol, correctionReasonError, CLINICAL_LIMITS, SCR_MGDL_TO_UMOL } from "/lib/registry-data.js?v=registry-20261018-cn-v6";
+import { renderOverviewHtml, renderBoardHtml, renderFilterBar, sortBoardRows } from "/lib/followup-board.js?v=registry-20261018-cn-v6";
+import { createFollowupDialogs } from "/lib/followup-dialogs.js?v=registry-20261018-cn-v6";
+import { BATCH_KINDS, TEMPLATES as BATCH_TEMPLATES, KIND_LABELS, PII_NOTICE, SKIP_MAPPING, CHUNK_SIZE, MAX_FILE_BYTES, MAX_FILE_ROWS, EVIDENCE_SOURCES, IMPORTABLE_EVENTS, templateCsv, validateBatch, buildChunks, errorReportCsv, piiHeaderColumns, baseFileName, beijingToday, MASKED_CODE } from "/lib/batch-import.js?v=registry-20261018-cn-v6";
 
 const sb = supabase();
 // 基因数据涉及人类遗传资源管理：默认关闭，仅当服务器配置 CONFIG.FEATURES.GENETICS === true 时显示。
@@ -248,6 +248,10 @@ function bindAuthGatedEvents() {
   qs("#workspaceNav")?.addEventListener("click", e=>{ const a=e.target.closest("a");if(!a)return;const href=a.getAttribute("href");if(!href?.startsWith("#"))return;const t=qs(href);const d=t?.tagName==="DETAILS"?t:t?.querySelector(":scope > details");if(d)d.open=true; });
   el.btnOpenVisitEntry?.addEventListener("click", ()=>followupDialogs.openVisitEntry(''));
   el.patientsList?.addEventListener("click", onBoardClick);
+  el.patientsList?.addEventListener("change", onBoardSelect);
+  qs("#btnBulkStartDate")?.addEventListener("click", ()=>{if(boardSelected.size)followupDialogs.openBulkStartDate(selectedBoardCodes());});
+  qs("#btnBulkConsent")?.addEventListener("click", ()=>{if(boardSelected.size)followupDialogs.openBulkConsent(selectedBoardCodes());});
+  qs("#btnClearSelection")?.addEventListener("click", ()=>{clearBoardSelection();renderBoard();});
   el.boardFilters?.addEventListener("click", e=>{const b=e.target.closest('[data-board-filter]');if(!b)return;boardView.state=b.dataset.boardFilter;boardView.limit=100;renderBoard();});
   el.boardFilters?.addEventListener("change", e=>{if(!e.target.matches('[data-consent-select]'))return;boardView.consent=e.target.value;boardView.limit=100;renderBoard();});
   el.projectOverview?.addEventListener("click", onOverviewClick);
@@ -348,6 +352,8 @@ let patients = [];           // 随访看板行（v_patient_followup_status）�
 let patientsLoaded = false;
 let projectOverview = null;
 const boardView = { state: 'all', consent: 'all', search: '', limit: 100 };
+const boardSelected = new Set(); // 看板中勾选的研究编号（批量设置提醒起算日、批量确认知情同意）
+let boardVisibleCodes = [];      // 当前显示的研究编号（“全选”只选这些）
 let labCatalog = [];         // [{code, name_cn, module, is_core, standard_unit, display_note}]
 let unitMap = {};            // { code: [{unit_symbol, is_standard, multiplier}] }
 let projectCustomLabs = [];  // [{id, name, unit}] — per-project custom lab catalog
@@ -409,7 +415,7 @@ function renderBaselineScrHint(){
 }
 function clearProjectWorkspace(){
   resetBaseline();_importParsed=null;projectCustomLabs=[];patients=[];patientsLoaded=false;projectOverview=null;
-  Object.assign(boardView,{state:'all',consent:'all',search:'',limit:100});
+  Object.assign(boardView,{state:'all',consent:'all',search:'',limit:100});clearBoardSelection();
   ['varPatientCode','labPatientCode','medPatientCode','evtPatientCode','varTestDate','varTestName','varGene','varVariant','varHgvsC','varHgvsP','varZygosity','varClass','varLabName','varNotes','labDate','labValue','labQcReason','labCustomName','labCustomUnit','medName','medClass','medDoseValue','medDoseUnit','medIndication','medNotes','medRoute','medFrequency','medStart','medEnd','evtType','evtDate','evtNotes','evtEvidence','evtDetail','importFile','setInterval','setPublicTitle','setInstitution','setEthicsNo','setContact'].forEach(k=>{if(el[k])el[k].value='';});
   if(el.settingsFeedback)el.settingsFeedback.replaceChildren();
   if(el.patientCodeOptions)el.patientCodeOptions.replaceChildren();
@@ -431,7 +437,7 @@ function clearProjectWorkspace(){
   document.querySelectorAll('[data-registry-modal]').forEach(n=>n.remove());
 }
 function clearSessionWorkspace(){
-  sessionEpoch++;projectEpoch++;renderedForUser=null;projects=[];selectedProject=null;patients=[];patientsLoaded=false;projectOverview=null;_importParsed=null;_importBatches=[];_undoTarget=null;_lastImportReport=null;projectCustomLabs=[];labCatalog=[];unitMap={};projectAccess=null;busyButtons.clear();frozenRequests.clear();isPlatformAdmin=false;
+  sessionEpoch++;projectEpoch++;renderedForUser=null;projects=[];selectedProject=null;patients=[];patientsLoaded=false;clearBoardSelection();projectOverview=null;_importParsed=null;_importBatches=[];_undoTarget=null;_lastImportReport=null;projectCustomLabs=[];labCatalog=[];unitMap={};projectAccess=null;busyButtons.clear();frozenRequests.clear();isPlatformAdmin=false;
   projectMembersController?.clear();projectMembersController=null;
   boardLoad=null;rowRefreshSeq.clear();
   followupDialogs.closeAll();
@@ -526,6 +532,7 @@ const followupDialogs=createFollowupDialogs({
   rowsLoaded:()=>patientsLoaded,
   getProject:()=>selectedProject,
   onSaved:onFollowupSaved,
+  clearSelection:()=>{clearBoardSelection();renderBoard();},
   openHistory:code=>openVisitHistory(code),
   // 随访链接固定指向站点根下的 /followup，不随工作台的打开路径（/staff、/staff/…）变化。
   linkOrigin:()=>location.origin,
@@ -1423,8 +1430,34 @@ function renderBoard(){
     el.boardFilters.innerHTML=patients.length?renderFilterBar(patients,boardView):'';
     if(hadFocus)(hadFocus==='select'?qs('[data-consent-select]',el.boardFilters):qs(`[data-board-filter="${hadFocus}"]`,el.boardFilters))?.focus();
   }
-  el.patientsList.innerHTML=renderBoardHtml(patients,{...boardView,showLinks:canRevokeTokens()}).html;
+  // 勾选只用于批量修改，需要录入权限；看板重读后不在本项目中的编号自动取消勾选。
+  const selectable=canProject('can_write');
+  if(!selectable)boardSelected.clear();
+  else{const known=new Set(patients.map(p=>p.patient_code));for(const code of [...boardSelected])if(!known.has(code))boardSelected.delete(code);}
+  const result=renderBoardHtml(patients,{...boardView,showLinks:canRevokeTokens(),selectable,selected:boardSelected});
+  el.patientsList.innerHTML=result.html;boardVisibleCodes=result.visibleCodes||[];
+  renderBulkBar();
   applyProjectAccess();
+}
+
+function selectedBoardCodes(){return [...boardSelected];}
+function clearBoardSelection(){boardSelected.clear();boardVisibleCodes=[];renderBulkBar();}
+function renderBulkBar(){
+  const bar=qs('#boardBulkBar');if(!bar)return;
+  const n=boardSelected.size;bar.hidden=n===0||!selectedProject;
+  const visible=new Set(boardVisibleCodes),hidden=[...boardSelected].filter(c=>!visible.has(c)).length;
+  const status=qs('#boardSelectionStatus');
+  if(status)status.textContent=`已选择 ${n} 位患者${hidden?`（其中 ${hidden} 位不在当前显示的列表中）`:''}${n>500?'；每次最多处理 500 位，请减少勾选':''}`;
+}
+/** 勾选或取消一位患者、全选或取消本页显示的患者；只更新勾选状态，不重绘表格。 */
+function onBoardSelect(e){
+  const box=e.target;if(!(box instanceof HTMLInputElement)||box.type!=='checkbox'||!el.patientsList.contains(box))return;
+  if(box.matches('[data-select-all]')){for(const code of boardVisibleCodes){if(box.checked)boardSelected.add(code);else boardSelected.delete(code);}}
+  else if(box.dataset.selectCode!=null){if(box.checked)boardSelected.add(box.dataset.selectCode);else boardSelected.delete(box.dataset.selectCode);}
+  else return;
+  el.patientsList.querySelectorAll('input[data-select-code]').forEach(input=>{const on=boardSelected.has(input.dataset.selectCode);input.checked=on;const tr=input.closest('tr');if(tr){if(on)tr.dataset.selected='1';else delete tr.dataset.selected;}});
+  const all=el.patientsList.querySelector('input[data-select-all]');if(all)all.checked=boardVisibleCodes.length>0&&boardVisibleCodes.every(c=>boardSelected.has(c));
+  renderBulkBar();
 }
 
 function renderPatientCodeOptions(){
