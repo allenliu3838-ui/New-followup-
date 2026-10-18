@@ -741,6 +741,8 @@ unset PGPASSWORD OLD_DB_URL OLD_KEY
 
 **状态（2026-10-17）：** 下表各项已随 v4 发布身份（`registry-20261012-adoption-v4`，发布包取自提交 f1bd5b7）完成并于当日整体上线。v4 上线后，`refresh_release_manifest.py` 的生产基线改为继承上一版**已上线**清单的 `new_sha256`（常量 `PREVIOUS_DEPLOYED = True`，`PREVIOUS` 指向 v4 清单），v5（`registry-20261017-cn-v5`）起按此生成，不再需要 `signup.html` 的单项基线登记；若在上一版尚未上线时再次固定发布身份，须把 `PREVIOUS_DEPLOYED` 改回 `False`（继承 `old_sha256`）。
 
+**状态（2026-10-18）：** v5 已于 2026-10-17 整体上线（发布包取自提交 4919961）。v6（`registry-20261018-cn-v6`）以 v5 清单为生产基线，含迁移 0041（随访看板）；上线时须先在生产库执行 0041，再发布前端。
+
 | 文件 | 位置 | 现状 | 需要的改动 |
 |---|---|---|---|
 | `scripts/capture_registry_database.py` | 第 13 行 `PROJECT_REF`；`connection_environment()`（约第 30–49 行） | 只接受 `db.etsyglgpiutflethgirs.supabase.co`，或 `*.pooler.supabase.com` 且用户为 `postgres.etsyglgpiutflethgirs` | 新的项目身份（例如 `ksr-aliyun-<地域>-1`）；主机规则改为精确匹配新数据库主机名（如 `db.registry.internal`）与用户 `postgres`；保留 `verify-full` TLS、清除继承的 `PG*` 变量、只读事务、只接受审查过的预检 SQL 等全部现有约束。可选加强：在预检 SQL 中输出 `pg_control_system()` 的 `system_identifier` 并在工具中固定比对，因为自托管主机名不像 Supabase 项目编号那样全局唯一 |

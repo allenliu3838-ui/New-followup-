@@ -269,17 +269,6 @@
               "auth_insert": false,
               "auth_select": true,
               "auth_update": false
-            },
-            {
-              "name": "followup_start_date",
-              "type": "date",
-              "position": 18,
-              "anon_insert": false,
-              "anon_select": false,
-              "anon_update": false,
-              "auth_insert": false,
-              "auth_select": true,
-              "auth_update": false
             }
           ],
           "options": [
@@ -293,7 +282,7 @@
           "auth_insert": false,
           "auth_select": true,
           "auth_update": false,
-          "definition_md5": "8f78521efd83e4985fa3eec9a40296ab"
+          "definition_md5": "241515f9745ac193342b0785cd54e816"
         },
         {
           "name": "v_project_overview",
@@ -2138,28 +2127,6 @@
               "type": "f",
               "validated": true,
               "definition_md5": "217c19f5f18697c8e57e5452c011104e"
-            }
-          ]
-        },
-        {
-          "rls": true,
-          "table": "followup_start_rpc_rows",
-          "schema": "registry_private",
-          "force_rls": false,
-          "anon_delete": false,
-          "anon_insert": false,
-          "anon_select": false,
-          "anon_update": false,
-          "auth_delete": false,
-          "auth_insert": false,
-          "auth_select": false,
-          "auth_update": false,
-          "constraints": [
-            {
-              "name": "followup_start_rpc_rows_pkey",
-              "type": "p",
-              "validated": true,
-              "definition_md5": "84e00489f3778b4b4a152f0ccbf279cc"
             }
           ]
         },
@@ -7995,25 +7962,6 @@
           "array_dimensions": 0
         },
         {
-          "name": "followup_start_date",
-          "type": "date",
-          "table": "patients_baseline",
-          "schema": "public",
-          "identity": "",
-          "not_null": false,
-          "collation": null,
-          "generated": "",
-          "anon_insert": true,
-          "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
-          "auth_select": true,
-          "auth_update": true,
-          "default_md5": null,
-          "has_default": false,
-          "array_dimensions": 0
-        },
-        {
           "name": "followup_status",
           "type": "text",
           "table": "patients_baseline",
@@ -11491,44 +11439,6 @@
           "array_dimensions": 0
         },
         {
-          "name": "record_id",
-          "type": "uuid",
-          "table": "followup_start_rpc_rows",
-          "schema": "registry_private",
-          "identity": "",
-          "not_null": true,
-          "collation": null,
-          "generated": "",
-          "anon_insert": false,
-          "anon_select": false,
-          "anon_update": false,
-          "auth_insert": false,
-          "auth_select": false,
-          "auth_update": false,
-          "default_md5": null,
-          "has_default": false,
-          "array_dimensions": 0
-        },
-        {
-          "name": "xact_id",
-          "type": "xid8",
-          "table": "followup_start_rpc_rows",
-          "schema": "registry_private",
-          "identity": "",
-          "not_null": true,
-          "collation": null,
-          "generated": "",
-          "anon_insert": false,
-          "anon_select": false,
-          "anon_update": false,
-          "auth_insert": false,
-          "auth_select": false,
-          "auth_update": false,
-          "default_md5": null,
-          "has_default": false,
-          "array_dimensions": 0
-        },
-        {
           "name": "actor_id",
           "type": "uuid",
           "table": "member_add_attempts",
@@ -14009,37 +13919,6 @@
         },
         {
           "live": true,
-          "name": "followup_start_rpc_rows_pkey",
-          "ready": true,
-          "table": "followup_start_rpc_rows",
-          "valid": true,
-          "schema": "registry_private",
-          "unique": true,
-          "columns": [
-            {
-              "column": "xact_id",
-              "included": false,
-              "position": 1,
-              "expression": false
-            },
-            {
-              "column": "record_id",
-              "included": false,
-              "position": 2,
-              "expression": false
-            }
-          ],
-          "primary": true,
-          "immediate": true,
-          "key_count": 2,
-          "predicate_md5": null,
-          "definition_md5": "d678aa180334c0d4f77decf60dc15ad1",
-          "attribute_count": 2,
-          "expressions_md5": null,
-          "nulls_not_distinct": false
-        },
-        {
-          "live": true,
           "name": "member_add_attempts_actor_time_idx",
           "ready": true,
           "table": "member_add_attempts",
@@ -15283,13 +15162,6 @@
           "enabled": "O",
           "trigger": "registry_consent_research_derived",
           "definition_md5": "81a990a6b0629d6cd765eda70a5f8024"
-        },
-        {
-          "table": "patients_baseline",
-          "schema": "public",
-          "enabled": "O",
-          "trigger": "registry_followup_start_checks",
-          "definition_md5": "4b36cc19df33f7513518f6cb141a8288"
         },
         {
           "table": "patients_baseline",
@@ -16614,18 +16486,6 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
-          "signature": "registry_private.check_followup_start_date()",
-          "volatility": "v",
-          "anon_execute": false,
-          "definition_md5": "4f7675b6efdd86f2f6532ad828bd6022",
-          "security_definer": true,
-          "authenticated_execute": false
-        },
-        {
-          "owner": "postgres",
-          "strict": false,
-          "language": "plpgsql",
-          "parallel": "u",
           "signature": "registry_private.check_research_dates()",
           "volatility": "v",
           "anon_execute": false,
@@ -16655,18 +16515,6 @@
           "anon_execute": false,
           "definition_md5": "0c5738cc7084aef1c95808846349f008",
           "security_definer": false,
-          "authenticated_execute": false
-        },
-        {
-          "owner": "postgres",
-          "strict": false,
-          "language": "sql",
-          "parallel": "u",
-          "signature": "registry_private.followup_start_rpc_active(uuid)",
-          "volatility": "s",
-          "anon_execute": false,
-          "definition_md5": "d17adf236100be7ebce03bb7411a1be6",
-          "security_definer": true,
           "authenticated_execute": false
         },
         {
@@ -16991,30 +16839,6 @@
           "anon_execute": false,
           "definition_md5": "0c17a34d86f0aa5efc29491b79d82448",
           "security_definer": false,
-          "authenticated_execute": true
-        },
-        {
-          "owner": "postgres",
-          "strict": false,
-          "language": "plpgsql",
-          "parallel": "u",
-          "signature": "set_consent_bulk(uuid,text[],text,text,date,text)",
-          "volatility": "v",
-          "anon_execute": false,
-          "definition_md5": "b0415694bc5178306dd80e59c0e19bf2",
-          "security_definer": true,
-          "authenticated_execute": true
-        },
-        {
-          "owner": "postgres",
-          "strict": false,
-          "language": "plpgsql",
-          "parallel": "u",
-          "signature": "set_followup_start_date(uuid,text[],date,text)",
-          "volatility": "v",
-          "anon_execute": false,
-          "definition_md5": "aadba60b4a41b9c5edbff48060feca20",
-          "security_definer": true,
           "authenticated_execute": true
         },
         {
@@ -17398,17 +17222,6 @@
               "auth_insert": false,
               "auth_select": true,
               "auth_update": false
-            },
-            {
-              "name": "followup_start_date",
-              "type": "date",
-              "position": 18,
-              "anon_insert": false,
-              "anon_select": false,
-              "anon_update": false,
-              "auth_insert": false,
-              "auth_select": true,
-              "auth_update": false
             }
           ],
           "options": [
@@ -17422,7 +17235,7 @@
           "auth_insert": false,
           "auth_select": true,
           "auth_update": false,
-          "definition_md5": "8f78521efd83e4985fa3eec9a40296ab"
+          "definition_md5": "241515f9745ac193342b0785cd54e816"
         },
         {
           "name": "v_project_overview",
@@ -19267,28 +19080,6 @@
               "type": "f",
               "validated": true,
               "definition_md5": "217c19f5f18697c8e57e5452c011104e"
-            }
-          ]
-        },
-        {
-          "rls": true,
-          "table": "followup_start_rpc_rows",
-          "schema": "registry_private",
-          "force_rls": false,
-          "anon_delete": false,
-          "anon_insert": false,
-          "anon_select": false,
-          "anon_update": false,
-          "auth_delete": false,
-          "auth_insert": false,
-          "auth_select": false,
-          "auth_update": false,
-          "constraints": [
-            {
-              "name": "followup_start_rpc_rows_pkey",
-              "type": "p",
-              "validated": true,
-              "definition_md5": "84e00489f3778b4b4a152f0ccbf279cc"
             }
           ]
         },
@@ -25124,25 +24915,6 @@
           "array_dimensions": 0
         },
         {
-          "name": "followup_start_date",
-          "type": "date",
-          "table": "patients_baseline",
-          "schema": "public",
-          "identity": "",
-          "not_null": false,
-          "collation": null,
-          "generated": "",
-          "anon_insert": true,
-          "anon_select": true,
-          "anon_update": true,
-          "auth_insert": true,
-          "auth_select": true,
-          "auth_update": true,
-          "default_md5": null,
-          "has_default": false,
-          "array_dimensions": 0
-        },
-        {
           "name": "followup_status",
           "type": "text",
           "table": "patients_baseline",
@@ -28620,44 +28392,6 @@
           "array_dimensions": 0
         },
         {
-          "name": "record_id",
-          "type": "uuid",
-          "table": "followup_start_rpc_rows",
-          "schema": "registry_private",
-          "identity": "",
-          "not_null": true,
-          "collation": null,
-          "generated": "",
-          "anon_insert": false,
-          "anon_select": false,
-          "anon_update": false,
-          "auth_insert": false,
-          "auth_select": false,
-          "auth_update": false,
-          "default_md5": null,
-          "has_default": false,
-          "array_dimensions": 0
-        },
-        {
-          "name": "xact_id",
-          "type": "xid8",
-          "table": "followup_start_rpc_rows",
-          "schema": "registry_private",
-          "identity": "",
-          "not_null": true,
-          "collation": null,
-          "generated": "",
-          "anon_insert": false,
-          "anon_select": false,
-          "anon_update": false,
-          "auth_insert": false,
-          "auth_select": false,
-          "auth_update": false,
-          "default_md5": null,
-          "has_default": false,
-          "array_dimensions": 0
-        },
-        {
           "name": "actor_id",
           "type": "uuid",
           "table": "member_add_attempts",
@@ -31138,37 +30872,6 @@
         },
         {
           "live": true,
-          "name": "followup_start_rpc_rows_pkey",
-          "ready": true,
-          "table": "followup_start_rpc_rows",
-          "valid": true,
-          "schema": "registry_private",
-          "unique": true,
-          "columns": [
-            {
-              "column": "xact_id",
-              "included": false,
-              "position": 1,
-              "expression": false
-            },
-            {
-              "column": "record_id",
-              "included": false,
-              "position": 2,
-              "expression": false
-            }
-          ],
-          "primary": true,
-          "immediate": true,
-          "key_count": 2,
-          "predicate_md5": null,
-          "definition_md5": "d678aa180334c0d4f77decf60dc15ad1",
-          "attribute_count": 2,
-          "expressions_md5": null,
-          "nulls_not_distinct": false
-        },
-        {
-          "live": true,
           "name": "member_add_attempts_actor_time_idx",
           "ready": true,
           "table": "member_add_attempts",
@@ -32412,13 +32115,6 @@
           "enabled": "O",
           "trigger": "registry_consent_research_derived",
           "definition_md5": "81a990a6b0629d6cd765eda70a5f8024"
-        },
-        {
-          "table": "patients_baseline",
-          "schema": "public",
-          "enabled": "O",
-          "trigger": "registry_followup_start_checks",
-          "definition_md5": "4b36cc19df33f7513518f6cb141a8288"
         },
         {
           "table": "patients_baseline",
@@ -33743,18 +33439,6 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
-          "signature": "registry_private.check_followup_start_date()",
-          "volatility": "v",
-          "anon_execute": false,
-          "definition_md5": "4f7675b6efdd86f2f6532ad828bd6022",
-          "security_definer": true,
-          "authenticated_execute": false
-        },
-        {
-          "owner": "postgres",
-          "strict": false,
-          "language": "plpgsql",
-          "parallel": "u",
           "signature": "registry_private.check_research_dates()",
           "volatility": "v",
           "anon_execute": false,
@@ -33784,18 +33468,6 @@
           "anon_execute": false,
           "definition_md5": "0c5738cc7084aef1c95808846349f008",
           "security_definer": false,
-          "authenticated_execute": false
-        },
-        {
-          "owner": "postgres",
-          "strict": false,
-          "language": "sql",
-          "parallel": "u",
-          "signature": "registry_private.followup_start_rpc_active(uuid)",
-          "volatility": "s",
-          "anon_execute": false,
-          "definition_md5": "d17adf236100be7ebce03bb7411a1be6",
-          "security_definer": true,
           "authenticated_execute": false
         },
         {
@@ -34127,30 +33799,6 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
-          "signature": "set_consent_bulk(uuid,text[],text,text,date,text)",
-          "volatility": "v",
-          "anon_execute": false,
-          "definition_md5": "b0415694bc5178306dd80e59c0e19bf2",
-          "security_definer": true,
-          "authenticated_execute": true
-        },
-        {
-          "owner": "postgres",
-          "strict": false,
-          "language": "plpgsql",
-          "parallel": "u",
-          "signature": "set_followup_start_date(uuid,text[],date,text)",
-          "volatility": "v",
-          "anon_execute": false,
-          "definition_md5": "aadba60b4a41b9c5edbff48060feca20",
-          "security_definer": true,
-          "authenticated_execute": true
-        },
-        {
-          "owner": "postgres",
-          "strict": false,
-          "language": "plpgsql",
-          "parallel": "u",
           "signature": "set_patient_study_status(uuid,text,jsonb,text)",
           "volatility": "v",
           "anon_execute": false,
@@ -34262,7 +33910,7 @@
     }
   },
   "database_contract_protocol": "registry-contract-v3-pg17",
-  "database_contract_reference_sha256": "5e555e116d87c01c60ec07ee7075ba3a53fb604be72200ec5afffec4f653e518",
+  "database_contract_reference_sha256": "73463131d3bc7d378328312c0274be7a3121ecd9e4636c694a6f9702fe57eca6",
   "database_contract_sha256": "aca7000205680905a853fc72280ff60a2f99af32d8b2807bb761de7769ed6b29",
   "database_server_major": 17,
   "files": {
@@ -34279,7 +33927,7 @@
       "old_sha256": "b6df123beb0fda02b77455762cab1cc5065aa7d31f1ca2f08e0f33ede98c3924"
     },
     "app.css": {
-      "new_sha256": "f9daff5d2707d51d9da2c9bce708f2e86aa7694a4006dce08e5cf1612673321b",
+      "new_sha256": "e2d83bccfeefe801aba450cb41696a8ffa1ecace3692babc43ecdec674cfab92",
       "old_sha256": "3b291e374341e886e0664ee236b40691b589164721d483e19d940092c1851227"
     },
     "assets/registry-tech-hero.png": {
@@ -34307,7 +33955,7 @@
       "old_sha256": "c5c3d5b05e5a1a4fae277911f6bfe4af2c6af94d4bc96adbf61c844d132923e7"
     },
     "assets/sql/batch6_latest.sql": {
-      "new_sha256": "d34c02ef673adbc70228e0177d5ebcba9affd5d3a572e3be1069e98b9cd23e61",
+      "new_sha256": "7d3e75159f132df2fbb8bc5fed4be8c6e4becf03c728955df2048af916946374",
       "old_sha256": "872074c4a42c986ffcbc368d9c1e06ef126c527ad87eb4ba6e53e7a041165e0b"
     },
     "assets/template/METHODS_TEMPLATE_EN.md": {
@@ -34403,11 +34051,11 @@
       "old_sha256": "249a55b8eecf910e3251721d7801a62a3f17de589580aec6ee36dfccfb9b0cab"
     },
     "lib/followup-board.js": {
-      "new_sha256": "432d5ccfb1ad9ca4ab380328f870df0123febc2b1ef215b10febb523329dfd1b",
+      "new_sha256": "5bb6df89b59288e513267357e69816fec366e586a68a7afe61968b0fe40f2869",
       "old_sha256": null
     },
     "lib/followup-dialogs.js": {
-      "new_sha256": "8963adfda3e224f308c1c63f9dc76198ef6a5ab7f0d5e89466c93c395c8695da",
+      "new_sha256": "52073e94e104ae7c932cf82039390a74ad9ef57709638cb322cf28a7b58c288c",
       "old_sha256": null
     },
     "lib/password-strength.js": {
@@ -34435,7 +34083,7 @@
       "old_sha256": "815cddf25cfe58cef8fe12e09fa1b1b9cd9f2b30a4efa305d6038a3e13f9dd3e"
     },
     "lib/registry-data.js": {
-      "new_sha256": "f35cfcf87687d6e6d4c6346bc9f65bce345c1301c8abf8d271f3696a9610734f",
+      "new_sha256": "3d8e226adaa80d0d079ef20cfbd8c5333fda7e4b31d43ca6c19f83387c0d5e19",
       "old_sha256": null
     },
     "lib/supabase-client.js": {
@@ -34507,11 +34155,11 @@
       "old_sha256": "77c7306a7e1ad8bdf091cb51240a1646427bcbd80df9847f5b2e3d1ed8b345f4"
     },
     "staff.html": {
-      "new_sha256": "aa0eeade52a60f539131d7e65293105d1236d0f354fda0e36e8ae850de52e4cd",
+      "new_sha256": "6c456cb162ac109f775a77638042f100a1c2f3d4bd562df0f3dd1fae08bef34d",
       "old_sha256": "2a26a4bc8cb72208bff88ed9b3f80b9e58f2b6703624cc2f74f65afee5ce0184"
     },
     "staff.js": {
-      "new_sha256": "98c31b8e574e8567e1c968aa14de00227267ab9763102577d6d4a310f425a75b",
+      "new_sha256": "5c9643f481881822d94fbe3f3259b79d895be7874f78f287505ebc69b30ef574",
       "old_sha256": "9b4565b86046393bf2526281d3ebdb50925a93234ff28e7c15224e43273c2201"
     },
     "terms.html": {
@@ -34524,7 +34172,7 @@
     }
   },
   "format": 2,
-  "migration_manifest_sha256": "9641b129073cbf5f924aac052de6666b8c324c59bb33c4e66120e78e6e333878",
+  "migration_manifest_sha256": "0b1e289780feb0e0d34b143b090c206765def21289bab8bb6382d7d30b61379b",
   "project_ref": "ksr-aliyun-cn-shanghai-1",
   "release": "registry-20261012-adoption-v4",
   "required_db_checks": [
@@ -34564,9 +34212,6 @@
     "batch_import_columns",
     "lab_dictionary_read_only",
     "no_client_truncate",
-    "0041_followup_board",
-    "followup_board_signatures",
-    "followup_start_column",
     "single_billing_order_overload"
   ],
   "required_schema_versions": [
@@ -34578,7 +34223,6 @@
     "0037_concept_view_security",
     "0038_followup_workflow",
     "0039_patient_token_hashing",
-    "0040_batch_import",
-    "0041_followup_board"
+    "0040_batch_import"
   ]
 }
