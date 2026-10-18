@@ -1,7 +1,7 @@
-import { supabase } from "/lib/supabase-client.js?v=registry-20261012-adoption-v4";
-import { qs, qsa, toast, fmtDate, escapeHtml } from "/lib/utils.js?v=registry-20261012-adoption-v4";
-import { throttle } from "/lib/rate-limit.js?v=registry-20261012-adoption-v4";
-import { createClient } from "/lib/vendor/supabase.js?v=registry-20261012-adoption-v4";
+import { supabase } from "/lib/supabase-client.js?v=registry-20261017-cn-v5";
+import { qs, qsa, toast, fmtDate, escapeHtml } from "/lib/utils.js?v=registry-20261017-cn-v5";
+import { throttle } from "/lib/rate-limit.js?v=registry-20261017-cn-v5";
+import { createClient } from "/lib/vendor/supabase.js?v=registry-20261017-cn-v5";
 
 const sb = supabase();
 const B = () => window.CONFIG?.BILLING || {};

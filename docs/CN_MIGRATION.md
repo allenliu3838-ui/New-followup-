@@ -739,6 +739,8 @@ unset PGPASSWORD OLD_DB_URL OLD_KEY
 
 以下改动由集成/发布负责人在单独的审查提交中完成，完成后用 `scripts/refresh_release_manifest.py` 生成新的发布身份（新的 `VERSION`），再走正常审查与 `npm test`。
 
+**状态（2026-10-17）：** 下表各项已随 v4 发布身份（`registry-20261012-adoption-v4`，发布包取自提交 f1bd5b7）完成并于当日整体上线。v4 上线后，`refresh_release_manifest.py` 的生产基线改为继承上一版**已上线**清单的 `new_sha256`（常量 `PREVIOUS_DEPLOYED = True`，`PREVIOUS` 指向 v4 清单），v5（`registry-20261017-cn-v5`）起按此生成，不再需要 `signup.html` 的单项基线登记；若在上一版尚未上线时再次固定发布身份，须把 `PREVIOUS_DEPLOYED` 改回 `False`（继承 `old_sha256`）。
+
 | 文件 | 位置 | 现状 | 需要的改动 |
 |---|---|---|---|
 | `scripts/capture_registry_database.py` | 第 13 行 `PROJECT_REF`；`connection_environment()`（约第 30–49 行） | 只接受 `db.etsyglgpiutflethgirs.supabase.co`，或 `*.pooler.supabase.com` 且用户为 `postgres.etsyglgpiutflethgirs` | 新的项目身份（例如 `ksr-aliyun-<地域>-1`）；主机规则改为精确匹配新数据库主机名（如 `db.registry.internal`）与用户 `postgres`；保留 `verify-full` TLS、清除继承的 `PG*` 变量、只读事务、只接受审查过的预检 SQL 等全部现有约束。可选加强：在预检 SQL 中输出 `pg_control_system()` 的 `system_identifier` 并在工具中固定比对，因为自托管主机名不像 Supabase 项目编号那样全局唯一 |
@@ -765,6 +767,8 @@ unset PGPASSWORD OLD_DB_URL OLD_KEY
 - 各项目负责人开始在工作台补录知情同意状态（0038 后全部为“未确认”）。
 
 ### 10.3 下线旧 Supabase 项目（T+30，确认无回滚需要后）
+
+完成后在 `site/privacy.html` 第六部分“迁移记录”补记旧环境删除日期（“删除日期将补记于此”一句），走正常发布流程。
 
 1. 验收人与运营方书面确认不再需要回滚。
 2. 在旧控制台查看近 30 天的接口与数据库访问，确认没有来自正式站点的流量（如有，查明来源）。
@@ -823,6 +827,8 @@ unset PGPASSWORD OLD_DB_URL OLD_KEY
 ### 11.6 迁移完成后需要更新的页面文字
 
 行号以基线 749bb5d 为准；并行修改（统一术语与如实说明的文案改动）合入后行号可能变化，按“定位文字”查找。
+
+**状态（2026-10-17）：** 下表全部位置已在 v5（`registry-20261017-cn-v5`）中按迁移后的实际情况更新：隐私政策与用户协议升至 v2.2（2026-10-17），安全与合规、部署方式、使用说明、详细手册、幻灯片、首页问答、工作台账户设置与基因模块提示均改为“已部署在阿里云中国境内（上海）”，并写明 2026-10-17 的迁移记录与每日加密备份（保留 30 天）；患者页默认文案（`site/lib/patient-workflow.js` 的 `DEFAULT_DATA_LOCATION_NOTE`）同步更新。待 10.3 完成后，在隐私政策第六部分补记旧环境删除日期。
 
 | 文件 | 位置（基线行号） | 定位文字 | 需要更新的内容 |
 |---|---|---|---|

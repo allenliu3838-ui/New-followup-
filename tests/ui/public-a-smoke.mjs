@@ -225,7 +225,7 @@ try {
     }));
     check(st.faq === 4, `index: 注册前关心的问题应为 4 行，实际 ${st.faq}`);
     for (const k of ['数据存在哪里', '谁能看到', '导出', '伦理']) check(st.faqText.includes(k), `index: 摘要缺少「${k}」`);
-    check(st.faqText.includes('境外') && st.faqText.includes('境内'), 'index: 数据存储地需如实说明境外现状与迁移');
+    check(st.faqText.includes('中国境内') && !/目前使用境外|正在整体迁/.test(st.faqText), 'index: 数据存储地应写明已在中国境内，不得保留迁移前的表述');
     check(st.clinician === '/guide#quickstart', `index: 临床医生入口链接 ${st.clinician}`);
     check(st.secNav + st.heroButtons <= 6 && st.secNav <= 4, `index: 首屏次级按钮过多 ${st.secNav}`);
     await r.context.close();
@@ -255,7 +255,7 @@ try {
     await productNav(name, r.page);
     await bannedWords(name, r.page);
     const text = await r.page.evaluate(() => document.body.innerText);
-    check(text.includes('境外') && text.includes('迁移'), `${name}: 未如实说明数据存储地与迁移`);
+    check(text.includes('中国境内') && text.includes('2026 年 10 月 17 日') && !/目前登记数据存储在中国境外|正在.{0,12}迁移/.test(text), `${name}: 应写明数据已在中国境内及迁入日期，不得保留迁移前的表述`);
     check(text.includes('以实际部署配置为准'), `${name}: 静态加密/备份应写“以实际部署配置为准”`);
     if (name === 'security') check(await r.page.locator('#support').count() === 1, 'security: 缺少“支持与服务”小节');
     await r.context.close();

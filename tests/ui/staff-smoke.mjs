@@ -779,7 +779,7 @@ async function main() {
     // 8. 基因数据默认隐藏，且不读取基因表。
     assert.equal(await page.locator('#geneticsSection').isVisible(), false, '基因录入默认隐藏');
     assert.equal(await page.locator('#btnExportVariants').isVisible(), false, '“导出基因变异”默认隐藏');
-    assert.equal(await text(page.locator('#geneticsDisabledNote')), '基因数据涉及人类遗传资源管理，迁至境内并完成合规评估后由管理员开启。');
+    assert.equal(await text(page.locator('#geneticsDisabledNote')), '基因数据涉及人类遗传资源管理，完成合规评估后由管理员开启。');
     assert.equal(mock.requests.filter(r => r.path === '/rest/v1/variants_long').length, 0, '未开启时不应读取基因数据');
 
     // 9. 无随访的项目：完整率显示“—”。
