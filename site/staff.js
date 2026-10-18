@@ -727,12 +727,18 @@ async function checkPlatformAdmin(){
     el.adminSearchEmail = qs("#adminSearchEmail");
     el.btnAdminSearch = qs("#btnAdminSearch");
     el.adminResults = qs("#adminResults");
+    el.adminInquiriesBadge = qs("#adminInquiriesBadge");
+    el.adminInquiries = qs("#adminInquiries");
+    el.btnAdminLoadInquiries = qs("#btnAdminLoadInquiries");
     // Bind admin event listeners
     el.btnAdminLoadContracts?.addEventListener("click", adminLoadContracts);
     el.btnAdminLoadOrders?.addEventListener("click", adminLoadOrders);
+    el.btnAdminLoadInquiries?.addEventListener("click", adminLoadInquiries);
+    el.adminInquiries?.addEventListener("click", onAdminInquiryAction);
     el.btnAdminSearch?.addEventListener("click", adminSearch);
     el.adminSearchEmail?.addEventListener("keydown", e=>{ if(e.key==="Enter") adminSearch(); });
   }
+  adminLoadInquiries();
   adminLoadContracts();
   adminLoadOrders();
   // Re-render trial badge now that admin status is confirmed
@@ -746,6 +752,14 @@ function buildAdminPanelHtml(){
       <span class="badge ok" style="font-size:11px">仅你可见</span>
     </div>
     <div class="muted small">通过邮箱搜索用户及其项目，管理试用期与权益。</div>
+    <div class="hr"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <h3 style="margin:0;font-size:15px">官网咨询</h3>
+      <span id="adminInquiriesBadge" class="badge warn" style="display:none;font-size:11px"></span>
+      <button class="btn small" id="btnAdminLoadInquiries" style="margin-left:auto">刷新</button>
+    </div>
+    <div class="muted small" style="margin-bottom:8px">来自官网“预约演示 / 合作咨询”表单，最近 200 条，待联系的排在最前。</div>
+    <div id="adminInquiries" class="muted small">加载中…</div>
     <div class="hr"></div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
       <h3 style="margin:0;font-size:15px">合作申请</h3>
@@ -2525,6 +2539,84 @@ async function applyContract(){
 // ═══════════════════════════════════════════════════════════
 // 合同管理（管理员侧）
 // ═══════════════════════════════════════════════════════════
+
+const INQUIRY_STATUS_LABEL = {
+  pending:   { text: "待联系", cls: "badge warn" },
+  contacted: { text: "已联系", cls: "badge" },
+  done:      { text: "已完成", cls: "badge ok" },
+};
+const INQUIRY_TYPE_LABEL = { DEMO:"预约演示", JOIN_PROJECT:"参与研究合作", NEW_PROJECT:"发起新项目", INSTITUTION:"机构合作", INDUSTRY_RWS_CRO:"药企 / RWS / CRO" };
+
+async function adminLoadInquiries(){
+  const identity=captureIdentity();
+  if (!isPlatformAdmin) return;
+  const { data, error } = await sb.from("demo_requests")
+    .select("id,created_at,name,institution,department,email,contact,use_case,message,status")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if(!sameIdentity(identity))return;
+  if (error){
+    if(el.adminInquiries) el.adminInquiries.innerHTML =
+      `<span class="muted small" style="color:#c0392b">加载失败：${escapeHtml(registryErrorMessage(error))}</span>`;
+    return;
+  }
+  renderAdminInquiries(data || []);
+}
+
+function renderAdminInquiries(rows){
+  const c = el.adminInquiries;
+  if (!c) return;
+  const pending = rows.filter(r => r.status === "pending");
+  if (el.adminInquiriesBadge){
+    el.adminInquiriesBadge.textContent = pending.length ? `${pending.length} 待联系` : "";
+    el.adminInquiriesBadge.style.display = pending.length ? "inline-flex" : "none";
+  }
+  if (!rows.length){
+    c.innerHTML = `<div class="muted small">暂无咨询。</div>`;
+    return;
+  }
+  const ordered = [...pending, ...rows.filter(r => r.status !== "pending")];
+  c.innerHTML = ordered.map(r => {
+    const na = v => escapeHtml(v || "—");
+    const s = INQUIRY_STATUS_LABEL[r.status] || { text: r.status || "—", cls: "badge" };
+    const id = escapeHtml(r.id);
+    const actions = [["contacted","标记已联系"],["done","标记已完成"],["pending","改回待联系"]]
+      .filter(([status]) => status !== r.status)
+      .map(([status,label]) => `<button class="btn small" data-inquiry-id="${id}" data-inquiry-status="${status}">${label}</button>`).join("");
+    return `<div data-inquiry-row="${id}" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+        <span class="${s.cls}" style="font-size:11px">${escapeHtml(s.text)}</span>
+        <b style="font-size:13px">${na(r.name)}</b>
+        <span class="muted small">${na(r.institution)}${r.department ? " · " + escapeHtml(r.department) : ""}</span>
+        <span class="muted small" style="margin-left:auto">${fmtDate(r.created_at)}</span>
+      </div>
+      <div class="small">
+        ${escapeHtml(INQUIRY_TYPE_LABEL[r.use_case] || r.use_case || "未选类型")}
+        · ${r.email ? escapeHtml(r.email) : ""}${r.email && r.contact ? " · " : ""}${r.contact ? escapeHtml(r.contact) : ""}${!r.email && !r.contact ? "未留联系方式" : ""}
+        ${r.message ? `<div style="margin-top:4px;white-space:pre-wrap;word-break:break-word">${escapeHtml(r.message)}</div>` : ""}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${actions}</div>
+    </div>`;
+  }).join("");
+}
+
+async function onAdminInquiryAction(e){
+  const btn = e.target.closest("button[data-inquiry-id]");
+  if (!btn || !isPlatformAdmin) return;
+  const identity=captureIdentity();
+  const id = btn.dataset.inquiryId, status = btn.dataset.inquiryStatus;
+  if (!INQUIRY_STATUS_LABEL[status]) return;
+  setBusy(btn, true);
+  const { data, error } = await sb.from("demo_requests").update({ status }).eq("id", id).select("id,status");
+  if(!sameIdentity(identity))return;
+  setBusy(btn, false);
+  if (error || !data?.length){
+    toast(error ? `更新失败：${registryErrorMessage(error)}` : "更新失败：没有找到这条咨询");
+    return;
+  }
+  toast(`已更新为“${INQUIRY_STATUS_LABEL[status].text}”`);
+  adminLoadInquiries();
+}
 
 async function adminLoadContracts(){
   const identity=captureIdentity();

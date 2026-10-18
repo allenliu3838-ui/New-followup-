@@ -148,6 +148,7 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
   const holds = new Map();      // 'table:研究编号' → 等待释放的 Promise，用于模拟迟到的响应
   const served = [];            // 看板视图返回过的 patient_id（检查分页不漏不重）
   const tokens = data.tokens.map(t => ({ ...t }));
+  const inquiries = (data.inquiries || []).map(r => ({ ...r }));
   let newTokenCount = 0;
   const cors = origin => ({ 'access-control-allow-origin': origin || '*', 'access-control-allow-credentials': 'true', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,PATCH,PUT,DELETE,OPTIONS', 'access-control-expose-headers': 'content-range,x-total-count' });
   const filters = (url, op) => Object.fromEntries([...url.searchParams].filter(([, v]) => v.startsWith(`${op}.`)).map(([k, v]) => [k, v.slice(op.length + 1)]));
@@ -166,6 +167,7 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
       }
       case 'patient_tokens': return tokens.filter(t => t.project_id === f.project_id && (!f.patient_code || t.patient_code === f.patient_code));
       case 'visits_long': return data.visits.filter(v => v.project_id === f.project_id && (!f.patient_code || v.patient_code === f.patient_code) && (!f.id || v.id === f.id));
+      case 'demo_requests': return data.admin ? [...inquiries].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)) : [];
       case 'patients_baseline': return Object.values(data.baselines).filter(b => (!f.patient_code || b.patient_code === f.patient_code) && (!f.id || b.id === f.id));
       case 'user_profiles': case 'lab_test_catalog': case 'lab_test_unit_map': case 'project_custom_labs':
       case 'labs_long': case 'meds_long': case 'events_long': case 'variants_long': case 'data_issues':
@@ -178,7 +180,8 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
     switch (name) {
       case 'get_project_access': return access;
       case 'check_project_quota': return { plan: 'trial', can_write: true, ends_at: tsOffset(60), quota: 3, used: 2 };
-      case 'is_platform_admin': return false;
+      case 'is_platform_admin': return !!data.admin;
+      case 'admin_list_contracts': case 'admin_list_orders': return data.admin ? [] : null;
       case 'get_my_contract': return [];
       case 'list_project_members': return [{ user_id: USER.id, email: USER.email, display_name: null, role: 'owner', created_at: '2026-01-01T00:00:00Z', is_owner: true }];
       case 'list_project_snapshots': return [];
@@ -251,6 +254,11 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
       const range = page.length ? `${offset}-${offset + page.length - 1}/${rows.length}` : `*/${rows.length}`;
       return json(200, page, { 'content-range': range });
     }
+    if (table === 'demo_requests' && request.method() === 'PATCH' && data.admin) {
+      const row = inquiries.find(r => r.id === filters(url, 'eq').id);
+      if (row) Object.assign(row, body);
+      return json(200, row ? [{ id: row.id, status: row.status }] : []);
+    }
     unknown.push(`${request.method()} ${url.pathname}`);
     return json(200, null);
   }
@@ -263,7 +271,7 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
     return () => { holds.delete(`${table}:${patientCode}`); release(); };
   }
 
-  return { requests, external, unknown, importReplies, served, tokens, hold, handle, rpcCalls: name => requests.filter(r => r.path === `/rest/v1/rpc/${name}`) };
+  return { requests, external, unknown, importReplies, served, tokens, inquiries, hold, handle, rpcCalls: name => requests.filter(r => r.path === `/rest/v1/rpc/${name}`) };
 }
 
 function sessionFor() {
@@ -1046,6 +1054,44 @@ async function main() {
     const recent = await openWorkspace(browser, origin, { lastActivity: Date.now() - 5 * 60_000 });
     assert.equal(await recent.page.locator('#appCard').isVisible(), true);
     await recent.context.close();
+
+    // 13a. 平台管理员：官网咨询面板（待联系在前、外部文字只按文本显示、可改状态）。
+    const INQUIRIES = [
+      { id: '40000000-0000-4000-8000-000000000001', created_at: '2026-10-10T02:00:00Z', name: '张合成', institution: '合成医院', department: null, email: 'zhang@example.test', contact: null, use_case: 'DEMO', message: '咨询类型：预约演示', status: 'contacted' },
+      { id: '40000000-0000-4000-8000-000000000002', created_at: '2026-10-12T02:00:00Z', name: '李合成', institution: '合成药业', department: null, email: '', contact: '微信：synthetic01', use_case: 'INDUSTRY_RWS_CRO', message: '咨询类型：药企 | <img src=x onerror="window.__inquiryXss=1">', status: 'pending' },
+      { id: '40000000-0000-4000-8000-000000000003', created_at: '2026-10-08T02:00:00Z', name: '王合成', institution: '合成大学', department: '肾内科', email: 'wang@example.test', contact: null, use_case: 'NEW_PROJECT', message: null, status: 'done' },
+    ];
+    const admin = await openWorkspace(browser, origin, { data: { ...DEFAULT_DATA, admin: true, inquiries: INQUIRIES } });
+    {
+      const p = admin.page;
+      const rows = p.locator('#adminInquiries [data-inquiry-row]');
+      await rows.first().waitFor({ timeout: 15000 });
+      assert.deepEqual(await rows.evaluateAll(list => list.map(r => r.dataset.inquiryRow.slice(-1))), ['2', '1', '3'], '待联系在前，其余按时间倒序');
+      assert.equal(await text(p.locator('#adminInquiriesBadge')), '1 待联系');
+      assert.ok((await text(rows.first())).includes('微信：synthetic01'), '显示微信联系方式');
+      assert.ok((await text(rows.first())).includes('<img src=x'), '留言按原文显示');
+      assert.equal(await p.locator('#adminInquiries img').count(), 0, '留言中的 HTML 不得被解析');
+      assert.equal(await p.evaluate(() => window.__inquiryXss), undefined);
+      await p.locator('#adminCard').scrollIntoViewIfNeeded();
+      await shot(p, '08-admin-inquiries');
+      await rows.first().locator('[data-inquiry-status="contacted"]').click();
+      await eventually(async () => (await text(p.locator('#adminInquiriesBadge'))) === '', '标记后不再有待联系');
+      const patch = admin.mock.requests.find(r => r.method === 'PATCH' && r.path === '/rest/v1/demo_requests');
+      assert.deepEqual(patch.body, { status: 'contacted' }, '只修改状态字段');
+      assert.equal(patch.params.get('id'), 'eq.40000000-0000-4000-8000-000000000002');
+      assert.equal(admin.mock.inquiries.find(r => r.id.endsWith('2')).status, 'contacted');
+      assert.deepEqual(admin.mock.unknown, []);
+      assert.deepEqual(admin.pageErrors, []);
+    }
+    await admin.context.close();
+    // 普通账号：不显示管理员面板，也不读取咨询表。
+    {
+      const plain = await openWorkspace(browser, origin);
+      await plain.page.waitForTimeout(300);
+      assert.equal(await plain.page.locator('#adminInquiries').count(), 0, '普通账号看不到官网咨询');
+      assert.equal(plain.mock.requests.filter(r => r.path === '/rest/v1/demo_requests').length, 0, '普通账号不读取咨询表');
+      await plain.context.close();
+    }
 
     // 13. 手机宽度：页面无横向滚动。
     const phone = await openWorkspace(browser, origin, { viewport: { width: 390, height: 844 } });
