@@ -34282,6 +34282,10 @@
       "new_sha256": "f9daff5d2707d51d9da2c9bce708f2e86aa7694a4006dce08e5cf1612673321b",
       "old_sha256": "e2d83bccfeefe801aba450cb41696a8ffa1ecace3692babc43ecdec674cfab92"
     },
+    "assets/help-faq.json": {
+      "new_sha256": "c76279fab212433e88f9a6d87749c45b313b64a67927d66dd1d6d2e346bbdc23",
+      "old_sha256": null
+    },
     "assets/registry-tech-hero.png": {
       "new_sha256": "120433c30d6b2de5259d90935ba2a14eaf45c9537dcc5169199f1b3eb806fc11",
       "old_sha256": "120433c30d6b2de5259d90935ba2a14eaf45c9537dcc5169199f1b3eb806fc11"
@@ -34359,7 +34363,7 @@
       "old_sha256": "8b7c9366ea47a9f3d1d23538d61f05f3f8c098f01df721d752a53709d52c5b9e"
     },
     "demo.html": {
-      "new_sha256": "36dbc98d3638e1d20be2f6acc3d25188ac55c8645f9c85d175177b4d2aa25006",
+      "new_sha256": "d7cc89a53ed05d6d986740b4da0b41bfe3e0c514084be66906fa35e007ce0968",
       "old_sha256": "c70284d835a7143188cc806c5e59c00918f15b971b4ce16c1da5896d5d65e332"
     },
     "deployment.html": {
@@ -34379,7 +34383,7 @@
       "old_sha256": "a7c18dfdd29ec6cbe3cecd95dedf40ab8abd7b8f58c102190f5df8000dadf359"
     },
     "guide.html": {
-      "new_sha256": "d51a03558ad9277ff1f9970861e5600beb511e53f39ca4d9a8bb1b6a3f6fdc36",
+      "new_sha256": "9a96e07b3ff12540cc638b3200ca57aad0b771898483d20a0b584b51b30d6f56",
       "old_sha256": "98fb43e3db21529b39282f2a104e2404f187040164d4bc0a39e320f7050928ed"
     },
     "guide.js": {
@@ -34409,6 +34413,10 @@
     "lib/followup-dialogs.js": {
       "new_sha256": "43144c286ce58ad587990dfef1678728310758383c8ccb4743d90ec3ed365ab8",
       "old_sha256": "a68ddc6d623dff9401d6f18e7196cf0b57226d95df221249fd4ba84570296d04"
+    },
+    "lib/help-assistant.js": {
+      "new_sha256": "a387216492bbebff966a91466e7024a19111089d62b6979cda897a3894294fa3",
+      "old_sha256": null
     },
     "lib/password-strength.js": {
       "new_sha256": "ccd6e1dfa0b0d47a9e384c2187e5465a279bc4bfe5b19be3512e8a6e93cd0777",
@@ -34507,11 +34515,11 @@
       "old_sha256": "bdf71c9fe898efec01ba9a3c2dc7c709e6f95ed081ece12cba32154cf1b5a311"
     },
     "staff.html": {
-      "new_sha256": "e8455444b9eb9d8ba8e934022da97ed2eed71df419bde404a9d6b7fd20b42c30",
+      "new_sha256": "79705e51e7c96b35acaba3f50373d90fe3c3b63e14598533ce9b4b37af03c78c",
       "old_sha256": "d0fbc8e41859d6a131e24c479b14a16d9776fdea0d51faa4d00659d740060781"
     },
     "staff.js": {
-      "new_sha256": "47ddc01e8147f6bc7cf5b4a8dabe41e336c26db17064e2ac8e56ad5e1c5c348e",
+      "new_sha256": "cf738d75db0a92be21d3eae87c4539a423ca7533a04973a4302c9147284192a2",
       "old_sha256": "b1495980a9b0c61b2536d9f70a7c199660ca8ce620ca08e0a12e7a070634c2b3"
     },
     "terms.html": {
@@ -34519,7 +34527,7 @@
       "old_sha256": "474c89021a20172c7a1b392d1b92bc867e91dfc053aa138ea294ef50578f0f56"
     },
     "user-manual-cn.html": {
-      "new_sha256": "2792df689d948a02794f595febac34bb8f6446c68ed3b87a523a9d4eee01e356",
+      "new_sha256": "3c854823817d84d0d2a6b29112d9b9e5cd05ff3484ff47ba06ef8c6ab9e2cb81",
       "old_sha256": "12a128e53710cd826037fb3690d6a231714a77b80eb0fdb5cc1dfafad37ac01c"
     }
   },
