@@ -8,7 +8,7 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "python3 tests/verify_recovered_release.py && python3 -I -m unittest discover -s tests -p test_external_hosts.py && python3 -I scripts/check_external_hosts.py && python3 -m unittest discover -s tests -p test_pg17_release_contract.py && node tests/recovered-database.mjs && node tests/pg17-upgrade.mjs && node scripts/build_database_contract_pg17.mjs --check && node tests/pg17-preflight.mjs && node tests/pg17-view.mjs && node tests/adoption-db.mjs && node tests/batch-import-db.mjs && node tests/followup-board-db.mjs",
+    "test": "python3 tests/verify_recovered_release.py && python3 -I -m unittest discover -s tests -p test_external_hosts.py && python3 -I -m unittest discover -s tests -p test_email_templates.py && python3 -I -m unittest discover -s tests -p test_site_downloads.py && python3 -I scripts/check_external_hosts.py && python3 -m unittest discover -s tests -p test_pg17_release_contract.py && node tests/recovered-database.mjs && node tests/pg17-upgrade.mjs && node scripts/build_database_contract_pg17.mjs --check && node tests/pg17-preflight.mjs && node tests/pg17-view.mjs && node tests/adoption-db.mjs && node tests/batch-import-db.mjs && node tests/followup-board-db.mjs",
     "test:e2e": "node scripts/refuse_unconfigured_e2e.cjs",
     "test:restore": "node tests/pg17-restore.mjs",
     "smoke": "bash scripts/smoke-test.sh",

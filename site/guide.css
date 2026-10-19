@@ -47,3 +47,6 @@
   .doc-guide .card{padding:16px;}
   .doc-guide .brand-title{font-size:22px;}
 }
+.doc-guide .downloads{list-style:none;padding:0;margin:8px 0 4px;display:grid;gap:8px;}
+.doc-guide .downloads li{padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:rgba(2,6,23,.02);line-height:1.6;}
+.doc-guide .downloads a{font-weight:600;margin-right:4px;}

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>您的登录链接</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f6fb;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6fb;">
+<tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;">
+<tr><td style="padding:28px 28px 8px 28px;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei','Helvetica Neue',Arial,sans-serif;color:#0f172a;font-size:15px;line-height:1.7;">
+<div style="font-size:18px;font-weight:700;">肾域·科研</div>
+<div style="font-size:13px;color:#64748b;">肾脏专科研究随访登记系统 · kidneysphereregistry.cn</div>
+<h1 style="font-size:20px;line-height:1.4;margin:24px 0 12px 0;">您的登录链接</h1>
+<p style="margin:0 0 12px 0;">您好，</p>
+<p style="margin:0 0 20px 0;">您正在用邮箱 {{ .Email }} 登录肾域·科研。请点击下方按钮直接登录，无需输入密码。</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px 0;"><tr><td style="border-radius:8px;background:#1d4ed8;">
+<a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:12px 24px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">登录肾域·科研</a>
+</td></tr></table>
+<p style="margin:0 0 12px 0;font-size:13px;color:#475569;">如果按钮无法点击，请复制下面的链接，粘贴到浏览器地址栏打开：<br>
+<a href="{{ .ConfirmationURL }}" style="color:#1d4ed8;word-break:break-all;">{{ .ConfirmationURL }}</a></p>
+<p style="margin:0 0 12px 0;font-size:13px;color:#475569;">链接只能使用一次。如果链接已失效，请回到登录页重新获取。</p>
+<p style="margin:0 0 20px 0;font-size:13px;color:#475569;">如果这不是您本人的操作，请忽略本邮件，您的账号不会被登录。</p>
+</td></tr>
+<tr><td style="padding:16px 28px 24px 28px;border-top:1px solid #e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei','Helvetica Neue',Arial,sans-serif;font-size:12px;line-height:1.7;color:#64748b;">
+此邮件由系统自动发送，请勿直接回复。如有疑问，请发邮件至 china@kidneysphere.com。<br>
+上海胤域医学科技有限公司 · https://kidneysphereregistry.cn
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>
