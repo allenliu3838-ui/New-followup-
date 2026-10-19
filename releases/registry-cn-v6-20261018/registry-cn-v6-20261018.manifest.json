@@ -34286,6 +34286,18 @@
       "new_sha256": "c76279fab212433e88f9a6d87749c45b313b64a67927d66dd1d6d2e346bbdc23",
       "old_sha256": null
     },
+    "assets/mail-confirm.html": {
+      "new_sha256": "79f763ac416035a377d9d93bab959e495b7139b9275551834320e0a7a1ded9f8",
+      "old_sha256": null
+    },
+    "assets/mail-magic-link.html": {
+      "new_sha256": "53b4efd04fa668ff07f102454afa1b93deafa195e704712d235de666c6075db4",
+      "old_sha256": null
+    },
+    "assets/mail-recovery.html": {
+      "new_sha256": "a19e659eb8d94c5080a0bcee6b01de299db9115a1dd4dccdd404b8894ee57747",
+      "old_sha256": null
+    },
     "assets/registry-tech-hero.png": {
       "new_sha256": "120433c30d6b2de5259d90935ba2a14eaf45c9537dcc5169199f1b3eb806fc11",
       "old_sha256": "120433c30d6b2de5259d90935ba2a14eaf45c9537dcc5169199f1b3eb806fc11"

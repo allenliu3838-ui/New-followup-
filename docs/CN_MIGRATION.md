@@ -928,6 +928,48 @@ docker exec -i supabase-db psql -U postgres -d postgres -X -t -A \
 
 使用提示：历史补录的患者在看板中勾选后点“设置提醒起算日”（默认今天），之后按“提醒起算日与最近一次随访中较晚的一天 + 随访间隔”计算下次随访；可随时改为其他日期或清除。“批量确认知情同意”按纸质同意书等原始记录登记，须填写依据，每位患者的修改与单个患者“研究状态”中的修改规则相同并逐字段留痕。
 
+### C.2 认证邮件发送（2026-10-19 修复）
+
+**现象。** 切换后新用户注册一律失败：注册页提示“暂时无法确认注册是否成功”，认证日志为 `POST /signup` 500，错误 `526 "Authentication failure"`；注册事务回滚，`auth.users` 无记录。老用户密码登录不受影响（登录不发邮件）。
+
+**原因与处理（三层）。**
+
+1. 企业邮箱（`smtp.qiye.aliyun.com`）拒绝 SMTP 密码登录：本企业邮箱的账号默认开启双重认证，`china@`、新建的 `noreply@kidneysphere.com` 用正确密码登录 SMTP 均返回 526。改用**阿里云邮件推送**：发信域名 `mail.kidneysphere.com`（Cloudflare 上的 SPF、DKIM、MX、`_dmarc.mail` 已配置，控制台“验证通过”），发信地址 `noreply@mail.kidneysphere.com`（触发邮件），SMTP 服务器 `smtpdm.aliyun.com:465`。
+2. 认证容器所在的 `supabase_default` 网络是 `internal: true`（`docker-compose.loopback.yml` 的断网加固），容器无法解析或连接任何外部主机（`nslookup` SERVFAIL、直连 DNS `Network unreachable`）。
+3. 新增 `/data/registry-supabase/docker-compose.auth-dns.yml`，只给 `auth` 加一个非 internal 的 `auth_egress` 网络（`gw_priority: 1`，数据库仍经 `default` 访问）并指定阿里云 DNS；该文件已追加到 `.env` 的 `COMPOSE_FILE`（`docker-compose.yml:docker-compose.loopback.yml:docker-compose.auth-dns.yml`）。其他服务仍只在 internal 网络；`auth_egress` 不发布任何端口。
+
+**今后注意。**
+
+- 重新生成或替换 loopback 配置、调整 `COMPOSE_FILE` 时，必须保留 `docker-compose.auth-dns.yml`，否则注册、找回密码邮件会再次全部失败。
+- `.env` 中 `SMTP_HOST='smtpdm.aliyun.com'`、`SMTP_PORT='465'`、`SMTP_USER` 与 `SMTP_ADMIN_EMAIL` 均为 `noreply@mail.kidneysphere.com`（发件人必须与登录账号一致）。修改前备份 `.env`（`cp .env .env.bak-smtp-$(date +%Y%m%d)`）。
+- 更换 SMTP 密码：在邮件推送控制台“发信地址”中重设（约 2 分钟生效），先在主机上用 `curl smtps://smtpdm.aliyun.com:465` 验证返回 `235`，再改 `.env` 的 `SMTP_PASS` 并执行 `docker compose up -d auth`。密码只在服务器终端输入，不写入仓库或聊天。
+- 修改企业邮箱 `china@` 的密码不再影响系统邮件。
+
+**核对命令（只读）。**
+
+```bash
+cd /data/registry-supabase
+docker exec supabase-auth env | grep -E '^GOTRUE_SMTP_(HOST|PORT|USER|ADMIN_EMAIL)='
+docker exec supabase-auth sh -c 'timeout 10 nc -zv smtpdm.aliyun.com 465 2>&1'   # 预期 open
+docker logs --since 30m supabase-auth 2>&1 | grep -E '"/signup"|"/recover"|"/otp"' | tail -5
+```
+
+**回退。** `sed -i 's|:docker-compose.auth-dns.yml$||' .env && docker compose up -d auth` 恢复到断网状态（可登录，不能发邮件）；`.env.bak-smtp-*` 可恢复原 SMTP 设置。
+
+**中文邮件模板（随 v6 发布后配置）。** 默认英文模板（“Confirm Your Signup”）容易被收件方判为垃圾邮件。v6 起网站提供 `assets/mail-confirm.html`、`assets/mail-recovery.html`、`assets/mail-magic-link.html`（只用 `{{ .ConfirmationURL }}`、`{{ .Email }}`，不含图片和外部资源）。**v6 前端上线后**，在 `docker-compose.auth-dns.yml` 的 `auth` 下增加：
+
+```yaml
+    environment:
+      GOTRUE_MAILER_SUBJECTS_CONFIRMATION: "【肾域·科研】请确认您的注册邮箱"
+      GOTRUE_MAILER_SUBJECTS_RECOVERY: "【肾域·科研】重设登录密码"
+      GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: "【肾域·科研】您的登录链接"
+      GOTRUE_MAILER_TEMPLATES_CONFIRMATION: "https://kidneysphereregistry.cn/assets/mail-confirm.html"
+      GOTRUE_MAILER_TEMPLATES_RECOVERY: "https://kidneysphereregistry.cn/assets/mail-recovery.html"
+      GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: "https://kidneysphereregistry.cn/assets/mail-magic-link.html"
+```
+
+然后 `docker compose config >/dev/null && docker compose up -d auth`，各发一封注册、找回密码邮件核对。认证服务读取模板失败时会退回默认英文模板，不影响发信。新发信域名初期邮件可能进入垃圾箱，给试点用户的说明中注明“请查看垃圾邮件并将 noreply@mail.kidneysphere.com 加入通讯录”。
+
 ## 附录 B：常见问题
 
 - **用户要重新设置密码吗？** 不需要。密码哈希随账号一起迁移；因为新环境使用新的签名密钥和接口地址，原来的登录状态失效，用户重新登录一次即可。
