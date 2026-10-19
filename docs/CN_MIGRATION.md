@@ -970,6 +970,23 @@ docker logs --since 30m supabase-auth 2>&1 | grep -E '"/signup"|"/recover"|"/otp
 
 然后 `docker compose config >/dev/null && docker compose up -d auth`，各发一封注册、找回密码邮件核对。认证服务读取模板失败时会退回默认英文模板，不影响发信。新发信域名初期邮件可能进入垃圾箱，给试点用户的说明中注明“请查看垃圾邮件并将 noreply@mail.kidneysphere.com 加入通讯录”。
 
+**状态（2026-10-19）：** v6 已上线，上述主题与模板已加入 `docker-compose.auth-dns.yml` 并生效（容器内可读取模板）。
+
+### C.3 异地备份（OSS，2026-10-19 启用）
+
+**组成。**
+
+- 本机每日备份不变：`/etc/cron.d/registry-backup` 每天 02:30 运行 `/usr/local/sbin/registry-backup.sh`，生成 `/data/backups/registry/registry-<时间>.tar.gpg`（数据库 public/auth/storage/registry_private + 附件，gpg AES-256，口令 `/root/.registry-backup-pass`）及 `.sha256`，本机保留 30 天。
+- 异地复制：`/etc/cron.d/registry-backup-offsite` 每天 03:30 运行 `/usr/local/sbin/registry-backup-offsite.py`（`/opt/registry-oss` 虚拟环境中的 oss2），把尚未上传的备份及 `.sha256` 传到 OSS `kidneysphere-registry-backup`（华东2 上海，私有、阻止公共访问、服务端加密 AES256、版本控制开启），对象前缀 `registry/`，走内网地址 `oss-cn-shanghai-internal.aliyuncs.com`。日志写入 `/var/log/registry-backup.log`（`OK offsite uploaded=… already_there=…`）。
+- 凭据：RAM 用户 `registry-backup-uploader`，仅授权自定义策略 `registry-backup-oss-only`（`GetBucketInfo`、`ListObjects`，以及 `registry/*` 的 `PutObject`、`GetObject`），**没有删除权限**；AccessKey 只保存在 `/root/.oss-backup.env`（600）和负责人的密码管理器中。
+- 保留：OSS 生命周期规则 `registry/` 当前版本 90 天后转为历史版本，历史版本 60 天后删除；碎片 7 天清理。服务器被入侵时，攻击者用该凭据只能新增或覆盖（旧内容仍保存在历史版本中），不能删除。
+
+**口令。** `/root/.registry-backup-pass` 必须在服务器之外另存一份（密码管理器或线下保管）。口令丢失则本机和 OSS 上的全部备份都无法解密。
+
+**恢复演练（只读，不改生产库）。** 2026-10-19 首次演练通过：从 OSS 下载最新备份，`.sha256` 校验 OK，用口令解密得到 `db.dump`、`storage.tar`、`toc.txt`，`pg_restore --list` 读出 79 张表的数据段（与备份记录一致），附件 5 个，关键表齐全。建议每季度及每次更换口令或凭据后重复一次，记录写入 `/var/log/registry-backup.log`（`RESTORE_DRILL_OK`）。
+
+**更换 AccessKey。** 在 RAM 控制台为 `registry-backup-uploader` 新建 AccessKey，服务器上按原方式（`read -rs`）重写 `/root/.oss-backup.env`，手动运行一次 `/usr/local/sbin/registry-backup-offsite.py` 确认 `OK`，再停用并删除旧 AccessKey。
+
 ## 附录 B：常见问题
 
 - **用户要重新设置密码吗？** 不需要。密码哈希随账号一起迁移；因为新环境使用新的签名密钥和接口地址，原来的登录状态失效，用户重新登录一次即可。
