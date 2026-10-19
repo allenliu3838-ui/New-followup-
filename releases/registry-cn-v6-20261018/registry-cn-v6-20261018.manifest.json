@@ -34283,7 +34283,7 @@
       "old_sha256": "e2d83bccfeefe801aba450cb41696a8ffa1ecace3692babc43ecdec674cfab92"
     },
     "assets/help-faq.json": {
-      "new_sha256": "c76279fab212433e88f9a6d87749c45b313b64a67927d66dd1d6d2e346bbdc23",
+      "new_sha256": "4c5418684f4445903930824397f464f07971d9269ac18aaa92d1f111fad2f9e4",
       "old_sha256": null
     },
     "assets/mail-confirm.html": {
@@ -34350,6 +34350,22 @@
       "new_sha256": "437d6b7a9efcbbe689367bcd052b4b322d5082bf70c592a58198239615b948d5",
       "old_sha256": "437d6b7a9efcbbe689367bcd052b4b322d5082bf70c592a58198239615b948d5"
     },
+    "assets/肾域科研_临床团队虚拟项目全流程演练册_V2.1.pdf": {
+      "new_sha256": "f5e5bd17cca13daf4a59840b81844c60ef70a98828dc5a5c53d5fb7fc5b159ca",
+      "old_sha256": null
+    },
+    "assets/肾域科研_产品能力与数据治理附册.pdf": {
+      "new_sha256": "6a4ce9cdf08ed0b314fcb56a11b690c3969b09b8e50fe2ede2ccb1061a9ca115",
+      "old_sha256": null
+    },
+    "assets/肾域科研_使用指南_临床医生版.pdf": {
+      "new_sha256": "103c6bf606c58698a40855d299fbc89f28adc934ab3439a9104c620a0780081a",
+      "old_sha256": null
+    },
+    "assets/肾域科研_药企科研合作指南_V3.1.pdf": {
+      "new_sha256": "75f22a567be9b9efa133de7e44361743aa3dfbfc526c5cc677ea209e6ed4762c",
+      "old_sha256": null
+    },
     "auth-callback.html": {
       "new_sha256": "f9d16d57af35f62c4360c77655825095e712b10144a485b4721da7fe1434fc12",
       "old_sha256": "ee945412d0da9391be4639ad67ff61071f77474bfe3aab4a487407a0fa44b027"
@@ -34375,7 +34391,7 @@
       "old_sha256": "8b7c9366ea47a9f3d1d23538d61f05f3f8c098f01df721d752a53709d52c5b9e"
     },
     "demo.html": {
-      "new_sha256": "d7cc89a53ed05d6d986740b4da0b41bfe3e0c514084be66906fa35e007ce0968",
+      "new_sha256": "fd98dee503dde80d75623fe7c51d596e6f884bfe4fad606f15aacaece9657b2c",
       "old_sha256": "c70284d835a7143188cc806c5e59c00918f15b971b4ce16c1da5896d5d65e332"
     },
     "deployment.html": {
@@ -34391,11 +34407,11 @@
       "old_sha256": "d1c0b8424ffe1b02cb69e5fae31bc29116fccc4b407caad46d97718f9b0a205e"
     },
     "guide.css": {
-      "new_sha256": "a7c18dfdd29ec6cbe3cecd95dedf40ab8abd7b8f58c102190f5df8000dadf359",
+      "new_sha256": "45b8bc516de1ed8a06276682449f8178ed64ce4d1241d52fd2aa66ba08f748b2",
       "old_sha256": "a7c18dfdd29ec6cbe3cecd95dedf40ab8abd7b8f58c102190f5df8000dadf359"
     },
     "guide.html": {
-      "new_sha256": "9a96e07b3ff12540cc638b3200ca57aad0b771898483d20a0b584b51b30d6f56",
+      "new_sha256": "1eea1302f8bcee45b148c92035f323b0c9814f0f6a14da2988742d5eef10dd40",
       "old_sha256": "98fb43e3db21529b39282f2a104e2404f187040164d4bc0a39e320f7050928ed"
     },
     "guide.js": {
