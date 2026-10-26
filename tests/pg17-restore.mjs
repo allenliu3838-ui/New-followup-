@@ -124,7 +124,7 @@ try{
  await assert.rejects(restored.restoreCustom(backup.archive),/existing application objects/);
  pass('actual pg_restore reproduces every dumped table, value, sequence and reviewed catalog/ACL');
 
- assert.equal(await applyMigrations(restored,{phase:'upgrade'}),10);
+ assert.equal(await applyMigrations(restored,{phase:'upgrade'}),11);
  const upgradedRows=await captureRows(restored);
  // Two reviewed value changes are asserted exactly below; every other historical value must survive.
  const reviewedChange={

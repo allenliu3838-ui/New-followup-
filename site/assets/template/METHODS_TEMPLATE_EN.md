@@ -75,3 +75,12 @@ and reported in `RUN_LOG.json`.
 
 KFRE, inferential cohort models, confidence intervals and survival analyses are not
 enabled in this release. No unit or missing demographic value should be guessed.
+
+eGFR is recomputed from the stored creatinine for every visit whose formula tag is a
+registry formula: adults (year-derived age 18-120) by the CKD-EPI 2021 creatinine
+equation (Inker et al., 2021, Table 2; sex and year-derived age, no race term), and
+children aged 1-17 years by the bedside Schwartz 2009 equation (0.413 x height in cm /
+creatinine in mg/dL) from the height recorded at that visit; a paediatric visit without a
+height has no analysis eGFR and is an UNKNOWN measurement. Values tagged manual are used
+as stored; eGFR values of unverified provenance are excluded. The stored value is
+compared with the recomputed one and differences are listed in the quality report.

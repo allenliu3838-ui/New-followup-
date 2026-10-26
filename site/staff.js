@@ -1,12 +1,12 @@
-import { supabase } from "/lib/supabase-client.js?v=registry-20261018-cn-v6";
-import { createProjectMembers } from "/lib/project-members.js?v=registry-20261018-cn-v6";
-import { qs, qsa, toast, toCsv, downloadText, downloadCsvUtf8Bom, fmtDate, daysLeft, escapeHtml } from "/lib/utils.js?v=registry-20261018-cn-v6";
-import { throttle } from "/lib/rate-limit.js?v=registry-20261018-cn-v6";
-import { validatePassword } from "/lib/password-strength.js?v=registry-20261018-cn-v6";
-import { strictDate, finiteNumber, normalizeUpcr, parseRegistryCsv, readAllRows, readKeysetRows, exportColumns, sha256Text, BASELINE_IMPORT_FIELDS, VISIT_IMPORT_FIELDS, normalizeImportRow, registryErrorMessage, containsPII, assertNoPII, fieldLabel, creatinineUmol, correctionReasonError, CLINICAL_LIMITS, SCR_MGDL_TO_UMOL } from "/lib/registry-data.js?v=registry-20261018-cn-v6";
-import { renderOverviewHtml, renderBoardHtml, renderFilterBar, sortBoardRows } from "/lib/followup-board.js?v=registry-20261018-cn-v6";
-import { createFollowupDialogs } from "/lib/followup-dialogs.js?v=registry-20261018-cn-v6";
-import { BATCH_KINDS, TEMPLATES as BATCH_TEMPLATES, KIND_LABELS, PII_NOTICE, SKIP_MAPPING, CHUNK_SIZE, MAX_FILE_BYTES, MAX_FILE_ROWS, EVIDENCE_SOURCES, IMPORTABLE_EVENTS, templateCsv, validateBatch, buildChunks, errorReportCsv, piiHeaderColumns, baseFileName, beijingToday, MASKED_CODE } from "/lib/batch-import.js?v=registry-20261018-cn-v6";
+import { supabase } from "/lib/supabase-client.js?v=registry-20261026-cn-v7";
+import { createProjectMembers } from "/lib/project-members.js?v=registry-20261026-cn-v7";
+import { qs, qsa, toast, toCsv, downloadText, downloadCsvUtf8Bom, fmtDate, daysLeft, escapeHtml } from "/lib/utils.js?v=registry-20261026-cn-v7";
+import { throttle } from "/lib/rate-limit.js?v=registry-20261026-cn-v7";
+import { validatePassword } from "/lib/password-strength.js?v=registry-20261026-cn-v7";
+import { strictDate, finiteNumber, normalizeUpcr, parseRegistryCsv, readAllRows, readKeysetRows, exportColumns, sha256Text, BASELINE_IMPORT_FIELDS, VISIT_IMPORT_FIELDS, normalizeImportRow, registryErrorMessage, containsPII, assertNoPII, fieldLabel, creatinineUmol, correctionReasonError, CLINICAL_LIMITS, SCR_MGDL_TO_UMOL } from "/lib/registry-data.js?v=registry-20261026-cn-v7";
+import { renderOverviewHtml, renderBoardHtml, renderFilterBar, sortBoardRows } from "/lib/followup-board.js?v=registry-20261026-cn-v7";
+import { createFollowupDialogs } from "/lib/followup-dialogs.js?v=registry-20261026-cn-v7";
+import { BATCH_KINDS, TEMPLATES as BATCH_TEMPLATES, KIND_LABELS, PII_NOTICE, SKIP_MAPPING, CHUNK_SIZE, MAX_FILE_BYTES, MAX_FILE_ROWS, EVIDENCE_SOURCES, IMPORTABLE_EVENTS, templateCsv, validateBatch, buildChunks, errorReportCsv, piiHeaderColumns, baseFileName, beijingToday, MASKED_CODE } from "/lib/batch-import.js?v=registry-20261026-cn-v7";
 
 const sb = supabase();
 // 基因数据涉及人类遗传资源管理：默认关闭，仅当服务器配置 CONFIG.FEATURES.GENETICS === true 时显示。
@@ -81,6 +81,12 @@ function injectAuthGatedContent() {
   el.lnAI = qs("#lnAI");
   el.lnCI = qs("#lnCI");
   el.lnPodocytopathy = qs("#lnPodocytopathy");
+  el.c3gPathBox = qs("#c3gPathBox");
+  el.c3gBiopsyDate = qs("#c3gBiopsyDate");
+  el.c3gIfC3Dominant = qs("#c3gIfC3Dominant");
+  el.c3gEmPattern = qs("#c3gEmPattern");
+  el.c3gCrescentPct = qs("#c3gCrescentPct");
+  el.c3gParaprotein = qs("#c3gParaprotein");
   el.rctArm = qs("#rctArm");
   el.rctRandomId = qs("#rctRandomId");
   el.rctDate = qs("#rctDate");
@@ -397,8 +403,8 @@ function assertContext(c){
 }
 function currentContext(c){try{assertContext(c);return true;}catch{return false;}}
 function resetBaseline(){
-  ['patCode','patBirthYear','patBaselineDate','patBaselineScr','patBaselineUpcr','biopsyDate','lnBiopsyDate','lnAI','lnCI','rctRandomId','rctDate'].forEach(k=>{if(el[k])el[k].value='';});
-  ['patSex','mestM','mestE','mestS','mestT','mestC','lnClass','lnPodocytopathy','rctArm'].forEach(k=>{if(el[k])el[k].value='';});
+  ['patCode','patBirthYear','patBaselineDate','patBaselineScr','patBaselineUpcr','biopsyDate','lnBiopsyDate','lnAI','lnCI','c3gBiopsyDate','c3gCrescentPct','rctRandomId','rctDate'].forEach(k=>{if(el[k])el[k].value='';});
+  ['patSex','mestM','mestE','mestS','mestT','mestC','lnClass','lnPodocytopathy','c3gIfC3Dominant','c3gEmPattern','c3gParaprotein','rctArm'].forEach(k=>{if(el[k])el[k].value='';});
   if(el.patBaselineUpcrUnit)el.patBaselineUpcrUnit.value='mg/g';
   if(el.patBaselineScrUnit)el.patBaselineScrUnit.value='umol';
   renderBaselineConversion();renderBaselineScrHint();
@@ -576,6 +582,7 @@ function showIganPathBox(){
   const mod = (selectedProject?.module || "").toUpperCase();
   el.iganPathBox.style.display = (mod === "IGAN") ? "block" : "none";
   el.lnPathBox.style.display   = (mod === "LN")   ? "block" : "none";
+  if (el.c3gPathBox) el.c3gPathBox.style.display = (mod === "C3G") ? "block" : "none";
 }
 
 async function init(){
@@ -1708,6 +1715,17 @@ async function createPatientBaseline(){
                                 : el.lnPodocytopathy.value === "false" ? false : null;
   }
 
+  // C3 肾小球病病理（免疫荧光、电镜分型、新月体、单克隆筛查）
+  if ((selectedProject.module || "").toUpperCase() === "C3G"){
+    payload.c3g_biopsy_date    = el.c3gBiopsyDate.value || null;
+    payload.c3g_if_c3_dominant = el.c3gIfC3Dominant.value === "true" ? true
+                               : el.c3gIfC3Dominant.value === "false" ? false : null;
+    payload.c3g_em_pattern     = el.c3gEmPattern.value || null;
+    payload.c3g_crescent_pct   = el.c3gCrescentPct.value !== "" ? Number(el.c3gCrescentPct.value) : null;
+    if (payload.c3g_crescent_pct != null && !(payload.c3g_crescent_pct >= 0 && payload.c3g_crescent_pct <= 100)) return toast("新月体比例须在 0–100 之间");
+    payload.c3g_paraprotein    = el.c3gParaprotein.value || null;
+  }
+
   const btn = el.btnCreatePatient;
   btn.dataset.label = "保存基线";
   setBusy(btn,true);
@@ -1965,7 +1983,7 @@ async function addEvent(){
   const evidence_source = el.evtEvidence?.value || "";
   if (!EVIDENCE_SOURCES[evidence_source]) return toast("请选择判定依据来源");
   const event_detail = el.evtDetail?.value.trim() || null;
-  if (event_type === "custom" && !event_detail) return toast("事件类型为“其他”时请填写事件细节");
+  if (["custom","serious_infection","hospitalization","vaccination"].includes(event_type) && !event_detail) return toast("该事件类型需要在事件细节中写明内容（感染部位或诊断、住院原因、疫苗名称）");
   if (event_detail && [...event_detail].length > 500) return toast("事件细节最多 500 字");
   const event_date = el.evtDate?.value || null;
   if (event_date && event_date > beijingToday()) return toast("事件日期不能晚于今天");
@@ -2004,8 +2022,8 @@ async function addEvent(){
 const EXPORT_TABLES={baseline:'patients_baseline',visits:'visits_long',labs:'labs_long',meds:'meds_long',variants:'variants_long',events:'events_long'};
 const COMMON_EXPORT_COLUMNS=['id','project_id','center_code','module','patient_code'];
 const EXPORT_FIELDS={
-patients_baseline:['sex','birth_year','baseline_date','baseline_scr','baseline_upcr','baseline_upcr_unit','baseline_upcr_raw','baseline_upcr_original_unit','biopsy_date','oxford_m','oxford_e','oxford_s','oxford_t','oxford_c','ln_biopsy_date','ln_class','ln_activity_index','ln_chronicity_index','ln_podocytopathy','treatment_arm','randomization_id','randomization_date','consent_status','consent_date','consent_version','followup_status','followup_status_date','created_at','updated_at'],
-visits_long:['visit_date','sbp','dbp','scr_umol_l','upcr','egfr','egfr_formula_version','notes','qc_reason','created_at','updated_at'],
+patients_baseline:['sex','birth_year','baseline_date','baseline_scr','baseline_upcr','baseline_upcr_unit','baseline_upcr_raw','baseline_upcr_original_unit','biopsy_date','oxford_m','oxford_e','oxford_s','oxford_t','oxford_c','ln_biopsy_date','ln_class','ln_activity_index','ln_chronicity_index','ln_podocytopathy','c3g_biopsy_date','c3g_if_c3_dominant','c3g_em_pattern','c3g_crescent_pct','c3g_paraprotein','treatment_arm','randomization_id','randomization_date','consent_status','consent_date','consent_version','followup_status','followup_status_date','created_at','updated_at'],
+visits_long:['visit_date','sbp','dbp','scr_umol_l','upcr','height_cm','egfr','egfr_formula_version','notes','qc_reason','created_at','updated_at'],
 labs_long:['lab_date','lab_test_code','lab_name','value_raw','unit_symbol','value_standard','standard_unit','lab_value','lab_unit','measured_at','qc_reason','created_at','updated_at'],
 meds_long:['drug_name','drug_class','dose','route','frequency','start_date','end_date','created_at','updated_at'],
 variants_long:['test_date','test_name','gene','variant','hgvs_c','hgvs_p','transcript','zygosity','classification','lab_name','notes','created_at','updated_at'],
@@ -2109,14 +2127,14 @@ async function loadIssues(page=0){
   }catch(e){if(currentContext(op))el.issueList.textContent='数据质控问题读取失败：'+registryErrorMessage(e);}
 }
 const EDIT_FIELDS={
-  patients_baseline:['sex','birth_year','baseline_date','baseline_scr','baseline_upcr','biopsy_date','oxford_m','oxford_e','oxford_s','oxford_t','oxford_c','ln_biopsy_date','ln_class','ln_activity_index','ln_chronicity_index','ln_podocytopathy','treatment_arm','randomization_id','randomization_date'],
-  visits_long:['visit_date','sbp','dbp','scr_umol_l','upcr','notes'],
+  patients_baseline:['sex','birth_year','baseline_date','baseline_scr','baseline_upcr','biopsy_date','oxford_m','oxford_e','oxford_s','oxford_t','oxford_c','ln_biopsy_date','ln_class','ln_activity_index','ln_chronicity_index','ln_podocytopathy','c3g_biopsy_date','c3g_if_c3_dominant','c3g_em_pattern','c3g_crescent_pct','c3g_paraprotein','treatment_arm','randomization_id','randomization_date'],
+  visits_long:['visit_date','sbp','dbp','scr_umol_l','upcr','height_cm','notes'],
   labs_long:['lab_date','lab_test_code','value_raw','unit_symbol']
 };
-const EDIT_LABELS={sex:'性别 M/F',birth_year:'出生年份',baseline_date:'基线日期',baseline_scr:'基线肌酐 μmol/L',baseline_upcr:'基线UPCR原始化验值',visit_date:'随访日期',sbp:'收缩压 mmHg',dbp:'舒张压 mmHg',scr_umol_l:'肌酐 μmol/L',upcr:'UPCR mg/g',notes:'备注（不含身份信息）',lab_date:'化验日期',lab_test_code:'化验目录代码',value_raw:'原始化验值',unit_symbol:'原始化验单位',biopsy_date:'肾穿日期',ln_biopsy_date:'LN肾穿日期',ln_class:'LN病理分型',ln_activity_index:'LN活动指数',ln_chronicity_index:'LN慢性指数',ln_podocytopathy:'足细胞病 true/false',treatment_arm:'研究分组',randomization_id:'分组记录编号',randomization_date:'分组日期'};
-const EDIT_NUMBERS=new Set(['birth_year','baseline_scr','baseline_upcr','oxford_m','oxford_e','oxford_s','oxford_t','oxford_c','ln_activity_index','ln_chronicity_index','sbp','dbp','scr_umol_l','upcr','value_raw']);
+const EDIT_LABELS={sex:'性别 M/F',birth_year:'出生年份',baseline_date:'基线日期',baseline_scr:'基线肌酐 μmol/L',baseline_upcr:'基线UPCR原始化验值',visit_date:'随访日期',sbp:'收缩压 mmHg',dbp:'舒张压 mmHg',scr_umol_l:'肌酐 μmol/L',upcr:'UPCR mg/g',notes:'备注（不含身份信息）',lab_date:'化验日期',lab_test_code:'化验目录代码',value_raw:'原始化验值',unit_symbol:'原始化验单位',biopsy_date:'肾穿日期',ln_biopsy_date:'LN肾穿日期',ln_class:'LN病理分型',ln_activity_index:'LN活动指数',ln_chronicity_index:'LN慢性指数',ln_podocytopathy:'足细胞病 true/false',c3g_biopsy_date:'C3G肾穿日期',c3g_if_c3_dominant:'免疫荧光C3优势 true/false',c3g_em_pattern:'C3G电镜分型 C3GN/DDD/unclassified',c3g_crescent_pct:'新月体比例 %',c3g_paraprotein:'单克隆筛查 negative/positive/not_tested',height_cm:'身高 cm',treatment_arm:'研究分组',randomization_id:'分组记录编号',randomization_date:'分组日期'};
+const EDIT_NUMBERS=new Set(['birth_year','baseline_scr','baseline_upcr','oxford_m','oxford_e','oxford_s','oxford_t','oxford_c','ln_activity_index','ln_chronicity_index','c3g_crescent_pct','sbp','dbp','scr_umol_l','upcr','height_cm','value_raw']);
 // 更正时的数值范围，与数据库约束一致（数据库仍是最终校验）。血肌酐另按 creatinineUmol 检查并提示单位。
-const EDIT_LIMITS={birth_year:{integer:true,min:1900,max:new Date().getFullYear()},oxford_m:{integer:true,min:0,max:1},oxford_e:{integer:true,min:0,max:1},oxford_s:{integer:true,min:0,max:1},oxford_t:{integer:true,min:0,max:2},oxford_c:{integer:true,min:0,max:2},ln_activity_index:{min:0,max:24},ln_chronicity_index:{min:0,max:12},sbp:CLINICAL_LIMITS.sbp,dbp:CLINICAL_LIMITS.dbp,upcr:CLINICAL_LIMITS.upcr,baseline_upcr:{min:0}};
+const EDIT_LIMITS={birth_year:{integer:true,min:1900,max:new Date().getFullYear()},oxford_m:{integer:true,min:0,max:1},oxford_e:{integer:true,min:0,max:1},oxford_s:{integer:true,min:0,max:1},oxford_t:{integer:true,min:0,max:2},oxford_c:{integer:true,min:0,max:2},ln_activity_index:{min:0,max:24},ln_chronicity_index:{min:0,max:12},c3g_crescent_pct:{min:0,max:100},sbp:CLINICAL_LIMITS.sbp,dbp:CLINICAL_LIMITS.dbp,upcr:CLINICAL_LIMITS.upcr,height_cm:CLINICAL_LIMITS.height_cm,baseline_upcr:{min:0}};
 async function openVisitHistory(patientCode){
   const op=captureContext();
   try{
@@ -2125,7 +2143,7 @@ async function openVisitHistory(patientCode){
     const overlay=document.createElement('div');overlay.dataset.registryModal='history';overlay.style.cssText='position:fixed;inset:0;background:#102d46aa;z-index:8900;display:grid;place-items:center;padding:16px';
     let page=0;const render=()=>{
       const pages=Math.max(1,Math.ceil(rows.length/30));
-      overlay.innerHTML=`<section role="dialog" aria-modal="true" aria-labelledby="historyTitle" style="background:white;color:#102d46;padding:24px;border-radius:16px;max-width:900px;width:100%;max-height:90vh;overflow:auto"><h2 id="historyTitle">随访记录 · ${escapeHtml(patientCode)}</h2><p>${escapeHtml(op.project.name)} · 共 ${rows.length} 条，第 ${page+1}/${pages} 页。请对照原始资料更正，所有更正均需说明原因。</p><div style="overflow:auto"><table class="table"><thead><tr><th>随访日期</th><th>血压 mmHg</th><th>血肌酐 μmol/L</th><th>UPCR mg/g</th><th>eGFR</th><th title="仅标注系统能确认的经随访链接提交的记录">来源</th><th></th></tr></thead><tbody>${rows.slice(page*30,(page+1)*30).map(r=>`<tr><td>${escapeHtml(r.visit_date)}</td><td>${escapeHtml(r.sbp??'—')}/${escapeHtml(r.dbp??'—')}</td><td>${escapeHtml(r.scr_umol_l??'—')}</td><td>${escapeHtml(r.upcr??'—')}</td><td>${escapeHtml(r.egfr??'—')}</td><td>${r.submitted_via_token_id?'随访链接':'—'}</td><td><button class="btn small" data-project-capability="can_write" data-visit-id="${escapeHtml(r.id)}">核对 / 更正</button></td></tr>`).join('')}</tbody></table></div>${!rows.length?'<p>尚无随访记录。</p>':''}<div class="btnbar"><button class="btn primary" data-project-capability="can_write" data-history-entry>为该患者录入随访</button><button class="btn" data-project-capability="can_write" data-history-baseline>核对 / 更正基线</button><button class="btn" data-history-prev ${page===0?'disabled':''}>上一页</button><button class="btn" data-history-next ${page===pages-1?'disabled':''}>下一页</button><button class="btn" data-history-close>关闭</button></div></section>`;
+      overlay.innerHTML=`<section role="dialog" aria-modal="true" aria-labelledby="historyTitle" style="background:white;color:#102d46;padding:24px;border-radius:16px;max-width:900px;width:100%;max-height:90vh;overflow:auto"><h2 id="historyTitle">随访记录 · ${escapeHtml(patientCode)}</h2><p>${escapeHtml(op.project.name)} · 共 ${rows.length} 条，第 ${page+1}/${pages} 页。请对照原始资料更正，所有更正均需说明原因。</p><div style="overflow:auto"><table class="table"><thead><tr><th>随访日期</th><th>血压 mmHg</th><th>血肌酐 μmol/L</th><th>UPCR mg/g</th><th>身高 cm</th><th>eGFR</th><th title="仅标注系统能确认的经随访链接提交的记录">来源</th><th></th></tr></thead><tbody>${rows.slice(page*30,(page+1)*30).map(r=>`<tr><td>${escapeHtml(r.visit_date)}</td><td>${escapeHtml(r.sbp??'—')}/${escapeHtml(r.dbp??'—')}</td><td>${escapeHtml(r.scr_umol_l??'—')}</td><td>${escapeHtml(r.upcr??'—')}</td><td>${escapeHtml(r.height_cm??'—')}</td><td>${escapeHtml(r.egfr??'—')}</td><td>${r.submitted_via_token_id?'随访链接':'—'}</td><td><button class="btn small" data-project-capability="can_write" data-visit-id="${escapeHtml(r.id)}">核对 / 更正</button></td></tr>`).join('')}</tbody></table></div>${!rows.length?'<p>尚无随访记录。</p>':''}<div class="btnbar"><button class="btn primary" data-project-capability="can_write" data-history-entry>为该患者录入随访</button><button class="btn" data-project-capability="can_write" data-history-baseline>核对 / 更正基线</button><button class="btn" data-history-prev ${page===0?'disabled':''}>上一页</button><button class="btn" data-history-next ${page===pages-1?'disabled':''}>下一页</button><button class="btn" data-history-close>关闭</button></div></section>`;
       overlay.querySelector('[data-history-close]').addEventListener('click',()=>overlay.remove());
       overlay.querySelector('[data-history-entry]').addEventListener('click',()=>{overlay.remove();followupDialogs.openVisitEntry(patientCode);});
       overlay.querySelector('[data-history-baseline]').addEventListener('click',()=>{const id=patients.find(p=>p.patient_code===patientCode)?.patient_id;if(!id)return toast('未找到该患者的基线记录，请刷新看板后重试。');overlay.remove();openRecordEditor('patients_baseline',id);});
@@ -2156,7 +2174,9 @@ async function openRecordEditor(table,id){
           changes[key]=key.endsWith('_date')?strictDate(value,EDIT_LABELS[key]||key)
             :['scr_umol_l','baseline_scr'].includes(key)?creatinineUmol(value,'umol',label)
             :EDIT_NUMBERS.has(key)?finiteNumber(value,label,EDIT_LIMITS[key]||{}):value||null;
-          if(key==='ln_podocytopathy'&&value){if(!['true','false'].includes(value))throw new Error('足细胞病须为true或false');changes[key]=value==='true';}
+          if(['ln_podocytopathy','c3g_if_c3_dominant'].includes(key)&&value){if(!['true','false'].includes(value))throw new Error((EDIT_LABELS[key]||key).replace(/\s.*$/,'')+'须为true或false');changes[key]=value==='true';}
+          if(key==='c3g_em_pattern'&&value&&!['C3GN','DDD','unclassified'].includes(value))throw new Error('C3G电镜分型须为 C3GN、DDD 或 unclassified');
+          if(key==='c3g_paraprotein'&&value&&!['negative','positive','not_tested'].includes(value))throw new Error('单克隆免疫球蛋白筛查须为 negative、positive 或 not_tested');
         });
         if(changes.notes){assertNoPII(changes.notes,'备注');if([...changes.notes].length>500)throw new Error('备注最多 500 字');}
         if(table==='visits_long'){const sbpValue='sbp'in changes?changes.sbp:record.sbp,dbpValue='dbp'in changes?changes.dbp:record.dbp;if(sbpValue!=null&&dbpValue!=null&&Number(dbpValue)>=Number(sbpValue))throw new Error('舒张压须低于收缩压，请核对是否填反');}
@@ -2188,7 +2208,7 @@ async function generatePaperPack({withSnapshot=false}={}){
     const tables=Object.fromEntries(Object.entries(frozen.content.tables).filter(([t])=>t!=='data_issues').map(([t,rows])=>[t,rows.map(r=>({...r,center_code:frozen.content.project.center_code,module:frozen.content.project.module}))]));
     const issues=frozen.content.tables.data_issues||[];
     const readAsset=async name=>{const r=await fetch('/assets/template/'+name,{cache:'no-cache'});if(!r.ok)throw new Error(`分析模板 ${name} 加载失败 (${r.status})`);const text=await r.text();if(/^\s*<!doctype html/i.test(text))throw new Error(`分析模板 ${name} 返回了网页`);return text;};
-    const assetNames=['run_analysis.py','merge_centers.py','requirements.txt','METHODS_TEMPLATE_EN.md','README_PACK.md','protocol_template.json'];
+    const assetNames=['run_analysis.py','merge_centers.py','requirements.txt','METHODS_TEMPLATE_EN.md','README_PACK.md','protocol_template.json','feasibility_report.py','feasibility_criteria_template.json'];
     const assets=await Promise.all(assetNames.map(readAsset));assertContext(op);
     const metaRecord=frozen;
     const zip=new JSZip(),files={},counts={};
@@ -2200,6 +2220,8 @@ async function generatePaperPack({withSnapshot=false}={}){
     files['analysis/METHODS_TEMPLATE_EN.md']=assets[3];files['analysis/README.md']=assets[4].replaceAll('{{PROJECT_NAME}}',op.project.name).replaceAll('{{EXPORT_DATE}}',fmtDate(new Date()));
     // 研究方案参数模板：示例数值全部标为需 PI 确认，未确认前分析脚本不计算终点。
     files['analysis/protocol_template.json']=assets[5];
+    // 可行性统计：按中心计数满足书面筛选条件的患者数，条件文件须经研究团队确认后才会计算。
+    files['analysis/feasibility_report.py']=assets[6];files['analysis/feasibility_criteria_template.json']=assets[7];
     // JSON preserves exact raw strings/types independently of spreadsheet-safe CSV escaping.
     files['research_data.json']=frozen.content_text;
     files['qc_issues.csv']='\ufeff'+toCsv(issues,exportColumns(issues,['id','project_id','patient_code','record_type','record_id','rule_code','severity','status','message','resolution_note']));

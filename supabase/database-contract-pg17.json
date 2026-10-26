@@ -3,7 +3,7 @@
   "database_server_major": 17,
   "reference_server_version": "17.6",
   "runtime": "@embedded-postgres/linux-x64@17.6.0-beta.15",
-  "migration_manifest_sha256": "5e2cb12f6efbab8fe068a749cecffe4b30dfd35dacf4c10db1395c7886ef1ff2",
+  "migration_manifest_sha256": "6f1d011a6a503fb2743db5a494ce6c37b32016e1af09baafd0819ab23d50bab5",
   "database_contract_sha256": "aca7000205680905a853fc72280ff60a2f99af32d8b2807bb761de7769ed6b29",
   "profile_definition": "canonical: all reviewed LF SQL; historical_crlf: first 33 reviewed SQL files encoded CRLF, then ten new LF migrations. UTC and fixed search_path. Synthetic Auth/Storage only.",
   "database_contract_profiles": {
@@ -958,7 +958,7 @@
               "name": "events_long_event_type_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "52c50cc6f1510f773d57453bcc1409b9"
+              "definition_md5": "570097fcd5ae08e9eb338dc5985fe354"
             },
             {
               "name": "events_long_evidence_source_check",
@@ -1419,6 +1419,24 @@
               "type": "c",
               "validated": true,
               "definition_md5": "19ac1db8541fe187a41de0b455540149"
+            },
+            {
+              "name": "c3g_crescent_pct_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "cf4eebc7ddb6a29804bb22f53752d4fd"
+            },
+            {
+              "name": "c3g_em_pattern_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "a532208412b29183a96eb058d92cf706"
+            },
+            {
+              "name": "c3g_paraprotein_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "c5d4a833b6f2e6178e32235b45cc00eb"
             },
             {
               "name": "ln_activity_index_check",
@@ -2033,6 +2051,12 @@
               "type": "c",
               "validated": true,
               "definition_md5": "d24deb040d62af33ef66d283de2f66b2"
+            },
+            {
+              "name": "visits_height_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "d1449d2d5dee2e731c7200861fac5e64"
             },
             {
               "name": "visits_long_patient_project_fk",
@@ -7886,6 +7910,101 @@
           "array_dimensions": 0
         },
         {
+          "name": "c3g_biopsy_date",
+          "type": "date",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "c3g_crescent_pct",
+          "type": "numeric",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "c3g_em_pattern",
+          "type": "text",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "c3g_if_c3_dominant",
+          "type": "boolean",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "c3g_paraprotein",
+          "type": "text",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "consent_date",
           "type": "date",
           "table": "patients_baseline",
@@ -10914,6 +11033,25 @@
           "identity": "",
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "height_cm",
+          "type": "numeric",
+          "table": "visits_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
           "generated": "",
           "anon_insert": true,
           "anon_select": true,
@@ -15490,7 +15628,7 @@
           "schema": "public",
           "enabled": "O",
           "trigger": "trg_auto_egfr",
-          "definition_md5": "8580495dccfacf78cdd18921d3eaa7f4"
+          "definition_md5": "b8e36bc906ebd0c00b63c883584dc425"
         },
         {
           "table": "visits_long",
@@ -15590,7 +15728,7 @@
           "signature": "_auto_compute_egfr()",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "e9cb6e9a139fd5e4b3b11560cd6f4fac",
+          "definition_md5": "99cff29e86f8b2aa903168aa57f71dad",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -15626,7 +15764,7 @@
           "signature": "_create_project_account_guard()",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "873d2f6fbd30771430a931559119d2ba",
+          "definition_md5": "2a1ff038302c8c8cc68a8849a00992ac",
           "security_definer": true,
           "authenticated_execute": false
         },
@@ -15710,7 +15848,7 @@
           "signature": "_registry_input_columns(text)",
           "volatility": "i",
           "anon_execute": false,
-          "definition_md5": "0c7f2e11aea23d10dc63dd94336c17cf",
+          "definition_md5": "f6734b53d811b3523f18731b92b3d824",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -15722,7 +15860,7 @@
           "signature": "_registry_validate_input(text,jsonb)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "cbdf1413ff5885aecdb626976923c7b3",
+          "definition_md5": "c0ed81ce588532043c6ab75322657673",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -16610,7 +16748,7 @@
           "signature": "registry_private.check_clinical_row(text,jsonb)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "55ecf15a6656607747a1e66081543dde",
+          "definition_md5": "28eed8a7ae686af0a3658604c76a3344",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -16706,7 +16844,7 @@
           "signature": "registry_private.import_clinical_row(uuid,text,jsonb,integer,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "91ecce1f56262c8eb4c6cf9dfe3fb593",
+          "definition_md5": "355920f9047f06b3eab4140494c98c44",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -16922,7 +17060,7 @@
           "signature": "registry_private.validate_clinical_input(text,jsonb)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "0fbd4b50cf825cc05b8b74737744d63d",
+          "definition_md5": "ed8c1792747ccc25f8e5454d509e02e3",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -18087,7 +18225,7 @@
               "name": "events_long_event_type_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "52c50cc6f1510f773d57453bcc1409b9"
+              "definition_md5": "570097fcd5ae08e9eb338dc5985fe354"
             },
             {
               "name": "events_long_evidence_source_check",
@@ -18548,6 +18686,24 @@
               "type": "c",
               "validated": true,
               "definition_md5": "19ac1db8541fe187a41de0b455540149"
+            },
+            {
+              "name": "c3g_crescent_pct_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "cf4eebc7ddb6a29804bb22f53752d4fd"
+            },
+            {
+              "name": "c3g_em_pattern_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "a532208412b29183a96eb058d92cf706"
+            },
+            {
+              "name": "c3g_paraprotein_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "c5d4a833b6f2e6178e32235b45cc00eb"
             },
             {
               "name": "ln_activity_index_check",
@@ -19162,6 +19318,12 @@
               "type": "c",
               "validated": true,
               "definition_md5": "d24deb040d62af33ef66d283de2f66b2"
+            },
+            {
+              "name": "visits_height_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "d1449d2d5dee2e731c7200861fac5e64"
             },
             {
               "name": "visits_long_patient_project_fk",
@@ -25015,6 +25177,101 @@
           "array_dimensions": 0
         },
         {
+          "name": "c3g_biopsy_date",
+          "type": "date",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "c3g_crescent_pct",
+          "type": "numeric",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "c3g_em_pattern",
+          "type": "text",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "c3g_if_c3_dominant",
+          "type": "boolean",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "c3g_paraprotein",
+          "type": "text",
+          "table": "patients_baseline",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "consent_date",
           "type": "date",
           "table": "patients_baseline",
@@ -28043,6 +28300,25 @@
           "identity": "",
           "not_null": false,
           "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "height_cm",
+          "type": "numeric",
+          "table": "visits_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
           "generated": "",
           "anon_insert": true,
           "anon_select": true,
@@ -32619,7 +32895,7 @@
           "schema": "public",
           "enabled": "O",
           "trigger": "trg_auto_egfr",
-          "definition_md5": "8580495dccfacf78cdd18921d3eaa7f4"
+          "definition_md5": "b8e36bc906ebd0c00b63c883584dc425"
         },
         {
           "table": "visits_long",
@@ -32719,7 +32995,7 @@
           "signature": "_auto_compute_egfr()",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "e9cb6e9a139fd5e4b3b11560cd6f4fac",
+          "definition_md5": "99cff29e86f8b2aa903168aa57f71dad",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -32755,7 +33031,7 @@
           "signature": "_create_project_account_guard()",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "873d2f6fbd30771430a931559119d2ba",
+          "definition_md5": "2a1ff038302c8c8cc68a8849a00992ac",
           "security_definer": true,
           "authenticated_execute": false
         },
@@ -32839,7 +33115,7 @@
           "signature": "_registry_input_columns(text)",
           "volatility": "i",
           "anon_execute": false,
-          "definition_md5": "0c7f2e11aea23d10dc63dd94336c17cf",
+          "definition_md5": "f6734b53d811b3523f18731b92b3d824",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -32851,7 +33127,7 @@
           "signature": "_registry_validate_input(text,jsonb)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "cbdf1413ff5885aecdb626976923c7b3",
+          "definition_md5": "c0ed81ce588532043c6ab75322657673",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -33739,7 +34015,7 @@
           "signature": "registry_private.check_clinical_row(text,jsonb)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "55ecf15a6656607747a1e66081543dde",
+          "definition_md5": "28eed8a7ae686af0a3658604c76a3344",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -33835,7 +34111,7 @@
           "signature": "registry_private.import_clinical_row(uuid,text,jsonb,integer,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "91ecce1f56262c8eb4c6cf9dfe3fb593",
+          "definition_md5": "355920f9047f06b3eab4140494c98c44",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -34051,7 +34327,7 @@
           "signature": "registry_private.validate_clinical_input(text,jsonb)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "0fbd4b50cf825cc05b8b74737744d63d",
+          "definition_md5": "ed8c1792747ccc25f8e5454d509e02e3",
           "security_definer": false,
           "authenticated_execute": false
         },

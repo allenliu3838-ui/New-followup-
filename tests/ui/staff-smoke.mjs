@@ -506,7 +506,11 @@ async function main() {
     await page.click('#projectOverview [data-metric="n_patients"]');
     assert.deepEqual(await boardCodes(page), EXPECTED_ORDER);
 
-    // 4. 录入随访：130/80 自动拆分、mg/dL 换算、单行 import_registry_rows、skipped 中文提示。
+    // 3b. 病种模块含 C3G；IgAN 项目不显示 C3G 病理框。
+    assert.ok((await page.locator('#projModule option').evaluateAll(o => o.map(x => x.value))).includes('C3G'), '病种模块应可选 C3G');
+    assert.deepEqual(await page.evaluate(() => [document.querySelector('#c3gPathBox').style.display, document.querySelector('#iganPathBox').style.display]), ['none', 'block'], 'IgAN 项目显示牛津分型框、隐藏 C3G 病理框');
+
+    // 4. 录入随访：130/80 自动拆分、mg/dL 换算、身高、单行 import_registry_rows、skipped 中文提示。
     const boardReadsBeforeEntry = boardReads(mock).length;
     const today = await page.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
     await page.click('tr[data-patient-code="P001"] [data-act="visit"]');
@@ -531,6 +535,7 @@ async function main() {
     await page.fill('#veScr', '1.2');
     assert.ok((await text(page.locator('#veScrHint'))).includes('106.08 μmol/L'), 'mg/dL 应提示换算结果');
     await page.fill('#veUpcr', '450');
+    await page.fill('#veHeight', '172');
     await page.fill('#veNotes', '外院复查结果补录');
     mock.importReplies.push({ inserted: 0, updated: 0, skipped: 1, total: 1, replayed: false });
     await page.click('#veSave');
@@ -539,7 +544,7 @@ async function main() {
     assert.equal(first.p_project_id, PROJECT.id);
     assert.equal(first.p_kind, 'visits');
     assert.ok(Array.isArray(first.p_rows) && first.p_rows.length === 1, '一次录入应只提交一行');
-    assert.deepEqual(first.p_rows[0], { patient_code: 'P001', visit_date: today, sbp: 130, dbp: 80, scr_umol_l: 106.08, upcr: 450, notes: '外院复查结果补录' });
+    assert.deepEqual(first.p_rows[0], { patient_code: 'P001', visit_date: today, sbp: 130, dbp: 80, scr_umol_l: 106.08, upcr: 450, height_cm: 172, notes: '外院复查结果补录' });
     assert.match(first.p_batch_id, UUID_V4, 'p_batch_id 应为 UUID');
     await eventually(async () => (await text(page.locator('#veFeedback')))?.includes('没有重复保存'), 'skipped 结果应显示中文提示');
     await shot(page, '03-visit-entry-skipped');

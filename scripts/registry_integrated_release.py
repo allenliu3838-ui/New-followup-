@@ -19,7 +19,7 @@ BACKUPS=Path('/root/registry-integrated-releases')
 PROJECT_REF='ksr-aliyun-cn-shanghai-1'
 # PostgreSQL system_identifier of the registry database (Aliyun cn-shanghai).
 SYSTEM_IDENTIFIER='7697419573917356067'
-VERSION='registry-20261018-cn-v6'
+VERSION='registry-20261026-cn-v7'
 CONTRACT_PROTOCOL='registry-contract-v3-pg17'
 CONTRACT_SERVER_MAJOR=17
 CONTRACT_CATEGORIES=('functions','triggers','policies','tables','columns','indexes','schema_privileges','buckets','views')
@@ -27,7 +27,7 @@ CONTRACT_PROFILE_NAMES={'canonical','historical_crlf'}
 ALLOWED=set('''index.html staff.html staff.js patient.html patient.js signup.html login.html auth-callback.html checkout.html checkout.js pricing.html pricing-config.js app.css analytics.js demo.html privacy.html security.html deployment.html terms.html disclaimer.html collaboration.html collaboration-components.js collaboration-data.js slides.html guide.html guide.js guide.css guide-steps.css user-manual-cn.html 404.html robots.txt sitemap.xml _redirects
 lib/supabase-client.js lib/utils.js lib/error-logger.js lib/rate-limit.js lib/password-strength.js lib/registry-data.js lib/patient-workflow.js lib/project-members.js lib/followup-board.js lib/followup-dialogs.js lib/batch-import.js lib/product-nav.js lib/product-nav.css lib/auth-navigation.js lib/help-assistant.js lib/vendor/supabase.js lib/vendor/jszip.min.js lib/vendor/LICENSES.txt lib/vendor/versions.json
 assets/sql/batch1_core.sql assets/sql/batch2_features.sql assets/sql/batch3_admin.sql assets/sql/batch4_pr.sql assets/sql/batch5_qc.sql assets/sql/batch6_latest.sql
-assets/registry-tech-hero.png assets/help-faq.json assets/mail-confirm.html assets/mail-recovery.html assets/mail-magic-link.html assets/肾域科研_使用指南_临床医生版.pdf assets/肾域科研_临床团队虚拟项目全流程演练册_V2.1.pdf assets/肾域科研_药企科研合作指南_V3.1.pdf assets/肾域科研_产品能力与数据治理附册.pdf assets/template/run_analysis.py assets/template/merge_centers.py assets/template/requirements.txt assets/template/METHODS_TEMPLATE_EN.md assets/template/README_PACK.md assets/template/protocol_template.json'''.split())
+assets/registry-tech-hero.png assets/help-faq.json assets/mail-confirm.html assets/mail-recovery.html assets/mail-magic-link.html assets/肾域科研_使用指南_临床医生版.pdf assets/肾域科研_临床团队虚拟项目全流程演练册_V2.1.pdf assets/肾域科研_药企科研合作指南_V3.1.pdf assets/肾域科研_产品能力与数据治理附册.pdf assets/template/run_analysis.py assets/template/merge_centers.py assets/template/requirements.txt assets/template/METHODS_TEMPLATE_EN.md assets/template/README_PACK.md assets/template/protocol_template.json assets/template/feasibility_report.py assets/template/feasibility_criteria_template.json'''.split())
 SENTINELS=tuple(map(Path,('/var/www/kidneysphere/index.html','/var/www/kidneysphere-doctor/index.html','/var/www/followup/index.html','/opt/kidneysphere/doctor_remote/index.html','/etc/nginx/nginx.conf','/etc/nginx/conf.d/kidneysphereregistry.conf')))
 MAX_BYTES=16*1024*1024
 safe.MAX_BYTES=MAX_BYTES

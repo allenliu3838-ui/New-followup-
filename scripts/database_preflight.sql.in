@@ -43,13 +43,15 @@ WITH checks AS (
   '0041_followup_board',EXISTS(SELECT 1 FROM public.registry_schema_versions WHERE version='0041_followup_board'),
   'followup_board_signatures',COALESCE((SELECT bool_and(f IS NOT NULL AND has_function_privilege('authenticated',f,'EXECUTE') AND NOT has_function_privilege('anon',f,'EXECUTE') AND EXISTS(SELECT 1 FROM pg_proc p WHERE p.oid=f AND p.prosecdef AND p.proconfig::text ~ 'search_path=')) FROM unnest(ARRAY[to_regprocedure('public.set_followup_start_date(uuid,text[],date,text)'),to_regprocedure('public.set_consent_bulk(uuid,text[],text,text,date,text)')]::oid[]) AS f),false),
   'followup_start_column',COALESCE((SELECT a.atttypid='date'::regtype AND NOT a.attnotnull AND NOT a.atthasdef FROM pg_attribute a WHERE a.attrelid='public.patients_baseline'::regclass AND a.attname='followup_start_date' AND NOT a.attisdropped),false) AND EXISTS(SELECT 1 FROM pg_attribute WHERE attrelid=to_regclass('public.v_patient_followup_status') AND attname='followup_start_date' AND NOT attisdropped) AND EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='public.patients_baseline'::regclass AND tgname='registry_followup_start_checks' AND tgenabled='O') AND COALESCE((SELECT c.relrowsecurity AND NOT has_table_privilege('anon',c.oid,'SELECT,INSERT,UPDATE,DELETE') AND NOT has_table_privilege('authenticated',c.oid,'SELECT,INSERT,UPDATE,DELETE') FROM pg_class c WHERE c.oid=to_regclass('registry_private.followup_start_rpc_rows')),false),
+  '0042_c3g_module',EXISTS(SELECT 1 FROM public.registry_schema_versions WHERE version='0042_c3g_module'),
+  'c3g_module_columns',(SELECT count(*)=6 FROM pg_attribute WHERE NOT attisdropped AND ((attrelid='public.patients_baseline'::regclass AND attname IN ('c3g_biopsy_date','c3g_if_c3_dominant','c3g_em_pattern','c3g_crescent_pct','c3g_paraprotein')) OR (attrelid='public.visits_long'::regclass AND attname='height_cm'))) AND (SELECT count(*)=8 FROM public.lab_test_catalog WHERE module='C3G') AND EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.events_long'::regclass AND conname='events_long_event_type_check' AND pg_get_constraintdef(oid) ~ 'vaccination') AND EXISTS(SELECT 1 FROM pg_trigger t JOIN pg_attribute a ON a.attrelid=t.tgrelid AND a.attnum = ANY(t.tgattr) WHERE t.tgrelid='public.visits_long'::regclass AND t.tgname='trg_auto_egfr' AND a.attname='height_cm'),
   'single_billing_order_overload',(SELECT count(*)=1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='create_billing_order')
  ) AS value
 ), contract AS (
  __DATABASE_CONTRACT_QUERY__
 )
 SELECT jsonb_build_object(
- 'release','registry-20261018-cn-v6',
+ 'release','registry-20261026-cn-v7',
  'contract_protocol','registry-contract-v3-pg17',
  'database_server_major',current_setting('server_version_num')::int/10000,
  'database_contract_sha256','__DATABASE_CONTRACT_SHA256__',

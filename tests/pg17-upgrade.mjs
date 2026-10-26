@@ -100,12 +100,20 @@ try {
       return {...original, token: null};
     }
   };
+  // 0042 adds display-dictionary entries for the C3 glomerulopathy module and the visit height;
+  // every other preserved table keeps exactly its historical rows.
+  const reviewedAdditions = {
+    concept_dictionary: ['c3g_biopsy_date', 'c3g_crescent_pct', 'c3g_em_pattern', 'c3g_if_c3_dominant', 'c3g_paraprotein', 'height_cm'],
+    abbreviation_dictionary: ['AH50', 'C3GN', 'C3NeF', 'CH50', 'DDD', 'sC5b-9'],
+  };
   for (const table of preservedTables) {
     // Added columns may change JSON sort order, so compare by each historical row's key.
     const key = record => table === 'concept_alias_dictionary' ? `${record.concept_code}:${record.alias_cn}`
       : record.id ?? record.visit_id ?? record.code ?? record.abbr;
     const upgraded = new Map(after[table].map(record => [key(record), record]));
-    assert.equal(after[table].length, before[table].length, `${table}: historical row count`);
+    const added = after[table].map(key).filter(k => !before[table].some(record => key(record) === k)).sort();
+    assert.deepEqual(added, reviewedAdditions[table] ?? [], `${table}: only the reviewed dictionary entries are added`);
+    assert.equal(after[table].length, before[table].length + added.length, `${table}: historical row count`);
     for (const original of before[table]) {
       const current = upgraded.get(key(original));
       assert.ok(current, `${table}: historical row survives`);
@@ -114,9 +122,9 @@ try {
         `${table}: every other pre-existing column value remains unchanged`);
     }
   }
-  assert.equal(Number((await row('SELECT count(*) AS n FROM public.registry_schema_versions')).n), 10);
+  assert.equal(Number((await row('SELECT count(*) AS n FROM public.registry_schema_versions')).n), 11);
   assert.equal(Number((await row('SELECT count(*) AS n FROM public.patient_tokens WHERE token IS NOT NULL')).n), 0);
-  pass('incremental 0032–0041 preserves historical clinical, receipt and dictionary values; consent default and plaintext links change exactly as reviewed');
+  pass('incremental 0032–0042 preserves historical clinical, receipt and dictionary values; consent default and plaintext links change exactly as reviewed; 0042 adds only its dictionary entries');
 
   const dictionaryInsertStatements = [
     "INSERT INTO public.abbreviation_dictionary(abbr,full_name_cn,category_cn) VALUES('DENIED','Denied','Denied')",

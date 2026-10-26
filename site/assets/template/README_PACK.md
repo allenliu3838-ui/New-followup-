@@ -94,8 +94,16 @@ python analysis/run_analysis.py --data analysis/merged-data
 
 KFRE 风险计算已停用：旧实现用 UPCR 替代 UACR、猜测检验单位，未通过独立模型金标准验证；本包不输出风险数字。没有经 PI 确认的研究方案文件时，不判定完全 / 部分缓解或持续肾脏终点。LME 队列推断、置信区间、生存 / 因果分析在任何模式下都不执行；按方案判定的事件表可供研究者另行做统计分析。未确认候选和描述性结果不自动变成这些结论。
 
-成人 CKD-EPI 2021 肌酐公式按 Inker 等原文 Table 2 实现，使用性别、血肌酐和“访视年份减出生年”的近似年龄；不是精确生日年龄。缺失/未知性别不当男性，未满18岁不使用该成人公式。原文：[NEJM 2021 作者稿与公式表](https://escholarship.org/content/qt3gj2d8m2/qt3gj2d8m2.pdf)。此实现不代替队列适用性与研究方案审查。
+成人 CKD-EPI 2021 肌酐公式按 Inker 等原文 Table 2 实现，使用性别、血肌酐和“访视年份减出生年”的近似年龄；不是精确生日年龄。1–17 岁患者按本次随访记录的身高用床旁 Schwartz 2009 公式（0.413 × 身高 cm ÷ 血肌酐 mg/dL）重算，公式版本标记为 `Schwartz-2009-bedside`（`visits_derived.csv` 的 `egfr_analysis_source` 为 recomputed_Schwartz-2009-bedside_year_age；RUN_LOG 的 `recomputed_schwartz_2009_n` 计数）；没有身高的儿童访视不计算 eGFR，在按方案判定的序列中记为未知测量。旧版导出没有 `height_cm` 列时按缺失处理。缺失/未知性别不当男性，未满18岁不使用该成人公式。原文：[NEJM 2021 作者稿与公式表](https://escholarship.org/content/qt3gj2d8m2/qt3gj2d8m2.pdf)。此实现不代替队列适用性与研究方案审查。
 
 本分析使用六张核心表；额外CSV会在 RUN_LOG 的 additional_csv_not_analyzed 中列明，不能据此认为额外专病表也已完成统计。原始变异记录保留在输入包，本次未执行遗传变异解释。
 
 本包不修改数据库，输入文件不被覆盖。平台导出记录号或本地运行哈希也不等于服务器已提供不可变快照及备份恢复服务。
+
+## 7. 可行性统计（可选，`feasibility_report.py`）
+
+按研究团队书面确认的筛选条件，统计每个项目/中心有多少已纳入患者满足条件，用于规划多中心研究的中心选择与样本可行性。只输出人数，不输出研究编号；不是任何患者的入组资格判定。
+
+1. 复制 `analysis/feasibility_criteria_template.json`，填写病种模块、基线年龄范围、最近一次 eGFR 与 UPCR 的范围及时间窗、最近随访距截止日期的天数（不需要的条件填 `null`），把 `status` 改为 `confirmed` 并写明确认人和日期。模板状态下脚本会拒绝运行。
+2. 运行 `python3 analysis/feasibility_report.py --data analysis/data --out feasibility --criteria 我的条件.json`；截止日期默认取数据中最近一次随访日期，也可用 `--as-of YYYY-MM-DD` 指定。
+3. 结果：`feasibility_by_center.csv`（每个中心一行加合计：知情同意排除人数、纳入人数、有随访人数、各条件满足人数、全部满足人数）和 `FEASIBILITY_RUN_LOG.json`（条件全文与 SHA-256、输入文件 SHA-256、知情同意筛选、eGFR 来源说明）。知情同意筛选与 eGFR 的算法与 `run_analysis.py` 完全相同。

@@ -875,7 +875,7 @@ class AnalysisProtocolTests(unittest.TestCase):
         sources = log["egfr_sources"]
         self.assertEqual({k: sources[k] for k in sources if k.endswith("_n")},
                          {"dated_visits_n": 6, "recomputed_from_creatinine_n": 2, "recomputed_stored_value_agrees_n": 1,
-                          "recomputed_stored_value_differs_n": 0, "recomputed_no_stored_value_n": 1, "manual_value_used_n": 2,
+                          "recomputed_stored_value_differs_n": 0, "recomputed_no_stored_value_n": 1, "recomputed_schwartz_2009_n": 0, "manual_value_used_n": 2,
                           "excluded_recorded_but_unusable_n": 1, "no_egfr_or_creatinine_recorded_n": 1})
 
 

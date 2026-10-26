@@ -44,7 +44,7 @@ BASE = Path(__file__).resolve().parent
 KEY = ["project_id", "center_code", "patient_code"]
 TABLE_COLUMNS = {
     "patients_baseline": KEY + ["id", "module", "sex", "birth_year", "baseline_date", "baseline_scr", "baseline_upcr", "baseline_upcr_unit"],
-    "visits_long": KEY + ["id", "module", "visit_date", "sbp", "dbp", "scr_umol_l", "upcr", "egfr", "egfr_formula_version"],
+    "visits_long": KEY + ["id", "module", "visit_date", "sbp", "dbp", "scr_umol_l", "upcr", "egfr", "egfr_formula_version", "height_cm"],
     "labs_long": KEY + ["id", "module", "lab_date", "lab_test_code", "lab_name", "lab_value", "lab_unit", "value_raw", "unit_symbol", "value_standard", "standard_unit", "measured_at"],
     "meds_long": KEY + ["id", "module", "drug_name", "drug_class", "dose", "route", "frequency", "start_date", "end_date"],
     "variants_long": KEY + ["id", "module", "test_date", "gene", "variant", "hgvs_c", "hgvs_p"],
@@ -117,6 +117,19 @@ def ckdepi2021(scr_mg_dl, age, sex):
         return np.nan
     k, alpha = (0.7, -0.241) if sx == "F" else (0.9, -0.302)
     return 142 * min(scr/k, 1)**alpha * max(scr/k, 1)**-1.200 * 0.9938**age * (1.012 if sx == "F" else 1)
+
+
+def schwartz2009(scr_mg_dl, height_cm, age):
+    """Bedside Schwartz 2009 (0.413 x height cm / creatinine mg/dL) for children 1-17
+    years by year-derived age; the registry stores it as 'Schwartz-2009-bedside'.
+
+    Missing/invalid height (30-250 cm), nonpositive creatinine or an age outside 1..17
+    => NaN. Not validated for infants or for adults.
+    """
+    scr, height, age = number(scr_mg_dl), number(height_cm), number(age)
+    if not (np.isfinite(scr) and scr > 0 and np.isfinite(height) and 30 <= height <= 250 and np.isfinite(age) and 1 <= age < 18):
+        return np.nan
+    return 0.413 * height / scr
 
 
 def issue(issues, table, row, code, detail):
@@ -218,7 +231,7 @@ def derive(frames, issues):
     v["visit_date"] = v["visit_date"].map(date)
     recorded_text = {col: v[col].map(lambda x: str(x).strip() != "") for col in ["egfr", "scr_umol_l", "upcr"]}
     v["_kidney_function_recorded"] = recorded_text["egfr"] | recorded_text["scr_umol_l"]
-    for col in ["sbp", "dbp", "scr_umol_l", "upcr"]:
+    for col in ["sbp", "dbp", "scr_umol_l", "upcr", "height_cm"]:
         raw = v[col].copy()
         v[col] = raw.map(number)
         for idx in raw.index:
@@ -246,15 +259,21 @@ def derive(frames, issues):
         if version == "manual" and np.isfinite(recorded) and recorded > 0:
             v.at[idx, "egfr"] = recorded
             v.at[idx, "egfr_analysis_source"] = "recorded_manual"
-        elif version == "CKD-EPI-2021-Cr":
+        elif version in {"CKD-EPI-2021-Cr", "Schwartz-2009-bedside"}:
             by = number(r["birth_year"])
             age = r["visit_date"].year-by if pd.notna(r["visit_date"]) and np.isfinite(by) and by.is_integer() else np.nan
-            calculated = ckdepi2021(r["scr_umol_l"]/88.4, age, r["sex"])
+            if version == "CKD-EPI-2021-Cr":
+                calculated = ckdepi2021(r["scr_umol_l"]/88.4, age, r["sex"])
+                unavailable = "Current creatinine/date/sex/adult age cannot support recalculation"
+            else:
+                # Paediatric tag: recomputed from the visit's own height, like the registry trigger.
+                calculated = schwartz2009(r["scr_umol_l"]/88.4, r["height_cm"], age)
+                unavailable = "Current creatinine/date/visit height/paediatric age (1-17) cannot support Schwartz recalculation"
             v.at[idx, "egfr"] = calculated
             if not np.isfinite(calculated):
-                issue(issues, "visits_long", r, "egfr_inputs_unavailable", "Current creatinine/date/sex/adult age cannot support recalculation")
+                issue(issues, "visits_long", r, "egfr_inputs_unavailable", unavailable)
             if np.isfinite(calculated):
-                v.at[idx, "egfr_analysis_source"] = "recomputed_CKD-EPI-2021-Cr_year_age"
+                v.at[idx, "egfr_analysis_source"] = RECOMPUTED_EGFR if version == "CKD-EPI-2021-Cr" else RECOMPUTED_EGFR_PAEDIATRIC
                 if np.isfinite(recorded) and abs(calculated-recorded) > 0.11:
                     issue(issues, "visits_long", r, "stored_egfr_mismatch", "Analysis recomputed from current creatinine/demographics; original retained in egfr_recorded")
         elif np.isfinite(recorded):
@@ -424,6 +443,8 @@ KF_DEATH_EVENT_TYPES = ("esrd", "dialysis_start", "kidney_transplant", "death")
 KF_DEATH_OPTIONS = ("count_as_event", "censor")
 UPCR_REDUCTION_REFERENCES = ("baseline", "peak")
 RECOMPUTED_EGFR = "recomputed_CKD-EPI-2021-Cr_year_age"
+RECOMPUTED_EGFR_PAEDIATRIC = "recomputed_Schwartz-2009-bedside_year_age"
+RECOMPUTED_EGFR_SOURCES = (RECOMPUTED_EGFR, RECOMPUTED_EGFR_PAEDIATRIC)
 ENDPOINT_COLUMNS = KEY + ["module", "protocol", "determination", "endpoint", "status", "status_detail", "event_basis",
                           "event_date", "confirmation_date", "event_days_from_baseline", "n_confirming_measurements",
                           "baseline_value", "baseline_unit", "baseline_source", "n_followup_measurements",
@@ -1018,7 +1039,7 @@ def _egfr_source_counts(rows):
     (stored value tagged manual), excluded (recorded but unverified/unusable)."""
     if rows.empty:
         return ""
-    counts = {"recomputed": int((rows.egfr_analysis_source == RECOMPUTED_EGFR).sum()),
+    counts = {"recomputed": int(rows.egfr_analysis_source.isin(RECOMPUTED_EGFR_SOURCES).sum()),
               "manual": int((rows.egfr_analysis_source == "recorded_manual").sum()),
               "excluded": int(rows.egfr_unusable.astype(bool).sum())}
     return ";".join(f"{k}:{v}" for k, v in counts.items() if v)
@@ -1223,7 +1244,7 @@ def protocol_endpoints(protocol, patients, visits, events, issues):
 def egfr_source_summary(visits):
     """RUN_LOG: where every analysed eGFR came from."""
     dated = visits[visits.visit_date.notna()]
-    recomputed = dated.egfr_analysis_source == RECOMPUTED_EGFR
+    recomputed = dated.egfr_analysis_source.isin(RECOMPUTED_EGFR_SOURCES)
     stored = dated.egfr_recorded.map(number)
     diff = (dated.egfr - stored).abs()
     return {"dated_visits_n": len(dated),
@@ -1231,10 +1252,11 @@ def egfr_source_summary(visits):
             "recomputed_stored_value_agrees_n": int((recomputed & (diff <= 0.11)).sum()),
             "recomputed_stored_value_differs_n": int((recomputed & (diff > 0.11)).sum()),
             "recomputed_no_stored_value_n": int((recomputed & stored.isna()).sum()),
+            "recomputed_schwartz_2009_n": int((dated.egfr_analysis_source == RECOMPUTED_EGFR_PAEDIATRIC).sum()),
             "manual_value_used_n": int((dated.egfr_analysis_source == "recorded_manual").sum()),
             "excluded_recorded_but_unusable_n": int(dated.egfr_unusable.astype(bool).sum()),
             "no_egfr_or_creatinine_recorded_n": int((~dated.egfr_unusable.astype(bool) & dated.egfr.isna()).sum()),
-            "note": "recomputed=按 CKD-EPI 2021 由血肌酐重算（数据库存储值只用于核对）；manual=数据库中标记为 manual 的原值；"
+            "note": "recomputed=按 CKD-EPI 2021 由血肌酐重算，1–17 岁按本次身高用床旁 Schwartz 2009 重算（recomputed_schwartz_2009_n；数据库存储值只用于核对）；manual=数据库中标记为 manual 的原值；"
                     "excluded=有记录但来源未核实或无法使用，未进入分析，在按方案判定的序列中记为未知测量"}
 
 

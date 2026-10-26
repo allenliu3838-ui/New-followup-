@@ -1,0 +1,14 @@
+{
+  "_说明": "可行性统计的筛选条件模板。复制后由研究团队填写并把 status 改为 confirmed，否则 feasibility_report.py 不会计算。每项条件可删（填 null）；min/max 为空表示不设界。within_days 指取截止日期前多少天内最近一次的测量。结果只按中心计数，不列患者。",
+  "schema": "feasibility-criteria-v1",
+  "criteria_id": "FEAS-TEMPLATE",
+  "version": "0.1",
+  "status": "template_requires_confirmation",
+  "confirmed_by": "",
+  "confirmed_date": "",
+  "modules": ["IGAN", "C3G"],
+  "age_at_baseline": { "min": 18, "max": 75 },
+  "latest_egfr": { "min": 30, "max": null, "within_days": 365 },
+  "latest_upcr_mg_g": { "min": 1000, "max": null, "within_days": 365 },
+  "last_visit_within_days": 365
+}

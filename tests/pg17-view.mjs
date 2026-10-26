@@ -39,8 +39,16 @@ try{
   ON public.v_concept_export_mapping TO PUBLIC,anon,authenticated;`);
  pass('historical mapping columns and dictionary contents captured with synthetic column grants');
 
- assert.equal(await applyMigrations(db,{phase:'upgrade'}),10);
- assert.deepEqual(await contents(),before,'View names, column types and data stay unchanged');
+ assert.equal(await applyMigrations(db,{phase:'upgrade'}),11);
+ // 0042 adds the C3 glomerulopathy fields and the visit height to the concept dictionary;
+ // every historical mapping row and the view's shape stay exactly as they were.
+ const after=await contents();
+ assert.deepEqual(after.columns,before.columns,'View names and column types stay unchanged');
+ const historical=new Set(before.rows.map(row=>row.english_code));
+ assert.deepEqual(after.rows.filter(row=>!historical.has(row.english_code)).map(row=>row.english_code),
+  ['c3g_biopsy_date','c3g_crescent_pct','c3g_em_pattern','c3g_if_c3_dominant','c3g_paraprotein','height_cm'],
+  '0042 adds exactly its dictionary entries');
+ assert.deepEqual(after.rows.filter(row=>historical.has(row.english_code)),before.rows,'historical mapping data stay unchanged');
  const {reloptions}=(await db.query("SELECT reloptions FROM pg_class WHERE oid='public.v_concept_export_mapping'::regclass")).rows[0];
  assert.ok(reloptions.includes('security_invoker=true'));
  assert.equal(Number((await db.query("SELECT count(*) AS n FROM public.registry_schema_versions WHERE version='0037_concept_view_security'")).rows[0].n),1);
@@ -48,7 +56,7 @@ try{
 
  for(const role of ['anon','authenticated']){
   await asRole(role,async()=>{
-   assert.deepEqual(await contents(),before,`${role}: dictionary mapping remains readable`);
+   assert.deepEqual(await contents(),after,`${role}: dictionary mapping remains readable`);
    for(const [privilege,column] of [['INSERT','english_code'],['UPDATE','domain'],['REFERENCES','english_code']]){
     assert.equal((await db.query('SELECT has_column_privilege(current_user,$1,$2,$3) AS allowed',[
      'public.v_concept_export_mapping',column,privilege])).rows[0].allowed,false,
@@ -82,7 +90,7 @@ try{
    });
   }
  }finally{await db.exec('ROLLBACK');await db.exec('RESET ROLE');}
- for(const role of ['anon','authenticated'])await asRole(role,async()=>assert.deepEqual(await contents(),before));
+ for(const role of ['anon','authenticated'])await asRole(role,async()=>assert.deepEqual(await contents(),after));
  pass('transactional RLS test proves caller isolation with an owner-execution positive control; all temporary changes rolled back');
 
  const reference=JSON.parse(fs.readFileSync(path.join(root,'supabase/database-contract-pg17.json'),'utf8'));
