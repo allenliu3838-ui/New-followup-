@@ -743,6 +743,8 @@ unset PGPASSWORD OLD_DB_URL OLD_KEY
 
 **状态（2026-10-18）：** v5 已于 2026-10-17 整体上线（发布包取自提交 4919961）。v6（`registry-20261018-cn-v6`）以 v5 清单为生产基线，含迁移 0041（随访看板）；上线时须先在生产库执行 0041，再发布前端。
 
+**状态（2026-10-26）：** v6 已于 2026-10-19 整体上线（发布包取自提交 d29b42f），0041 已执行。v7（`registry-20261026-cn-v7`）以 v6 清单为生产基线，含迁移 0042（C3 肾小球病模块、随访身高与儿童 eGFR、安全性事件，见附录 C.4）；上线时须先在生产库执行 0042，再发布前端。
+
 | 文件 | 位置 | 现状 | 需要的改动 |
 |---|---|---|---|
 | `scripts/capture_registry_database.py` | 第 13 行 `PROJECT_REF`；`connection_environment()`（约第 30–49 行） | 只接受 `db.etsyglgpiutflethgirs.supabase.co`，或 `*.pooler.supabase.com` 且用户为 `postgres.etsyglgpiutflethgirs` | 新的项目身份（例如 `ksr-aliyun-<地域>-1`）；主机规则改为精确匹配新数据库主机名（如 `db.registry.internal`）与用户 `postgres`；保留 `verify-full` TLS、清除继承的 `PG*` 变量、只读事务、只接受审查过的预检 SQL 等全部现有约束。可选加强：在预检 SQL 中输出 `pg_control_system()` 的 `system_identifier` 并在工具中固定比对，因为自托管主机名不像 Supabase 项目编号那样全局唯一 |
@@ -995,3 +997,28 @@ docker logs --since 30m supabase-auth 2>&1 | grep -E '"/signup"|"/recover"|"/otp
 - **新环境的认证服务版本比旧环境低怎么办？** 不能继续。认证与存储服务的库表迁移只能向前，必须换用不低于旧环境的版本（4.2），并重新演练。
 - **能不能用管理界面（Studio）？** 可以只在本机或运维通道内使用，不对公网开放；生产数据的修改仍应通过工作台或经审查的 SQL，并留记录。
 - **以后还会访问境外吗？** 运行时不应有。每次发布前运行附录 A 的检查器；页面访问统计保持关闭；镜像只从境内 ACR 拉取。
+
+### C.4 后续增量 0042（C3 肾小球病模块、随访身高与儿童 eGFR、安全性事件）
+
+生产库已完成 0032–0041。0042 为纯增量，可重复执行，未登记 0041 时会中止并整体回滚；不改任何已有数据（验收测试 `tests/c3g-module-db.mjs` 对比迁移前后每一行）。内容：
+
+- 化验目录新增模块 `C3G`：`SC5B9`、`CH50`、`AH50`、`C3NEF`、`CFH`、`CFI`、`CFB`、`CFHAB` 及单位（`U/mL`、`AU/mL`、`μg/mL` 新增；`CFB` 的 g/L、mg/dL 自动换算为 mg/L）。`C3`、`C4` 仍在 `LN` 组。
+- `patients_baseline` 新增 `c3g_biopsy_date`、`c3g_if_c3_dominant`、`c3g_em_pattern`（C3GN / DDD / unclassified）、`c3g_crescent_pct`（0–100）、`c3g_paraprotein`（negative / positive / not_tested），现有患者全部为空；工作台只在病种模块为 `C3G` 的项目显示录入框。项目创建守卫 `_create_project_account_guard` 的病种白名单加入 `C3G`。
+- `visits_long.height_cm`（30–250）。触发器 `_auto_compute_egfr` 在 1–17 岁且本次有身高时按床旁 Schwartz 2009 计算 eGFR，`egfr_formula_version` 记 `Schwartz-2009-bedside`；无身高仍为 `missing_inputs`；成人计算完全不变。触发器改为同时在 `height_cm` 变化时触发。
+- `events_long` 事件类型增加 `serious_infection`、`hospitalization`、`vaccination`（导入与工作台均可登记，须填 `event_detail`）。
+- 0040 的 `_registry_input_columns`、`_registry_validate_input`、`registry_private.validate_clinical_input`、`check_clinical_row`、`import_clinical_row` 按以上字段扩展，其余逐字不变（迁移文件由脚本从 0040 原文生成，差异经核对）。
+- `concept_dictionary`、`abbreviation_dictionary` 补中文条目。
+
+执行方式与 0041 相同（dbkit 中的 0042 文件）：
+
+```bash
+docker exec -i supabase-db psql -U postgres -d postgres -X -q -v ON_ERROR_STOP=1 -f - \
+  < supabase/migrations/0042_c3g_module.sql
+docker exec -i supabase-db psql -U postgres -d postgres -X -t -A \
+  -c "SELECT version FROM public.registry_schema_versions WHERE version='0042_c3g_module'"
+# 预期：0042_c3g_module
+```
+
+然后重新生成只读预检报告，`0042_c3g_module` 与 `c3g_module_columns` 均须为 `true`。**顺序仍是先数据库、后前端**：新前端的随访对话框会提交 `height_cm`，数据库未升级时导入会以 `unsupported_column: height_cm` 拒绝；反过来先升级数据库、暂不发前端没有影响。
+
+分析包同步：`run_analysis.py` 把 `height_cm` 当作可选列并按 `Schwartz-2009-bedside` 标记重算；新增 `feasibility_report.py` 与 `feasibility_criteria_template.json`（按中心统计满足书面筛选条件的患者数，只输出人数）。

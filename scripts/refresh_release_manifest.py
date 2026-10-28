@@ -7,7 +7,7 @@ Run only after the source changes have been reviewed. It recomputes, never relax
   3. the release manifest and reviewed-tool hashes under releases/<release dir>/
 
 Production baselines (old_sha256) are the bytes production serves now. The previous manifest
-(registry-cn-v5-20261017) was applied in full on 2026-10-17, so every file's
+(registry-cn-v6-20261018) was applied in full on 2026-10-19, so every file's
 baseline is that manifest's new_sha256; files new to this release get old_sha256 = None. If a
 release is pinned again before the previous one has been deployed, set PREVIOUS_DEPLOYED = False
 so the baselines are inherited from the previous manifest's old_sha256 instead.
@@ -25,12 +25,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 import registry_integrated_release as release  # noqa: E402
 
-RELEASE_DIR = ROOT / 'releases/registry-cn-v6-20261018'
-MANIFEST_NAME = 'registry-cn-v6-20261018.manifest.json'
-PREVIOUS = ROOT / 'releases/registry-cn-v5-20261017/registry-cn-v5-20261017.manifest.json'
-# PREVIOUS 已整体上线（2026-10-17 发布，发布包取自提交 4919961）：线上字节 = 它的 new_sha256。
+RELEASE_DIR = ROOT / 'releases/registry-cn-v7-20261026'
+MANIFEST_NAME = 'registry-cn-v7-20261026.manifest.json'
+PREVIOUS = ROOT / 'releases/registry-cn-v6-20261018/registry-cn-v6-20261018.manifest.json'
+# PREVIOUS 已整体上线（2026-10-18/19 发布，发布包取自提交 d29b42f）：线上字节 = 它的 new_sha256。
 PREVIOUS_DEPLOYED = True
-PRODUCTION_BASELINE_COMMIT = '4919961c1b9f73a7794849452c1acceebdc85ac6'
+PRODUCTION_BASELINE_COMMIT = 'd29b42f6fecf4ddbef7c0c89024acae50659db19'
 TOOLS = ['build_database_contract_pg17.mjs', 'registry_integrated_release.py', 'registry_pages_release.py', 'registry_visual_release.py']
 BUNDLE_HEADER = '-- GENERATED from supabase/migrations in canonical filename order.\n-- Fresh/isolated databases only; use reviewed increments for production.\n\n'
 ORDER = 'lexicographic filenames; historical duplicate prefixes retained, unique full filenames'

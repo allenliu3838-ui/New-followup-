@@ -24,7 +24,9 @@ const REQUIRED_COLUMNS = Object.freeze({ labs: ['patient_code', 'lab_date'], med
 
 export const DRUG_CLASSES = Object.freeze(['RAS阻断剂', 'SGLT2抑制剂', '糖皮质激素', '免疫抑制剂', '利尿剂', '降压药（其他）', '降糖药（其他）', '降脂药', '抗凝/抗血小板', '其他']);
 export const ROUTES = Object.freeze({ PO: '口服', IV: '静脉', SC: '皮下注射', IM: '肌肉注射', topical: '外用', other: '其他' });
-export const IMPORTABLE_EVENTS = Object.freeze({ esrd: '终末期肾病', dialysis_start: '开始透析', kidney_transplant: '肾移植', death: '死亡', relapse: '复发', custom: '其他' });
+export const IMPORTABLE_EVENTS = Object.freeze({ esrd: '终末期肾病', dialysis_start: '开始透析', kidney_transplant: '肾移植', death: '死亡', relapse: '复发', serious_infection: '严重感染', hospitalization: '住院', vaccination: '疫苗接种', custom: '其他' });
+/** 须在事件细节中写明内容的事件类型（与数据库 check_clinical_row 一致）。 */
+export const DETAIL_REQUIRED_EVENTS = Object.freeze(['custom', 'serious_infection', 'hospitalization', 'vaccination']);
 export const DERIVED_EVENTS = Object.freeze(['egfr_decline_40pct', 'egfr_decline_57pct', 'complete_remission', 'partial_remission']);
 export const EVIDENCE_SOURCES = Object.freeze({ medical_record: '病历记录', lab_review: '化验数据复核', phone_followup: '电话随访', death_certificate: '死亡证明', other: '其他' });
 /** 终点事件中需要同时在“研究状态”登记的类型（患者随访状态仍为“在访”时给警告）。 */
@@ -83,9 +85,9 @@ export const TEMPLATES = Object.freeze({
     ],
     fields: [
       ['patient_code', '研究编号', '必填', '项目内已存在的研究编号。'],
-      ['event_type', '事件类型', '必填', 'esrd（终末期肾病）、dialysis_start（开始透析）、kidney_transplant（肾移植）、death（死亡）、relapse（复发）、custom（其他，须填事件细节）。eGFR 下降与缓解由分析脚本按研究方案计算，不接受导入。'],
+      ['event_type', '事件类型', '必填', 'esrd（终末期肾病）、dialysis_start（开始透析）、kidney_transplant（肾移植）、death（死亡）、relapse（复发）、serious_infection（严重感染）、hospitalization（住院）、vaccination（疫苗接种）、custom（其他）；后四种须填事件细节。eGFR 下降与缓解由分析脚本按研究方案计算，不接受导入。'],
       ['event_date', '事件日期', '必填', 'YYYY-MM-DD，事件实际发生日；死亡以死亡日期为准。'],
-      ['event_detail', '事件细节', 'custom 时必填', '如透析方式、移植类型，最多 500 字。'],
+      ['event_detail', '事件细节', 'custom、serious_infection、hospitalization、vaccination 时必填', '如透析方式、移植类型、感染部位或诊断、住院原因、疫苗名称，最多 500 字。'],
       ['evidence_source', '判定依据来源', '必填', 'medical_record（病历记录）、lab_review（化验数据复核）、phone_followup（电话随访）、death_certificate（死亡证明）、other（其他）。'],
       ['notes', '备注', '选填', '最多 500 字，勿填身份信息。'],
     ],
@@ -131,6 +133,8 @@ const EVENT_INPUT = Object.freeze({
   dialysis_start: 'dialysis_start', dialysis: 'dialysis_start', '开始透析': 'dialysis_start', '透析': 'dialysis_start',
   kidney_transplant: 'kidney_transplant', transplant: 'kidney_transplant', '肾移植': 'kidney_transplant',
   death: 'death', '死亡': 'death', relapse: 'relapse', '复发': 'relapse',
+  serious_infection: 'serious_infection', '严重感染': 'serious_infection', hospitalization: 'hospitalization', '住院': 'hospitalization',
+  vaccination: 'vaccination', '疫苗接种': 'vaccination',
   custom: 'custom', other: 'custom', '其他': 'custom',
 });
 const DERIVED_INPUT = /^(egfr_decline(_\d+pct)?|egfr下降.*|.*_remission|remission_.*|完全缓解|部分缓解|缓解)$/;
@@ -404,7 +408,7 @@ export function validateBatch(kind, headers, data, ctx = {}) {
       }
       const eventDate = date('event_date', '事件日期', true);
       const detail = text('event_detail', '事件细节', 500);
-      if (type === 'custom' && !detail && !issues.some(x => x.col === 'event_detail')) block('event_detail', '事件类型为“其他”时须填写事件细节。', '简要说明事件内容，勿填身份信息。');
+      if (DETAIL_REQUIRED_EVENTS.includes(type) && !detail && !issues.some(x => x.col === 'event_detail')) block('event_detail', type === 'custom' ? '事件类型为“其他”时须填写事件细节。' : '严重感染、住院和疫苗接种须在事件细节中写明感染部位或诊断、住院原因、疫苗名称。', '简要说明事件内容，勿填身份信息。');
       const src = v('evidence_source');
       if (!src) block('evidence_source', '判定依据来源不能为空。', '病历记录、化验数据复核、电话随访、死亡证明、其他');
       else { const s = EVIDENCE_INPUT[enumKey(src)] || EVIDENCE_INPUT[src]; if (!s) block('evidence_source', '判定依据来源不在允许的枚举中。', 'medical_record、lab_review、phone_followup、death_certificate、other'); else payload.evidence_source = s; }

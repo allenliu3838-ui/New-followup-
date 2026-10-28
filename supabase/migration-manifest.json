@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "release": "registry-20261018-cn-v6",
+  "release": "registry-20261026-cn-v7",
   "required_versions": [
     "0032_security_integrity",
     "0033_billing_registration",
@@ -11,10 +11,11 @@
     "0038_followup_workflow",
     "0039_patient_token_hashing",
     "0040_batch_import",
-    "0041_followup_board"
+    "0041_followup_board",
+    "0042_c3g_module"
   ],
   "order": "lexicographic filenames; historical duplicate prefixes retained, unique full filenames",
-  "bundle_sha256": "f504bdb10e088dd6afb515e23f7725659977fda55a9b568421ea69ad9e820c69",
+  "bundle_sha256": "05e4e3add35f812814a46cd2043d75ed74660e5c86e5a34c7c0f7d252c725317",
   "migrations": [
     {
       "ordinal": 1,
@@ -230,6 +231,11 @@
       "ordinal": 43,
       "file": "0041_followup_board.sql",
       "sha256": "84595439f470ff4144b93f841504b1e029325afc83fa341400d9ff6d9e7b6e53"
+    },
+    {
+      "ordinal": 44,
+      "file": "0042_c3g_module.sql",
+      "sha256": "9f5ed9559f56deb0cacb8d589185032408804fca0ab57fb23cdbff683a8151d3"
     }
   ]
 }

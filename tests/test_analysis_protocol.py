@@ -469,15 +469,18 @@ class AnalysisProtocolTests(unittest.TestCase):
             with self.subTest(message=message):
                 with self.assertRaisesRegex(ra.DataContractError, message):
                     ra.load_protocol(self.variant_protocol(mutate))
-        for event_type in ra.EVENT_TYPES:  # the database vocabulary (0002_events.sql + 0040_batch_import.sql) is accepted
+        for event_type in ra.EVENT_TYPES:  # the database vocabulary (0002_events.sql, 0040_batch_import.sql, 0042_c3g_module.sql) is accepted
             ra.load_protocol(self.variant_protocol(lambda p, t=event_type: p["censoring"].update(event_types=[t])))
+        for module in ra.SUPPORTED_MODULES:  # every project module, C3G included, can carry remission and eGFR-decline definitions
+            ra.load_protocol(self.variant_protocol(lambda p, m=module: (p["egfr_decline"].update(modules=[m]),
+                                                                        p["remission"].update({m: copy.deepcopy(p["remission"]["IGAN"])}))))
         self.assertIn("esrd", ra.EVENT_TYPES)
         self.assertNotIn("eskd", ra.EVENT_TYPES)
         migration = "".join((ROOT / "supabase" / "migrations" / name).read_text(encoding="utf-8")
-                            for name in ("0002_events.sql", "0040_batch_import.sql"))
+                            for name in ("0002_events.sql", "0040_batch_import.sql", "0042_c3g_module.sql"))
         for event_type in ra.EVENT_TYPES:
             self.assertIn(f"'{event_type}'", migration)
-        modules_sql = (ROOT / "supabase" / "migrations" / "0033_billing_registration.sql").read_text(encoding="utf-8")
+        modules_sql = (ROOT / "supabase" / "migrations" / "0042_c3g_module.sql").read_text(encoding="utf-8")
         self.assertIn("(" + ",".join(f"'{m}'" for m in ra.SUPPORTED_MODULES) + ")", modules_sql)
 
     def test_confirmed_terms_without_matching_records_are_refused_unless_allowed(self):
@@ -875,7 +878,7 @@ class AnalysisProtocolTests(unittest.TestCase):
         sources = log["egfr_sources"]
         self.assertEqual({k: sources[k] for k in sources if k.endswith("_n")},
                          {"dated_visits_n": 6, "recomputed_from_creatinine_n": 2, "recomputed_stored_value_agrees_n": 1,
-                          "recomputed_stored_value_differs_n": 0, "recomputed_no_stored_value_n": 1, "manual_value_used_n": 2,
+                          "recomputed_stored_value_differs_n": 0, "recomputed_no_stored_value_n": 1, "recomputed_schwartz_2009_n": 0, "manual_value_used_n": 2,
                           "excluded_recorded_but_unusable_n": 1, "no_egfr_or_creatinine_recorded_n": 1})
 
 

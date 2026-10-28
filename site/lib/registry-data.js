@@ -28,6 +28,7 @@ export const CLINICAL_LIMITS = Object.freeze({
   baseline_scr: { min: 10, max: 5000, unit: 'μmol/L' },
   upcr: { min: 0, max: 50000, unit: 'mg/g' },
   egfr: { min: 0, max: 200 },
+  height_cm: { min: 30, max: 250, unit: 'cm' },
 });
 
 /**
@@ -147,11 +148,13 @@ export async function sha256Text(text) {
   const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
   return [...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-export const BASELINE_IMPORT_FIELDS=['patient_code','sex','birth_year','baseline_date','baseline_scr','baseline_upcr','baseline_upcr_unit','biopsy_date','oxford_m','oxford_e','oxford_s','oxford_t','oxford_c','ln_biopsy_date','ln_class','ln_activity_index','ln_chronicity_index','ln_podocytopathy','treatment_arm','randomization_id','randomization_date','consent_status','consent_date','consent_version','followup_status','followup_status_date'];
+export const BASELINE_IMPORT_FIELDS=['patient_code','sex','birth_year','baseline_date','baseline_scr','baseline_upcr','baseline_upcr_unit','biopsy_date','oxford_m','oxford_e','oxford_s','oxford_t','oxford_c','ln_biopsy_date','ln_class','ln_activity_index','ln_chronicity_index','ln_podocytopathy','treatment_arm','randomization_id','randomization_date','consent_status','consent_date','consent_version','followup_status','followup_status_date','c3g_biopsy_date','c3g_if_c3_dominant','c3g_em_pattern','c3g_crescent_pct','c3g_paraprotein'];
 // 研究状态列接受英文代码或中文名称（迁移 0038 起数据库接受这些列）；空白单元格保持原值。
 const CONSENT_INPUT=Object.freeze({unconfirmed:'unconfirmed',consented:'consented',waiver:'waiver',declined:'declined',withdrawn:'withdrawn','未确认':'unconfirmed','已同意':'consented','伦理批准豁免':'waiver','拒绝':'declined','撤回':'withdrawn'});
+const C3G_EM_INPUT=Object.freeze({C3GN:'C3GN',DDD:'DDD',unclassified:'unclassified','C3肾小球肾炎':'C3GN','C3 肾小球肾炎':'C3GN','致密物沉积病':'DDD','未能分型':'unclassified'});
+const C3G_PARAPROTEIN_INPUT=Object.freeze({negative:'negative',positive:'positive',not_tested:'not_tested','阴性':'negative','阳性':'positive','未查':'not_tested'});
 const FOLLOWUP_INPUT=Object.freeze({active:'active',lost:'lost',withdrawn:'withdrawn',deceased:'deceased',kidney_failure:'kidney_failure',transferred:'transferred','在访':'active','失访':'lost','退出':'withdrawn','退出研究':'withdrawn','死亡':'deceased','肾衰竭':'kidney_failure','转院':'transferred'});
-export const VISIT_IMPORT_FIELDS=['patient_code','visit_date','sbp','dbp','scr_umol_l','upcr','egfr','notes'];
+export const VISIT_IMPORT_FIELDS=['patient_code','visit_date','sbp','dbp','scr_umol_l','upcr','egfr','notes','height_cm'];
 function localDateText(date=new Date()){return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;}
 export function normalizeImportRow(kind,input,defaultUpcrUnit=''){
   const allowed=kind==='baseline'?BASELINE_IMPORT_FIELDS:VISIT_IMPORT_FIELDS;
@@ -164,22 +167,25 @@ export function normalizeImportRow(kind,input,defaultUpcrUnit=''){
   if(kind==='baseline'){
     if(result.sex){result.sex=({'男':'M','女':'F','M':'M','F':'F'})[result.sex];if(!result.sex)throw new Error('性别须为 M/F/男/女');}
     if('baseline_scr'in result)result.baseline_scr=creatinineUmol(result.baseline_scr,'umol','基线血肌酐');
-    const nums={birth_year:{integer:true,min:1900,max:new Date().getUTCFullYear()},oxford_m:{integer:true,min:0,max:1},oxford_e:{integer:true,min:0,max:1},oxford_s:{integer:true,min:0,max:1},oxford_t:{integer:true,min:0,max:2},oxford_c:{integer:true,min:0,max:2},ln_activity_index:{min:0,max:24},ln_chronicity_index:{min:0,max:12}};
+    const nums={birth_year:{integer:true,min:1900,max:new Date().getUTCFullYear()},oxford_m:{integer:true,min:0,max:1},oxford_e:{integer:true,min:0,max:1},oxford_s:{integer:true,min:0,max:1},oxford_t:{integer:true,min:0,max:2},oxford_c:{integer:true,min:0,max:2},ln_activity_index:{min:0,max:24},ln_chronicity_index:{min:0,max:12},c3g_crescent_pct:{min:0,max:100}};
     for(const [key,opts]of Object.entries(nums))if(key in result)result[key]=finiteNumber(result[key],fieldLabel(key),opts);
-    for(const key of ['baseline_date','biopsy_date','ln_biopsy_date','randomization_date','consent_date','followup_status_date'])if(key in result)result[key]=strictDate(result[key],fieldLabel(key));
+    for(const key of ['baseline_date','biopsy_date','ln_biopsy_date','randomization_date','consent_date','followup_status_date','c3g_biopsy_date'])if(key in result)result[key]=strictDate(result[key],fieldLabel(key));
     if('consent_status'in result){const v=CONSENT_INPUT[result.consent_status];if(!v)throw new Error('知情同意状态须为：未确认、已同意、伦理批准豁免、拒绝、撤回');result.consent_status=v;}
     if('followup_status'in result){const v=FOLLOWUP_INPUT[result.followup_status];if(!v)throw new Error('随访状态须为：在访、失访、退出、死亡、肾衰竭、转院');result.followup_status=v;}
     // 与数据库一致：退出类状态（拒绝/撤回同意、退出研究、死亡）不能通过导入登记，须先建档，再在患者的“研究状态”中填写原因登记。
     if(['declined','withdrawn'].includes(result.consent_status)||['withdrawn','deceased'].includes(result.followup_status))throw new Error('拒绝或撤回同意、退出研究、死亡不能通过导入登记：请先导入基线，再在患者的“研究状态”中登记并填写原因');
     if('consent_version'in result&&result.consent_version.length>100)throw new Error('知情同意书版本最多 100 个字符');
     if('ln_podocytopathy'in result){const map={true:true,false:false,'是':true,'否':false};if(!(result.ln_podocytopathy in map))throw new Error('足细胞病变须为 true/false/是/否');result.ln_podocytopathy=map[result.ln_podocytopathy];}
+    if('c3g_if_c3_dominant'in result){const map={true:true,false:false,'是':true,'否':false};if(!(result.c3g_if_c3_dominant in map))throw new Error('免疫荧光 C3 优势须为 true/false/是/否');result.c3g_if_c3_dominant=map[result.c3g_if_c3_dominant];}
+    if('c3g_em_pattern'in result){const v=C3G_EM_INPUT[result.c3g_em_pattern];if(!v)throw new Error('C3G 电镜分型须为：C3GN、DDD、unclassified（未能分型）');result.c3g_em_pattern=v;}
+    if('c3g_paraprotein'in result){const v=C3G_PARAPROTEIN_INPUT[result.c3g_paraprotein];if(!v)throw new Error('单克隆免疫球蛋白筛查须为：阴性、阳性、未查（negative/positive/not_tested）');result.c3g_paraprotein=v;}
     if('baseline_upcr'in result){const unit=result.baseline_upcr_unit||defaultUpcrUnit;if(!unit)throw new Error('基线 UPCR 缺少单位：请在 CSV 的 baseline_upcr_unit 列填写，或在页面明确选择');const raw=finiteNumber(result.baseline_upcr,'UPCR',{min:0});result.baseline_upcr=normalizeUpcr(raw,unit);result.baseline_upcr_unit='mg/g';result.baseline_upcr_raw=raw;result.baseline_upcr_original_unit=unit;}else delete result.baseline_upcr_unit;
   }else{
     // 与“录入随访”对话框及数据库一致：至少一项测量值；各项按数据库范围检查，未填的项保持空白。
     result.visit_date=strictDate(result.visit_date,'随访日期',true);
     if(result.visit_date>localDateText())throw new Error('随访日期不能晚于今天');
     if('scr_umol_l'in result)result.scr_umol_l=creatinineUmol(result.scr_umol_l,'umol','血肌酐');
-    for(const key of ['sbp','dbp','upcr','egfr'])if(key in result)result[key]=finiteNumber(result[key],fieldLabel(key),CLINICAL_LIMITS[key]);
+    for(const key of ['sbp','dbp','upcr','egfr','height_cm'])if(key in result)result[key]=finiteNumber(result[key],fieldLabel(key),CLINICAL_LIMITS[key]);
     if(!['sbp','dbp','scr_umol_l','upcr','egfr'].some(key=>key in result))throw new Error('请至少填写一项测量值（收缩压、舒张压、血肌酐或 UPCR）');
     if('sbp'in result&&'dbp'in result&&result.dbp>=result.sbp)throw new Error('舒张压须低于收缩压，请核对是否填反');
     if('notes'in result&&[...result.notes].length>500)throw new Error('备注最多 500 字');
@@ -188,7 +194,7 @@ export function normalizeImportRow(kind,input,defaultUpcrUnit=''){
 }
 
 // Chinese labels for CSV columns and correction fields; users never see raw column keys in messages.
-export const FIELD_LABELS=Object.freeze({patient_code:'研究编号',sex:'性别',birth_year:'出生年份',baseline_date:'基线日期',baseline_scr:'基线血肌酐',baseline_upcr:'基线UPCR',baseline_upcr_unit:'基线UPCR单位',baseline_upcr_raw:'基线UPCR原始值',baseline_upcr_original_unit:'基线UPCR原始单位',biopsy_date:'肾穿日期',oxford_m:'牛津分型M',oxford_e:'牛津分型E',oxford_s:'牛津分型S',oxford_t:'牛津分型T',oxford_c:'牛津分型C',ln_biopsy_date:'LN肾穿日期',ln_class:'LN病理分型',ln_activity_index:'LN活动指数',ln_chronicity_index:'LN慢性指数',ln_podocytopathy:'足细胞病变',treatment_arm:'研究分组',randomization_id:'随机号',randomization_date:'随机化日期',visit_date:'随访日期',sbp:'收缩压',dbp:'舒张压',scr_umol_l:'血肌酐（μmol/L）',upcr:'UPCR（mg/g）',egfr:'eGFR',notes:'备注',consent_status:'知情同意状态',consent_date:'知情同意日期',consent_version:'知情同意书版本',followup_status:'随访状态',followup_status_date:'随访状态日期',followup_start_date:'提醒起算日',
+export const FIELD_LABELS=Object.freeze({patient_code:'研究编号',sex:'性别',birth_year:'出生年份',baseline_date:'基线日期',baseline_scr:'基线血肌酐',baseline_upcr:'基线UPCR',baseline_upcr_unit:'基线UPCR单位',baseline_upcr_raw:'基线UPCR原始值',baseline_upcr_original_unit:'基线UPCR原始单位',biopsy_date:'肾穿日期',oxford_m:'牛津分型M',oxford_e:'牛津分型E',oxford_s:'牛津分型S',oxford_t:'牛津分型T',oxford_c:'牛津分型C',ln_biopsy_date:'LN肾穿日期',ln_class:'LN病理分型',ln_activity_index:'LN活动指数',ln_chronicity_index:'LN慢性指数',ln_podocytopathy:'足细胞病变',treatment_arm:'研究分组',randomization_id:'随机号',randomization_date:'随机化日期',visit_date:'随访日期',sbp:'收缩压',dbp:'舒张压',scr_umol_l:'血肌酐（μmol/L）',upcr:'UPCR（mg/g）',egfr:'eGFR',notes:'备注',consent_status:'知情同意状态',consent_date:'知情同意日期',consent_version:'知情同意书版本',followup_status:'随访状态',followup_status_date:'随访状态日期',followup_start_date:'提醒起算日',c3g_biopsy_date:'C3G肾穿日期',c3g_if_c3_dominant:'免疫荧光C3优势',c3g_em_pattern:'C3G电镜分型',c3g_crescent_pct:'新月体比例（%）',c3g_paraprotein:'单克隆免疫球蛋白筛查',height_cm:'身高（cm）',
   lab_date:'化验日期',lab_test_code:'化验项目编码',lab_item_name:'化验项目名称',value_raw:'结果数值',unit_symbol:'单位',result_text:'结果文本',ref_range:'参考范围',abnormal_flag:'异常标志',
   drug_name:'药物名称',drug_class:'药物类别',dose_value:'剂量数值',dose_unit:'剂量单位',route:'给药途径',frequency:'频次',start_date:'起始日期',end_date:'结束日期',indication:'用药目的',
   event_type:'事件类型',event_date:'事件日期',event_detail:'事件细节',evidence_source:'判定依据来源',file_name:'文件名',file_sha256:'文件校验值'});
@@ -375,13 +381,14 @@ const SETTING_LABELS=Object.freeze({followup_interval_days:'随访间隔',public
 // 数据库 CHECK 约束 → 中文字段名与允许范围。PostgREST 只返回约束名（在 message 中），不返回失败行之外的列名。
 const CONSTRAINT_FIELDS=Object.freeze({
   visits_sbp_range:['收缩压','须在 40–300 mmHg 之间'],visits_dbp_range:['舒张压','须在 20–200 mmHg 之间'],
-  visits_scr_range:['血肌酐','须在 10–5000 μmol/L 之间'],visits_egfr_range:['eGFR','须在 0–200 之间；eGFR 由血肌酐、出生年份和性别计算，请核对这几项'],
+  visits_scr_range:['血肌酐','须在 10–5000 μmol/L 之间'],visits_egfr_range:['eGFR','须在 0–200 之间；eGFR 由血肌酐、出生年份和性别计算（1–17 岁按本次身高），请核对这几项'],visits_height_range:['身高','须在 30–250 cm 之间'],
   visits_upcr_range:['尿蛋白肌酐比（UPCR）','不能为负数'],visits_long_upcr_range:['尿蛋白肌酐比（UPCR）','须在 0–50000 mg/g 之间'],
   baseline_scr_range:['基线血肌酐','须在 10–5000 μmol/L 之间'],baseline_upcr_range:['基线UPCR','不能为负数'],
   baseline_birth_year_range:['出生年份','须在 1900 年至今之间'],
   oxford_m_check:['牛津分型M','只能为 0 或 1'],oxford_e_check:['牛津分型E','只能为 0 或 1'],oxford_s_check:['牛津分型S','只能为 0 或 1'],
   oxford_t_check:['牛津分型T','只能为 0、1 或 2'],oxford_c_check:['牛津分型C','只能为 0、1 或 2'],
   ln_class_check:['LN病理分型','取值无效'],ln_activity_index_check:['LN活动指数','须在 0–24 之间'],ln_chronicity_index_check:['LN慢性指数','须在 0–12 之间'],
+  c3g_em_pattern_check:['C3G电镜分型','只能为 C3GN、DDD 或 unclassified'],c3g_crescent_pct_check:['新月体比例','须在 0–100 之间'],c3g_paraprotein_check:['单克隆免疫球蛋白筛查','只能为 negative、positive 或 not_tested'],
 });
 const COLUMN_KEYS=Object.keys(FIELD_LABELS).sort((a,b)=>b.length-a.length);
 /** 约束错误对应的字段：先查已知约束，再从 column 或约束名中找已知列名。不读取 details（其中是失败行的原始内容）。 */

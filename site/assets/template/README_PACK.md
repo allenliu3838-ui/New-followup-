@@ -56,8 +56,8 @@ python analysis/run_analysis.py --data analysis/merged-data
 2. PI 对照所采用指南版本或研究方案的原文逐项核对、修改（模板中提到的指南只供查找原文，模板没有转述指南条文）：
    - `baseline`：基线 eGFR / UPCR 取基线表记录，还是取基线日期前后若干天内的随访测量（`window_days`、`nearest` 或 `mean`）；
    - `egfr_decline`：下降阈值（如 40%）以及持续确认条件 `confirmation`——至少几次测量（`min_measurements`）、首末间隔至少几天（`min_interval_days`）、是否要求到最后一次测量仍低于阈值（`require_last_below`）；必填 `kidney_failure_or_death_before_confirmation`：确认下降之前发生已确认的 esrd / death 事件时，`count_as_event` 计为终点事件（复合终点，结果列名为 `egfr_decline_<阈值>pct_sustained_or_kidney_failure_death`，`event_basis` 写明是哪类事件），`censor` 在该日期截尾（信息性截尾，会低估下降）。模板示例为 `count_as_event`。随访状态 `kidney_failure` / `deceased` 只作截尾、不计为事件（数据字典说明随访状态不等同于经核实的终点事件），需要计入时请在事件表登记已确认事件；
-   - `remission`：按病种（只能是 `IGAN`、`LN`、`MN`、`DKD`、`CKD`、`KTX`、`GENERAL`）分别写完全 / 部分缓解的 UPCR 条件、是否要求同日 eGFR 稳定、确认条件和评估时间窗；用了下降百分比（`upcr_reduction_pct_at_least`）就必须写 `upcr_reduction_reference`：`baseline`（方案基线值）或 `peak`（基线窗口起至该次测量之前的最高 UPCR，含基线值）；`baseline_upcr_at_least` 是评估缓解的入选条件（基线 UPCR 可得且不低于该值才评估，否则判为不可评估并写入质控；不填时至少要求基线 UPCR 可得且高于完全缓解的 `upcr_below`，无完全缓解定义时为部分缓解的 `upcr_below`），避免基线本来就很低或缺失的患者被判为缓解；没有写的病种不计算；脚本算不了的条件（如血清白蛋白）列在 `additional_criteria_not_computed`，结果会标为“其余条件未评估”，需人工补核；
-   - `censoring`：哪些随访状态（失访、退出、死亡、肾衰竭、转出）及哪些已确认事件的日期作为截尾。事件类型只能取登记系统事件表的取值（`esrd`、`death`、`egfr_decline_40pct`、`egfr_decline_57pct`、`complete_remission`、`partial_remission`、`custom`；肾衰竭是 `esrd`，不是 `eskd`）。截尾日当天的测量仍使用，之后的测量不参与判定。随访状态日期早于基线日期时，该日期不用于截尾（不会截掉基线与随访测量），并写入质控；
+   - `remission`：按病种（只能是 `IGAN`、`LN`、`MN`、`DKD`、`CKD`、`KTX`、`C3G`、`GENERAL`）分别写完全 / 部分缓解的 UPCR 条件、是否要求同日 eGFR 稳定、确认条件和评估时间窗；用了下降百分比（`upcr_reduction_pct_at_least`）就必须写 `upcr_reduction_reference`：`baseline`（方案基线值）或 `peak`（基线窗口起至该次测量之前的最高 UPCR，含基线值）；`baseline_upcr_at_least` 是评估缓解的入选条件（基线 UPCR 可得且不低于该值才评估，否则判为不可评估并写入质控；不填时至少要求基线 UPCR 可得且高于完全缓解的 `upcr_below`，无完全缓解定义时为部分缓解的 `upcr_below`），避免基线本来就很低或缺失的患者被判为缓解；没有写的病种不计算；脚本算不了的条件（如血清白蛋白）列在 `additional_criteria_not_computed`，结果会标为“其余条件未评估”，需人工补核；
+   - `censoring`：哪些随访状态（失访、退出、死亡、肾衰竭、转出）及哪些已确认事件的日期作为截尾。事件类型只能取登记系统事件表的取值（`esrd`、`death`、`dialysis_start`、`kidney_transplant`、`relapse`、`serious_infection`、`hospitalization`、`vaccination`、`custom`、`egfr_decline_40pct`、`egfr_decline_57pct`、`complete_remission`、`partial_remission`；肾衰竭是 `esrd`，不是 `eskd`）。截尾日当天的测量仍使用，之后的测量不参与判定。随访状态日期早于基线日期时，该日期不用于截尾（不会截掉基线与随访测量），并写入质控；
    - `units`：阈值使用的单位。随访 UPCR 在登记系统中以 mg/g 保存，`units.upcr` 必须写 mg/g；与数据单位不一致时脚本拒绝运行，不会自动换算阈值。UPCR 阈值按声明的单位检查量级，mg/g 方案中写 0.3 这类 g/g 数值会被拒绝。
 3. 确认后把相应章节的 `requires_pi_confirmation` 改为 `false`，并在 `confirmation` 中填写确认人和日期（YYYY-MM-DD）。有章节标为已确认但没有确认人或日期时，脚本拒绝运行。
 4. 字段名拼错、出现模板中没有的字段、数值越界、病种或事件类型不在登记系统取值内，都会导致拒绝运行，避免规则静默失效。以下划线开头的字段（如 `_说明`）是备注，脚本忽略。
@@ -94,8 +94,16 @@ python analysis/run_analysis.py --data analysis/merged-data
 
 KFRE 风险计算已停用：旧实现用 UPCR 替代 UACR、猜测检验单位，未通过独立模型金标准验证；本包不输出风险数字。没有经 PI 确认的研究方案文件时，不判定完全 / 部分缓解或持续肾脏终点。LME 队列推断、置信区间、生存 / 因果分析在任何模式下都不执行；按方案判定的事件表可供研究者另行做统计分析。未确认候选和描述性结果不自动变成这些结论。
 
-成人 CKD-EPI 2021 肌酐公式按 Inker 等原文 Table 2 实现，使用性别、血肌酐和“访视年份减出生年”的近似年龄；不是精确生日年龄。缺失/未知性别不当男性，未满18岁不使用该成人公式。原文：[NEJM 2021 作者稿与公式表](https://escholarship.org/content/qt3gj2d8m2/qt3gj2d8m2.pdf)。此实现不代替队列适用性与研究方案审查。
+成人 CKD-EPI 2021 肌酐公式按 Inker 等原文 Table 2 实现，使用性别、血肌酐和“访视年份减出生年”的近似年龄；不是精确生日年龄。1–17 岁患者按本次随访记录的身高用床旁 Schwartz 2009 公式（0.413 × 身高 cm ÷ 血肌酐 mg/dL）重算，公式版本标记为 `Schwartz-2009-bedside`（`visits_derived.csv` 的 `egfr_analysis_source` 为 recomputed_Schwartz-2009-bedside_year_age；RUN_LOG 的 `recomputed_schwartz_2009_n` 计数）；没有身高的儿童访视不计算 eGFR，在按方案判定的序列中记为未知测量。旧版导出没有 `height_cm` 列时按缺失处理。缺失/未知性别不当男性，未满18岁不使用该成人公式。原文：[NEJM 2021 作者稿与公式表](https://escholarship.org/content/qt3gj2d8m2/qt3gj2d8m2.pdf)。此实现不代替队列适用性与研究方案审查。
 
 本分析使用六张核心表；额外CSV会在 RUN_LOG 的 additional_csv_not_analyzed 中列明，不能据此认为额外专病表也已完成统计。原始变异记录保留在输入包，本次未执行遗传变异解释。
 
 本包不修改数据库，输入文件不被覆盖。平台导出记录号或本地运行哈希也不等于服务器已提供不可变快照及备份恢复服务。
+
+## 7. 可行性统计（可选，`feasibility_report.py`）
+
+按研究团队书面确认的筛选条件，统计每个项目/中心有多少已纳入患者满足条件，用于规划多中心研究的中心选择与样本可行性。只输出人数，不输出研究编号；不是任何患者的入组资格判定。
+
+1. 复制 `analysis/feasibility_criteria_template.json`，填写病种模块、基线年龄范围、最近一次 eGFR 与 UPCR 的范围及时间窗、最近随访距截止日期的天数（不需要的条件填 `null`），把 `status` 改为 `confirmed` 并写明确认人和日期。模板状态下脚本会拒绝运行。
+2. 运行 `python3 analysis/feasibility_report.py --data analysis/data --out feasibility --criteria 我的条件.json`；截止日期默认取数据中最近一次随访日期，也可用 `--as-of YYYY-MM-DD` 指定。
+3. 结果：`feasibility_by_center.csv`（每个中心一行加合计：知情同意排除人数、纳入人数、有随访人数、各条件满足人数、全部满足人数）和 `FEASIBILITY_RUN_LOG.json`（条件全文与 SHA-256、输入文件 SHA-256、知情同意筛选、eGFR 来源说明）。知情同意筛选与 eGFR 的算法与 `run_analysis.py` 完全相同。

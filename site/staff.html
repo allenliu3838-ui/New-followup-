@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>科研工作台 · 肾域·科研</title>
   <meta name="robots" content="noindex,nofollow"/>
-  <link rel="stylesheet" href="/app.css?v=registry-20261018-cn-v6"/>
-  <link rel="stylesheet" href="/lib/product-nav.css?v=registry-20261018-cn-v6">
-  <script src="/lib/product-nav.js?v=registry-20261018-cn-v6" defer></script>
-  <script src="/lib/help-assistant.js?v=registry-20261018-cn-v6" defer></script>
+  <link rel="stylesheet" href="/app.css?v=registry-20261026-cn-v7"/>
+  <link rel="stylesheet" href="/lib/product-nav.css?v=registry-20261026-cn-v7">
+  <script src="/lib/product-nav.js?v=registry-20261026-cn-v7" defer></script>
+  <script src="/lib/help-assistant.js?v=registry-20261026-cn-v7" defer></script>
   <link rel="icon" href="/assets/kidneysphere-ai.png"/>
   <style>
     /* 字段提示气泡 */
@@ -170,6 +170,7 @@
                 <option value="IGAN">IgAN（IgA 肾病）</option>
                 <option value="LN">LN（狼疮性肾炎）</option>
                 <option value="MN">MN（膜性肾病）</option>
+                <option value="C3G">C3G（C3 肾小球病）</option>
                 <option value="GENERAL">通用（混合/其他）</option>
                 <option value="KTX">KTx（肾移植术后）</option>
               </select>
@@ -353,6 +354,35 @@
                   <option value="true">是（合并足细胞病变）</option>
                   <option value="false">否</option>
                 </select>
+              </div>
+            </div>
+          </div>
+
+          <div id="c3gPathBox" class="infobox" style="margin-top:10px;display:none">
+            <b>C3 肾小球病病理</b>
+            <div class="muted small" style="margin-top:4px">未做肾穿或无报告可留空。免疫荧光“C3 优势”指 C3 强度比其他任何免疫反应物高至少 2 个等级；电镜分型按报告填写。</div>
+            <div class="row" style="margin-top:6px">
+              <div class="col">
+                <label for="c3gBiopsyDate">肾穿日期（可选）</label>
+                <input id="c3gBiopsyDate" type="date"/>
+              </div>
+              <div class="col">
+                <label for="c3gIfC3Dominant">免疫荧光 C3 优势沉积</label>
+                <select id="c3gIfC3Dominant"><option value="">未填</option><option value="true">是</option><option value="false">否</option></select>
+              </div>
+              <div class="col">
+                <label for="c3gEmPattern">电镜分型</label>
+                <select id="c3gEmPattern"><option value="">未填</option><option value="C3GN">C3GN（C3 肾小球肾炎）</option><option value="DDD">DDD（致密物沉积病）</option><option value="unclassified">未能分型</option></select>
+              </div>
+            </div>
+            <div class="row" style="margin-top:6px">
+              <div class="col">
+                <label for="c3gCrescentPct">新月体比例（%，0–100）</label>
+                <input id="c3gCrescentPct" type="number" min="0" max="100" step="0.1" placeholder="例如 12.5"/>
+              </div>
+              <div class="col">
+                <label for="c3gParaprotein">单克隆免疫球蛋白筛查</label>
+                <select id="c3gParaprotein"><option value="">未填</option><option value="negative">阴性</option><option value="positive">阳性</option><option value="not_tested">未查</option></select>
               </div>
             </div>
           </div>
@@ -720,6 +750,9 @@
                   <option value="kidney_transplant">肾移植</option>
                   <option value="death">死亡</option>
                   <option value="relapse">复发</option>
+                  <option value="serious_infection">严重感染（在事件细节中写明部位或诊断）</option>
+                  <option value="hospitalization">住院（在事件细节中写明原因）</option>
+                  <option value="vaccination">疫苗接种（在事件细节中写明疫苗名称）</option>
                   <option value="egfr_decline_40pct">eGFR 下降 ≥40%（建议由分析脚本按研究方案计算）</option>
                   <option value="egfr_decline_57pct">eGFR 下降 ≥57%（建议由分析脚本按研究方案计算）</option>
                   <option value="complete_remission">完全缓解（建议由分析脚本按研究方案计算）</option>
@@ -855,10 +888,10 @@
     </template>
   </div>
 
-  <script src="/lib/error-logger.js?v=registry-20261018-cn-v6"></script>
-  <script src="/config.js?v=registry-20261018-cn-v6"></script>
-  <script src="/lib/vendor/jszip.min.js?v=registry-20261018-cn-v6"></script>
-  <script type="module" src="/staff.js?v=registry-20261018-cn-v6"></script>
+  <script src="/lib/error-logger.js?v=registry-20261026-cn-v7"></script>
+  <script src="/config.js?v=registry-20261026-cn-v7"></script>
+  <script src="/lib/vendor/jszip.min.js?v=registry-20261026-cn-v7"></script>
+  <script type="module" src="/staff.js?v=registry-20261026-cn-v7"></script>
   <footer class="site-footer">
     <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
     <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener">鲁公网安备37091102000922号</a></div>

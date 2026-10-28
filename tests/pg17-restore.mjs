@@ -124,15 +124,26 @@ try{
  await assert.rejects(restored.restoreCustom(backup.archive),/existing application objects/);
  pass('actual pg_restore reproduces every dumped table, value, sequence and reviewed catalog/ACL');
 
- assert.equal(await applyMigrations(restored,{phase:'upgrade'}),10);
+ assert.equal(await applyMigrations(restored,{phase:'upgrade'}),11);
  const upgradedRows=await captureRows(restored);
  // Two reviewed value changes are asserted exactly below; every other historical value must survive.
  const reviewedChange={
   'public.patients_baseline':record=>({...record,consent_research:null}),
   'public.patient_tokens':record=>({...record,token:null})
  };
+ // 0042 adds display-dictionary entries (C3 glomerulopathy fields, visit height); no other
+ // preserved table gains or loses a row. Rows are matched by their stable key.
+ const reviewedAdditions={
+  'public.concept_dictionary':['c3g_biopsy_date','c3g_crescent_pct','c3g_em_pattern','c3g_if_c3_dominant','c3g_paraprotein','height_cm'],
+  'public.abbreviation_dictionary':['AH50','C3GN','C3NeF','CH50','DDD','sC5b-9'],
+ };
+ const rowKey=(table,record)=>table==='public.concept_alias_dictionary'?`${record.concept_code}:${record.alias_cn}`
+  :record.id??record.visit_id??record.code??record.abbr;
  for(const table of preservedTables){
-  const old=beforeRows[table],current=upgradedRows[table];
+  const old=beforeRows[table],historical=new Set(old.map(record=>rowKey(table,record)));
+  const added=upgradedRows[table].map(record=>rowKey(table,record)).filter(key=>!historical.has(key)).sort();
+  assert.deepEqual(added,reviewedAdditions[table]??[],`${table}: only the reviewed dictionary entries are added`);
+  const current=upgradedRows[table].filter(record=>historical.has(rowKey(table,record)));
   assert.equal(current.length,old.length,`${table}: historical row count survives upgrade`);
   const columns=Object.keys(old[0]);
   const projection=records=>records.map(record=>JSON.stringify(
@@ -147,7 +158,7 @@ try{
  const reference=JSON.parse(fs.readFileSync(path.join(root,'supabase/database-contract-pg17.json'),'utf8'));
  assert.deepEqual(await readContract(restored),reference.database_contract_profiles.canonical,
   'Restored then upgraded database must match one complete reviewed canonical profile');
- pass('0032–0041 upgrade preserves 15 populated tables (consent default and plaintext links replaced exactly as reviewed) and matches the approved PG17 profile');
+ pass('0032–0042 upgrade preserves 15 populated tables (consent default and plaintext links replaced exactly as reviewed; 0042 adds only its dictionary entries) and matches the approved PG17 profile');
 
  await asRole(restored,null,async()=>{
   await assert.rejects(restored.query('SELECT * FROM public.visit_receipts'),permissionDenied);

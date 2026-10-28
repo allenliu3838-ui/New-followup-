@@ -35,8 +35,8 @@ try {
   assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),migration.sha256);
   try{await db.exec(bytes.toString());}catch(e){throw new Error(migration.file+': '+e.message);}
  }
- assert.equal(manifest.migrations.length,43);
- pass('43 canonical migrations execute strictly with real pgcrypto');
+ assert.equal(manifest.migrations.length,44);
+ pass('44 canonical migrations execute strictly with real pgcrypto');
  const ids=Array.from({length:5},()=>crypto.randomUUID());
  for(let i=0;i<ids.length;i++)await db.query('INSERT INTO auth.users(id,email) VALUES($1,$2)',[ids[i],`recovery${i}@example.invalid`]);
  const project=await asUser(ids[0],async()=>(await value("select public.create_project('Synthetic recovery','RECOVERY','IGAN') as id")).id);

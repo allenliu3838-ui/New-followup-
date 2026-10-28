@@ -464,9 +464,12 @@ async function main() {
       'P003,custom,2025-04-01,,phone_followup,',
       'P003,开始透析,2025-05-01,血液透析,病历记录,',
       'P003,lost_followup,2025-05-02,,other,',
-      'P001,relapse,2023-12-01,,medical_record,']));
+      'P001,relapse,2023-12-01,,medical_record,',
+      'P003,严重感染,2025-05-03,,medical_record,',
+      'P003,住院,2025-05-04,肺炎住院 6 天,病历记录,',
+      'P003,vaccination,2025-05-05,四价脑膜炎球菌结合疫苗,medical_record,']));
     await page.locator('#importCounts').waitFor({ state: 'visible' });
-    assert.deepEqual(await counts(page), { total: 7, writable: 3, warn: 3, block: 4 });
+    assert.deepEqual(await counts(page), { total: 10, writable: 5, warn: 3, block: 5 });
     assert.ok((await rowText(2)).includes('不接受导入') && (await rowText(3)).includes('不接受导入'), '派生终点阻断');
     assert.ok((await rowText(4)).includes('请到该患者的研究状态登记'), '死亡事件 + 在访患者给警告');
     assert.match(await page.locator('#importTable tr[data-line="4"]').getAttribute('class'), /bi-row-warn/);
@@ -474,6 +477,9 @@ async function main() {
     assert.ok((await rowText(6)).includes('请到该患者的研究状态登记'), '开始透析也提示登记研究状态');
     assert.ok((await rowText(7)).includes('改用 custom'));
     assert.ok((await rowText(8)).includes('早于该患者的基线日期'));
+    assert.ok((await rowText(9)).includes('严重感染、住院和疫苗接种须在事件细节中写明'), '严重感染须填细节');
+    assert.match(await page.locator('#importTable tr[data-line="10"]').getAttribute('class'), /bi-row-ok/, '中文“住院”可导入');
+    assert.match(await page.locator('#importTable tr[data-line="11"]').getAttribute('class'), /bi-row-ok/, '疫苗接种可导入');
     await page.click('#btnCancelImport');
 
     // 4. 表头含个人信息列：整份文件阻断，不能提交。

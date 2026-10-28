@@ -5,7 +5,7 @@ import {
   visitSaveMessage, validationDetails, isSameDayConflict, tokenState, revokeReasonLabel, buildFollowupLink,
   linkMessageText, revokesLinks, newLinkBlockReason, CONSENT_STATUSES, FOLLOWUP_STATUSES, FOLLOWUP_STATUS_OPTIONS, FOLLOWUP_STATES, REASON_REQUIRED_CONSENT, REASON_REQUIRED_FOLLOWUP,
   EXIT_CONSENT_STATUSES, EXIT_FOLLOWUP_STATUSES, consentDateLabel, inactiveReason,
-} from '/lib/followup-board.js?v=registry-20261018-cn-v6';
+} from '/lib/followup-board.js?v=registry-20261026-cn-v7';
 
 const TOKEN_COLUMNS = 'id,patient_code,created_at,expires_at,single_use,used_at,revoked_at,revoke_reason,active';
 
@@ -154,6 +154,9 @@ export function createFollowupDialogs(deps) {
   <div><label for="veScr">血肌酐</label><div class="inline-field"><input id="veScr" inputmode="decimal" autocomplete="off"/><select id="veScrUnit" aria-label="血肌酐单位"><option value="umol">μmol/L</option><option value="mgdl">mg/dL</option></select></div><div id="veScrHint" class="fu-hint small" aria-live="polite"></div></div>
   <div><label for="veUpcr">尿蛋白肌酐比（UPCR）</label><div class="inline-field"><input id="veUpcr" inputmode="decimal" autocomplete="off"/><select id="veUpcrUnit" aria-label="尿蛋白肌酐比单位"><option value="mgg">mg/g</option><option value="gg">g/g</option></select></div><div id="veUpcrHint" class="fu-hint small" aria-live="polite"></div></div>
 </div>
+<div class="fu-grid">
+  <div><label for="veHeight">身高（cm）</label><input id="veHeight" inputmode="decimal" autocomplete="off" placeholder="例如 145"/><div class="fu-hint small">1–17 岁患者请填写：系统按身高用 Schwartz 2009 公式估算 eGFR；成人可不填。</div></div>
+</div>
 <label for="veNotes">备注（可选，最多 500 字）</label>
 <textarea id="veNotes" maxlength="500" placeholder="例如：外院复查结果补录。请勿填写姓名、电话、病案号等身份信息。"></textarea>
 <div id="veNotesHint" class="fu-hint small" aria-live="polite"></div>
@@ -164,15 +167,15 @@ export function createFollowupDialogs(deps) {
   <button type="button" class="btn" id="veSaveNext">保存并录下一位</button>
   <button type="button" class="btn" data-modal-close>关闭</button>
 </div>
-<p class="muted small">血肌酐统一按 μmol/L 保存，UPCR 统一按 mg/g 保存。eGFR 由系统根据血肌酐及基线性别、出生年份按 CKD-EPI 2021 公式自动计算。</p>`,
+<p class="muted small">血肌酐统一按 μmol/L 保存，UPCR 统一按 mg/g 保存。eGFR 由系统根据血肌酐及基线性别、出生年份按 CKD-EPI 2021 公式自动计算；1–17 岁按本次身高用 Schwartz 2009 公式计算，未填身高则不计算。</p>`,
     });
     const q = modal.q;
-    const fields = { code: q('#veCode'), date: q('#veDate'), sbp: q('#veSbp'), dbp: q('#veDbp'), scr: q('#veScr'), scrUnit: q('#veScrUnit'), upcr: q('#veUpcr'), upcrUnit: q('#veUpcrUnit'), notes: q('#veNotes') };
+    const fields = { code: q('#veCode'), date: q('#veDate'), sbp: q('#veSbp'), dbp: q('#veDbp'), scr: q('#veScr'), scrUnit: q('#veScrUnit'), upcr: q('#veUpcr'), upcrUnit: q('#veUpcrUnit'), height: q('#veHeight'), notes: q('#veNotes') };
     const feedback = q('#veFeedback');
     let pending = null;
     let busy = false;
 
-    const draft = () => ({ patientCode: fields.code.value, visitDate: fields.date.value, sbp: fields.sbp.value, dbp: fields.dbp.value, scr: fields.scr.value, scrUnit: fields.scrUnit.value, upcr: fields.upcr.value, upcrUnit: fields.upcrUnit.value, notes: fields.notes.value });
+    const draft = () => ({ patientCode: fields.code.value, visitDate: fields.date.value, sbp: fields.sbp.value, dbp: fields.dbp.value, scr: fields.scr.value, scrUnit: fields.scrUnit.value, upcr: fields.upcr.value, upcrUnit: fields.upcrUnit.value, height: fields.height.value, notes: fields.notes.value });
 
     function applyBloodPressureSplit(source) {
       const parts = splitBloodPressure(source.value);
@@ -248,7 +251,7 @@ export function createFollowupDialogs(deps) {
 
     function resetForNext(message, tone = 'ok') {
       cancelContextRead();
-      for (const key of ['sbp', 'dbp', 'scr', 'upcr', 'notes']) fields[key].value = '';
+      for (const key of ['sbp', 'dbp', 'scr', 'upcr', 'height', 'notes']) fields[key].value = '';
       fields.code.readOnly = false;
       fields.code.value = '';
       q('#veBpHint').textContent = '可在收缩压一栏直接输入“130/80”，系统会自动拆分。';
@@ -272,7 +275,7 @@ export function createFollowupDialogs(deps) {
       }
       if (errors.length) {
         setFeedback(feedback, errors.length === 1 ? errors[0].message : ['请先修正以下内容：', ...errors.map(e => e.message)], 'error');
-        ({ code: fields.code, date: fields.date, sbp: fields.sbp, dbp: fields.dbp, scr: fields.scr, upcr: fields.upcr, notes: fields.notes })[errors[0].field]?.focus();
+        ({ code: fields.code, date: fields.date, sbp: fields.sbp, dbp: fields.dbp, scr: fields.scr, upcr: fields.upcr, height: fields.height, notes: fields.notes })[errors[0].field]?.focus();
         return;
       }
       try { deps.assertCurrent(op); } catch (e) { setFeedback(feedback, deps.errorMessage(e), 'error'); return; }
@@ -307,7 +310,7 @@ export function createFollowupDialogs(deps) {
     fields.sbp.addEventListener('change', () => { applyBloodPressureSplit(fields.sbp); refreshHints(); });
     fields.sbp.addEventListener('input', event => { if (event.inputType === 'insertFromPaste' || event.inputType === undefined) applyBloodPressureSplit(fields.sbp); refreshHints(); });
     fields.dbp.addEventListener('change', () => { applyBloodPressureSplit(fields.dbp); refreshHints(); });
-    for (const key of ['dbp', 'scr', 'upcr', 'notes']) fields[key].addEventListener('input', refreshHints);
+    for (const key of ['dbp', 'scr', 'upcr', 'height', 'notes']) fields[key].addEventListener('input', refreshHints);
     for (const key of ['scrUnit', 'upcrUnit']) fields[key].addEventListener('change', refreshHints);
     fields.code.addEventListener('change', refreshContext);
     q('#veSave').addEventListener('click', () => submit(false));
