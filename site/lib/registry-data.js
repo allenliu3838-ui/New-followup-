@@ -155,7 +155,8 @@ const C3G_EM_INPUT=Object.freeze({C3GN:'C3GN',DDD:'DDD',unclassified:'unclassifi
 const C3G_PARAPROTEIN_INPUT=Object.freeze({negative:'negative',positive:'positive',not_tested:'not_tested','阴性':'negative','阳性':'positive','未查':'not_tested'});
 const FOLLOWUP_INPUT=Object.freeze({active:'active',lost:'lost',withdrawn:'withdrawn',deceased:'deceased',kidney_failure:'kidney_failure',transferred:'transferred','在访':'active','失访':'lost','退出':'withdrawn','退出研究':'withdrawn','死亡':'deceased','肾衰竭':'kidney_failure','转院':'transferred'});
 export const VISIT_IMPORT_FIELDS=['patient_code','visit_date','sbp','dbp','scr_umol_l','upcr','egfr','notes','height_cm'];
-function localDateText(date=new Date()){return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;}
+// 研究日期的“今天”按北京时间（UTC+8），与数据库 registry_private.local_today() 和 followup-board.js 的 researchToday() 一致。
+function researchDateText(now=Date.now()){return new Date(Number(now)+8*3600*1000).toISOString().slice(0,10);}
 export function normalizeImportRow(kind,input,defaultUpcrUnit=''){
   const allowed=kind==='baseline'?BASELINE_IMPORT_FIELDS:VISIT_IMPORT_FIELDS;
   const result={};
@@ -183,7 +184,7 @@ export function normalizeImportRow(kind,input,defaultUpcrUnit=''){
   }else{
     // 与“录入随访”对话框及数据库一致：至少一项测量值；各项按数据库范围检查，未填的项保持空白。
     result.visit_date=strictDate(result.visit_date,'随访日期',true);
-    if(result.visit_date>localDateText())throw new Error('随访日期不能晚于今天');
+    const today=researchDateText();if(result.visit_date>today)throw new Error(`随访日期不能晚于今天（北京时间 ${today}）`);
     if('scr_umol_l'in result)result.scr_umol_l=creatinineUmol(result.scr_umol_l,'umol','血肌酐');
     for(const key of ['sbp','dbp','upcr','egfr','height_cm'])if(key in result)result[key]=finiteNumber(result[key],fieldLabel(key),CLINICAL_LIMITS[key]);
     if(!['sbp','dbp','scr_umol_l','upcr','egfr'].some(key=>key in result))throw new Error('请至少填写一项测量值（收缩压、舒张压、血肌酐或 UPCR）');

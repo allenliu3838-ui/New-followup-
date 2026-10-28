@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import { chromium } from '@playwright/test';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../site');
@@ -145,11 +146,33 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
   const external = [];
   const unknown = [];
   const importReplies = [];
+  const exportReplies = [];     // 冻结请求的预置结果：{ lost: true } 服务器已创建但响应丢失；{ postgrestError } 服务器拒绝
   const holds = new Map();      // 'table:研究编号' → 等待释放的 Promise，用于模拟迟到的响应
   const served = [];            // 看板视图返回过的 patient_id（检查分页不漏不重）
   const tokens = data.tokens.map(t => ({ ...t }));
   const inquiries = (data.inquiries || []).map(r => ({ ...r }));
   let newTokenCount = 0;
+  // 冻结数据版本：按请求编号幂等（同一请求重试返回同一版本），内容与 SHA-256 一并保存，供“下载分析包”重新读取。
+  const snapshots = [];
+  const exportsById = new Map();
+  function createExport(body) {
+    const prior = snapshots.find(x => x.request_id === body.p_request_id && x.project_id === body.p_project_id);
+    if (prior) return exportsById.get(prior.id);
+    const n = snapshots.length + 1;
+    const id = `60000000-0000-4000-8000-0000000000${String(n).padStart(2, '0')}`;
+    const project = data.projects.find(x => x.id === body.p_project_id) || PROJECT;
+    const patients = ['P001', 'P002', 'P003'].map((code, i) => ({ id: `61000000-0000-4000-8000-00000000000${i + 1}`, project_id: project.id, patient_code: code, sex: 'F', birth_year: 1980, baseline_date: '2024-01-01', consent_status: 'consented' }));
+    const visits = [{ id: '62000000-0000-4000-8000-000000000001', project_id: project.id, patient_code: 'P001', visit_date: '2024-06-01', sbp: 120, dbp: 80, scr_umol_l: 90, upcr: 500, egfr: 70, egfr_formula_version: 'CKD-EPI-2021-Cr' },
+      { id: '62000000-0000-4000-8000-000000000002', project_id: project.id, patient_code: 'P002', visit_date: '2024-06-02', sbp: 130, dbp: 85, scr_umol_l: 100, upcr: 800, egfr: 60, egfr_formula_version: 'CKD-EPI-2021-Cr' }];
+    const content = { schema_version: 'registry_v2', captured_at: new Date().toISOString(), project: { id: project.id, name: project.name, center_code: project.center_code, module: project.module, registry_type: project.registry_type },
+      tables: { patients_baseline: patients, visits_long: visits, labs_long: [], meds_long: [], variants_long: [], events_long: [], ktx_baseline_ext: [], ktx_visits_ext: [], data_issues: [] } };
+    const contentText = JSON.stringify(content);
+    const code = `KS-2026-SYNTHETIC${String(n).padStart(4, '0')}`;
+    const out = { snapshot_id: code, content_text: contentText, content_sha256: createHash('sha256').update(contentText, 'utf8').digest('hex'), consistency: 'single_statement_snapshot', schema_version: 'registry_v2' };
+    snapshots.unshift({ id, snapshot_id: code, project_id: project.id, status: 'locked', kind: 'paper_package', created_at: content.captured_at, n_patients: patients.length, n_visits: visits.length, schema_version: 'registry_v2', notes: 'frozen_export_v2; immutable content', request_id: body.p_request_id });
+    exportsById.set(id, out);
+    return out;
+  }
   const cors = origin => ({ 'access-control-allow-origin': origin || '*', 'access-control-allow-credentials': 'true', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,PATCH,PUT,DELETE,OPTIONS', 'access-control-expose-headers': 'content-range,x-total-count' });
   const filters = (url, op) => Object.fromEntries([...url.searchParams].filter(([, v]) => v.startsWith(`${op}.`)).map(([k, v]) => [k, v.slice(op.length + 1)]));
 
@@ -184,7 +207,10 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
       case 'admin_list_contracts': case 'admin_list_orders': return data.admin ? [] : null;
       case 'get_my_contract': return [];
       case 'list_project_members': return [{ user_id: USER.id, email: USER.email, display_name: null, role: 'owner', created_at: '2026-01-01T00:00:00Z', is_owner: true }];
-      case 'list_project_snapshots': return [];
+      case 'list_project_snapshots': return snapshots.filter(x => x.project_id === body.p_project_id).map(({ request_id, ...x }) => x);
+      case 'create_registry_export': return createExport(body);
+      case 'get_registry_export': return exportsById.get(body.p_snapshot_id) ?? null;
+      case 'log_project_audit': return null;
       case 'get_issue_summary': return { total_open: 3, total_in_prog: 0, total_resolved: 1, total_wontfix: 0 };
       case 'import_registry_rows': return importReplies.shift() ?? { inserted: 1, updated: 0, skipped: 0, total: 1, replayed: false };
       case 'create_patient_token_v2': {
@@ -235,6 +261,11 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
       // 测试可预置数据库错误（PostgREST 错误格式）或网络中断。
       if (rpcName === 'import_registry_rows' && importReplies[0]?.postgrestError) return json(400, importReplies.shift().postgrestError);
       if (rpcName === 'import_registry_rows' && importReplies[0]?.abort) { importReplies.shift(); return settle(route.abort('failed')); }
+      if (rpcName === 'create_registry_export' && exportReplies.length) {
+        const reply = exportReplies.shift();
+        if (reply.postgrestError) return json(400, reply.postgrestError);
+        if (reply.lost) { createExport(body); return settle(route.abort('failed')); }
+      }
       if (rpcName === 'create_patient_token_v2' && data.tokenErrors?.[body?.p_patient_code]) return json(400, { code: 'P0001', message: data.tokenErrors[body.p_patient_code], details: null, hint: null });
       const value = rpc(rpcName, body || {});
       return value === null && rpcName === 'revoke_patient_token_by_id' ? settle(route.fulfill({ status: 204, headers })) : json(200, value);
@@ -271,7 +302,7 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
     return () => { holds.delete(`${table}:${patientCode}`); release(); };
   }
 
-  return { requests, external, unknown, importReplies, served, tokens, inquiries, hold, handle, rpcCalls: name => requests.filter(r => r.path === `/rest/v1/rpc/${name}`) };
+  return { requests, external, unknown, importReplies, exportReplies, served, tokens, inquiries, hold, handle, rpcCalls: name => requests.filter(r => r.path === `/rest/v1/rpc/${name}`) };
 }
 
 function sessionFor() {
@@ -435,7 +466,7 @@ async function main() {
   await checkPureHelpers();
   const server = await startServer();
   const origin = `http://127.0.0.1:${server.address().port}`;
-  const browser = await chromium.launch({ executablePath: chromiumExecutable(), headless: true });
+  const browser = await chromium.launch({ executablePath: chromiumExecutable(), headless: true, env: { ...process.env, LANG: 'C.UTF-8', LC_ALL: 'C.UTF-8' } });
   try {
     // 0. 未登录：只显示登录卡片，工作台内容不进入页面，也不访问外部主机。
     {
@@ -791,6 +822,69 @@ async function main() {
     assert.equal(csvRetry.p_kind, 'visits');
     assert.deepEqual(csvRetry.p_rows, [{ patient_code: 'P001', visit_date: today, sbp: 128, dbp: 78 }, { patient_code: 'P002', visit_date: today, scr_umol_l: 92, upcr: 45000, notes: '外院复查' }]);
 
+    // 7d. 导出：点击后先说明项目、数据范围和“会新增冻结版本”，取消不写入；确认一次只新增一个版本并显示编号与结果；
+    //     列表中的“下载分析包”只读取已有版本，不新增；“冻结（不下载）”和账户设置里的导出同样先确认。
+    assert.equal(mock.rpcCalls('create_registry_export').length, 0);
+    const freezeModal = page.locator('[data-registry-modal="freezeConfirm"]');
+    await page.click('#btnPaperPack');
+    await freezeModal.waitFor();
+    const freezeText = await text(freezeModal);
+    for (const needle of [PROJECT.name, 'TST01', '基线 9 例、随访 13 条', '新增一个冻结数据版本', '不能修改或删除', '下载分析包', '不会新增版本']) assert.ok(freezeText.includes(needle), `确认框应说明：${needle}`);
+    assert.equal(mock.rpcCalls('create_registry_export').length, 0, '确认前不冻结');
+    await freezeModal.getByRole('button', { name: '取消' }).click();
+    await freezeModal.waitFor({ state: 'detached' });
+    assert.equal(mock.rpcCalls('create_registry_export').length, 0, '取消不冻结');
+    await page.click('#btnPaperPack');
+    await freezeModal.waitFor();
+    const [packDownload] = await Promise.all([page.waitForEvent('download'), page.locator('#fzConfirm').dblclick()]);
+    assert.match(packDownload.suggestedFilename(), /^registry_analysis_.*\.zip$/);
+    await eventually(async () => (await text(page.locator('#snapshotOut')))?.includes('分析包已下载'), '应显示冻结与下载结果');
+    assert.equal(mock.rpcCalls('create_registry_export').length, 1, '双击确认也只冻结一次');
+    const freezeOut = await text(page.locator('#snapshotOut'));
+    assert.ok(freezeOut.startsWith('已创建冻结版本 KS-2026-SYNTHETIC0001（') && freezeOut.includes('基线 3 例、随访 2 条，SHA-256 '), freezeOut);
+    assert.equal(await page.getAttribute('#snapshotOut', 'data-tone'), 'ok');
+    const snapRow = page.locator('#snapshotsList tr[data-snapshot-code="KS-2026-SYNTHETIC0001"]');
+    await snapRow.waitFor();
+    assert.ok((await text(snapRow)).includes('基线 3 例 · 随访 2 条'));
+    const [repack] = await Promise.all([page.waitForEvent('download'), snapRow.locator('[data-pack-id]').click()]);
+    assert.match(repack.suggestedFilename(), /\.zip$/);
+    await eventually(async () => (await text(page.locator('#snapshotOut')))?.includes('没有新增版本'), '重新下载应说明没有新增版本');
+    assert.equal(mock.rpcCalls('create_registry_export').length, 1, '重新下载分析包不新增版本');
+    assert.equal(mock.rpcCalls('get_registry_export').length, 1);
+    assert.deepEqual(mock.rpcCalls('log_project_audit').map(r => r.body.p_details.source), ['new_snapshot', 'existing_snapshot']);
+    assert.deepEqual(mock.rpcCalls('log_project_audit').map(r => r.body.p_snapshot_id), ['KS-2026-SYNTHETIC0001', 'KS-2026-SYNTHETIC0001']);
+    await page.click('#btnCreateSnapshot');
+    await freezeModal.waitFor();
+    assert.ok((await text(freezeModal)).includes('只保存版本，不下载文件'));
+    await freezeModal.getByRole('button', { name: '取消' }).click();
+    await page.evaluate(() => { document.querySelector('#accountDetails').open = true; });
+    assert.equal(await text(page.locator('#btnExportAccount')), '导出当前项目完整数据（创建冻结版本）…');
+    await page.click('#btnExportAccount');
+    await freezeModal.waitFor();
+    assert.ok((await text(freezeModal)).includes('新增一个冻结数据版本'));
+    await freezeModal.getByRole('button', { name: '取消' }).click();
+    await page.evaluate(() => { document.querySelector('#accountDetails').open = false; });
+    assert.equal(mock.rpcCalls('create_registry_export').length, 1, '取消的确认框不冻结');
+
+    // 7e. 服务器已创建但响应丢失：不能说“没有创建”，提示无法确认并刷新列表（新版本出现在列表中）；
+    //     本页重试沿用同一请求编号，不会多出版本。服务器明确拒绝时才说“没有创建”。
+    const freezeOnce = async () => { await page.click('#btnCreateSnapshot'); await freezeModal.waitFor(); await page.click('#fzConfirm'); await freezeModal.waitFor({ state: 'detached' }); };
+    mock.exportReplies.push({ lost: true });
+    await freezeOnce();
+    await eventually(async () => (await text(page.locator('#snapshotOut')))?.startsWith('无法确认冻结版本是否已创建'), '响应丢失时提示无法确认');
+    assert.ok(!(await text(page.locator('#snapshotOut'))).includes('没有创建'), '响应丢失时不能断言没有创建');
+    await page.locator('#snapshotsList tr[data-snapshot-code="KS-2026-SYNTHETIC0002"]').waitFor();
+    await freezeOnce();
+    await eventually(async () => (await text(page.locator('#snapshotOut')))?.startsWith('已创建冻结版本 KS-2026-SYNTHETIC0002（'), '本页重试返回同一版本');
+    const [lostCall, retryCall] = mock.rpcCalls('create_registry_export').slice(1).map(r => r.body);
+    assert.equal(retryCall.p_request_id, lostCall.p_request_id, '重试沿用同一请求编号');
+    assert.equal(await page.locator('#snapshotsList tr[data-snapshot-code]').count(), 2, '重试没有多出版本');
+    mock.exportReplies.push({ postgrestError: { code: 'P0001', message: 'export_payload_too_large', details: null, hint: null } });
+    await freezeOnce();
+    await eventually(async () => (await text(page.locator('#snapshotOut')))?.startsWith('没有创建冻结版本：'), '服务器明确拒绝时说明没有创建');
+    assert.notEqual(mock.rpcCalls('create_registry_export')[3].body.p_request_id, retryCall.p_request_id, '成功之后的下一次冻结使用新的请求编号');
+    assert.equal(await page.locator('#snapshotsList tr[data-snapshot-code]').count(), 2);
+
     // 8. 基因数据默认隐藏，且不读取基因表。
     assert.equal(await page.locator('#geneticsSection').isVisible(), false, '基因录入默认隐藏');
     assert.equal(await page.locator('#btnExportVariants').isVisible(), false, '“导出基因变异”默认隐藏');
@@ -801,6 +895,12 @@ async function main() {
     await page.click(`#projectsList .pill:has-text("${EMPTY_PROJECT.name}")`);
     await eventually(async () => (await metric('core_completeness')) === '—', '无随访时完整率应显示“—”');
     assert.ok((await text(page.locator('#patientsList'))).includes('还没有患者'));
+    await page.click('#btnPaperPack');
+    await freezeModal.waitFor();
+    assert.ok((await text(freezeModal)).includes('本项目还没有患者记录，冻结版本会是空的，不能创建'));
+    assert.equal(await page.locator('#fzConfirm').isDisabled(), true, '空项目不能创建冻结版本');
+    await freezeModal.getByRole('button', { name: '取消' }).click();
+    assert.equal(mock.rpcCalls('create_registry_export').length, 4, '空项目没有发出冻结请求');
 
     // 10. 页面文字不出现表名或旧术语。
     const visible = await page.evaluate(() => document.body.innerText);

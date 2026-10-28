@@ -1,13 +1,35 @@
 // 工作台对话框：录入随访、随访链接、研究状态。
 // 权限与项目上下文由 staff.js 注入；数据库 RPC 仍是唯一的权限与校验依据。
 import {
-  escapeHtml, localToday, formatLocalDateTime, buildVisitRow, visitUnitHints, splitBloodPressure,
+  escapeHtml, localToday, researchToday, futureDateMessage, RESEARCH_TIME_ZONE_LABEL, formatLocalDateTime, buildVisitRow, visitUnitHints,
+  splitBloodPressure, interpretBloodPressure,
   visitSaveMessage, validationDetails, isSameDayConflict, tokenState, revokeReasonLabel, buildFollowupLink,
   linkMessageText, revokesLinks, newLinkBlockReason, CONSENT_STATUSES, FOLLOWUP_STATUSES, FOLLOWUP_STATUS_OPTIONS, FOLLOWUP_STATES, REASON_REQUIRED_CONSENT, REASON_REQUIRED_FOLLOWUP,
   EXIT_CONSENT_STATUSES, EXIT_FOLLOWUP_STATUSES, consentDateLabel, inactiveReason,
 } from '/lib/followup-board.js?v=registry-20261026-cn-v7';
 
 const TOKEN_COLUMNS = 'id,patient_code,created_at,expires_at,single_use,used_at,revoked_at,revoke_reason,active';
+
+const BP_DEFAULT_HINT = '可在收缩压一栏直接输入或粘贴“130/80”，系统会自动拆分。';
+
+// 研究日期输入：上限是北京时间的今天。浏览器自带的超限提示是英文且不说明时区，改为中文并写明按北京时间。
+// 返回检查函数：当前有问题时返回提示文字，否则返回空字符串。
+function guardResearchDate(input, label) {
+  if (!input) return () => '';
+  const check = () => {
+    const today = researchToday();
+    const value = input.value;
+    const message = input.validity?.badInput ? `${label}不是有效日期，请重新选择。`
+      : value && value > today ? futureDateMessage(label, today) : '';
+    input.setCustomValidity(message);
+    input.classList.toggle('fu-invalid', !!message);
+    return message;
+  };
+  input.addEventListener('input', check);
+  input.addEventListener('change', check);
+  check();
+  return check;
+}
 
 function newUuid() {
   if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
@@ -125,7 +147,7 @@ export function createFollowupDialogs(deps) {
   function openVisitEntry(initialCode = '') {
     if (!deps.can('can_write')) { deps.toast('当前项目角色或账户状态不允许录入随访。'); return null; }
     const op = deps.capture();
-    const today = localToday();
+    const today = researchToday();
     const fixed = !!initialCode;
     let contextEpoch = 0;
     let contextAbort = null;
@@ -142,14 +164,14 @@ export function createFollowupDialogs(deps) {
       html: `<p class="muted small">项目：${escapeHtml(op.project.name)}。同一患者同一天只保留一条随访；内容完全相同的重复提交不会重复保存。请只使用研究编号，勿录入姓名等身份信息。</p>
 <div class="fu-grid">
   <div><label for="veCode">研究编号</label><input id="veCode" list="patientCodeOptions" autocomplete="off" maxlength="64" value="${escapeHtml(initialCode)}"${fixed ? ' readonly' : ''}/></div>
-  <div><label for="veDate">随访日期</label><input id="veDate" type="date" value="${today}" max="${today}"/></div>
+  <div><label for="veDate">随访日期</label><input id="veDate" type="date" value="${today}" max="${today}"/><div id="veDateHint" class="fu-hint small" aria-live="polite">研究日期按${RESEARCH_TIME_ZONE_LABEL}，今天是 ${today}。</div></div>
 </div>
 <div id="veContext" class="fu-context small" aria-live="polite"></div>
 <div class="fu-grid">
   <div><label for="veSbp">收缩压（mmHg）</label><input id="veSbp" inputmode="decimal" autocomplete="off" placeholder="例如 130，或直接输入 130/80"/></div>
   <div><label for="veDbp">舒张压（mmHg）</label><input id="veDbp" inputmode="decimal" autocomplete="off" placeholder="例如 80"/></div>
 </div>
-<div id="veBpHint" class="fu-hint small" aria-live="polite">可在收缩压一栏直接输入“130/80”，系统会自动拆分。</div>
+<div id="veBpHint" class="fu-hint small" aria-live="polite">${BP_DEFAULT_HINT}</div>
 <div class="fu-grid">
   <div><label for="veScr">血肌酐</label><div class="inline-field"><input id="veScr" inputmode="decimal" autocomplete="off"/><select id="veScrUnit" aria-label="血肌酐单位"><option value="umol">μmol/L</option><option value="mgdl">mg/dL</option></select></div><div id="veScrHint" class="fu-hint small" aria-live="polite"></div></div>
   <div><label for="veUpcr">尿蛋白肌酐比（UPCR）</label><div class="inline-field"><input id="veUpcr" inputmode="decimal" autocomplete="off"/><select id="veUpcrUnit" aria-label="尿蛋白肌酐比单位"><option value="mgg">mg/g</option><option value="gg">g/g</option></select></div><div id="veUpcrHint" class="fu-hint small" aria-live="polite"></div></div>
@@ -177,23 +199,47 @@ export function createFollowupDialogs(deps) {
 
     const draft = () => ({ patientCode: fields.code.value, visitDate: fields.date.value, sbp: fields.sbp.value, dbp: fields.dbp.value, scr: fields.scr.value, scrUnit: fields.scrUnit.value, upcr: fields.upcr.value, upcrUnit: fields.upcrUnit.value, height: fields.height.value, notes: fields.notes.value });
 
-    function applyBloodPressureSplit(source) {
-      const parts = splitBloodPressure(source.value);
-      if (!parts) return false;
-      fields.sbp.value = parts.sbp;
-      fields.dbp.value = parts.dbp;
-      q('#veBpHint').textContent = `已拆分为收缩压 ${parts.sbp} mmHg、舒张压 ${parts.dbp} mmHg。`;
+    // 血压只按内容拆分，与输入方式无关：收缩压一栏是完整的“130/80”而舒张压一栏为空（或一致）时填入两栏。
+    let lastSplit = null;
+    function setBloodPressure(pair) {
+      fields.sbp.value = pair.sbp;
+      fields.dbp.value = pair.dbp;
+      lastSplit = { ...pair };
+    }
+    function applyBloodPressureSplit() {
+      const bp = interpretBloodPressure(fields.sbp.value, fields.dbp.value);
+      if (!bp.split) return false;
+      setBloodPressure(bp.split);
       return true;
+    }
+    function bloodPressureHint() {
+      const bp = interpretBloodPressure(fields.sbp.value, fields.dbp.value);
+      for (const key of ['sbp', 'dbp']) fields[key].classList.toggle('fu-invalid', bp.error?.field === key);
+      if (bp.error) return { text: bp.error.message, tone: 'error' };
+      if (bp.split) return { text: `识别为收缩压 ${bp.split.sbp} mmHg、舒张压 ${bp.split.dbp} mmHg，离开此栏或保存时填入两栏。` };
+      if (lastSplit && fields.sbp.value === lastSplit.sbp && fields.dbp.value === lastSplit.dbp) return { text: `已拆分为收缩压 ${lastSplit.sbp} mmHg、舒张压 ${lastSplit.dbp} mmHg。` };
+      return { text: BP_DEFAULT_HINT };
+    }
+    let checkDate = () => '';
+    function refreshDateHint() {
+      const message = checkDate();
+      const node = q('#veDateHint');
+      node.textContent = message || `研究日期按${RESEARCH_TIME_ZONE_LABEL}，今天是 ${researchToday()}。`;
+      if (message) node.dataset.tone = 'error'; else delete node.dataset.tone;
     }
 
     function refreshHints() {
+      const bpHint = bloodPressureHint();
+      const bpNode = q('#veBpHint');
+      bpNode.textContent = bpHint.text;
+      if (bpHint.tone) bpNode.dataset.tone = bpHint.tone; else delete bpNode.dataset.tone;
       const hints = visitUnitHints(draft());
       q('#veScrHint').textContent = hints.scr;
       q('#veUpcrHint').textContent = hints.upcr;
       const pii = fields.notes.value && deps.containsPII(fields.notes.value);
       fields.notes.classList.toggle('fu-invalid', !!pii);
       q('#veNotesHint').textContent = pii ? '检测到疑似个人身份信息（手机号、身份证号、住院号、姓名等），请删除后再保存。' : '';
-      const { missing } = buildVisitRow(draft(), { today: localToday() });
+      const { missing } = buildVisitRow(draft(), { today: researchToday() });
       q('#veMissing').textContent = missing.length && missing.length < 4 ? `未填写：${missing.join('、')}。可以保存，缺失项会计入“核心四项完整率”。` : '';
     }
 
@@ -254,7 +300,7 @@ export function createFollowupDialogs(deps) {
       for (const key of ['sbp', 'dbp', 'scr', 'upcr', 'height', 'notes']) fields[key].value = '';
       fields.code.readOnly = false;
       fields.code.value = '';
-      q('#veBpHint').textContent = '可在收缩压一栏直接输入“130/80”，系统会自动拆分。';
+      lastSplit = null;
       q('#veContext').replaceChildren();
       refreshHints();
       setFeedback(feedback, `${message} 请输入下一位患者的研究编号（随访日期已保留）。`, tone);
@@ -264,8 +310,9 @@ export function createFollowupDialogs(deps) {
     async function submit(next) {
       if (busy) return;
       setFeedback(feedback, []);
-      applyBloodPressureSplit(fields.sbp);
-      const { row, errors } = buildVisitRow(draft(), { today: localToday(), containsPII: deps.containsPII });
+      applyBloodPressureSplit();
+      refreshHints();
+      const { row, errors } = buildVisitRow(draft(), { today: researchToday(), containsPII: deps.containsPII });
       const known = row.patient_code ? deps.getRow(row.patient_code) : null;
       if (row.patient_code && deps.rowsLoaded() && !known) {
         errors.unshift({ field: 'code', message: '未在本项目找到该研究编号。请核对，或先在“新增患者”中建立基线。' });
@@ -307,10 +354,26 @@ export function createFollowupDialogs(deps) {
       }
     }
 
-    fields.sbp.addEventListener('change', () => { applyBloodPressureSplit(fields.sbp); refreshHints(); });
-    fields.sbp.addEventListener('input', event => { if (event.inputType === 'insertFromPaste' || event.inputType === undefined) applyBloodPressureSplit(fields.sbp); refreshHints(); });
-    fields.dbp.addEventListener('change', () => { applyBloodPressureSplit(fields.dbp); refreshHints(); });
-    for (const key of ['dbp', 'scr', 'upcr', 'height', 'notes']) fields[key].addEventListener('input', refreshHints);
+    // 一次插入多个字符（粘贴、拖放、输入法上屏、剪贴板建议、自动填写）立即按内容拆分；逐字键入的在离开此栏或保存时拆分，
+    // 以免把正在输入的“130/10…”提前拆开。粘贴事件直接读剪贴板文本，不依赖浏览器报告的输入类型。
+    const insertedAtOnce = event => event.inputType === undefined || /^insertFrom/.test(event.inputType)
+      || event.inputType === 'insertReplacementText' || (event.inputType === 'insertText' && String(event.data ?? '').length > 1);
+    for (const key of ['sbp', 'dbp']) {
+      fields[key].addEventListener('paste', event => {
+        const pair = splitBloodPressure(event.clipboardData?.getData('text') ?? '');
+        if (!pair) return; // 不是“收缩压/舒张压”：按浏览器默认粘贴，随后按内容提示
+        event.preventDefault();
+        setBloodPressure(pair);
+        refreshHints();
+      });
+      fields[key].addEventListener('input', event => { if (insertedAtOnce(event)) applyBloodPressureSplit(); refreshHints(); });
+      fields[key].addEventListener('compositionend', () => { applyBloodPressureSplit(); refreshHints(); });
+      fields[key].addEventListener('change', () => { applyBloodPressureSplit(); refreshHints(); });
+    }
+    checkDate = guardResearchDate(fields.date, '随访日期');
+    fields.date.addEventListener('input', refreshDateHint);
+    fields.date.addEventListener('change', refreshDateHint);
+    for (const key of ['scr', 'upcr', 'height', 'notes']) fields[key].addEventListener('input', refreshHints);
     for (const key of ['scrUnit', 'upcrUnit']) fields[key].addEventListener('change', refreshHints);
     fields.code.addEventListener('change', refreshContext);
     q('#veSave').addEventListener('click', () => submit(false));
@@ -610,7 +673,7 @@ export function createFollowupDialogs(deps) {
       if (deps.isCurrent(op) && modal.isOpen()) modal.q('#ssLoading').textContent = `读取失败：${deps.errorMessage(error)}`;
       return modal;
     }
-    const today = localToday();
+    const today = researchToday();
     const currentConsent = record.consent_status || 'unconfirmed';
     const currentFollowup = record.followup_status || 'active';
     // 只读期间只列出当前取值与退出类取值；数据库同样只放行这类修改。
@@ -648,6 +711,8 @@ ${exitOnly ? '<p id="ssExitOnly" class="fu-warn-line small">账户当前为只�
       followup_status: record.followup_status || 'active',
       followup_status_date: record.followup_status_date || null,
     };
+    guardResearchDate(q('#ssConsentDate'), '日期');
+    guardResearchDate(q('#ssFollowupDate'), '状态变更日期');
     const inputs = { consent_status: q('#ssConsent'), consent_date: q('#ssConsentDate'), consent_version: q('#ssConsentVersion'), followup_status: q('#ssFollowup'), followup_status_date: q('#ssFollowupDate') };
     // 日期属于当前状态：改选状态时清空原状态的日期（原日期保留在修改记录中），并更新标签。
     const syncDates = () => {
@@ -709,7 +774,9 @@ ${exitOnly ? '<p id="ssExitOnly" class="fu-warn-line small">账户当前为只�
       const errors = [];
       for (const key of ['consent_date', 'followup_status_date']) {
         const value = changes[key];
-        if (value && (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value > localToday())) errors.push(`${key === 'consent_date' ? consentDateLabel(inputs.consent_status.value) : '状态变更日期'}须为有效日期，且不能晚于今天。`);
+        const label = key === 'consent_date' ? consentDateLabel(inputs.consent_status.value) : '状态变更日期';
+        if (value && !/^\d{4}-\d{2}-\d{2}$/.test(value)) errors.push(`${label}须为有效日期。`);
+        else if (value && value > researchToday()) errors.push(futureDateMessage(label));
       }
       if (changes.consent_version && changes.consent_version.length > 100) errors.push('知情同意书版本最多 100 个字符。');
       const rule = reasonRule(changes);
@@ -776,7 +843,7 @@ ${exitOnly ? '<p id="ssExitOnly" class="fu-warn-line small">账户当前为只�
     const list = [...new Set(codes)];
     if (!checkBulkCodes(list)) return null;
     const op = deps.capture();
-    const today = localToday();
+    const today = researchToday();
     const modal = openModal({
       id: 'bulkStartDate',
       title: '设置提醒起算日',
@@ -787,7 +854,7 @@ ${exitOnly ? '<p id="ssExitOnly" class="fu-warn-line small">账户当前为只�
   <label><input type="radio" name="bsMode" value="set" checked/> 设置为下面的日期</label>
   <label><input type="radio" name="bsMode" value="clear"/> 清除提醒起算日（恢复按基线日期或最近随访计算）</label>
 </div>
-<div class="fu-grid"><div><label for="bsDate">提醒起算日</label><input id="bsDate" type="date" value="${today}" max="${today}"/></div></div>
+<div class="fu-grid"><div><label for="bsDate">提醒起算日</label><input id="bsDate" type="date" value="${today}" max="${today}"/><div class="fu-hint small">按${RESEARCH_TIME_ZONE_LABEL}，今天是 ${today}。</div></div></div>
 <label for="bsReason">原因（必填，2–500 字，不含身份信息）</label>
 <textarea id="bsReason" maxlength="500" placeholder="例如：历史补录患者，从今天开始提醒随访。不要填写姓名、电话等身份信息。"></textarea>
 <div id="bsFeedback" class="fu-feedback"></div>
@@ -795,6 +862,7 @@ ${exitOnly ? '<p id="ssExitOnly" class="fu-warn-line small">账户当前为只�
     });
     const q = modal.q;
     q('#bsCodes').textContent = `已选择 ${list.length} 位患者：${codeSummary(list)}`;
+    guardResearchDate(q('#bsDate'), '提醒起算日');
     const feedback = q('#bsFeedback');
     const mode = () => q('input[name="bsMode"]:checked')?.value || 'set';
     modal.overlay.querySelectorAll('input[name="bsMode"]').forEach(r => r.addEventListener('change', () => { q('#bsDate').disabled = mode() === 'clear'; }));
@@ -805,7 +873,8 @@ ${exitOnly ? '<p id="ssExitOnly" class="fu-warn-line small">账户当前为只�
       const reason = q('#bsReason').value.trim();
       const errors = [];
       if (!clear) {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > localToday()) errors.push('提醒起算日须为有效日期，且不能晚于今天。');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.push('提醒起算日须为有效日期。');
+        else if (date > researchToday()) errors.push(futureDateMessage('提醒起算日'));
         else {
           const early = list.filter(c => { const b = deps.getRow(c)?.baseline_date; return b && date < b; });
           if (early.length) errors.push(`提醒起算日不能早于基线日期：${codeSummary(early)} 的基线日期晚于所选日期。`);
@@ -844,7 +913,7 @@ ${exitOnly ? '<p id="ssExitOnly" class="fu-warn-line small">账户当前为只�
     const list = [...new Set(codes)];
     if (!checkBulkCodes(list)) return null;
     const op = deps.capture();
-    const today = localToday();
+    const today = researchToday();
     const options = Object.entries(CONSENT_STATUSES).map(([value, item]) => `<option value="${value}"${value === 'consented' ? ' selected' : ''}>${escapeHtml(item.label)}</option>`).join('');
     const modal = openModal({
       id: 'bulkConsent',
@@ -865,6 +934,7 @@ ${exitOnly ? '<p id="ssExitOnly" class="fu-warn-line small">账户当前为只�
     });
     const q = modal.q;
     q('#bcCodes').textContent = `已选择 ${list.length} 位患者：${codeSummary(list)}`;
+    guardResearchDate(q('#bcDate'), '日期');
     const feedback = q('#bcFeedback');
     const sync = () => {
       const status = q('#bcStatus').value;
@@ -881,7 +951,8 @@ ${exitOnly ? '<p id="ssExitOnly" class="fu-warn-line small">账户当前为只�
       const reason = q('#bcReason').value.trim();
       const errors = [];
       if (!CONSENT_STATUSES[status]) errors.push('请选择同意状态。');
-      if (date && (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > localToday())) errors.push(`${consentDateLabel(status)}须为有效日期，且不能晚于今天。`);
+      if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.push(`${consentDateLabel(status)}须为有效日期。`);
+      else if (date && date > researchToday()) errors.push(futureDateMessage(consentDateLabel(status)));
       if ([...version].length > 100) errors.push('知情同意书版本最多 100 个字符。');
       if (version && deps.containsPII(version)) errors.push('知情同意书版本中检测到疑似个人身份信息，请删除后再保存。');
       const reasonError = checkBulkReason(reason, '依据');

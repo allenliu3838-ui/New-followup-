@@ -40,7 +40,7 @@
         <li><span class="qs-title">生成随访链接</span>在“随访看板”该患者一行点<span class="ui-label">随访链接</span>，再点<span class="ui-label">生成新链接</span>，立即复制并只发给该患者或授权填写人。<span class="qs-where">链接只在生成时显示一次，之后无法再次查看；不再需要或发错时在同一窗口<span class="ui-label">撤销</span>。</span></li>
         <li><span class="qs-title">录随访</span>患者打开链接核对后提交；患者不方便时，研究人员在“随访看板”该患者一行点<span class="ui-label">录入随访</span>直接录入。<span class="qs-where">收缩压一栏可直接输入“130/80”；连续录多位患者可点“保存并录下一位”。</span></li>
         <li><span class="qs-title">看数据质控问题</span>在“数据质控问题”点<span class="ui-label">查看未解决的问题</span>，逐条点<span class="ui-label">核对原记录</span>，对照原始报告更正并填写原因。<span class="qs-where">确认原值无误、无法更正时才选“接受不修复”，它不会修改原值。</span></li>
-        <li><span class="qs-title">导出</span>在“导出与快照”点<span class="ui-label">冻结并导出完整分析包</span>，得到一个冻结数据版本（数据、校验值和分析脚本）。<span class="qs-where">需要负责人或分析协作人权限；导出的分析脚本在自己电脑上运行，见<a href="#advanced">进阶</a>。</span></li>
+        <li><span class="qs-title">导出</span>在“导出与快照”点<span class="ui-label">创建冻结版本并导出分析包</span>，核对将冻结的项目和数据范围后确认：系统新增一个冻结数据版本（不能修改或删除），并下载基于它的分析包（数据、校验值和分析脚本）。<span class="qs-where">已有版本在“数据快照”列表点“下载分析包”重新下载，不会新增版本。需要负责人或分析协作人权限；导出的分析脚本在自己电脑上运行，见<a href="#advanced">进阶</a>。</span></li>
       </ol>
       <div class="okbox" style="margin-top:12px"><b>本次新增：</b>工作台可以直接“录入随访”，不必先发链接；“随访看板”按项目的随访间隔标出逾期、14 天内到期和尚无随访的患者，逾期者排在最前；每位患者可在“研究状态”中记录知情同意与随访状态；随访链接可在患者一行集中查看和撤销。</div>
 
@@ -82,7 +82,7 @@
       <p>逐步操作见<a href="/user-manual-cn#sop">日常录入流程</a>、<a href="/user-manual-cn#token">随访链接</a>、<a href="/user-manual-cn#rules">字段与单位</a>和<a href="/user-manual-cn#issues">数据质控问题与更正</a>；批量导入见<a href="/user-manual-cn#import">CSV 批量导入</a>。</p>
 
       <h2 id="research">冻结导出与分析</h2>
-      <p>“冻结并导出完整分析包”会把当前项目在同一时刻的数据保存为一个冻结数据版本，并下载 ZIP：内含九张数据表、各文件校验值（SHA-256）、Excel 查看用的副本和可在自己电脑运行的分析脚本。冻结不会阻止之后的合法更正；需要同一版本时，从“数据快照（冻结的数据版本）”列表重新下载。</p>
+      <p>“创建冻结版本并导出分析包”会先显示项目和将冻结的数据范围，确认后把当前项目在同一时刻的数据保存为一个新的冻结数据版本，并下载 ZIP：内含九张数据表、各文件校验值（SHA-256）、Excel 查看用的副本和可在自己电脑运行的分析脚本。冻结不会阻止之后的合法更正；需要同一版本时，在“数据快照（冻结的数据版本）”列表中对该版本点“下载分析包”或“下载冻结数据（JSON）”，不会新增版本。</p>
       <ul>
         <li><b>不运行脚本也能用：</b>CSV 为 UTF-8 编码，可直接导入 Excel、SPSS、R 或 Stata；研究编号请按文本读入，避免 0001 变成 1。</li>
         <li><b>运行脚本得到什么：</b>描述性基线表（Table 1）、估算肾小球滤过率（eGFR）与 UPCR 的描述性趋势、年度随访选取、数据质控清单，以及本次实际执行步骤的英文说明（Methods 草稿，需研究团队审阅）。</li>

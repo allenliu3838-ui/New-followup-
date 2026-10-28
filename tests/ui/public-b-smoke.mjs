@@ -187,7 +187,7 @@ try {
     const steps = await r.page.locator('ol.quickstart > li .qs-title').allInnerTexts();
     check(JSON.stringify(steps) === JSON.stringify(['注册', '建项目', '录第一例', '生成随访链接', '录随访', '看数据质控问题', '导出']), `guide: 步骤名称 ${steps}`);
     const quickText = await r.page.locator('ol.quickstart').innerText();
-    for (const label of ['创建项目', '核对并保存基线', '随访链接', '生成新链接', '录入随访', '查看未解决的问题', '核对原记录', '冻结并导出完整分析包']) {
+    for (const label of ['创建项目', '核对并保存基线', '随访链接', '生成新链接', '录入随访', '查看未解决的问题', '核对原记录', '创建冻结版本并导出分析包']) {
       check(quickText.includes(label), `guide: 快速上手缺少工作台按钮文字「${label}」`);
     }
     check((await r.page.locator('main').innerText()).includes('随访看板'), 'guide: 未说明随访看板');
