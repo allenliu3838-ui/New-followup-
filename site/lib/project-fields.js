@@ -80,6 +80,8 @@ export function definitionProblem(field, { others = [], previous = null } = {}) 
     }
     if (new Set(list.map(c => c.code)).size !== list.length) return '选项代码不能重复。';
     if (new Set(list.map(c => c.label)).size !== list.length) return '选项显示名称不能重复。';
+    const clash = list.find(c => list.some(o => o !== c && o.code === lower(c.label)));
+    if (clash) return `选项“${clash.label}”的显示名称与另一个选项的代码相同，导入时会产生歧义，请修改显示名称。`;
     const removed = (previous?.choices || []).filter(c => !list.some(n => n.code === c.code)).map(c => c.code);
     if (removed.length) return `已有选项不能删除（${removed.join('、')}）；可以修改显示名称，不再使用的选项可在名称中注明“停用”。`;
   }
@@ -185,7 +187,8 @@ export function inputToValue(field, raw, { today, containsPII } = {}) {
 /** CSV 单元格 → 导入值（文本）。选项可填代码或显示名称；返回 { value } 或 { reason, fix }。 */
 export function cellToValue(field, cell, { today, containsPII } = {}) {
   const t = String(cell ?? '').trim();
-  const choiceOf = text => (field.choices || []).find(c => c.code === lower(text) || normal(c.label) === normal(text));
+  // 先按代码匹配，再按显示名称：某选项的名称恰好等于另一选项的代码时，以代码为准（导出文件写的是代码）。
+  const choiceOf = text => (field.choices || []).find(c => c.code === lower(text)) || (field.choices || []).find(c => normal(c.label) === normal(text));
   switch (field.value_type) {
     case 'choice': {
       const c = choiceOf(t);

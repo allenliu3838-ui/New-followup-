@@ -83,8 +83,10 @@ CREATE TABLE IF NOT EXISTS public.project_fields (
   updated_by  uuid,
   updated_at  timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT project_fields_key_format CHECK (field_key ~ '^[a-z][a-z0-9_]{1,39}$'),
-  CONSTRAINT project_fields_label_text CHECK (char_length(label_cn) BETWEEN 1 AND 60 AND label_cn = btrim(label_cn) AND label_cn !~ '[[:cntrl:]]'),
-  CONSTRAINT project_fields_help_text CHECK (help_cn IS NULL OR (char_length(help_cn) BETWEEN 1 AND 300 AND help_cn !~ '[[:cntrl:]]')),
+  -- Bounds are written as two comparisons, not BETWEEN inside AND: the stored definition then
+  -- survives pg_dump/pg_restore unchanged (a BETWEEN nested in AND is flattened on restore).
+  CONSTRAINT project_fields_label_text CHECK (char_length(label_cn) >= 1 AND char_length(label_cn) <= 60 AND label_cn = btrim(label_cn) AND label_cn !~ '[[:cntrl:]]'),
+  CONSTRAINT project_fields_help_text CHECK (help_cn IS NULL OR (char_length(help_cn) >= 1 AND char_length(help_cn) <= 300 AND help_cn !~ '[[:cntrl:]]')),
   CONSTRAINT project_fields_type_check CHECK (value_type IN ('choice','multi_choice','yes_no','number','date','text')),
   CONSTRAINT project_fields_choices_shape CHECK ((value_type IN ('choice','multi_choice')) = (choices IS NOT NULL)
     AND (choices IS NULL OR registry_private.valid_field_choices(choices))),
@@ -92,9 +94,9 @@ CREATE TABLE IF NOT EXISTS public.project_fields (
   CONSTRAINT project_fields_range_order CHECK (min_value IS NULL OR max_value IS NULL OR min_value <= max_value),
   CONSTRAINT project_fields_range_finite CHECK ((min_value IS NULL OR min_value NOT IN ('NaN'::numeric,'Infinity'::numeric,'-Infinity'::numeric))
     AND (max_value IS NULL OR max_value NOT IN ('NaN'::numeric,'Infinity'::numeric,'-Infinity'::numeric))),
-  CONSTRAINT project_fields_unit_text CHECK (unit IS NULL OR (char_length(unit) BETWEEN 1 AND 20 AND unit !~ '[[:cntrl:]]')),
+  CONSTRAINT project_fields_unit_text CHECK (unit IS NULL OR (char_length(unit) >= 1 AND char_length(unit) <= 20 AND unit !~ '[[:cntrl:]]')),
   CONSTRAINT project_fields_sort_range CHECK (sort_order BETWEEN 0 AND 99999),
-  CONSTRAINT project_fields_source_text CHECK (source IS NULL OR (char_length(source) BETWEEN 1 AND 60 AND source !~ '[[:cntrl:]]')),
+  CONSTRAINT project_fields_source_text CHECK (source IS NULL OR (char_length(source) >= 1 AND char_length(source) <= 60 AND source !~ '[[:cntrl:]]')),
   CONSTRAINT project_fields_key_unique UNIQUE (project_id, field_key)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS project_fields_label_unique ON public.project_fields(project_id, label_cn);

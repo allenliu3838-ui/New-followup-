@@ -197,6 +197,12 @@ async function checkPureHelpers() {
   const csv = fieldsLib.fieldsExportCsv([{ field_key: 'delta', label_cn: '变化', value_type: 'number', sort_order: 10, active: true }, { field_key: 'note', label_cn: '备注', value_type: 'text', sort_order: 20, active: true }],
     [{ patient_code: 'P1', field_key: 'delta', value_num: -5 }, { patient_code: 'P1', field_key: 'note', value_text: '=SUM(A1)' }]);
   assert.equal(csv.split('\r\n')[1], "P1,-5,'=SUM(A1)");
+  // 选项代码优先于显示名称：名称恰好等于另一个选项的代码时，按代码取值；字段管理拒绝这种定义。
+  const tricky = { field_key: 'grade', label_cn: '分级', value_type: 'choice', choices: [{ code: 'a', label: 'b' }, { code: 'b', label: '其他' }] };
+  assert.deepEqual(fieldsLib.cellToValue(tricky, 'b'), { value: 'b' });
+  assert.deepEqual(fieldsLib.cellToValue({ ...tricky, value_type: 'multi_choice' }, 'b;a'), { value: 'a;b' });
+  assert.deepEqual(fieldsLib.cellToValue(tricky, '其他'), { value: 'b' });
+  assert.match(fieldsLib.definitionProblem(tricky), /与另一个选项的代码相同/);
 }
 
 async function main() {

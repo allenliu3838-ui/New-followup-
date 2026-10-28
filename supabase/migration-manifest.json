@@ -17,7 +17,7 @@
     "0044_project_fields"
   ],
   "order": "lexicographic filenames; historical duplicate prefixes retained, unique full filenames",
-  "bundle_sha256": "2a3c466244e17d3fce33edffca713cf8999596f13c172bcab14bedf81bd8b088",
+  "bundle_sha256": "186bba03bbaf947b646f4620d865cdf9518d7f0a7fd86dcc25e9d303b62740cc",
   "migrations": [
     {
       "ordinal": 1,
@@ -247,7 +247,7 @@
     {
       "ordinal": 46,
       "file": "0044_project_fields.sql",
-      "sha256": "1c055a234d333bde8384711998c41b9a0a4d2821a6a95924d419bd7dd5b48709"
+      "sha256": "18e2ff8a1dfc6a27bb8ffc2aca901b3685f35b117fb3aaa59944ba61852789dd"
     }
   ]
 }

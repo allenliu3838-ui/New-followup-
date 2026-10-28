@@ -1775,7 +1775,7 @@
               "name": "project_fields_help_text",
               "type": "c",
               "validated": true,
-              "definition_md5": "ecbf8de214a989b3fa3649bdd346fe5d"
+              "definition_md5": "2f2689081b6c83f836000685d261e6ed"
             },
             {
               "name": "project_fields_key_format",
@@ -1793,7 +1793,7 @@
               "name": "project_fields_label_text",
               "type": "c",
               "validated": true,
-              "definition_md5": "cf9c12f79ff961390c8df4dfd1f69c3b"
+              "definition_md5": "5177b3fba5e7a58d8fbe79f6adcd490b"
             },
             {
               "name": "project_fields_number_only",
@@ -1835,7 +1835,7 @@
               "name": "project_fields_source_text",
               "type": "c",
               "validated": true,
-              "definition_md5": "65a544471e8721ab957a9a73350f9fae"
+              "definition_md5": "2aa7028c2a941c5ff1fa15d4b77035cc"
             },
             {
               "name": "project_fields_type_check",
@@ -1847,7 +1847,7 @@
               "name": "project_fields_unit_text",
               "type": "c",
               "validated": true,
-              "definition_md5": "325c1d5972965f6e46565de852ed7073"
+              "definition_md5": "b26cbf03b7448196db6974df24de7192"
             }
           ]
         },
@@ -20784,7 +20784,7 @@
               "name": "project_fields_help_text",
               "type": "c",
               "validated": true,
-              "definition_md5": "ecbf8de214a989b3fa3649bdd346fe5d"
+              "definition_md5": "2f2689081b6c83f836000685d261e6ed"
             },
             {
               "name": "project_fields_key_format",
@@ -20802,7 +20802,7 @@
               "name": "project_fields_label_text",
               "type": "c",
               "validated": true,
-              "definition_md5": "cf9c12f79ff961390c8df4dfd1f69c3b"
+              "definition_md5": "5177b3fba5e7a58d8fbe79f6adcd490b"
             },
             {
               "name": "project_fields_number_only",
@@ -20844,7 +20844,7 @@
               "name": "project_fields_source_text",
               "type": "c",
               "validated": true,
-              "definition_md5": "65a544471e8721ab957a9a73350f9fae"
+              "definition_md5": "2aa7028c2a941c5ff1fa15d4b77035cc"
             },
             {
               "name": "project_fields_type_check",
@@ -20856,7 +20856,7 @@
               "name": "project_fields_unit_text",
               "type": "c",
               "validated": true,
-              "definition_md5": "325c1d5972965f6e46565de852ed7073"
+              "definition_md5": "b26cbf03b7448196db6974df24de7192"
             }
           ]
         },
@@ -38022,7 +38022,7 @@
     }
   },
   "database_contract_protocol": "registry-contract-v3-pg17",
-  "database_contract_reference_sha256": "a34c8b5fbba97590e69ea3f763c98e9c7750d1564399085003cab92fad10f4a8",
+  "database_contract_reference_sha256": "e1b49cb788a721afc09e8d30f6ef788443e947138f05c5b2fa60508dd2e5dc7d",
   "database_contract_sha256": "aca7000205680905a853fc72280ff60a2f99af32d8b2807bb761de7769ed6b29",
   "database_server_major": 17,
   "files": {
@@ -38083,7 +38083,7 @@
       "old_sha256": "8da066c8b250968199bc4cfe4c986215c7ff0d308eb9fc0cc32073ba596ce718"
     },
     "assets/sql/batch6_latest.sql": {
-      "new_sha256": "f66b3a323cc2641b819e3370ba8af82ffd005c4c255534fe394d395a413012fd",
+      "new_sha256": "fbff1758bb35f868fb6ba70a0f12fadef3fe5626a3c303de37fdf2a50948f01e",
       "old_sha256": "d34c02ef673adbc70228e0177d5ebcba9affd5d3a572e3be1069e98b9cd23e61"
     },
     "assets/template/METHODS_TEMPLATE_EN.md": {
@@ -38243,7 +38243,7 @@
       "old_sha256": null
     },
     "lib/project-fields.js": {
-      "new_sha256": "204052b8b69aaae6e6cc12d9367d704b0d75132ff67775812d4358a4f19f22cb",
+      "new_sha256": "0649bf484ab7c3e96eff4e6cfdc09d4c18da5fd2338ba29f02278560e058f414",
       "old_sha256": null
     },
     "lib/project-members.js": {
@@ -38344,7 +38344,7 @@
     }
   },
   "format": 2,
-  "migration_manifest_sha256": "391ded5eada484a393d199728253119023d9053b88a8dc4e987dc9038b3b5003",
+  "migration_manifest_sha256": "ef1a28117c7ff2f61e1126117717cd5fdc11ee27ceaa98259245fb22026a074e",
   "project_ref": "ksr-aliyun-cn-shanghai-1",
   "release": "registry-20261026-cn-v7",
   "required_db_checks": [

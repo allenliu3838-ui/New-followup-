@@ -3,7 +3,7 @@
   "database_server_major": 17,
   "reference_server_version": "17.6",
   "runtime": "@embedded-postgres/linux-x64@17.6.0-beta.15",
-  "migration_manifest_sha256": "391ded5eada484a393d199728253119023d9053b88a8dc4e987dc9038b3b5003",
+  "migration_manifest_sha256": "ef1a28117c7ff2f61e1126117717cd5fdc11ee27ceaa98259245fb22026a074e",
   "database_contract_sha256": "aca7000205680905a853fc72280ff60a2f99af32d8b2807bb761de7769ed6b29",
   "profile_definition": "canonical: all reviewed LF SQL; historical_crlf: first 33 reviewed SQL files encoded CRLF, then ten new LF migrations. UTC and fixed search_path. Synthetic Auth/Storage only.",
   "database_contract_profiles": {
@@ -1780,7 +1780,7 @@
               "name": "project_fields_help_text",
               "type": "c",
               "validated": true,
-              "definition_md5": "ecbf8de214a989b3fa3649bdd346fe5d"
+              "definition_md5": "2f2689081b6c83f836000685d261e6ed"
             },
             {
               "name": "project_fields_key_format",
@@ -1798,7 +1798,7 @@
               "name": "project_fields_label_text",
               "type": "c",
               "validated": true,
-              "definition_md5": "cf9c12f79ff961390c8df4dfd1f69c3b"
+              "definition_md5": "5177b3fba5e7a58d8fbe79f6adcd490b"
             },
             {
               "name": "project_fields_number_only",
@@ -1840,7 +1840,7 @@
               "name": "project_fields_source_text",
               "type": "c",
               "validated": true,
-              "definition_md5": "65a544471e8721ab957a9a73350f9fae"
+              "definition_md5": "2aa7028c2a941c5ff1fa15d4b77035cc"
             },
             {
               "name": "project_fields_type_check",
@@ -1852,7 +1852,7 @@
               "name": "project_fields_unit_text",
               "type": "c",
               "validated": true,
-              "definition_md5": "325c1d5972965f6e46565de852ed7073"
+              "definition_md5": "b26cbf03b7448196db6974df24de7192"
             }
           ]
         },
@@ -20789,7 +20789,7 @@
               "name": "project_fields_help_text",
               "type": "c",
               "validated": true,
-              "definition_md5": "ecbf8de214a989b3fa3649bdd346fe5d"
+              "definition_md5": "2f2689081b6c83f836000685d261e6ed"
             },
             {
               "name": "project_fields_key_format",
@@ -20807,7 +20807,7 @@
               "name": "project_fields_label_text",
               "type": "c",
               "validated": true,
-              "definition_md5": "cf9c12f79ff961390c8df4dfd1f69c3b"
+              "definition_md5": "5177b3fba5e7a58d8fbe79f6adcd490b"
             },
             {
               "name": "project_fields_number_only",
@@ -20849,7 +20849,7 @@
               "name": "project_fields_source_text",
               "type": "c",
               "validated": true,
-              "definition_md5": "65a544471e8721ab957a9a73350f9fae"
+              "definition_md5": "2aa7028c2a941c5ff1fa15d4b77035cc"
             },
             {
               "name": "project_fields_type_check",
@@ -20861,7 +20861,7 @@
               "name": "project_fields_unit_text",
               "type": "c",
               "validated": true,
-              "definition_md5": "325c1d5972965f6e46565de852ed7073"
+              "definition_md5": "b26cbf03b7448196db6974df24de7192"
             }
           ]
         },
