@@ -308,8 +308,11 @@ def recompute_egfr(scr_pick, height_points, patient, config):
     if not np.isfinite(age) or sex not in {"M", "F"}:
         return np.nan, "", "missing_sex_or_birth_year", age, None
     scr_mg_dl = scr_pick["value"] / 88.4
+    if not (np.isfinite(scr_mg_dl) and scr_mg_dl > 0):
+        return np.nan, "", "creatinine_not_positive", age, None
     if 18 <= age <= 120:
-        return ckdepi2021(scr_mg_dl, age, sex), config["adult_equation"], "computed", age, None
+        value = ckdepi2021(scr_mg_dl, age, sex)
+        return value, config["adult_equation"], "computed" if np.isfinite(value) else "not_computable", age, None
     if 1 <= age <= 17:
         hw = config["height_window_days"]
         height = select(height_points, day, 0, -hw, hw)

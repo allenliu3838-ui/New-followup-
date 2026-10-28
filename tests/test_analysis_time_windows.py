@@ -187,6 +187,23 @@ class TimeWindowTests(unittest.TestCase):
         self.assertEqual((p7["status"], p7["egfr_formula"], p7["offset_days"]), ("computed", "CKD-EPI-2021-Cr", "10"), "adult: no height needed")
         self.assertEqual(pick[("P1", "M24", "egfr")]["status"], "no_creatinine_in_window")
 
+    def test_creatinine_of_zero_gives_no_egfr_and_is_not_counted(self):
+        """P9 (adult) and P10 (child with a height) have a creatinine of 0 on their biopsy day: no equation applies."""
+        a = lambda code, **kw: {"project_id": SP, "center_code": "A", "patient_code": code, "module": "IGAN", **kw}
+        extra = [("patients_baseline.csv", BASE_HEADER, [a("P9", id="b9", sex="F", birth_year="1980", baseline_date=d(0), consent_status="consented", biopsy_date=d(0)),
+                                                         a("P10", id="b10", sex="M", birth_year="2014", baseline_date=d(0), consent_status="consented", biopsy_date=d(0))]),
+                 ("visits_long.csv", VISIT_HEADER, [a("P9", id="v20", visit_date=d(0), scr_umol_l="0"),
+                                                   a("P10", id="v21", visit_date=d(0), scr_umol_l="0", height_cm="140")])]
+        for name, header, rows in extra:
+            write_csv(self.data / name, header, read_csv(self.data / name) + rows)
+        _, log, _, pick = self.run_tw()
+        for code in ("P9", "P10"):
+            r = pick[(code, "Bx", "egfr")]
+            self.assertEqual((r["status"], r["value"], r["egfr_formula"]), ("creatinine_not_positive", "", ""), code)
+            self.assertEqual(pick[(code, "Bx", "scr_umol_l")]["value"], "0.0", "the creatinine itself is still reported")
+        computed = sum(1 for (_, tp, v), r in pick.items() if tp == "Bx" and v == "egfr" and r["status"] == "computed")
+        self.assertEqual(log["values_selected"]["Bx"]["egfr"], computed, "only computed eGFR values are counted")
+
     def test_unconfirmed_configuration_is_labelled_in_every_file_name(self):
         out, log, _, _ = self.run_tw(confirmed=False, confirmed_by="", confirmed_date="")
         names = sorted(p.name for p in out.iterdir())
