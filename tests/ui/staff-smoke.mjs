@@ -764,8 +764,10 @@ async function main() {
     await eventually(() => mock.rpcCalls('set_patient_study_status').length === 3, '重新同意没有提交');
     assert.deepEqual(mock.rpcCalls('set_patient_study_status')[2].body, { p_project_id: PROJECT.id, p_patient_code: 'P009', p_changes: { consent_status: 'consented', consent_date: today }, p_reason: '患者重新签署知情同意书' });
     await page.locator('[data-registry-modal="studyStatus"]').waitFor({ state: 'detached' });
+    // 保存后才发出该行的刷新请求：等它记入模拟服务器后再核对（对话框关闭与请求到达模拟服务器的先后不固定）。
+    await eventually(() => boardReads(mock).slice(boardReadsBeforeEntry).some(r => r.params.get('patient_code') === 'eq.P009'), '修改研究状态后应刷新该患者一行');
     const statusReads = boardReads(mock).slice(boardReadsBeforeEntry);
-    assert.ok(statusReads.some(r => r.params.get('patient_code') === 'eq.P009') && statusReads.every(r => r.params.get('patient_code')), '修改研究状态后只刷新该患者一行');
+    assert.ok(statusReads.every(r => r.params.get('patient_code')), '修改研究状态后只刷新该患者一行，不重读整个看板');
 
     // 7. 项目设置（负责人）。
     assert.equal(await page.locator('#projectSettingsDetails').isHidden(), false, '负责人应能看到项目设置');
