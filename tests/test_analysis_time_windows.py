@@ -204,6 +204,81 @@ class TimeWindowTests(unittest.TestCase):
         computed = sum(1 for (_, tp, v), r in pick.items() if tp == "Bx" and v == "egfr" and r["status"] == "computed")
         self.assertEqual(log["values_selected"]["Bx"]["egfr"], computed, "only computed eGFR values are counted")
 
+    def add_cystatin_and_urine_cells(self):
+        """Cystatin C for P1 on its Bx creatinine day (1.0) and 5 days before its M6 creatinine (1.2), for P2 on its
+        creatinine day (0.9) and 0 for P4 on its baseline day; urine red cells for P1, one recorded in the wrong unit."""
+        a = lambda code, **kw: {"project_id": SP, "center_code": "A", "patient_code": code, "module": "IGAN", **kw}
+        b = lambda code, **kw: {"project_id": SB, "center_code": "B", "patient_code": code, "module": "LN", **kw}
+        extra = [
+            a("P1", id="c1", lab_date=d(-20), lab_test_code="CYSC", value_raw="1.0", unit_symbol="mg/L"),
+            a("P1", id="c2", lab_date=d(175), lab_test_code="CYSC", value_raw="1.2", unit_symbol="mg/L"),
+            a("P2", id="c3", lab_date=d(31), lab_test_code="CYSC", value_raw="0.9", unit_symbol="mg/L"),
+            b("P4", id="c4", lab_date=d(60), lab_test_code="CYSC", value_raw="0", unit_symbol="mg/L"),
+            a("P1", id="u1", lab_date=d(-20), lab_test_code="URBC_HPF", value_raw="3", unit_symbol="/HP"),
+            a("P1", id="u2", lab_date=d(-20), lab_test_code="URBC_UL", value_raw="25", unit_symbol="个/μL"),
+            a("P1", id="u3", lab_date=d(-20), lab_test_code="URBC_UL", value_raw="8", unit_symbol="cells/HPF"),
+        ]
+        write_csv(self.data / "labs_long.csv", LAB_HEADER, read_csv(self.data / "labs_long.csv") + extra)
+
+    def test_combined_equations_take_the_cystatin_c_of_the_creatinine_day(self):
+        """Adults CKD-EPI 2021 creatinine-cystatin C, children the mean of the CKiD U25 equations; pair_window_days 0."""
+        self.add_cystatin_and_urine_cells()
+        egfr = {"creatinine_variable": "scr_umol_l", "cystatin_variable": "scys_mg_l", "height_variable": "height_cm",
+                "height_window_days": 90, "adult_equation": "CKD-EPI-2021-CrCys", "child_equation": "CKiD-U25-CrCys"}
+        _, log, rows, pick = self.run_tw(egfr=egfr)
+        self.assertEqual(list(rows[0])[-2:], ["cystatin_mg_l_used", "cystatin_date_used"])
+        p1 = pick[("P1", "Bx", "egfr")]
+        expected = ra.ckdepi2021_crcys(103.04 / 88.4, 1.0, 43, "M")
+        self.assertEqual((p1["status"], p1["egfr_formula"], p1["value"], p1["value_date"], p1["sources"], p1["cystatin_mg_l_used"], p1["cystatin_date_used"]),
+                         ("computed", "CKD-EPI-2021-CrCys", f"{expected:.1f}", d(-20), "scr_umol_l+scys_mg_l", "1.00", d(-20)))
+        m6 = pick[("P1", "M6", "egfr")]
+        self.assertEqual((m6["status"], m6["value"], m6["egfr_formula"], m6["cystatin_mg_l_used"]), ("no_cystatin_paired", "", "CKD-EPI-2021-CrCys", ""),
+                         "the cystatin C 5 days before the creatinine is not paired on the same day")
+        p2 = pick[("P2", "Bx", "egfr")]
+        child = (ra.ckid_u25_cr(50 / 88.4, 140, 10, "F") + ra.ckid_u25_cys(0.9, 10, "F")) / 2
+        self.assertEqual((p2["status"], p2["egfr_formula"], p2["value"], p2["height_cm_used"], p2["cystatin_mg_l_used"]),
+                         ("computed", "CKiD-U25-CrCys", f"{child:.1f}", "140.0", "0.90"))
+        p4 = pick[("P4", "Bx", "egfr")]
+        self.assertEqual((p4["status"], p4["value"], p4["cystatin_mg_l_used"]), ("cystatin_not_positive", "", "0.00"))
+        self.assertEqual(pick[("P7", "Bx", "egfr")]["status"], "no_cystatin_paired")
+        self.assertEqual(log["values_selected"]["Bx"]["egfr"], 2, "P1 and P2 only")
+        # Allowing 7 days between the two samples pairs P1's M6 creatinine with the cystatin C 5 days earlier.
+        _, log7, _, pick7 = self.run_tw("out7", egfr={**egfr, "pair_window_days": 7})
+        m6 = pick7[("P1", "M6", "egfr")]
+        self.assertEqual((m6["status"], m6["value"], m6["cystatin_date_used"], m6["value_date"]),
+                         ("computed", f"{ra.ckdepi2021_crcys(90 / 88.4, 1.2, 44, 'M'):.1f}", d(175), d(180)))
+        self.assertEqual(log7["config"]["egfr"]["pair_window_days"], 7)
+
+    def test_cystatin_only_equations_start_from_the_cystatin_c_of_the_time_point(self):
+        self.add_cystatin_and_urine_cells()
+        egfr = {"cystatin_variable": "scys_mg_l", "adult_equation": "CKD-EPI-2012-Cys", "child_equation": "CKiD-U25-Cys"}
+        _, log, _, pick = self.run_tw(egfr=egfr)
+        p1 = pick[("P1", "Bx", "egfr")]
+        self.assertEqual((p1["status"], p1["egfr_formula"], p1["value"], p1["sources"], p1["value_date"], p1["age_years"], p1["cystatin_mg_l_used"]),
+                         ("computed", "CKD-EPI-2012-Cys", f"{ra.ckdepi2012_cys(1.0, 43, 'M'):.1f}", "scys_mg_l", d(-20), "43", "1.00"))
+        m6 = pick[("P1", "M6", "egfr")]
+        self.assertEqual((m6["status"], m6["value_date"], m6["value"]), ("computed", d(175), f"{ra.ckdepi2012_cys(1.2, 44, 'M'):.1f}"))
+        p2 = pick[("P2", "Bx", "egfr")]
+        self.assertEqual((p2["status"], p2["egfr_formula"], p2["value"], p2["height_cm_used"]),
+                         ("computed", "CKiD-U25-Cys", f"{ra.ckid_u25_cys(0.9, 10, 'F'):.1f}", ""), "no height is needed")
+        self.assertEqual(pick[("P3", "Bx", "egfr")]["status"], "no_cystatin_in_window")
+        self.assertEqual((pick[("P4", "Bx", "egfr")]["status"], pick[("P4", "Bx", "egfr")]["egfr_formula"]), ("cystatin_not_positive", ""))
+        self.assertEqual(log["config"]["egfr"], {"cystatin_variable": "scys_mg_l", "adult_equation": "CKD-EPI-2012-Cys", "child_equation": "CKiD-U25-Cys"})
+
+    def test_urine_red_cells_stay_in_their_own_unit_and_the_template_keeps_the_creatinine_equations(self):
+        self.add_cystatin_and_urine_cells()
+        _, log, rows, pick = self.run_tw()
+        self.assertNotIn("cystatin_mg_l_used", rows[0], "no cystatin columns unless an equation uses cystatin C")
+        hpf, ul = pick[("P1", "Bx", "urbc_per_hpf")], pick[("P1", "Bx", "urbc_per_ul")]
+        self.assertEqual((hpf["value"], hpf["unit"], hpf["sources"]), ("3", "cells/HPF", "labs_long:URBC_HPF"))
+        self.assertEqual((ul["value"], ul["unit"], ul["n_values_on_day"]), ("25", "cells/μL", "1"), "a /HPF count recorded under URBC_UL is not used")
+        self.assertEqual(log["unusable_measurements_skipped"]["urbc_per_ul"], 1)
+        self.assertEqual(pick[("P1", "Bx", "scys_mg_l")]["value"], "1.00")
+        self.assertEqual(pick[("P1", "Bx", "egfr")]["egfr_formula"], "CKD-EPI-2021-Cr")
+        self.assertEqual(log["config"]["egfr"], {"creatinine_variable": "scr_umol_l", "height_variable": "height_cm", "height_window_days": 90,
+                                                 "adult_equation": "CKD-EPI-2021-Cr", "child_equation": "Schwartz-2009-bedside"},
+                         "settings the chosen equations do not use are left out of the record")
+
     def test_unconfirmed_configuration_is_labelled_in_every_file_name(self):
         out, log, _, _ = self.run_tw(confirmed=False, confirmed_by="", confirmed_date="")
         names = sorted(p.name for p in out.iterdir())
@@ -238,6 +313,12 @@ class TimeWindowTests(unittest.TestCase):
             ({"variables": [{"name": "x", "unit": "cm", "sources": [{"table": "events_long", "column": "x"}]}], "egfr": None}, "table must be"),
             ({"egfr": {**base["egfr"], "adult_equation": "MDRD"}}, "agree"),
             ({"egfr": {**base["egfr"], "creatinine_variable": "sbp"}}, "creatinine_variable"),
+            ({"egfr": {**base["egfr"], "adult_equation": "CKD-EPI-2012-Cys"}}, "both start from"),
+            ({"egfr": {**base["egfr"], "adult_equation": "CKD-EPI-2021-CrCys", "cystatin_variable": "sbp"}}, "cystatin_variable"),
+            ({"egfr": {**base["egfr"], "cystatin_variable": "scr_umol_l"}}, "cystatin_variable"),
+            ({"egfr": {**base["egfr"], "child_equation": "CKiD-U25-CrCys", "pair_window_days": -1}}, "pair_window_days"),
+            ({"egfr": {"adult_equation": "CKD-EPI-2012-Cys", "child_equation": "CKiD-U25-Cys"}}, "cystatin_variable"),
+            ({"egfr": {**base["egfr"], "child_equation": "CKiD-U25"}}, "agree"),
             ({"patient_fields": ["Ethnicity"]}, "patient_fields"),
             ({"patient_fields": ["ethnicity", "ethnicity"]}, "patient_fields"),
             ({"patient_fields": "ethnicity"}, "patient_fields"),

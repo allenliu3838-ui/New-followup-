@@ -119,7 +119,15 @@ KFRE 风险计算已停用：旧实现用 UPCR 替代 UACR、猜测检验单位�
 - **对齐日期（第 0 天）**：按配置中 `anchor.sources` 的顺序查找：肾活检记录中标为“基准活检”的那一次（`index_biopsy`）；患者基线中的肾穿日期（`baseline_biopsy_date`：LN 用 LN 肾穿日期，C3G 用 C3G 肾穿日期，其余用肾穿日期）；最早一次自体肾活检（`earliest_native_biopsy`，需明确加入才使用）。找不到对齐日期的患者列入 `time_windows_no_anchor.csv` 并写明原因，不会被猜测补齐。
 - **取值规则（固定）**：每个时间点只在其窗口内取值；先把同一变量同一天的多个值合并为中位数，再取距目标日最近的一天；距离相同取较早的一天。窗口边界包含在内。长表中保留所选日期、距对齐日期天数、当天值的个数与原值，便于逐条核对。
 - **数据来源与单位**：随访记录、患者基线（基线肌酐、基线 UPCR）和化验记录都可作为来源。化验先按 `run_analysis.py` 的显式单位换算规则标准化（不能确认的单位不使用，并计入日志中的“不可用测量”），再按配置中写明的系数换算到变量单位，例如血肌酐 mg/dL × 88.4 = μmol/L。
-- **eGFR**：不单独挑选，而是用该时间点选中的血肌酐重新计算：18 岁及以上用 CKD-EPI 2021 肌酐公式；1–17 岁用床旁 Schwartz 2009 公式，身高取该日前后 `height_window_days` 天内最近的一次。没有身高，或选中的肌酐不是正数（例如误录为 0），都不计算，并在状态列写明原因（`missing_height`、`creatinine_not_positive`），这些行不计入取到 eGFR 的人数。库中保存的 eGFR 不使用。其他公式（如包含胱抑素 C 的公式）须研究双方商定后再加入。
+- **eGFR**：不单独挑选，而是在每个时间点重新计算。公式在配置的 `egfr` 中指定，须研究双方商定：
+  - 18 岁及以上（`adult_equation`）：`CKD-EPI-2021-Cr`（肌酐，默认）、`CKD-EPI-2012-Cys`（胱抑素 C）、`CKD-EPI-2021-CrCys`（肌酐与胱抑素 C 联合）。
+  - 1–17 岁（`child_equation`）：`Schwartz-2009-bedside`（床旁 Schwartz，默认）、`CKiD-U25-Cr`、`CKiD-U25-Cys`、`CKiD-U25-CrCys`（CKiD U25 肌酐公式与胱抑素 C 公式的平均值）。
+  - 含肌酐的公式从该时间点选中的血肌酐出发。联合公式再取与该肌酐同一天、且在该时间点窗口内的胱抑素 C；`pair_window_days` 可放宽为前后若干天（默认 0）。配不上的记为 `no_cystatin_paired`，不计算。
+  - 只用胱抑素 C 的公式从该时间点选中的胱抑素 C 出发（`cystatin_variable`，单位 mg/L，化验编码 `CYSC`）。成人与儿童公式须同为含肌酐或同为只用胱抑素 C；需要别的组合时另写一份配置。
+  - 儿童身高取测量日前后 `height_window_days` 天内最近的一次。年龄为“测量年份减出生年”的近似值。
+  - 没有身高、没有可配对的胱抑素 C，或选中的肌酐、胱抑素 C 不是正数（例如误录为 0），都不计算，并在状态列写明原因（`missing_height`、`no_cystatin_paired`、`creatinine_not_positive`、`cystatin_not_positive`），这些行不计入取到 eGFR 的人数。用到胱抑素 C 时，长表增加 `cystatin_mg_l_used`、`cystatin_date_used` 两列。库中保存的 eGFR 不使用，`run_analysis.py` 的终点判定仍用肌酐公式。
+  - 胱抑素 C 公式要求检测可溯源至国际参考物质 ERM-DA471/IFCC；CKiD U25 公式在慢性肾脏病儿童中建立，肾功能正常时可能低估。公式来源：Inker 等 NEJM 2012、2021；Pierce 等 Kidney Int 2021。
+- **尿红细胞**：仪器计数（`URBC_UL`，个/μL）与显微镜检计数（`URBC_HPF`，个/HPF）是两个化验项目，没有准确的换算关系，模板中也是两个变量。不要把两者放进同一个变量；确需合并时，须由研究双方约定换算系数，写在该来源的 `factor` 中并在方法中报告。
 - **人群**：与 `run_analysis.py` 相同，只纳入知情同意状态为已同意或伦理豁免的患者。
 
 使用步骤：

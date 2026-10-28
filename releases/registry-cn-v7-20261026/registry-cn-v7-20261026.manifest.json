@@ -38022,7 +38022,7 @@
     }
   },
   "database_contract_protocol": "registry-contract-v3-pg17",
-  "database_contract_reference_sha256": "e1b49cb788a721afc09e8d30f6ef788443e947138f05c5b2fa60508dd2e5dc7d",
+  "database_contract_reference_sha256": "35c467ec664d9b6e80e36fb9e17c7b7ad49dcb5eb7a150d1f668c972b7c4800d",
   "database_contract_sha256": "aca7000205680905a853fc72280ff60a2f99af32d8b2807bb761de7769ed6b29",
   "database_server_major": 17,
   "files": {
@@ -38043,7 +38043,7 @@
       "old_sha256": "f9daff5d2707d51d9da2c9bce708f2e86aa7694a4006dce08e5cf1612673321b"
     },
     "assets/help-faq.json": {
-      "new_sha256": "455dfa006d4e7da1294232130c9e5e6a22cd831a6dc6a67773d39be2afd4b030",
+      "new_sha256": "3e4c87161514fbab2d6c854318a2e1c42c13d6fa79d914a1be578e56845a4acd",
       "old_sha256": "4c5418684f4445903930824397f464f07971d9269ac18aaa92d1f111fad2f9e4"
     },
     "assets/mail-confirm.html": {
@@ -38083,15 +38083,15 @@
       "old_sha256": "8da066c8b250968199bc4cfe4c986215c7ff0d308eb9fc0cc32073ba596ce718"
     },
     "assets/sql/batch6_latest.sql": {
-      "new_sha256": "fbff1758bb35f868fb6ba70a0f12fadef3fe5626a3c303de37fdf2a50948f01e",
+      "new_sha256": "e258a8c8fb738d8e6c36f355ec7832f9d241f15692dfa66fceed9bebefb15859",
       "old_sha256": "d34c02ef673adbc70228e0177d5ebcba9affd5d3a572e3be1069e98b9cd23e61"
     },
     "assets/template/METHODS_TEMPLATE_EN.md": {
-      "new_sha256": "a2c589060ec17a860612c2f636bba37863e9c32b5d915783e87a833e0c90cbee",
+      "new_sha256": "fbeecb09771c4a71e137c796aecf045b4d79d7666d3fc19aa27e2cc92c4a7165",
       "old_sha256": "226227197e2a05e86c89bc1627ab7768cc29e444ae72a1276d704955366adffb"
     },
     "assets/template/README_PACK.md": {
-      "new_sha256": "eb3fa406a218dfa1ed5cc5e70fcc25e23128065cfaff105e93c473a6b4f8faa0",
+      "new_sha256": "ef89e9530d15b71aabee16eb76b2cfcb95d5c559635c54235bc465d9d35dd90a",
       "old_sha256": "d2d54ff8d60f26fdd2e5a63f3e104a64ab89767fba212a2be58ec9ec4863af5e"
     },
     "assets/template/feasibility_criteria_template.json": {
@@ -38115,15 +38115,15 @@
       "old_sha256": "c5a48736a9044a1a0b5dd3afb8a3f37d589f0c704a0a93463d80dd5b762b9d0d"
     },
     "assets/template/run_analysis.py": {
-      "new_sha256": "68a54a39d8d7f91b5b16ff1687dea2ce499c780c12f45400c54cd75fd957a78b",
+      "new_sha256": "6bead971e484fe2c5482cc97ca219b0ce96ccfe63a8164c5acf350ac3be0f484",
       "old_sha256": "437d6b7a9efcbbe689367bcd052b4b322d5082bf70c592a58198239615b948d5"
     },
     "assets/template/time_windows.py": {
-      "new_sha256": "94ae63fe052ce74c14440e9d8beafdf2f76a36de02fb5e0afd550f6a92ea964c",
+      "new_sha256": "001f350198e7491483cc091d646c458c8c3a71bae8b914a17df468f50fe8b24e",
       "old_sha256": null
     },
     "assets/template/time_windows_template.json": {
-      "new_sha256": "3203aeee4c2831fe759b0e49ec2a38cd11cde9c0caea8961868c82212b099b92",
+      "new_sha256": "c3d358dd7ea100b75d54698b0c885b923c20caa413a7a918650a929b32b4a97c",
       "old_sha256": null
     },
     "assets/肾域科研_临床团队虚拟项目全流程演练册_V2.1.pdf": {
@@ -38203,7 +38203,7 @@
       "old_sha256": "5bfa97ded368de86a54e1963f085bc99d05a7029f2911790135e3428c11ab8d6"
     },
     "lib/batch-import.js": {
-      "new_sha256": "255a2da0c62c41269d2b481bc32ee42575b1ade9f6ff671ecf65ba3c0388dab9",
+      "new_sha256": "9d0fb8dd4d81da10d9fc6b676a8de04184299e9ad60ca34ca183e2c9c54cdefd",
       "old_sha256": "e913207ff31abc7c4015de340e57d1cc9eb9f4cf71c1e72915f3e69519abf5e1"
     },
     "lib/error-logger.js": {
@@ -38339,12 +38339,12 @@
       "old_sha256": "69dcbe6466761db2a4073339497a3cbde2d1623041b3ffcef7587100e765beb5"
     },
     "user-manual-cn.html": {
-      "new_sha256": "20e2f15f37069816de9e5bf482dca3fb729eeb53fe95657e60ef192075ec5557",
+      "new_sha256": "7d7bbba4bea742ea3d3f58c81d4f54f2825d6f8c6100d083eaef39ad02bc0f44",
       "old_sha256": "3c854823817d84d0d2a6b29112d9b9e5cd05ff3484ff47ba06ef8c6ab9e2cb81"
     }
   },
   "format": 2,
-  "migration_manifest_sha256": "ef1a28117c7ff2f61e1126117717cd5fdc11ee27ceaa98259245fb22026a074e",
+  "migration_manifest_sha256": "d477129afe329862341655b784391079e497fbce9d78fb960dede4e81c50a797",
   "project_ref": "ksr-aliyun-cn-shanghai-1",
   "release": "registry-20261026-cn-v7",
   "required_db_checks": [
@@ -38394,6 +38394,8 @@
     "0044_project_fields",
     "project_fields_tables",
     "project_fields_signatures",
+    "0045_cystatin_urine_rbc",
+    "cystatin_urine_rbc_labs",
     "single_billing_order_overload"
   ],
   "required_schema_versions": [
@@ -38409,6 +38411,7 @@
     "0041_followup_board",
     "0042_c3g_module",
     "0043_biopsy_records",
-    "0044_project_fields"
+    "0044_project_fields",
+    "0045_cystatin_urine_rbc"
   ]
 }

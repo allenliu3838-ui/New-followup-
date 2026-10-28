@@ -13,12 +13,18 @@ taken from the measurements dated inside that time point's window:
   3. when two days are equally near, the earlier day is chosen.
 Window limits are inclusive, in whole days from the anchor date.
 
-eGFR is not selected on its own. It is recomputed from the creatinine value selected for that
-time point, with the year-derived age on that day and the sex; adults (18-120 years) by the
-CKD-EPI 2021 creatinine equation, 1-17-year-olds by the bedside Schwartz 2009 equation with
-the height nearest to that day within the configured height window (same rules for ties and
-same-day values). These are the registry's own equations (run_analysis.py, database trigger).
-Stored eGFR values are not used.
+eGFR is not selected on its own. It is recomputed for each time point with the year-derived age
+on the measurement day and the sex, by the equations the configuration names (egfr):
+  adults (18-120 years): CKD-EPI-2021-Cr (default), CKD-EPI-2012-Cys or CKD-EPI-2021-CrCys;
+  children (1-17 years): Schwartz-2009-bedside (default), CKiD-U25-Cr, CKiD-U25-Cys or
+  CKiD-U25-CrCys (the mean of the CKiD U25 creatinine and cystatin C equations).
+Equations with creatinine start from the creatinine selected for the time point; a combined
+equation takes the cystatin C nearest to that creatinine's day within pair_window_days (default 0,
+the same day) and inside the time point's window. Cystatin C-only equations start from the
+cystatin C selected for the time point. The adult and the child equation must start from the
+same marker. Children's height is the one nearest to the measurement day within the configured
+height window (same rules for ties and same-day values). The equations are in run_analysis.py
+(the default pair is also the database trigger's). Stored eGFR values are not used.
 
 The population is that of run_analysis.py (consent_status consented/waiver when the column
 exists). Time points, windows and variables come from the configuration file only (see
@@ -44,9 +50,9 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from run_analysis import (KEY, VERSION, DataContractError, apply_consent_filter, ckdepi2021,  # noqa: E402
-                          consent_failure_message, date, load_tables, normalize_labs, number, schwartz2009, sha256,
-                          upcr_mg_g)
+from run_analysis import (KEY, VERSION, DataContractError, apply_consent_filter, ckdepi2012_cys, ckdepi2021,  # noqa: E402
+                          ckdepi2021_crcys, ckid_u25_cr, ckid_u25_cys, consent_failure_message, date, load_tables,
+                          normalize_labs, number, schwartz2009, sha256, upcr_mg_g)
 
 CONFIG_FORMAT = "kidneysphere-time-windows-v1"
 SCRIPT_VERSION = "time-windows-v1"
@@ -62,6 +68,13 @@ EGFR_UNIT = "mL/min/1.73m²"
 LONG_COLUMNS = KEY + ["module", "anchor_date", "anchor_source", "timepoint", "target_days", "window_from_days", "window_to_days",
                       "variable", "unit", "status", "value", "value_date", "offset_days", "n_values_on_day", "values_on_day", "sources",
                       "egfr_formula", "age_years", "height_cm_used", "height_date_used"]
+# Added to the long table only when an equation uses cystatin C.
+CYSTATIN_COLUMNS = ["cystatin_mg_l_used", "cystatin_date_used"]
+# eGFR equations and the measurements each needs; adults are 18-120 and children 1-17 years.
+ADULT_EQUATIONS = {"CKD-EPI-2021-Cr": ("creatinine",), "CKD-EPI-2012-Cys": ("cystatin",),
+                   "CKD-EPI-2021-CrCys": ("creatinine", "cystatin")}
+CHILD_EQUATIONS = {"Schwartz-2009-bedside": ("creatinine", "height"), "CKiD-U25-Cr": ("creatinine", "height"),
+                   "CKiD-U25-Cys": ("cystatin",), "CKiD-U25-CrCys": ("creatinine", "cystatin", "height")}
 
 
 class ConfigError(ValueError):
@@ -166,22 +179,7 @@ def validate_config(raw):
         raise ConfigError("variable names must be unique; 'egfr' is reserved for the recomputed eGFR")
     egfr = raw.get("egfr")
     if egfr is not None:
-        if not isinstance(egfr, dict):
-            raise ConfigError("egfr must be an object")
-        by_name = {v["name"]: v for v in variables}
-        scr, height = by_name.get(egfr.get("creatinine_variable")), by_name.get(egfr.get("height_variable"))
-        if scr is None or scr["unit"] != "μmol/L":
-            raise ConfigError("egfr.creatinine_variable must name a variable in μmol/L")
-        if height is None or height["unit"] != "cm":
-            raise ConfigError("egfr.height_variable must name a variable in cm")
-        hw = _int(egfr.get("height_window_days"), "egfr.height_window_days")
-        if hw < 0:
-            raise ConfigError("egfr.height_window_days must be >= 0")
-        if egfr.get("adult_equation", "CKD-EPI-2021-Cr") != "CKD-EPI-2021-Cr" or egfr.get("child_equation", "Schwartz-2009-bedside") != "Schwartz-2009-bedside":
-            raise ConfigError("egfr equations available: adult CKD-EPI-2021-Cr, child Schwartz-2009-bedside "
-                              "(other equations are added only after both study teams agree on them)")
-        egfr = {"creatinine_variable": scr["name"], "height_variable": height["name"], "height_window_days": hw,
-                "adult_equation": "CKD-EPI-2021-Cr", "child_equation": "Schwartz-2009-bedside"}
+        egfr = _validate_egfr(egfr, {v["name"]: v for v in variables})
     fields = raw.get("patient_fields", [])
     if not isinstance(fields, list) or len(fields) > 100 or len(set(map(str, fields))) != len(fields) \
             or any(not isinstance(k, str) or not re.fullmatch(r"[a-z][a-z0-9_]{1,39}", k) for k in fields):
@@ -189,6 +187,51 @@ def validate_config(raw):
     return {"format": CONFIG_FORMAT, "confirmed": confirmed, "confirmed_by": raw.get("confirmed_by") or "",
             "confirmed_date": raw.get("confirmed_date") or "", "anchor": {"sources": list(sources)}, "selection": dict(SELECTION),
             "timepoints": timepoints, "variables": variables, "egfr": egfr, "patient_fields": list(fields)}
+
+
+def starts_from(egfr):
+    """'cystatin' when the configured equations use cystatin C alone, otherwise 'creatinine'."""
+    return "cystatin" if ADULT_EQUATIONS[egfr["adult_equation"]] == ("cystatin",) else "creatinine"
+
+
+def _validate_egfr(egfr, by_name):
+    """Normalised eGFR settings: the equations, and only the variables and windows they use."""
+    if not isinstance(egfr, dict):
+        raise ConfigError("egfr must be an object")
+    adult, child = egfr.get("adult_equation", "CKD-EPI-2021-Cr"), egfr.get("child_equation", "Schwartz-2009-bedside")
+    if adult not in ADULT_EQUATIONS or child not in CHILD_EQUATIONS:
+        raise ConfigError(f"egfr equations available: adult {', '.join(ADULT_EQUATIONS)}; child {', '.join(CHILD_EQUATIONS)} "
+                          "(use the ones both study teams agree on)")
+    if (ADULT_EQUATIONS[adult] == ("cystatin",)) != (CHILD_EQUATIONS[child] == ("cystatin",)):
+        raise ConfigError("egfr: the adult and the child equation must both start from creatinine (-Cr, -CrCys, Schwartz) "
+                          "or both from cystatin C alone (-Cys); use a second configuration for the other combination")
+    needs = set(ADULT_EQUATIONS[adult]) | set(CHILD_EQUATIONS[child])
+    clean = {}
+    checks = [("creatinine", "creatinine_variable", "μmol/L", "egfr.creatinine_variable must name a variable in μmol/L"),
+              ("cystatin", "cystatin_variable", "mg/L",
+               "egfr.cystatin_variable must name a variable in mg/L (serum cystatin C, dictionary code CYSC)"),
+              ("height", "height_variable", "cm", "egfr.height_variable must name a variable in cm")]
+    for need, field, unit, message in checks:
+        if need in needs or egfr.get(field) is not None:
+            variable = by_name.get(egfr.get(field))
+            if variable is None or variable["unit"] != unit:
+                raise ConfigError(message)
+            if need in needs:
+                clean[field] = variable["name"]
+    if "height" in needs:
+        hw = _int(egfr.get("height_window_days"), "egfr.height_window_days")
+        if hw < 0:
+            raise ConfigError("egfr.height_window_days must be >= 0")
+        clean["height_window_days"] = hw
+    paired = any({"creatinine", "cystatin"} <= set(equations[name])
+                 for equations, name in ((ADULT_EQUATIONS, adult), (CHILD_EQUATIONS, child)))
+    if paired or "pair_window_days" in egfr:
+        pw = _int(egfr.get("pair_window_days", 0), "egfr.pair_window_days")
+        if pw < 0:
+            raise ConfigError("egfr.pair_window_days must be >= 0")
+        if paired:
+            clean["pair_window_days"] = pw
+    return {**clean, "adult_equation": adult, "child_equation": child}
 
 
 def load_config(path):
@@ -303,28 +346,54 @@ def _fmt(value, decimals):
     return str(Decimal(repr(float(value))).quantize(Decimal(1).scaleb(-decimals), rounding=ROUND_HALF_UP))
 
 
-def recompute_egfr(scr_pick, height_points, patient, config):
-    """eGFR from the creatinine selected for a time point (registry equations); returns (value, formula, status, age, height pick)."""
-    day = scr_pick["date"]
+def recompute_egfr(pick, height_points, cystatin_points, window, patient, config):
+    """eGFR for a time point from its selected creatinine, or from its selected cystatin C when the equations
+    use cystatin C alone; returns (value, formula, status, age, height pick, cystatin pick)."""
+    day = pick["date"]
     by = number(patient.get("birth_year", ""))
     age = day.year - by if np.isfinite(by) and float(by).is_integer() else np.nan
     sex = str(patient.get("sex", "")).strip().upper()
     if not np.isfinite(age) or sex not in {"M", "F"}:
-        return np.nan, "", "missing_sex_or_birth_year", age, None
-    scr_mg_dl = scr_pick["value"] / 88.4
-    if not (np.isfinite(scr_mg_dl) and scr_mg_dl > 0):
-        return np.nan, "", "creatinine_not_positive", age, None
+        return np.nan, "", "missing_sex_or_birth_year", age, None, None
+    from_cystatin = starts_from(config) == "cystatin"
+    if not (np.isfinite(pick["value"]) and pick["value"] > 0):
+        return np.nan, "", "cystatin_not_positive" if from_cystatin else "creatinine_not_positive", age, None, None
     if 18 <= age <= 120:
-        value = ckdepi2021(scr_mg_dl, age, sex)
-        return value, config["adult_equation"], "computed" if np.isfinite(value) else "not_computable", age, None
-    if 1 <= age <= 17:
+        formula, needs = config["adult_equation"], ADULT_EQUATIONS[config["adult_equation"]]
+    elif 1 <= age <= 17:
+        formula, needs = config["child_equation"], CHILD_EQUATIONS[config["child_equation"]]
+    else:
+        return np.nan, "", "age_outside_equations", age, None, None
+    scr_mg_dl = None if from_cystatin else pick["value"] / 88.4
+    cystatin = pick if from_cystatin else None
+    if not from_cystatin and "cystatin" in needs:
+        # The cystatin C nearest to the creatinine's day, within pair_window_days and the time point's window.
+        pw = config["pair_window_days"]
+        cystatin = select([c for c in cystatin_points if window[0] <= c[0] <= window[1]], day, 0, -pw, pw)
+        if cystatin is None:
+            return np.nan, formula, "no_cystatin_paired", age, None, None
+        if not cystatin["value"] > 0:
+            return np.nan, formula, "cystatin_not_positive", age, None, cystatin
+    height = None
+    if "height" in needs:
         hw = config["height_window_days"]
         height = select(height_points, day, 0, -hw, hw)
         if height is None:
-            return np.nan, config["child_equation"], "missing_height", age, None
-        value = schwartz2009(scr_mg_dl, height["value"], age)
-        return value, config["child_equation"], "computed" if np.isfinite(value) else "height_out_of_range", age, height
-    return np.nan, "", "age_outside_equations", age, None
+            return np.nan, formula, "missing_height", age, None, cystatin
+    scys = None if cystatin is None else cystatin["value"]
+    cm = None if height is None else height["value"]
+    value = {
+        "CKD-EPI-2021-Cr": lambda: ckdepi2021(scr_mg_dl, age, sex),
+        "CKD-EPI-2012-Cys": lambda: ckdepi2012_cys(scys, age, sex),
+        "CKD-EPI-2021-CrCys": lambda: ckdepi2021_crcys(scr_mg_dl, scys, age, sex),
+        "Schwartz-2009-bedside": lambda: schwartz2009(scr_mg_dl, cm, age),
+        "CKiD-U25-Cr": lambda: ckid_u25_cr(scr_mg_dl, cm, age, sex),
+        "CKiD-U25-Cys": lambda: ckid_u25_cys(scys, age, sex),
+        "CKiD-U25-CrCys": lambda: (ckid_u25_cr(scr_mg_dl, cm, age, sex) + ckid_u25_cys(scys, age, sex)) / 2,
+    }[formula]()
+    if np.isfinite(value):
+        return value, formula, "computed", age, height, cystatin
+    return value, formula, "height_out_of_range" if "height" in needs else "not_computable", age, height, cystatin
 
 
 def field_values(data_dir, frames, keys):
@@ -363,6 +432,7 @@ def build(data_dir, config, allow_fully_excluded_centers=False):
     fields = field_values(data_dir, frames, config["patient_fields"])
     long_rows, wide_rows = [], []
     egfr = config["egfr"]
+    decimals = {v["name"]: v["decimals"] for v in config["variables"]}
     for key in sorted(anchors):
         p = by_key[key]
         anchor, source, kind = anchors[key]
@@ -387,17 +457,29 @@ def build(data_dir, config, allow_fully_excluded_centers=False):
                 wide.update({prefix: value, f"{prefix}_date": pick["date"].date().isoformat(), f"{prefix}_n": pick["n"]})
             if egfr:
                 prefix = f"{tp['name']}_egfr"
-                scr = picks[egfr["creatinine_variable"]]
-                if scr is None:
-                    long_rows.append({**frame, "variable": "egfr", "unit": EGFR_UNIT, "status": "no_creatinine_in_window"})
+                from_cystatin = starts_from(egfr) == "cystatin"
+                primary = egfr["cystatin_variable" if from_cystatin else "creatinine_variable"]
+                pick = picks[primary]
+                if pick is None:
+                    long_rows.append({**frame, "variable": "egfr", "unit": EGFR_UNIT,
+                                      "status": "no_cystatin_in_window" if from_cystatin else "no_creatinine_in_window"})
                     wide.update({prefix: "", f"{prefix}_formula": ""})
                     continue
-                value, formula, status, age, height = recompute_egfr(scr, series[egfr["height_variable"]][0].get(key, []), p, egfr)
+                points = lambda name: series[egfr[name]][0].get(key, []) if name in egfr else []
+                window = (anchor + pd.Timedelta(days=lo), anchor + pd.Timedelta(days=hi))
+                value, formula, status, age, height, cystatin = recompute_egfr(
+                    pick, points("height_variable"), points("cystatin_variable"), window, p, egfr)
+                paired = cystatin is not None and not from_cystatin
+                extra = {}
+                if "cystatin_variable" in egfr and cystatin is not None:
+                    extra = {"cystatin_mg_l_used": _fmt(cystatin["value"], decimals[egfr["cystatin_variable"]]),
+                             "cystatin_date_used": cystatin["date"].date().isoformat()}
                 long_rows.append({**frame, "variable": "egfr", "unit": EGFR_UNIT, "status": status, "value": _fmt(value, 1),
-                                  "value_date": scr["date"].date().isoformat(), "offset_days": scr["offset"], "sources": egfr["creatinine_variable"],
+                                  "value_date": pick["date"].date().isoformat(), "offset_days": pick["offset"],
+                                  "sources": f"{primary}+{egfr['cystatin_variable']}" if paired else primary,
                                   "egfr_formula": formula, "age_years": "" if not np.isfinite(age) else int(age),
                                   "height_cm_used": "" if height is None else _fmt(height["value"], 1),
-                                  "height_date_used": "" if height is None else height["date"].date().isoformat()})
+                                  "height_date_used": "" if height is None else height["date"].date().isoformat(), **extra})
                 wide.update({prefix: _fmt(value, 1), f"{prefix}_formula": formula if np.isfinite(value) else ""})
         wide_rows.append(wide)
     excluded = [{**dict(zip(KEY, key)), "module": by_key[key].get("module", ""), "reason": reason} for key, reason in sorted(missing.items())]
@@ -441,7 +523,8 @@ def run(data_dir, config_path, out_dir, allow_fully_excluded_centers=False):
             wide_header += [f"{tp['name']}_{v['name']}", f"{tp['name']}_{v['name']}_date", f"{tp['name']}_{v['name']}_n"]
         if config["egfr"]:
             wide_header += [f"{tp['name']}_egfr", f"{tp['name']}_egfr_formula"]
-    files = {f"{prefix}time_windows_long.csv": (LONG_COLUMNS, long_rows),
+    long_header = LONG_COLUMNS + (CYSTATIN_COLUMNS if config["egfr"] and "cystatin_variable" in config["egfr"] else [])
+    files = {f"{prefix}time_windows_long.csv": (long_header, long_rows),
              f"{prefix}time_windows_wide.csv": (wide_header, wide_rows),
              f"{prefix}time_windows_no_anchor.csv": (KEY + ["module", "reason"], excluded)}
     for name, (header, rows) in files.items():
