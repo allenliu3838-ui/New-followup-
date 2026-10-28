@@ -146,6 +146,7 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
   const external = [];
   const unknown = [];
   const importReplies = [];
+  const exportReplies = [];     // 冻结请求的预置结果：{ lost: true } 服务器已创建但响应丢失；{ postgrestError } 服务器拒绝
   const holds = new Map();      // 'table:研究编号' → 等待释放的 Promise，用于模拟迟到的响应
   const served = [];            // 看板视图返回过的 patient_id（检查分页不漏不重）
   const tokens = data.tokens.map(t => ({ ...t }));
@@ -262,6 +263,11 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
       // 测试可预置数据库错误（PostgREST 错误格式）或网络中断。
       if (rpcName === 'import_registry_rows' && importReplies[0]?.postgrestError) return json(400, importReplies.shift().postgrestError);
       if (rpcName === 'import_registry_rows' && importReplies[0]?.abort) { importReplies.shift(); return settle(route.abort('failed')); }
+      if (rpcName === 'create_registry_export' && exportReplies.length) {
+        const reply = exportReplies.shift();
+        if (reply.postgrestError) return json(400, reply.postgrestError);
+        if (reply.lost) { createExport(body); return settle(route.abort('failed')); }
+      }
       if (rpcName === 'create_patient_token_v2' && data.tokenErrors?.[body?.p_patient_code]) return json(400, { code: 'P0001', message: data.tokenErrors[body.p_patient_code], details: null, hint: null });
       const value = rpc(rpcName, body || {});
       return value === null && rpcName === 'revoke_patient_token_by_id' ? settle(route.fulfill({ status: 204, headers })) : json(200, value);
@@ -307,7 +313,7 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
     return () => { holds.delete(`${table}:${patientCode}`); release(); };
   }
 
-  return { requests, external, unknown, importReplies, served, tokens, inquiries, biopsies, hold, handle, rpcCalls: name => requests.filter(r => r.path === `/rest/v1/rpc/${name}`) };
+  return { requests, external, unknown, importReplies, exportReplies, served, tokens, inquiries, biopsies, hold, handle, rpcCalls: name => requests.filter(r => r.path === `/rest/v1/rpc/${name}`) };
 }
 
 function sessionFor() {
@@ -914,6 +920,25 @@ async function main() {
     assert.ok(biopsyCsvText.split(/\r?\n/)[0].startsWith('id,project_id,center_code,module,patient_code,biopsy_date,biopsy_kind,is_index,glomeruli_total,crescent_pct,oxford_m,oxford_e,oxford_s,oxford_t,oxford_c,notes'), biopsyCsvText.split(/\r?\n/)[0]);
     assert.equal(mock.rpcCalls('log_project_audit').at(-1).body.p_details.kind, 'biopsies', '导出留痕记录活检类型');
 
+    // 7f. 服务器已创建但响应丢失：不能说“没有创建”，提示无法确认并刷新列表（新版本出现在列表中）；
+    //     本页重试沿用同一请求编号，不会多出版本。服务器明确拒绝时才说“没有创建”。
+    const freezeOnce = async () => { await page.click('#btnCreateSnapshot'); await freezeModal.waitFor(); await page.click('#fzConfirm'); await freezeModal.waitFor({ state: 'detached' }); };
+    mock.exportReplies.push({ lost: true });
+    await freezeOnce();
+    await eventually(async () => (await text(page.locator('#snapshotOut')))?.startsWith('无法确认冻结版本是否已创建'), '响应丢失时提示无法确认');
+    assert.ok(!(await text(page.locator('#snapshotOut'))).includes('没有创建'), '响应丢失时不能断言没有创建');
+    await page.locator('#snapshotsList tr[data-snapshot-code="KS-2026-SYNTHETIC0002"]').waitFor();
+    await freezeOnce();
+    await eventually(async () => (await text(page.locator('#snapshotOut')))?.startsWith('已创建冻结版本 KS-2026-SYNTHETIC0002（'), '本页重试返回同一版本');
+    const [lostCall, retryCall] = mock.rpcCalls('create_registry_export').slice(1).map(r => r.body);
+    assert.equal(retryCall.p_request_id, lostCall.p_request_id, '重试沿用同一请求编号');
+    assert.equal(await page.locator('#snapshotsList tr[data-snapshot-code]').count(), 2, '重试没有多出版本');
+    mock.exportReplies.push({ postgrestError: { code: 'P0001', message: 'export_payload_too_large', details: null, hint: null } });
+    await freezeOnce();
+    await eventually(async () => (await text(page.locator('#snapshotOut')))?.startsWith('没有创建冻结版本：'), '服务器明确拒绝时说明没有创建');
+    assert.notEqual(mock.rpcCalls('create_registry_export')[3].body.p_request_id, retryCall.p_request_id, '成功之后的下一次冻结使用新的请求编号');
+    assert.equal(await page.locator('#snapshotsList tr[data-snapshot-code]').count(), 2);
+
     // 8. 基因数据默认隐藏，且不读取基因表。
     assert.equal(await page.locator('#geneticsSection').isVisible(), false, '基因录入默认隐藏');
     assert.equal(await page.locator('#btnExportVariants').isVisible(), false, '“导出基因变异”默认隐藏');
@@ -929,7 +954,7 @@ async function main() {
     assert.ok((await text(freezeModal)).includes('本项目还没有患者记录，冻结版本会是空的，不能创建'));
     assert.equal(await page.locator('#fzConfirm').isDisabled(), true, '空项目不能创建冻结版本');
     await freezeModal.getByRole('button', { name: '取消' }).click();
-    assert.equal(mock.rpcCalls('create_registry_export').length, 1, '空项目没有发出冻结请求');
+    assert.equal(mock.rpcCalls('create_registry_export').length, 4, '空项目没有发出冻结请求');
 
     // 10. 页面文字不出现表名或旧术语。
     const visible = await page.evaluate(() => document.body.innerText);

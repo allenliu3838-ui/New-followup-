@@ -35919,7 +35919,7 @@
       "old_sha256": "226227197e2a05e86c89bc1627ab7768cc29e444ae72a1276d704955366adffb"
     },
     "assets/template/README_PACK.md": {
-      "new_sha256": "8455df38eb05770bf4fb995652bb855b1c7882bf4d6098fc6d0524e1fd8ead3e",
+      "new_sha256": "a5354f6f31e89022b943b913a4614409b9dbf7f00c62b9bea9142dd7321119f5",
       "old_sha256": "d2d54ff8d60f26fdd2e5a63f3e104a64ab89767fba212a2be58ec9ec4863af5e"
     },
     "assets/template/feasibility_criteria_template.json": {
@@ -35927,7 +35927,7 @@
       "old_sha256": null
     },
     "assets/template/feasibility_report.py": {
-      "new_sha256": "b0d6f37bce01ef27c7314b08973d36bd5e5275ac598fc93b0537e88d8e6fdcdc",
+      "new_sha256": "c422b8328f35d0cf0a7e8f11f078b0093636f4df2e8bbceb8d0e7895c25276b6",
       "old_sha256": null
     },
     "assets/template/merge_centers.py": {
@@ -35935,7 +35935,7 @@
       "old_sha256": "b67e41c49ad9e28e8be562a68a20840eadcfac0397ec2491b831468674ef5be3"
     },
     "assets/template/protocol_template.json": {
-      "new_sha256": "ea3d0944559879803dcd4bbdb30c501457b55279e73dbbbd06f61bcdae606a2c",
+      "new_sha256": "2cfa825ec49c171b4a87a018795c825c1c0d5574c3d994fa53dae03192ee9f0b",
       "old_sha256": "ea3d0944559879803dcd4bbdb30c501457b55279e73dbbbd06f61bcdae606a2c"
     },
     "assets/template/requirements.txt": {
@@ -35943,11 +35943,11 @@
       "old_sha256": "c5a48736a9044a1a0b5dd3afb8a3f37d589f0c704a0a93463d80dd5b762b9d0d"
     },
     "assets/template/run_analysis.py": {
-      "new_sha256": "31545ee4741a7097461e1522d1624db3b1cd36c56aa0762455ca77443b281f37",
+      "new_sha256": "2a01b9c6b2b24afca79bb6cb5697a2d8576e60bdb2b5739df4efad2b323c8bca",
       "old_sha256": "437d6b7a9efcbbe689367bcd052b4b322d5082bf70c592a58198239615b948d5"
     },
     "assets/template/time_windows.py": {
-      "new_sha256": "1d2ba18cb26c9bd17ad0a2f579c75ce2f32352b369d417d37897c4ead43359ba",
+      "new_sha256": "ee4bb0696eb2385eb2f523b02742d77eeaa7529c9fa39ca461e5cefd3af0fa7f",
       "old_sha256": null
     },
     "assets/template/time_windows_template.json": {
@@ -36151,7 +36151,7 @@
       "old_sha256": "79705e51e7c96b35acaba3f50373d90fe3c3b63e14598533ce9b4b37af03c78c"
     },
     "staff.js": {
-      "new_sha256": "1be31ada0eb083a74f95d3fbe4bf64295bd96194a46c509196f353659bb1ef0b",
+      "new_sha256": "52e5924271711a262868d22beb90865feddc5d1521e3115b50bc52084110ad7d",
       "old_sha256": "cf738d75db0a92be21d3eae87c4539a423ca7533a04973a4302c9147284192a2"
     },
     "terms.html": {
