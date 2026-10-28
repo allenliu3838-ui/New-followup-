@@ -34607,7 +34607,7 @@
       "old_sha256": "226227197e2a05e86c89bc1627ab7768cc29e444ae72a1276d704955366adffb"
     },
     "assets/template/README_PACK.md": {
-      "new_sha256": "f9eb3283e7d2952056ecb75f867c913021f27d89d0b6586451d98ff4caa38126",
+      "new_sha256": "dabc529f2240b415a6d1468fc6406965d84a39ba77b049cd2a046f44467181b7",
       "old_sha256": "d2d54ff8d60f26fdd2e5a63f3e104a64ab89767fba212a2be58ec9ec4863af5e"
     },
     "assets/template/feasibility_criteria_template.json": {
@@ -34615,7 +34615,7 @@
       "old_sha256": null
     },
     "assets/template/feasibility_report.py": {
-      "new_sha256": "b0d6f37bce01ef27c7314b08973d36bd5e5275ac598fc93b0537e88d8e6fdcdc",
+      "new_sha256": "c422b8328f35d0cf0a7e8f11f078b0093636f4df2e8bbceb8d0e7895c25276b6",
       "old_sha256": null
     },
     "assets/template/merge_centers.py": {
@@ -34623,7 +34623,7 @@
       "old_sha256": "b67e41c49ad9e28e8be562a68a20840eadcfac0397ec2491b831468674ef5be3"
     },
     "assets/template/protocol_template.json": {
-      "new_sha256": "ea3d0944559879803dcd4bbdb30c501457b55279e73dbbbd06f61bcdae606a2c",
+      "new_sha256": "2cfa825ec49c171b4a87a018795c825c1c0d5574c3d994fa53dae03192ee9f0b",
       "old_sha256": "ea3d0944559879803dcd4bbdb30c501457b55279e73dbbbd06f61bcdae606a2c"
     },
     "assets/template/requirements.txt": {
@@ -34631,7 +34631,7 @@
       "old_sha256": "c5a48736a9044a1a0b5dd3afb8a3f37d589f0c704a0a93463d80dd5b762b9d0d"
     },
     "assets/template/run_analysis.py": {
-      "new_sha256": "b0e6b9ff70de9cd89c9739d4478f282ac9a6276a10c0fd7af5487b4994c6d3b4",
+      "new_sha256": "d25baaf2c9f55b453e0427b9297adc29bbe6ff87d9f513429e8bc8b76041b805",
       "old_sha256": "437d6b7a9efcbbe689367bcd052b4b322d5082bf70c592a58198239615b948d5"
     },
     "assets/肾域科研_临床团队虚拟项目全流程演练册_V2.1.pdf": {
@@ -34711,7 +34711,7 @@
       "old_sha256": "5bfa97ded368de86a54e1963f085bc99d05a7029f2911790135e3428c11ab8d6"
     },
     "lib/batch-import.js": {
-      "new_sha256": "c55e5ccf260483ea08db8e23e7af8552ab7a7f32c89b0e0d6fc16b688572e359",
+      "new_sha256": "b9966a39cabd2692c8c78f56e595593e0b81febd346c2d8ab49fe711c9c5dd8d",
       "old_sha256": "e913207ff31abc7c4015de340e57d1cc9eb9f4cf71c1e72915f3e69519abf5e1"
     },
     "lib/error-logger.js": {

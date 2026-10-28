@@ -434,10 +434,10 @@ CONSENT_INCLUDED = ("consented", "waiver")
 CONSENT_VALUES = ("unconfirmed", "consented", "waiver", "declined", "withdrawn")
 FOLLOWUP_STATUS_VALUES = ("active", "lost", "withdrawn", "deceased", "kidney_failure", "transferred")
 # Registry vocabularies (supabase/migrations): module codes accepted for projects
-# (0033_billing_registration.sql) and the events_long.event_type CHECK (0002_events.sql).
-SUPPORTED_MODULES = ("IGAN", "LN", "MN", "DKD", "CKD", "KTX", "GENERAL")
+# (0042_c3g_module.sql) and the events_long.event_type CHECK (0002_events.sql, 0040, 0042).
+SUPPORTED_MODULES = ("IGAN", "LN", "MN", "DKD", "CKD", "KTX", "GENERAL", "C3G")
 EVENT_TYPES = ("egfr_decline_40pct", "egfr_decline_57pct", "esrd", "death", "complete_remission", "partial_remission", "custom",
-               "dialysis_start", "kidney_transplant", "relapse")
+               "dialysis_start", "kidney_transplant", "relapse", "serious_infection", "hospitalization", "vaccination")
 # Kidney failure (esrd, start of dialysis, kidney transplant) or death.
 KF_DEATH_EVENT_TYPES = ("esrd", "dialysis_start", "kidney_transplant", "death")
 KF_DEATH_OPTIONS = ("count_as_event", "censor")

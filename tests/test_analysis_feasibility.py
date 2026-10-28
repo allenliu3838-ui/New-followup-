@@ -114,6 +114,23 @@ class FeasibilityReportTests(unittest.TestCase):
         self.assertIn("patients_baseline.csv", log["input_sha256"])
         self.assertTrue(log["consent_filter"]["applied"])
 
+    def test_center_with_every_patient_excluded_keeps_a_zero_row(self):
+        data = make_data(self.tmp / "data_d", [
+            {"code": "001", "birth_year": 1980, "visits": [(300, 100, 1500, "CKD-EPI-2021-Cr", None)]},
+            {"code": "201", "center": "D", "birth_year": 1980, "consent": "declined", "visits": [(300, 100, 1500, "CKD-EPI-2021-Cr", None)]},
+            {"code": "202", "center": "D", "birth_year": 1981, "consent": "withdrawn", "visits": [(300, 100, 1500, "CKD-EPI-2021-Cr", None)]},
+        ])
+        log, summary = fr.run(data, self.tmp / "out_d", criteria(self.tmp))
+        by = {(r["project_id"], r["center_code"]): r for r in summary}
+        a, d, total = by[(SP, "A")], by[(SP, "D")], by[("ALL", "ALL")]
+        self.assertEqual(list(d), list(a), "the zero row has the same columns as the other centres")
+        self.assertEqual([d["modules"], d["consent_excluded_n"], d["included_patients_n"], d["with_visit_n"], d["all_criteria_n"]], ["", 2, 0, 0, 0])
+        self.assertEqual([d[c] for c in d if c.endswith("_n")], [2, 0, 0, 0, 0, 0, 0, 0, 0])
+        self.assertEqual(sum(r["consent_excluded_n"] for r in summary[:-1]), total["consent_excluded_n"], "per-centre exclusions add up to the total")
+        self.assertEqual(log["consent_filter"]["fully_excluded_centers"], [f"{SP}/D"])
+        with (self.tmp / "out_d" / "feasibility_by_center.csv").open(encoding="utf-8") as f:
+            self.assertEqual([r["center_code"] for r in csv.DictReader(f)], ["A", "D", "ALL"])
+
     def test_explicit_as_of_and_recency_window(self):
         log, summary = fr.run(self.data, self.tmp / "out2", criteria(self.tmp, last_visit_within_days=100), as_of=day(60))
         a = next(r for r in summary if r["center_code"] == "A")

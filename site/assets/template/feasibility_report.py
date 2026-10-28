@@ -143,12 +143,22 @@ def evaluate(patients, visits, criteria, as_of):
 
 
 def summarize(evaluated, consent_info):
-    """Counts per project/centre plus a total row; never patient identifiers."""
+    """Counts per project/centre plus a total row; never patient identifiers.
+
+    A centre whose patients were all excluded by consent keeps a row with zero counts, so
+    every centre is listed and the per-centre exclusions add up to the total row.
+    """
     excluded = {(c["project_id"], c["center_code"]): c["excluded_n"] for c in consent_info.get("by_center", [])}
     check_cols = [c for c in evaluated.columns if c.endswith("_ok") and c != "all_ok"]
     out = []
-    groups = list(evaluated.groupby(["project_id", "center_code"], sort=True)) if not evaluated.empty else []
-    for (pid, cc), sub in groups:
+    groups = dict(list(evaluated.groupby(["project_id", "center_code"], sort=True))) if not evaluated.empty else {}
+    for pid, cc in sorted(set(groups) | set(excluded)):
+        sub = groups.get((pid, cc))
+        if sub is None:
+            row = {"project_id": pid, "center_code": cc, "modules": "", "consent_excluded_n": excluded[(pid, cc)],
+                   "included_patients_n": 0, "with_visit_n": 0, **{f"{c[:-3]}_n": 0 for c in check_cols}, "all_criteria_n": 0}
+            out.append(row)
+            continue
         row = {"project_id": pid, "center_code": cc, "modules": "|".join(sorted(sub.module.unique())),
                "consent_excluded_n": excluded.get((pid, cc), 0), "included_patients_n": len(sub),
                "with_visit_n": int(sub.has_visit.sum())}
