@@ -39,7 +39,7 @@ try{
   ON public.v_concept_export_mapping TO PUBLIC,anon,authenticated;`);
  pass('historical mapping columns and dictionary contents captured with synthetic column grants');
 
- assert.equal(await applyMigrations(db,{phase:'upgrade'}),13);
+ assert.equal(await applyMigrations(db,{phase:'upgrade'}),14);
  // 0042 adds the C3 glomerulopathy fields and the visit height to the concept dictionary, 0043
  // the biopsy-record fields; every historical mapping row and the view's shape stay exactly as they were.
  const after=await contents();

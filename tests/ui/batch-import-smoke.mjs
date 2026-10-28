@@ -297,6 +297,28 @@ async function checkPureHelpers() {
   const piiReport = bi.errorReportCsv(r);
   assert.ok(!piiReport.includes('13812345678'), piiReport);
   assert.ok(piiReport.split('\r\n').some(l => l.startsWith('2,,patient_code,阻断,')), piiReport);
+
+  // 尿红细胞：通用名称同时对应 /μL 与 /HPF 两个项目，按单位确定；没有单位或单位不属于任一项目时不猜测；两者不互认单位。
+  const URBC = [
+    { code: 'URBC_UL', name_cn: '尿红细胞计数（仪器，/μL）', name_en: 'Urine erythrocytes per microlitre (analyser)', module: 'GENERAL', is_core: false, standard_unit: 'cells/μL', display_note: null },
+    { code: 'URBC_HPF', name_cn: '尿红细胞计数（镜检，/HPF）', name_en: 'Urine erythrocytes per high-power field (microscopy)', module: 'GENERAL', is_core: false, standard_unit: 'cells/HPF', display_note: null },
+    { code: 'CYSC', name_cn: '血清胱抑素C', name_en: 'Serum cystatin C', module: 'GENERAL', is_core: false, standard_unit: 'mg/L', display_note: null },
+  ];
+  const urbcUnits = {};
+  for (const x of [u('URBC_UL', 'cells/μL', true), u('URBC_UL', '个/μL', false), u('URBC_UL', '/μL', false), u('URBC_HPF', 'cells/HPF', true), u('URBC_HPF', '个/HPF', false),
+    u('URBC_HPF', '/HPF', false), u('URBC_HPF', '个/HP', false), u('URBC_HPF', '/HP', false), u('CYSC', 'mg/L', true)]) (urbcUnits[x.lab_test_code] ||= []).push(x);
+  const urbcCtx = { ...ctx, catalog: [...CATALOG, ...URBC], unitMap: { ...unitMap, ...urbcUnits } };
+  const NAMED = ['patient_code', 'lab_date', 'lab_test_code', 'lab_item_name', 'value_raw', 'unit_symbol', 'result_text'];
+  const named = (name, value, unit, text = '') => ({ patient_code: 'P001', lab_date: '2025-01-01', lab_test_code: '', lab_item_name: name, value_raw: value, unit_symbol: unit, result_text: text });
+  r = bi.validateBatch('labs', NAMED, [named('尿红细胞', '25', '个/μL'), named('尿红细胞', '3', '/HP'), named('尿红细胞', '', '', '满视野'), named('尿红细胞', '8', 'mg/L'),
+    named('尿红细胞（镜检）', '4', '/HPF'), named('胱抑素C', '1.05', 'mg/L'), named('CysC', '1.1', 'mg/L')], urbcCtx);
+  assert.deepEqual(r.rows.map(x => x.payload.lab_test_code ?? null), ['URBC_UL', 'URBC_HPF', null, null, 'URBC_HPF', 'CYSC', 'CYSC']);
+  assert.ok(r.rows[0].issues.some(i => i.level === 'info' && i.reason.includes('已按单位映射到 URBC_UL')));
+  assert.deepEqual(r.rows.slice(2, 4).map(x => x.status), ['block', 'block'], '没有单位或单位不属于任一项目时进入未映射清单');
+  assert.equal(r.unmapped.length, 1, '同一名称的未映射行合并为一项');
+  r = bi.validateBatch('labs', NAMED, [{ ...named('', '8', '/HPF'), lab_test_code: 'URBC_UL' }], urbcCtx);
+  assert.equal(r.rows[0].status, 'block', '编码写明 /μL 项目时，/HPF 单位被阻断');
+  assert.ok(r.rows[0].issues.some(i => i.fix.includes('cells/μL') && !i.fix.includes('cells/HPF')));
 }
 
 async function main() {

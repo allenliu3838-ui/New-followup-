@@ -138,6 +138,72 @@ def schwartz2009(scr_mg_dl, height_cm, age):
     return 0.413 * height / scr
 
 
+# Cystatin C equations. They are offered by time_windows.py when the study teams choose them; the
+# eGFR stored with each visit and the endpoint analysis above stay creatinine based. All need
+# serum cystatin C in mg/L traceable to ERM-DA471/IFCC; age is year-derived as above.
+def ckdepi2012_cys(scys_mg_l, age, sex):
+    """Adult cystatin C equation (CKD-EPI 2012, Inker 2012):
+    133 x min(Scys/0.8, 1)^-0.499 x max(Scys/0.8, 1)^-1.328 x 0.996^age x 0.932 [female].
+
+    Missing/unknown sex, nonpositive cystatin C, or age outside 18..120 => NaN.
+    """
+    scys, age = number(scys_mg_l), number(age)
+    sx = str(sex).strip().upper()
+    if not (np.isfinite(scys) and scys > 0 and np.isfinite(age) and 18 <= age <= 120 and sx in {"M", "F"}):
+        return np.nan
+    return 133 * min(scys/0.8, 1)**-0.499 * max(scys/0.8, 1)**-1.328 * 0.996**age * (0.932 if sx == "F" else 1)
+
+
+def ckdepi2021_crcys(scr_mg_dl, scys_mg_l, age, sex):
+    """Adult creatinine-cystatin C equation (CKD-EPI 2021, Inker 2021): 135 x min(Scr/k, 1)^a
+    x max(Scr/k, 1)^-0.544 x min(Scys/0.8, 1)^-0.323 x max(Scys/0.8, 1)^-0.778 x 0.9961^age
+    x 0.963 [female]; k = 0.7 (F) or 0.9 (M), a = -0.219 (F) or -0.144 (M).
+
+    Missing/unknown sex, a nonpositive marker, or age outside 18..120 => NaN.
+    """
+    scr, scys, age = number(scr_mg_dl), number(scys_mg_l), number(age)
+    sx = str(sex).strip().upper()
+    if not (np.isfinite(scr) and scr > 0 and np.isfinite(scys) and scys > 0 and np.isfinite(age) and 18 <= age <= 120
+            and sx in {"M", "F"}):
+        return np.nan
+    k, alpha = (0.7, -0.219) if sx == "F" else (0.9, -0.144)
+    return (135 * min(scr/k, 1)**alpha * max(scr/k, 1)**-0.544 * min(scys/0.8, 1)**-0.323 * max(scys/0.8, 1)**-0.778
+            * 0.9961**age * (0.963 if sx == "F" else 1))
+
+
+def ckid_u25_cr(scr_mg_dl, height_cm, age, sex):
+    """CKiD U25 creatinine equation (Pierce 2021) for children 1-17 years: K x height (m) / creatinine
+    (mg/dL). K for boys 39.0 x 1.008^(age-12) under 12 years and 39.0 x 1.045^(age-12) from 12; for
+    girls 36.1 x 1.008^(age-12) under 12 and 36.1 x 1.023^(age-12) from 12. (The equation also covers
+    18-25 years; from 18 the registry uses its adult equations.)
+
+    Missing/unknown sex, invalid height (30-250 cm), nonpositive creatinine or an age outside 1..17 => NaN.
+    """
+    scr, height, age = number(scr_mg_dl), number(height_cm), number(age)
+    sx = str(sex).strip().upper()
+    if not (np.isfinite(scr) and scr > 0 and np.isfinite(height) and 30 <= height <= 250 and np.isfinite(age) and 1 <= age < 18
+            and sx in {"M", "F"}):
+        return np.nan
+    base, from12 = (39.0, 1.045) if sx == "M" else (36.1, 1.023)
+    return base * (1.008 if age < 12 else from12)**(age - 12) * (height / 100) / scr
+
+
+def ckid_u25_cys(scys_mg_l, age, sex):
+    """CKiD U25 cystatin C equation (Pierce 2021) for children 1-17 years: K / cystatin C (mg/L).
+    K for boys 87.2 x 1.011^(age-15) under 15 years and 87.2 x 0.960^(age-15) from 15; for girls
+    79.9 x 1.004^(age-12) under 12 and 79.9 x 0.974^(age-12) from 12.
+
+    Missing/unknown sex, nonpositive cystatin C or an age outside 1..17 => NaN.
+    """
+    scys, age = number(scys_mg_l), number(age)
+    sx = str(sex).strip().upper()
+    if not (np.isfinite(scys) and scys > 0 and np.isfinite(age) and 1 <= age < 18 and sx in {"M", "F"}):
+        return np.nan
+    if sx == "M":
+        return 87.2 * (1.011 if age < 15 else 0.960)**(age - 15) / scys
+    return 79.9 * (1.004 if age < 12 else 0.974)**(age - 12) / scys
+
+
 def issue(issues, table, row, code, detail):
     issues.append({"table": table, **{k: row.get(k, "") for k in KEY}, "record_id": row.get("id", ""), "code": code, "detail": detail})
 
@@ -305,6 +371,11 @@ LAB_UNITS = {
     "CD19": ("cells/μL", {"cells/μL": 1}),
     "BKV": ("copies/mL", {"copies/mL": 1}),
     "CMV": ("IU/mL", {"IU/mL": 1}),
+    "CYSC": ("mg/L", {"mg/L": 1}),
+    # Analyser counts per μL and microscopy counts per high-power field are separate tests; neither
+    # is converted into the other.
+    "URBC_UL": ("cells/μL", {"cells/μL": 1, "个/μL": 1, "/μL": 1}),
+    "URBC_HPF": ("cells/HPF", {"cells/HPF": 1, "个/HPF": 1, "/HPF": 1, "个/HP": 1, "/HP": 1}),
 }
 
 

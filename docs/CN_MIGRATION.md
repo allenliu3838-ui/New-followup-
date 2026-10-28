@@ -749,6 +749,8 @@ unset PGPASSWORD OLD_DB_URL OLD_KEY
 
 **补充（2026-10-28）：** 迁移 0044（每个项目自定义入组字段，见附录 C.6）随 v7 一起上线时，顺序为 0042、0043、0044，再发布前端。
 
+**补充（2026-10-28）：** 迁移 0045（化验目录增加血清胱抑素 C 与两种尿红细胞计数，见附录 C.7）随 v7 一起上线时，顺序为 0042、0043、0044、0045，再发布前端。
+
 | 文件 | 位置 | 现状 | 需要的改动 |
 |---|---|---|---|
 | `scripts/capture_registry_database.py` | 第 13 行 `PROJECT_REF`；`connection_environment()`（约第 30–49 行） | 只接受 `db.etsyglgpiutflethgirs.supabase.co`，或 `*.pooler.supabase.com` 且用户为 `postgres.etsyglgpiutflethgirs` | 新的项目身份（例如 `ksr-aliyun-<地域>-1`）；主机规则改为精确匹配新数据库主机名（如 `db.registry.internal`）与用户 `postgres`；保留 `verify-full` TLS、清除继承的 `PG*` 变量、只读事务、只接受审查过的预检 SQL 等全部现有约束。可选加强：在预检 SQL 中输出 `pg_control_system()` 的 `system_identifier` 并在工具中固定比对，因为自托管主机名不像 Supabase 项目编号那样全局唯一 |
@@ -1075,3 +1077,25 @@ docker exec -i supabase-db psql -U postgres -d postgres -X -t -A \
 然后重新生成只读预检报告，`0044_project_fields`、`project_fields_tables` 与 `project_fields_signatures` 均须为 `true`。**顺序仍是先数据库、后前端**：新前端会读取 `project_fields`，数据库未升级时“自定义入组字段”区显示读取失败，其余功能不受影响。
 
 分析包同步：`run_analysis.py` 把 `patient_field_values` 作为可选表读取（多选为分号分隔的代码），`merge_centers.py` 随之合并；字段定义在 `analysis/data/project_fields.csv` 与 `data_dictionary.json` 的 `custom_fields` 中。`time_windows.py` 的配置可用 `patient_fields` 把入组字段加入宽表（`field_<代码>` 列）。多中心合并前须核对各中心的字段定义一致。
+
+### C.7 后续增量 0045（血清胱抑素 C、尿红细胞计数）
+
+须在 0044 之后执行；未登记 0044 时中止并整体回滚。0045 只向化验字典增加行，不改任何已有数据、函数、触发器或策略（验收测试 `tests/cystatin-urine-rbc-db.mjs` 对比迁移前后的化验记录与全部字典行），可重复执行。内容：
+
+- `CYSC` 血清胱抑素 C，单位只有 mg/L（LOINC 33863-2）。随访记录自动计算的 eGFR 不变，仍为肌酐公式；胱抑素 C 公式与肌酐–胱抑素 C 联合公式在分析包 `time_windows.py` 的配置中选择。
+- `URBC_UL` 尿红细胞计数（仪器，标准单位 cells/μL，另接受 个/μL、/μL）与 `URBC_HPF` 尿红细胞计数（镜检，标准单位 cells/HPF，LOINC 13945-1，另接受 个/HPF、/HPF、个/HP、/HP）。两种方法没有准确的换算关系，两个项目不共用任何单位，系统不互相换算；无法计数的结果（如“满视野”）填结果文字。
+- 单位字典增加上述 7 个写法（换算系数均为 1），缩写字典增加 `CysC`、`HPF`。
+
+执行方式与 0044 相同：
+
+```bash
+docker exec -i supabase-db psql -U postgres -d postgres -X -q -v ON_ERROR_STOP=1 -f - \
+  < supabase/migrations/0045_cystatin_urine_rbc.sql
+docker exec -i supabase-db psql -U postgres -d postgres -X -t -A \
+  -c "SELECT version FROM public.registry_schema_versions WHERE version='0045_cystatin_urine_rbc'"
+# 预期：0045_cystatin_urine_rbc
+```
+
+然后重新生成只读预检报告，`0045_cystatin_urine_rbc` 与 `cystatin_urine_rbc_labs` 均须为 `true`。数据库升级后，化验下拉框即出现这三个项目（下拉框由字典生成）；新前端的批量导入另外认识“胱抑素C”“尿红细胞”等名称，只写“尿红细胞”时按单位确定项目。先升级数据库、暂不发布前端没有影响。
+
+分析包同步：`run_analysis.py` 的显式单位换算加入这三个项目（各自只认本方法的单位写法），并新增 CKD-EPI 2012 胱抑素 C、CKD-EPI 2021 肌酐–胱抑素 C、CKiD U25 肌酐与胱抑素 C 公式；终点判定仍用肌酐公式。`time_windows.py` 的 `egfr` 配置可选这些公式（`adult_equation`、`child_equation`、`cystatin_variable`、`pair_window_days`），默认仍为 CKD-EPI 2021 肌酐公式与床旁 Schwartz 公式，原有配置的结果不变；模板增加胱抑素 C 与两种尿红细胞变量。

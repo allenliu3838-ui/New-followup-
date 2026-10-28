@@ -94,9 +94,18 @@ biopsy; patients without an anchor are listed with the reason and are not impute
 each pre-specified time point (target day and inclusive window, in days from day 0) and
 variable, same-day measurements are first combined into their median, the day nearest to
 the target day is then taken, and of two equally near days the earlier one. Laboratory
-values are used only after an explicit unit conversion. eGFR at each time point is
-recomputed from the creatinine selected for that time point (CKD-EPI 2021 creatinine
-equation for ages 18-120; bedside Schwartz 2009 for ages 1-17 with the height nearest to
-that day within the configured height window). The configuration file (time points,
+values are used only after an explicit unit conversion; urine red cells counted per
+microlitre (analyser) and per high-power field (microscopy) are separate variables and are
+not converted into each other. eGFR at each time point is recomputed with the equations
+named in the configuration [state the agreed pair]: for ages 18-120 the CKD-EPI 2021
+creatinine equation (default), the CKD-EPI 2012 cystatin C equation or the CKD-EPI 2021
+creatinine-cystatin C equation (Inker et al., 2012 and 2021); for ages 1-17 the bedside
+Schwartz 2009 equation (default) or the CKiD U25 creatinine, cystatin C or combined (mean
+of the two) equations (Pierce et al., 2021), with the height nearest to the measurement day
+within the configured height window. Creatinine-based equations start from the creatinine
+selected for the time point, and combined equations use the cystatin C measured on the same
+day [or within N days, if configured]; cystatin C-only equations start from the cystatin C
+selected for the time point. Cystatin C was measured by [assay], traceable to ERM-DA471/IFCC.
+The configuration file (time points,
 windows, variables, confirming investigators and date) and its SHA-256 are recorded in
 `TIME_WINDOWS_LOG.json`; output from an unconfirmed configuration is labelled UNCONFIRMED.

@@ -39,6 +39,8 @@ const CASES = [
   ['多中心怎么合并', 'multicenter'],
   ['忘记密码', 'verify-email'],
   ['多少钱', 'price'],
+  ['胱抑素C', 'cystatin-egfr'],
+  ['尿红细胞', 'urine-rbc'],
 ];
 
 // 不下载浏览器：优先使用 Playwright 自带的，否则用 PLAYWRIGHT_BROWSERS_PATH 下已安装的 Chromium。

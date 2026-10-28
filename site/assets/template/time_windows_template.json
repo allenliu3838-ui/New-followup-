@@ -2,7 +2,8 @@
   "_说明": "按活检日对齐的时间窗导出配置（time_windows.py）。下面的时间点与窗口只是示例，正式数值须由研究双方按方案确认；确认后把 confirmed 改为 true，并填写 confirmed_by 与 confirmed_date。未确认时输出文件名以 UNCONFIRMED_ 开头，不能作为正式分析数据。",
   "_取值规则": "每个时间点在窗口内取距目标日最近的一天；距离相同取较早的一天；同一天多个值取中位数。窗口边界包含在内，单位为距对齐日期的天数（负数为对齐日期之前）。该规则固定，不能在配置中修改。",
   "_对齐日期": "anchor.sources 按顺序查找：index_biopsy（肾活检记录中标为基准活检的那一次）、baseline_biopsy_date（患者基线中的肾穿日期：LN 用 ln_biopsy_date，C3G 用 c3g_biopsy_date，其余用 biopsy_date）、earliest_native_biopsy（最早一次自体肾活检，需明确加入才使用）。都找不到的患者列入 time_windows_no_anchor.csv。",
-  "_eGFR": "eGFR 按每个时间点选中的血肌酐重新计算：18 岁及以上用 CKD-EPI 2021 肌酐公式，1–17 岁用床旁 Schwartz 2009 公式并取该日前后 height_window_days 天内最近的身高。其他公式须研究双方商定后再加入。",
+  "_eGFR": "eGFR 在每个时间点重新计算，公式由 egfr.adult_equation（18 岁及以上）和 egfr.child_equation（1–17 岁）指定，须研究双方商定。成人可选 CKD-EPI-2021-Cr（肌酐，默认）、CKD-EPI-2012-Cys（胱抑素 C）、CKD-EPI-2021-CrCys（肌酐与胱抑素 C 联合）；儿童可选 Schwartz-2009-bedside（床旁 Schwartz，默认）、CKiD-U25-Cr、CKiD-U25-Cys、CKiD-U25-CrCys（两者平均）。含肌酐的公式从该时间点选中的血肌酐出发，联合公式取与该肌酐同日（pair_window_days 为允许相差的天数，默认 0）且在窗口内的胱抑素 C；只用胱抑素 C 的公式从该时间点选中的胱抑素 C 出发。成人与儿童公式须同为含肌酐或同为只用胱抑素 C。儿童身高取测量日前后 height_window_days 天内最近的一次。胱抑素 C 须可溯源至 ERM-DA471/IFCC。",
+  "_尿红细胞": "仪器计数（URBC_UL，个/μL）与镜检计数（URBC_HPF，个/HPF）是两个变量，没有准确的换算关系，不要放进同一个变量；确需合并时须由研究双方约定换算系数，写在 factor 中并在方法中报告。",
   "format": "kidneysphere-time-windows-v1",
   "confirmed": false,
   "confirmed_by": "",
@@ -25,10 +26,16 @@
                  {"table": "labs_long", "lab_test_code": "UPCR", "analysis_unit": "mg/g", "factor": 1}]},
     {"name": "sbp", "label": "收缩压", "unit": "mmHg", "decimals": 0, "sources": [{"table": "visits_long", "column": "sbp"}]},
     {"name": "dbp", "label": "舒张压", "unit": "mmHg", "decimals": 0, "sources": [{"table": "visits_long", "column": "dbp"}]},
-    {"name": "height_cm", "label": "身高", "unit": "cm", "decimals": 1, "sources": [{"table": "visits_long", "column": "height_cm"}]}
+    {"name": "height_cm", "label": "身高", "unit": "cm", "decimals": 1, "sources": [{"table": "visits_long", "column": "height_cm"}]},
+    {"name": "scys_mg_l", "label": "血清胱抑素C", "unit": "mg/L", "decimals": 2,
+     "sources": [{"table": "labs_long", "lab_test_code": "CYSC", "analysis_unit": "mg/L", "factor": 1}]},
+    {"name": "urbc_per_ul", "label": "尿红细胞（仪器，/μL）", "unit": "cells/μL", "decimals": 0,
+     "sources": [{"table": "labs_long", "lab_test_code": "URBC_UL", "analysis_unit": "cells/μL", "factor": 1}]},
+    {"name": "urbc_per_hpf", "label": "尿红细胞（镜检，/HPF）", "unit": "cells/HPF", "decimals": 0,
+     "sources": [{"table": "labs_long", "lab_test_code": "URBC_HPF", "analysis_unit": "cells/HPF", "factor": 1}]}
   ],
-  "egfr": {"creatinine_variable": "scr_umol_l", "height_variable": "height_cm", "height_window_days": 90,
-           "adult_equation": "CKD-EPI-2021-Cr", "child_equation": "Schwartz-2009-bedside"},
+  "egfr": {"creatinine_variable": "scr_umol_l", "cystatin_variable": "scys_mg_l", "height_variable": "height_cm", "height_window_days": 90,
+           "pair_window_days": 0, "adult_equation": "CKD-EPI-2021-Cr", "child_equation": "Schwartz-2009-bedside"},
   "_入组字段": "可选：把项目自定义入组字段（如 ethnicity、comorbidities）按字段代码列在 patient_fields 中，宽表每位患者一行会增加 field_<代码> 列，取值为导出中的原样代码、数值或日期（多选为分号分隔的代码）。字段代码与选项含义见 analysis/data/project_fields.csv 和 data_dictionary.json 的 custom_fields。",
   "patient_fields": []
 }

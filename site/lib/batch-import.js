@@ -51,10 +51,10 @@ export const TEMPLATES = Object.freeze({
     fields: [
       ['patient_code', '研究编号', '必填', '项目内已存在的研究编号；不存在的行阻断，不会自动建档。'],
       ['lab_date', '化验日期', '必填', 'YYYY-MM-DD，不能晚于今天，不早于 1900-01-01。'],
-      ['lab_test_code', '化验项目编码', '编码或名称至少一项', '系统化验字典编码，例如 CREAT（血肌酐）、UPCR、EGFR、ALB、HGB、IGA。留空或不在字典时按名称映射。'],
+      ['lab_test_code', '化验项目编码', '编码或名称至少一项', '系统化验字典编码，例如 CREAT（血肌酐）、UPCR、EGFR、ALB、HGB、IGA、CYSC（胱抑素 C）。留空或不在字典时按名称映射。'],
       ['lab_item_name', '化验项目名称', '选填', '仅用于映射到字典（如 血肌酐、Scr、尿蛋白肌酐比），不写入数据库；匹配不上的进入“未映射项目”清单。'],
       ['value_raw', '结果数值', '数值与结果文本至少一项', '纯数字；“<5”“阳性”等请填结果文本。'],
-      ['unit_symbol', '单位', '填数值时必填', '须为该项目允许的单位（如肌酐 μmol/L 或 mg/dL）；与标准单位不同时系统自动换算。'],
+      ['unit_symbol', '单位', '填数值时必填', '须为该项目允许的单位（如肌酐 μmol/L 或 mg/dL）；与标准单位不同时系统自动换算。尿红细胞按报告单位分为两个项目：URBC_UL（个/μL）与 URBC_HPF（个/HPF），两者不换算；只写名称“尿红细胞”时按单位确定项目。'],
       ['result_text', '结果文本', '选填', '定性结果，如 阴性、+、++，最多 50 字。'],
       ['ref_range', '参考范围', '选填', '原样保留，如 57-111，最多 50 字。'],
       ['abnormal_flag', '异常标志', '选填', 'H（高）、L（低）、N（正常）；与参考范围不一致时给警告。'],
@@ -153,6 +153,10 @@ export const LAB_ALIASES = Object.freeze({
   TACRO: ['tac', 'fk506', 'tacrolimus', '他克莫司', '他克莫司浓度', '他克莫司谷浓度'],
   CSA: ['csa', 'cya', 'cyclosporine', '环孢素', '环孢素浓度'],
   HBA1C: ['hba1c', 'a1c', '糖化血红蛋白'],
+  CYSC: ['cysc', 'cys-c', 'cystatinc', '胱抑素c', '胱抑素', '血胱抑素c', '血清胱抑素', '胱抑素c(cysc)'],
+  // 尿红细胞的通用名称同时指向两个项目，由单位确定（matchLabByUnit）；带方法的名称直接对应一个项目。
+  URBC_UL: ['尿红细胞', '尿红细胞计数', '尿液红细胞', '尿沉渣红细胞', '红细胞(尿)', '尿rbc', 'urbc', '尿红细胞(仪器)', '尿红细胞定量', '尿红细胞/μl'],
+  URBC_HPF: ['尿红细胞', '尿红细胞计数', '尿液红细胞', '尿沉渣红细胞', '红细胞(尿)', '尿rbc', 'urbc', '尿红细胞(镜检)', '镜检红细胞', '尿沉渣镜检红细胞', '尿红细胞/hpf'],
   PLA2R: ['pla2r', 'pla2r-ab', '抗pla2r抗体'],
 });
 
@@ -211,6 +215,13 @@ function matchLab(index, text) {
   const key = labKey(text); if (!key) return null;
   const set = index.byKey.get(key);
   return set && set.size === 1 ? [...set][0] : null;
+}
+/** 名称对应多个字典项目时（如尿红细胞的 /μL 与 /HPF），只有一个项目允许所填单位才映射，否则留给人工映射。 */
+function matchLabByUnit(index, text, unitRaw, unitMap) {
+  const set = index.byKey.get(labKey(text));
+  if (!set || set.size < 2 || !String(unitRaw ?? '').trim()) return null;
+  const hits = [...set].filter(code => pickUnit(unitRaw, allowedUnits(unitMap, code)));
+  return hits.length === 1 ? hits[0] : null;
 }
 /** 未映射项目的分组键（同一编码 + 名称的行一起处理）。 */
 export function unmappedKey(code, name) { return `${labKey(code)}|${labKey(name)}`; }
@@ -352,6 +363,10 @@ export function validateBatch(kind, headers, data, ctx = {}) {
       else {
         labCode = matchLab(index, rawCode) || matchLab(index, rawName);
         if (labCode) info('lab_test_code', `已按编码或名称映射到字典项目 ${labCode}。`);
+        else {
+          labCode = matchLabByUnit(index, rawCode, v('unit_symbol'), ctx.unitMap) || matchLabByUnit(index, rawName, v('unit_symbol'), ctx.unitMap);
+          if (labCode) info('lab_test_code', `名称对应多个字典项目，已按单位映射到 ${labCode}。`);
+        }
       }
       if (!labCode) {
         if (!rawCode && !rawName) block('lab_test_code', '化验项目编码与名称都为空。', '填写字典编码，或填写化验项目名称以便映射。');

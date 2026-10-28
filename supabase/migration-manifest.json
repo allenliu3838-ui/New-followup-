@@ -14,10 +14,11 @@
     "0041_followup_board",
     "0042_c3g_module",
     "0043_biopsy_records",
-    "0044_project_fields"
+    "0044_project_fields",
+    "0045_cystatin_urine_rbc"
   ],
   "order": "lexicographic filenames; historical duplicate prefixes retained, unique full filenames",
-  "bundle_sha256": "186bba03bbaf947b646f4620d865cdf9518d7f0a7fd86dcc25e9d303b62740cc",
+  "bundle_sha256": "e53c1905f638ccc2f6e93389fac27b329b27f37a04961752874a196a30cf8588",
   "migrations": [
     {
       "ordinal": 1,
@@ -248,6 +249,11 @@
       "ordinal": 46,
       "file": "0044_project_fields.sql",
       "sha256": "18e2ff8a1dfc6a27bb8ffc2aca901b3685f35b117fb3aaa59944ba61852789dd"
+    },
+    {
+      "ordinal": 47,
+      "file": "0045_cystatin_urine_rbc.sql",
+      "sha256": "c7faba074bcad796cb3d01446306a8b9ad868565b63a3e7c69628d9ffe09d0a4"
     }
   ]
 }
