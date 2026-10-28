@@ -41,7 +41,8 @@ jobs:
   browser-and-analysis:
     # Browser smoke tests serve site/ locally and intercept every request with synthetic
     # responses; analysis tests run on synthetic CSV fixtures. No production connection.
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moved to 26.04, where the pinned Playwright cannot install Chromium.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.pw-browsers
