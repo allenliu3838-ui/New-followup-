@@ -82,9 +82,23 @@ export function isIsoDate(value) {
   return Number.isFinite(d.getTime()) && d.toISOString().slice(0, 10) === value;
 }
 
-/** 浏览器本地日期（不是 UTC），用于“今天”的默认值。 */
+/** 浏览器本地日期（不是 UTC）。只用于显示时间戳的日期部分；研究日期请用 researchToday()。 */
 export function localToday(date = new Date()) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/**
+ * 研究日期的“今天”：北京时间（UTC+8，无夏令时），与数据库 registry_private.local_today() 一致。
+ * 默认日期、日期上限、“不能晚于今天”以及到期、逾期都按它计算，与操作人电脑所在时区无关。
+ */
+export const RESEARCH_TIME_ZONE_LABEL = '北京时间';
+export function researchToday(now = Date.now()) {
+  return new Date(Number(now) + 8 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+/** 研究日期晚于今天时的提示（中文，带上北京时间的今天，便于身在国外的操作人核对）。 */
+export function futureDateMessage(label, today = researchToday()) {
+  return `${label}不能晚于今天（${RESEARCH_TIME_ZONE_LABEL} ${today}）。研究日期统一按${RESEARCH_TIME_ZONE_LABEL}计算。`;
 }
 
 export function formatLocalDate(value) {
@@ -247,7 +261,7 @@ function dueText(row, today) {
   return `${escapeHtml(due)}${suffix ? `<span class="fu-sub${tone}">${suffix}</span>` : ''}${start}`;
 }
 
-export function renderBoardRow(row, { showLinks = false, today = localToday(), selectable = false, selected = null } = {}) {
+export function renderBoardRow(row, { showLinks = false, today = researchToday(), selectable = false, selected = null } = {}) {
   const state = FOLLOWUP_STATES[row.followup_state];
   const consent = CONSENT_STATUSES[row.consent_status] || { label: '—', tone: 'muted' };
   const why = row.followup_state === 'inactive' ? inactiveReason(row) : '';
@@ -279,7 +293,7 @@ export function renderBoardRow(row, { showLinks = false, today = localToday(), s
     + `</td></tr>`;
 }
 
-export function renderBoardHtml(rows, { state = 'all', consent = 'all', search = '', limit = 100, showLinks = false, today = localToday(), selectable = false, selected = null } = {}) {
+export function renderBoardHtml(rows, { state = 'all', consent = 'all', search = '', limit = 100, showLinks = false, today = researchToday(), selectable = false, selected = null } = {}) {
   const all = rows || [];
   if (!all.length) return { html: '<p class="muted small">本项目还没有患者。请先在下方“新增患者”中建立基线，或使用批量导入。</p>', shown: 0, matched: 0 };
   const matched = filterBoardRows(all, { state, consent, search });
@@ -327,10 +341,48 @@ export function parseDecimal(text) {
   return Number(t);
 }
 
-/** “130/80” → {sbp:'130', dbp:'80'}；不是这种写法返回 null。 */
+// 血压写法“收缩压/舒张压”：允许前后空格、全角数字与斜杠、其他常见斜杠字符和末尾的 mmHg；
+// 零宽字符（从网页或聊天软件复制时常带）一并去掉。两项都须是 2–3 位数（可带小数）。
+const BP_SLASH = /[/\\／∕⁄]/;
+function bloodPressureText(text) {
+  return normalizeDigits(String(text ?? '').replace(/[\u200b-\u200d\u2060\ufeff]/g, ''))
+    .replace(/[\\∕⁄]/g, '/')
+    .replace(/\s*mm\s*hg$/i, '');
+}
+
+/** “130/80” → {sbp:'130', dbp:'80'}；不是这种写法返回 null。键入、粘贴、离焦和保存都用这一个解析。 */
 export function splitBloodPressure(text) {
-  const m = normalizeDigits(text).match(/^(\d{2,3}(?:\.\d+)?)\s*[/\\]\s*(\d{2,3}(?:\.\d+)?)$/);
+  const m = bloodPressureText(text).match(/^(\d{2,3}(?:\.\d+)?)\s*\/\s*(\d{2,3}(?:\.\d+)?)$/);
   return m ? { sbp: m[1], dbp: m[2] } : null;
+}
+
+/** 输入里有斜杠：用户想写“收缩压/舒张压”。 */
+export function hasBloodPressureSlash(text) {
+  return BP_SLASH.test(String(text ?? ''));
+}
+
+export const BLOOD_PRESSURE_FORMAT_HINT = '请按“收缩压/舒张压”填写，例如 130/80；也可以分别填写两栏。';
+
+/**
+ * 两栏血压的解读结果：收缩压一栏写了完整的“130/80”而舒张压一栏为空（或与之相同）时，按拆分后的数值；
+ * 有斜杠却不是合法写法时返回 error。只看内容，不看是键入、粘贴还是其他方式输入的。
+ */
+export function interpretBloodPressure(sbpText, dbpText) {
+  const sbpRaw = String(sbpText ?? '').trim();
+  const dbpRaw = String(dbpText ?? '').trim();
+  for (const [field, raw, other] of [['sbp', sbpRaw, dbpRaw], ['dbp', dbpRaw, sbpRaw]]) {
+    if (!hasBloodPressureSlash(raw)) continue;
+    const pair = splitBloodPressure(raw);
+    if (!pair) return { sbp: sbpRaw, dbp: dbpRaw, error: { field, message: `无法识别血压“${raw}”。${BLOOD_PRESSURE_FORMAT_HINT}` } };
+    const otherIsPair = hasBloodPressureSlash(other) ? splitBloodPressure(other) : null;
+    const otherValue = parseDecimal(other);
+    const expected = Number(field === 'sbp' ? pair.dbp : pair.sbp);
+    if (other === '' || (otherIsPair && otherIsPair.sbp === pair.sbp && otherIsPair.dbp === pair.dbp) || otherValue === expected) {
+      return { sbp: pair.sbp, dbp: pair.dbp, split: pair };
+    }
+    return { sbp: sbpRaw, dbp: dbpRaw, error: { field, message: `${field === 'sbp' ? '收缩压' : '舒张压'}一栏写了“${raw}”，另一栏又填了“${other}”，两者不一致。${BLOOD_PRESSURE_FORMAT_HINT}` } };
+  }
+  return { sbp: sbpRaw, dbp: dbpRaw };
 }
 
 export function roundTo(value, digits) {
@@ -369,20 +421,23 @@ export function visitUnitHints(draft) {
  * 把对话框内容转换为 import_registry_rows 的单行随访。
  * 数值范围与数据库 validate_visit_record 一致（仅用于提前提示，数据库仍是最终校验）。
  */
-export function buildVisitRow(draft, { today = localToday(), containsPII = () => false } = {}) {
+export function buildVisitRow(draft, { today = researchToday(), containsPII = () => false } = {}) {
   const errors = [];
   const code = String(draft.patientCode ?? '').trim();
   const date = String(draft.visitDate ?? '').trim();
   if (!code) errors.push({ field: 'code', message: '请填写研究编号。' });
   if (!isIsoDate(date)) errors.push({ field: 'date', message: '请填写有效的随访日期。' });
-  else if (date > today) errors.push({ field: 'date', message: '随访日期不能晚于今天。' });
-  const sbp = parseDecimal(draft.sbp);
-  const dbp = parseDecimal(draft.dbp);
+  else if (date > today) errors.push({ field: 'date', message: futureDateMessage('随访日期', today) });
+  const bp = interpretBloodPressure(draft.sbp, draft.dbp);
+  if (bp.error) errors.push(bp.error);
+  // 无法识别的“收缩压/舒张压”已在上面提示，不再计为“缺失”或“请填写数字”。
+  const sbp = bp.error ? NaN : parseDecimal(bp.sbp);
+  const dbp = bp.error ? NaN : parseDecimal(bp.dbp);
   const scrRaw = parseDecimal(draft.scr);
   const upcrRaw = parseDecimal(draft.upcr);
   const heightRaw = parseDecimal(draft.height);
   for (const [value, field, label] of [[sbp, 'sbp', '收缩压'], [dbp, 'dbp', '舒张压'], [scrRaw, 'scr', '血肌酐'], [upcrRaw, 'upcr', '尿蛋白肌酐比'], [heightRaw, 'height', '身高']]) {
-    if (Number.isNaN(value)) errors.push({ field, message: `${label}请填写数字（可含小数点）。` });
+    if (Number.isNaN(value) && !(bp.error && (field === 'sbp' || field === 'dbp'))) errors.push({ field, message: `${label}请填写数字（可含小数点）。` });
   }
   const ok = v => v !== null && !Number.isNaN(v);
   if (ok(sbp) && (sbp < 40 || sbp > 300)) errors.push({ field: 'sbp', message: '收缩压须在 40–300 mmHg 之间，请核对。' });

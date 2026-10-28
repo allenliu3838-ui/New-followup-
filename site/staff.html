@@ -513,10 +513,11 @@
           </div>
           <div class="col">
             <h3 class="fu-h3">科研数据与分析脚本包</h3>
-            <div class="muted small">打包当前项目的完整长表、数据质控报告、可运行的分析脚本和文件校验值。这是数据与脚本，不是统计结果；结果需下载后按说明运行。</div>
+            <div class="muted small">分析包内含完整长表、数据质控报告、可运行的分析脚本和文件校验值，是数据与脚本，不是统计结果。为了日后能复现，分析包总是基于一个冻结数据版本：点下面的按钮会先显示将冻结的项目和数据范围，确认后在本项目<b>新增一个冻结数据版本</b>（之后不能修改或删除），再下载基于这个版本的 ZIP。</div>
             <div class="btnbar">
-              <button class="btn primary" id="btnPaperPack">导出分析脚本包（ZIP）</button>
+              <button class="btn primary" id="btnPaperPack">创建冻结版本并导出分析包…</button>
             </div>
+            <div class="muted small">只想重新下载已有版本的分析包：在下方“数据快照”列表中点该版本的“下载分析包”，不会新增版本。只想核对当前数据：用左侧按表导出的 CSV，不会冻结，但各次下载可能来自不同时刻。</div>
             <div class="warnbox" style="margin-top:10px">
               <b>提醒：</b>方法学描述为自动生成的模板，投稿前需由项目负责人（PI）逐项审阅；系统不提供诊疗建议。
             </div>
@@ -525,8 +526,7 @@
         <h3 class="fu-h3">数据快照（冻结的数据版本）</h3>
         <div class="muted small">每次冻结保存一份数据库一致性读取的完整数据，可按 SHA-256 校验值核对或重新下载相同内容。早期仅含元数据的批次记录没有历史数据内容，列表中会明确区分。</div>
         <div class="btnbar" style="margin-top:8px">
-          <button class="btn" id="btnCreateSnapshot">冻结当前数据版本</button>
-          <button class="btn primary" id="btnPaperPackWithSnapshot">冻结并导出完整分析包</button>
+          <button class="btn" id="btnCreateSnapshot">冻结当前数据版本（不下载）…</button>
           <button class="btn" id="btnRefreshSnapshots">刷新数据快照列表</button>
         </div>
         <div id="snapshotOut" class="infobox" style="margin-top:10px;display:none"></div>
@@ -874,7 +874,7 @@
           <b>数据存储说明：</b>网站页面、账户认证与科研数据库均部署在中国境内（阿里云上海），每日自动加密备份，详见<a href="/privacy" target="_blank" rel="noopener">隐私政策</a>。录入真实数据前请完成所在机构的授权与伦理审查。安全措施见<a href="/security" target="_blank" rel="noopener">安全合规</a>。
         </div>
         <div class="btnbar">
-          <button class="btn" id="btnExportAccount">导出当前项目完整数据</button>
+          <button class="btn" id="btnExportAccount">导出当前项目完整数据（创建冻结版本）…</button>
           <button class="btn danger" id="btnDeleteAccount">申请注销说明</button>
           <a class="btn" href="mailto:china@kidneysphere.com">联系客服</a>
           <a class="btn" href="/pricing" target="_blank" rel="noopener">订阅与价格</a>

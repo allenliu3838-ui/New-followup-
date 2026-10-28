@@ -4,8 +4,8 @@ import { qs, qsa, toast, toCsv, downloadText, downloadCsvUtf8Bom, fmtDate, daysL
 import { throttle } from "/lib/rate-limit.js?v=registry-20261026-cn-v7";
 import { validatePassword } from "/lib/password-strength.js?v=registry-20261026-cn-v7";
 import { strictDate, finiteNumber, normalizeUpcr, parseRegistryCsv, readAllRows, readKeysetRows, exportColumns, sha256Text, BASELINE_IMPORT_FIELDS, VISIT_IMPORT_FIELDS, normalizeImportRow, registryErrorMessage, containsPII, assertNoPII, fieldLabel, creatinineUmol, correctionReasonError, CLINICAL_LIMITS, SCR_MGDL_TO_UMOL } from "/lib/registry-data.js?v=registry-20261026-cn-v7";
-import { renderOverviewHtml, renderBoardHtml, renderFilterBar, sortBoardRows } from "/lib/followup-board.js?v=registry-20261026-cn-v7";
-import { createFollowupDialogs } from "/lib/followup-dialogs.js?v=registry-20261026-cn-v7";
+import { renderOverviewHtml, renderBoardHtml, renderFilterBar, sortBoardRows, researchToday, formatLocalDateTime } from "/lib/followup-board.js?v=registry-20261026-cn-v7";
+import { createFollowupDialogs, openModal } from "/lib/followup-dialogs.js?v=registry-20261026-cn-v7";
 import { BATCH_KINDS, TEMPLATES as BATCH_TEMPLATES, KIND_LABELS, PII_NOTICE, SKIP_MAPPING, CHUNK_SIZE, MAX_FILE_BYTES, MAX_FILE_ROWS, EVIDENCE_SOURCES, IMPORTABLE_EVENTS, templateCsv, validateBatch, buildChunks, errorReportCsv, piiHeaderColumns, baseFileName, beijingToday, MASKED_CODE } from "/lib/batch-import.js?v=registry-20261026-cn-v7";
 
 const sb = supabase();
@@ -175,7 +175,6 @@ function injectAuthGatedContent() {
 
   el.btnPaperPack = qs("#btnPaperPack");
   el.btnCreateSnapshot = qs("#btnCreateSnapshot");
-  el.btnPaperPackWithSnapshot = qs("#btnPaperPackWithSnapshot");
   el.btnRefreshSnapshots = qs("#btnRefreshSnapshots");
   el.snapshotOut = qs("#snapshotOut");
   el.snapshotsList = qs("#snapshotsList");
@@ -275,9 +274,8 @@ function bindAuthGatedEvents() {
   el.btnExportVariants?.addEventListener("click", ()=>exportTable("variants"));
   el.btnExportEvents?.addEventListener("click", ()=>exportTable("events"));
 
-  el.btnPaperPack?.addEventListener("click", ()=>generatePaperPack({withSnapshot:false}));
-  el.btnCreateSnapshot?.addEventListener("click", createSnapshotOnly);
-  el.btnPaperPackWithSnapshot?.addEventListener("click", ()=>generatePaperPack({withSnapshot:true}));
+  el.btnPaperPack?.addEventListener("click", ()=>confirmFreeze({download:true}));
+  el.btnCreateSnapshot?.addEventListener("click", ()=>confirmFreeze({download:false}));
   el.btnRefreshSnapshots?.addEventListener("click", loadSnapshots);
 
   el.btnDownloadTemplate?.addEventListener("click", downloadImportTemplate);
@@ -304,7 +302,7 @@ function bindAuthGatedEvents() {
   el.btnSaveProfile?.addEventListener("click", saveProfile);
   el.btnApplyContract?.addEventListener("click", applyContract);
 
-  qs("#btnExportAccount")?.addEventListener("click", ()=>generatePaperPack());
+  qs("#btnExportAccount")?.addEventListener("click", ()=>confirmFreeze({download:true}));
   qs("#btnDeleteAccount")?.addEventListener("click", () => {
     const hint=qs("#accountSettingsHint");
     if(hint) hint.innerHTML='注销需要人工核对研究留存及授权范围。<a href="mailto:china@kidneysphere.com?subject=账户注销申请">点击打开邮件申请</a>，请在邮件中写明账号邮箱；不要附带患者数据。只有收到受理确认才表示申请已提交。';
@@ -376,7 +374,7 @@ function requireProjectCapability(capability){
   toast(!selectedProject?'请先选择项目':!projectAccess?'项目权限尚未加载，请重试':reason&&['can_write','can_manage_tokens'].includes(capability)?registryErrorMessage(reason):'当前项目角色没有此操作权限，请联系项目负责人');return false;
 }
 function applyProjectAccess(){
-  const groups={can_write:['btnCreatePatient','btnAddVariant','btnAddLab','btnAddMed','btnAddEvent','importFile','btnConfirmImport','btnOpenVisitEntry'],can_manage_project:['btnSaveSettings'],can_export:['btnExportBaseline','btnExportVisits','btnExportLabs','btnExportMeds','btnExportVariants','btnExportEvents','btnPaperPack','btnCreateSnapshot','btnPaperPackWithSnapshot','btnRefreshSnapshots']};
+  const groups={can_write:['btnCreatePatient','btnAddVariant','btnAddLab','btnAddMed','btnAddEvent','importFile','btnConfirmImport','btnOpenVisitEntry'],can_manage_project:['btnSaveSettings'],can_export:['btnExportBaseline','btnExportVisits','btnExportLabs','btnExportMeds','btnExportVariants','btnExportEvents','btnPaperPack','btnCreateSnapshot','btnRefreshSnapshots']};
   // data-blocked：按钮因本身状态不可用（如导入预览仍有错误），权限刷新时不重新启用。
   for(const [capability,keys]of Object.entries(groups))for(const key of keys){const node=el[key];if(node){node.dataset.projectCapability=capability;node.disabled=busyButtons.has(node)||!canProject(capability)||node.dataset.blocked==='1';}}
   qsa('[data-project-capability]').forEach(node=>{node.disabled=busyButtons.has(node)||!canProject(node.dataset.projectCapability)||node.dataset.blocked==='1';});
@@ -1667,7 +1665,7 @@ async function createPatientBaseline(){
 
   const birth_year = el.patBirthYear.value ? Number(el.patBirthYear.value) : null;
   if (birth_year !== null){
-    const thisYear = new Date().getFullYear();
+    const thisYear = Number(researchToday().slice(0, 4));
     if (!Number.isInteger(birth_year) || birth_year < 1900 || birth_year > thisYear){
       return toast(`出生年份无效（应为 1900–${thisYear}）`);
     }
@@ -2068,12 +2066,88 @@ async function freezeRegistryExport(op=captureContext()){
   const content=JSON.parse(data.content_text);if(content.project?.id!==op.project.id)throw new Error('冻结版本项目不匹配');
   return {...data,content,requestKey:key};
 }
-async function createSnapshotOnly(){
+// 冻结数据版本写入后不能修改或删除：执行前说明项目、数据范围和“会新增一个版本”，确认后才调用服务器。
+// 同一次确认只发一次请求（按钮占用期间不再响应）；网络中断时用同一请求编号重试，服务器不会重复创建。
+async function confirmFreeze({download=false}={}){
   if(!requireProjectCapability('can_export'))return;
-  if(!selectedProject)return toast('请先选择项目');const op=captureContext(),btn=el.btnCreateSnapshot;setBusy(btn,true);
-  try{const frozen=await freezeRegistryExport(op);assertContext(op);frozenRequests.delete(frozen.requestKey);
-    el.snapshotOut.style.display='block';el.snapshotOut.textContent=`数据快照 ${frozen.snapshot_id} 已冻结，SHA-256 校验值：${frozen.content_sha256}。可从下方列表重新下载相同内容。`;await loadSnapshots();
-  }catch(e){toast('冻结失败，可用同一请求重试：'+registryErrorMessage(e));}finally{setBusy(btn,false);}
+  if(!selectedProject)return toast('请先选择项目');
+  if(download&&typeof JSZip==='undefined')return toast('打包组件未加载，请刷新后重试');
+  const btn=download?el.btnPaperPack:el.btnCreateSnapshot;
+  if(busyButtons.has(btn))return;
+  const op=captureContext();
+  await loadOverview(op);
+  if(!currentContext(op))return;
+  const o=projectOverview&&projectOverview.project_id===op.project.id?projectOverview:null;
+  const empty=o&&Number(o.n_patients)===0;
+  const scope=o?`基线 ${escapeHtml(o.n_patients)} 例、随访 ${escapeHtml(o.n_visits)} 条`:'人数暂时读取失败，以确认时服务器上的数据为准';
+  const modal=openModal({id:'freezeConfirm',title:download?'创建冻结版本并导出分析包':'冻结当前数据版本',html:`<p>项目：<b>${escapeHtml(op.project.name)}</b>（中心代码 ${escapeHtml(op.project.center_code||'—')}）</p>
+<p>将冻结的数据：本项目当前的全部记录——${scope}，以及化验、用药、终点事件、移植扩展表和数据质控问题，按服务器上同一时刻的数据保存。</p>
+<ul class="small">
+<li>确认后会在本项目<b>新增一个冻结数据版本</b>（快照编号 KS-…），内容与 SHA-256 校验值永久保存，<b>不能修改或删除</b>。冻结不影响之后的录入和更正。</li>
+${download?'<li>随后下载基于这个版本的分析包 ZIP（数据表、质控报告、分析脚本和文件校验值）。</li>':'<li>只保存版本，不下载文件；之后可在“数据快照”列表中下载分析包或冻结数据。</li>'}
+</ul>
+<p class="muted small">只想重新下载已有版本：在“数据快照”列表中点该版本的“下载分析包”或“下载冻结数据（JSON）”，不会新增版本。</p>
+${empty?'<p class="fu-warn-line small" id="fzEmpty">本项目还没有患者记录，冻结版本会是空的，不能创建。请先录入或导入患者。</p>':''}
+<div class="btnbar"><button type="button" class="btn primary" id="fzConfirm"${empty?' disabled':''}>${download?'创建冻结版本并下载分析包':'创建冻结版本'}</button><button type="button" class="btn" data-modal-close>取消</button></div>`});
+  // 执行期间确认框保持打开、按钮停用（双击的第二下不会落到页面上），完成后关闭并在“数据快照”区显示结果。
+  modal.q('#fzConfirm')?.addEventListener('click',async event=>{
+    const confirmBtn=event.currentTarget;
+    if(confirmBtn.disabled||busyButtons.has(btn))return;
+    confirmBtn.disabled=true;confirmBtn.textContent=download?'正在创建冻结版本并生成分析包…':'正在创建冻结版本…';modal.overlay.dataset.busy='1';
+    try{await runFreeze(op,{download,btn});}
+    finally{delete modal.overlay.dataset.busy;modal.close();}
+  });
+}
+function frozenSummary(frozen){
+  const tables=frozen?.content?.tables||{},n=t=>Array.isArray(tables[t])?tables[t].length:0;
+  const at=frozen?.content?.captured_at?formatLocalDateTime(frozen.content.captured_at):'';
+  return `${at?`冻结于 ${at}，`:''}基线 ${n('patients_baseline')} 例、随访 ${n('visits_long')} 条，SHA-256 ${String(frozen?.content_sha256||'').slice(0,12)}…`;
+}
+function showFreezeResult(result){
+  if(!el.snapshotOut)return;
+  if(!result){el.snapshotOut.style.display='none';el.snapshotOut.textContent='';delete el.snapshotOut.dataset.tone;return;}
+  el.snapshotOut.style.display='block';el.snapshotOut.textContent=result.text;el.snapshotOut.dataset.tone=result.tone;
+  if(result.tone==='error')toast(result.text);
+}
+async function runFreeze(op,{download,btn}){
+  setBusy(btn,true);showFreezeResult(null);
+  let frozen=null;
+  try{frozen=await freezeRegistryExport(op);frozenRequests.delete(frozen.requestKey);}
+  catch(e){
+    if(currentContext(op))showFreezeResult({tone:'error',text:`没有创建冻结版本：${registryErrorMessage(e)}。可以重试；网络中断后的重试不会重复创建。`});
+    setBusy(btn,false);return;
+  }
+  const info=frozenSummary(frozen);
+  try{
+    if(download){
+      const {filename}=await buildAndDownloadPack(op,frozen,{source:'new_snapshot'});
+      showFreezeResult({tone:'ok',text:`已创建冻结版本 ${frozen.snapshot_id}（${info}），分析包已下载：${filename}。`});
+    }else{
+      showFreezeResult({tone:'ok',text:`已创建冻结版本 ${frozen.snapshot_id}（${info}）。可在下方列表中下载分析包或冻结数据。`});
+    }
+  }catch(e){
+    if(currentContext(op))showFreezeResult({tone:'error',text:`冻结版本 ${frozen.snapshot_id} 已创建（${info}），但分析包生成失败：${registryErrorMessage(e)}。请在下方列表中点该版本的“下载分析包”重试，不会再新增版本。`});
+  }finally{
+    setBusy(btn,false);
+    if(currentContext(op))await loadSnapshots();
+  }
+}
+// 已有冻结版本重新生成分析包：只读取，不新增版本。
+async function downloadPackForSnapshot(id){
+  if(!requireProjectCapability('can_export'))return;
+  if(typeof JSZip==='undefined')return toast('打包组件未加载，请刷新后重试');
+  if(busyButtons.size)return toast('正在处理，请稍候');
+  const op=captureContext(),marker={dataset:{},textContent:'下载分析包'};setBusy(marker,true);
+  try{
+    const {data,error}=await sb.rpc('get_registry_export',{p_snapshot_id:id});if(error)throw error;assertContext(op);
+    if(!data?.content_text)throw new Error('这是旧的元数据记录，没有可恢复的数据内容');
+    if(await sha256Text(data.content_text)!==data.content_sha256)throw new Error('内容校验失败，已停止下载');
+    const content=JSON.parse(data.content_text);if(content.project?.id!==op.project.id)throw new Error('冻结版本项目不匹配');
+    const frozen={...data,content};
+    const {filename}=await buildAndDownloadPack(op,frozen,{source:'existing_snapshot'});
+    showFreezeResult({tone:'ok',text:`已下载冻结版本 ${data.snapshot_id} 的分析包（${frozenSummary(frozen)}）：${filename}。没有新增版本。`});
+  }catch(e){if(currentContext(op))showFreezeResult({tone:'error',text:`下载失败：${registryErrorMessage(e)}。没有新增版本。`});}
+  finally{setBusy(marker,false);}
 }
 function citationText(id,date){return `Frozen dataset ${id}, created ${String(date||'').slice(0,10)}; verify content with its SHA-256 manifest.`;}
 async function downloadFrozenVersion(id){
@@ -2086,14 +2160,15 @@ async function downloadFrozenVersion(id){
   }catch(e){toast('下载失败：'+registryErrorMessage(e));}
 }
 async function lockSnapshot(id){
-  toast('旧批次说明不能转换为历史冻结数据。请点击“冻结当前数据版本”生成真实不可变版本。');
+  toast('旧批次说明不能转换为历史冻结数据。请点击“冻结当前数据版本（不下载）”生成真实不可变版本。');
 }
 async function loadSnapshots(){
   if(!selectedProject||!el.snapshotsList)return;if(!canProject('can_export')){el.snapshotsList.textContent='当前角色无导出权限；请联系项目负责人。';return;}const op=captureContext();
   const {data,error}=await sb.rpc('list_project_snapshots',{p_project_id:op.project.id});if(!currentContext(op))return;
   if(error){el.snapshotsList.textContent='数据快照列表读取失败：'+registryErrorMessage(error);return;}
   if(!data?.length){el.snapshotsList.textContent='暂无数据快照。';return;}
-  el.snapshotsList.innerHTML=`<p class="muted small">冻结数据版本可重新下载与冻结时完全相同的 JSON 文件；早期元数据记录只有说明与数量。</p><table class="table"><thead><tr><th>快照编号</th><th>日期</th><th>类型</th><th>操作</th></tr></thead><tbody>${data.map(r=>{const frozen=String(r.notes||'').includes('frozen_export_v2');return `<tr><td>${escapeHtml(r.snapshot_id)}</td><td>${escapeHtml(fmtDate(r.created_at))}</td><td>${frozen?'冻结数据版本':'早期元数据记录'}</td><td>${frozen?`<button class="btn small" data-frozen-id="${escapeHtml(r.id)}">下载冻结数据（JSON）</button>`:'没有保存数据内容'}</td></tr>`;}).join('')}</tbody></table>`;
+  el.snapshotsList.innerHTML=`<p class="muted small">冻结数据版本可随时重新下载，都不会新增版本：“下载分析包”用冻结时的数据和当前的分析脚本生成 ZIP；“下载冻结数据（JSON）”是冻结时的原始内容和校验值。早期元数据记录只有说明与数量。</p><table class="table"><thead><tr><th>快照编号</th><th>冻结时间</th><th>记录数</th><th>类型</th><th>操作</th></tr></thead><tbody>${data.map(r=>{const frozen=String(r.notes||'').includes('frozen_export_v2');const empty=frozen&&Number(r.n_patients)===0;return `<tr data-snapshot-code="${escapeHtml(r.snapshot_id)}"><td>${escapeHtml(r.snapshot_id)}</td><td>${escapeHtml(formatLocalDateTime(r.created_at))}</td><td>${r.n_patients==null?'—':`基线 ${escapeHtml(r.n_patients)} 例 · 随访 ${escapeHtml(r.n_visits??0)} 条`}${empty?'<div class="fu-warn-line small" data-empty-snapshot>空快照（0 例），不要用于分析</div>':''}</td><td>${frozen?`冻结数据版本${r.schema_version?`（${escapeHtml(r.schema_version)}）`:''}`:'早期元数据记录'}</td><td>${frozen?`<button class="btn small" data-pack-id="${escapeHtml(r.id)}">下载分析包</button> <button class="btn small" data-frozen-id="${escapeHtml(r.id)}">下载冻结数据（JSON）</button>`:'没有保存数据内容'}</td></tr>`;}).join('')}</tbody></table>`;
+  qsa('[data-pack-id]',el.snapshotsList).forEach(b=>b.addEventListener('click',()=>downloadPackForSnapshot(b.dataset.packId)));
   qsa('[data-frozen-id]',el.snapshotsList).forEach(b=>b.addEventListener('click',()=>downloadFrozenVersion(b.dataset.frozenId)));
 }
 
@@ -2134,7 +2209,7 @@ const EDIT_FIELDS={
 const EDIT_LABELS={sex:'性别 M/F',birth_year:'出生年份',baseline_date:'基线日期',baseline_scr:'基线肌酐 μmol/L',baseline_upcr:'基线UPCR原始化验值',visit_date:'随访日期',sbp:'收缩压 mmHg',dbp:'舒张压 mmHg',scr_umol_l:'肌酐 μmol/L',upcr:'UPCR mg/g',notes:'备注（不含身份信息）',lab_date:'化验日期',lab_test_code:'化验目录代码',value_raw:'原始化验值',unit_symbol:'原始化验单位',biopsy_date:'肾穿日期',ln_biopsy_date:'LN肾穿日期',ln_class:'LN病理分型',ln_activity_index:'LN活动指数',ln_chronicity_index:'LN慢性指数',ln_podocytopathy:'足细胞病 true/false',c3g_biopsy_date:'C3G肾穿日期',c3g_if_c3_dominant:'免疫荧光C3优势 true/false',c3g_em_pattern:'C3G电镜分型 C3GN/DDD/unclassified',c3g_crescent_pct:'新月体比例 %',c3g_paraprotein:'单克隆筛查 negative/positive/not_tested',height_cm:'身高 cm',treatment_arm:'研究分组',randomization_id:'分组记录编号',randomization_date:'分组日期'};
 const EDIT_NUMBERS=new Set(['birth_year','baseline_scr','baseline_upcr','oxford_m','oxford_e','oxford_s','oxford_t','oxford_c','ln_activity_index','ln_chronicity_index','c3g_crescent_pct','sbp','dbp','scr_umol_l','upcr','height_cm','value_raw']);
 // 更正时的数值范围，与数据库约束一致（数据库仍是最终校验）。血肌酐另按 creatinineUmol 检查并提示单位。
-const EDIT_LIMITS={birth_year:{integer:true,min:1900,max:new Date().getFullYear()},oxford_m:{integer:true,min:0,max:1},oxford_e:{integer:true,min:0,max:1},oxford_s:{integer:true,min:0,max:1},oxford_t:{integer:true,min:0,max:2},oxford_c:{integer:true,min:0,max:2},ln_activity_index:{min:0,max:24},ln_chronicity_index:{min:0,max:12},c3g_crescent_pct:{min:0,max:100},sbp:CLINICAL_LIMITS.sbp,dbp:CLINICAL_LIMITS.dbp,upcr:CLINICAL_LIMITS.upcr,height_cm:CLINICAL_LIMITS.height_cm,baseline_upcr:{min:0}};
+const EDIT_LIMITS={birth_year:{integer:true,min:1900,max:Number(researchToday().slice(0,4))},oxford_m:{integer:true,min:0,max:1},oxford_e:{integer:true,min:0,max:1},oxford_s:{integer:true,min:0,max:1},oxford_t:{integer:true,min:0,max:2},oxford_c:{integer:true,min:0,max:2},ln_activity_index:{min:0,max:24},ln_chronicity_index:{min:0,max:12},c3g_crescent_pct:{min:0,max:100},sbp:CLINICAL_LIMITS.sbp,dbp:CLINICAL_LIMITS.dbp,upcr:CLINICAL_LIMITS.upcr,height_cm:CLINICAL_LIMITS.height_cm,baseline_upcr:{min:0}};
 async function openVisitHistory(patientCode){
   const op=captureContext();
   try{
@@ -2199,47 +2274,42 @@ async function openRecordEditor(table,id){
   }catch(e){toast('无法打开记录：'+registryErrorMessage(e));}
 }
 
-async function generatePaperPack({withSnapshot=false}={}){
-  if(!requireProjectCapability('can_export'))return;
-  if(!selectedProject)return toast('请先选择项目');if(typeof JSZip==='undefined')return toast('打包组件未加载，请刷新后重试');
-  const op=captureContext(),btn=withSnapshot?el.btnPaperPackWithSnapshot:el.btnPaperPack;setBusy(btn,true);
-  try{
-    const frozen=await freezeRegistryExport(op);
-    const tables=Object.fromEntries(Object.entries(frozen.content.tables).filter(([t])=>t!=='data_issues').map(([t,rows])=>[t,rows.map(r=>({...r,center_code:frozen.content.project.center_code,module:frozen.content.project.module}))]));
-    const issues=frozen.content.tables.data_issues||[];
-    const readAsset=async name=>{const r=await fetch('/assets/template/'+name,{cache:'no-cache'});if(!r.ok)throw new Error(`分析模板 ${name} 加载失败 (${r.status})`);const text=await r.text();if(/^\s*<!doctype html/i.test(text))throw new Error(`分析模板 ${name} 返回了网页`);return text;};
-    const assetNames=['run_analysis.py','merge_centers.py','requirements.txt','METHODS_TEMPLATE_EN.md','README_PACK.md','protocol_template.json','feasibility_report.py','feasibility_criteria_template.json'];
-    const assets=await Promise.all(assetNames.map(readAsset));assertContext(op);
-    const metaRecord=frozen;
-    const zip=new JSZip(),files={},counts={};
-    for(const [table,rows] of Object.entries(tables)){
-      files[`analysis/data/${table}.csv`]='\ufeff'+toCsv(rows,exportColumns(rows,[...COMMON_EXPORT_COLUMNS,...(EXPORT_FIELDS[table]||[])]),{spreadsheetSafe:false});
-      files[`excel_safe/${table}.csv`]='\ufeff'+toCsv(rows,exportColumns(rows,[...COMMON_EXPORT_COLUMNS,...(EXPORT_FIELDS[table]||[])]));counts[table]=rows.length;
-    }
-    files['analysis/run_analysis.py']=assets[0];files['analysis/merge_centers.py']=assets[1];files['analysis/requirements.txt']=assets[2];
-    files['analysis/METHODS_TEMPLATE_EN.md']=assets[3];files['analysis/README.md']=assets[4].replaceAll('{{PROJECT_NAME}}',op.project.name).replaceAll('{{EXPORT_DATE}}',fmtDate(new Date()));
-    // 研究方案参数模板：示例数值全部标为需 PI 确认，未确认前分析脚本不计算终点。
-    files['analysis/protocol_template.json']=assets[5];
-    // 可行性统计：按中心计数满足书面筛选条件的患者数，条件文件须经研究团队确认后才会计算。
-    files['analysis/feasibility_report.py']=assets[6];files['analysis/feasibility_criteria_template.json']=assets[7];
-    // JSON preserves exact raw strings/types independently of spreadsheet-safe CSV escaping.
-    files['research_data.json']=frozen.content_text;
-    files['qc_issues.csv']='\ufeff'+toCsv(issues,exportColumns(issues,['id','project_id','patient_code','record_type','record_id','rule_code','severity','status','message','resolution_note']));
-    files['qc_summary.json']=JSON.stringify({...calcQcSummary(tables.visits_long),open_issues:issues.filter(r=>!['RESOLVED','WONT_FIX'].includes(r.status)).length,resolved:issues.filter(r=>r.status==='RESOLVED').length,accepted_without_fix:issues.filter(r=>r.status==='WONT_FIX').length},null,2);
-    files['data_dictionary.json']=JSON.stringify({schema_version:frozen.schema_version,identity_key:['project_id','center_code','patient_code'],record_key:'id',baseline_upcr:'Canonical mg/g only if baseline_upcr_unit is mg/g. Historical missing units require review; do not infer scale.',baseline_scr:'umol/L',visits:{scr_umol_l:'umol/L',upcr:'mg/g',egfr:'Derived per egfr_formula_version; verify provenance'},labs:'Raw value/unit and standard value/unit are separate columns.',missing:'null/empty = unknown or not collected; zero is a value.',csv:'analysis/data CSV preserves exact text for scripts. Use excel_safe CSV when opening in spreadsheets. research_data.json is the exact frozen server content.',patients_baseline_study_status:{consent_status:'知情同意状态：unconfirmed 未确认；consented 已签署知情同意；waiver 伦理委员会批准免除知情同意；declined 拒绝；withdrawn 撤回同意。',consent_date:'签署或确认知情同意的日期，可为空。',consent_version:'知情同意书版本，可为空。',followup_status:'随访状态：active 在访；lost 失访；withdrawn 退出研究；deceased 死亡；kidney_failure 肾衰竭（判定标准以研究方案为准）；transferred 转院。随访状态用于随访管理，不等同于经核实的临床终点事件。',followup_status_date:'随访状态变更日期，可为空。',consent_research:'由 consent_status 自动生成：consented 或 waiver 为 true，declined 或 withdrawn 为 false，unconfirmed 为空值（空值表示尚未确认，不表示“否”）。'},field_notes:frozen.content.field_notes||null},null,2);
-    files['README.md']=['# 科研数据与分析脚本包',`项目：${op.project.name}`,`中心：${op.project.center_code}`,'','这是导出的数据与可运行脚本，不是已完成的统计结果或论文。请先核对字段、单位与缺失，再按 analysis/README.md 运行分析。','数据来自同一次数据库一致性读取，服务器保存不可变版本；research_data.json保留原始冻结字节，可按SHA-256核对。','本ZIP每个文件的SHA-256记录于export_manifest.json。版本列表可重新下载冻结JSON；旧元数据批次不具有此能力。','analysis/data里的CSV供分析脚本使用并保留原始文字，不应直接双击用Excel打开。请用excel_safe目录下做过公式文本防护的CSV供Excel查看。请仅在已批准的协作范围内分享。'].join('\n');
-    const manifest={format:'registry-export-v3',project_id:op.project.id,center_code:op.project.center_code,exported_at:new Date().toISOString(),metadata_register_id:metaRecord?.snapshot_id||null,consistency:frozen.consistency,source_content_sha256:frozen.content_sha256,counts,files:{}};
-    for(const [name,content]of Object.entries(files)){manifest.files[name]={sha256:await sha256Text(content),utf8_bytes:new TextEncoder().encode(content).length};zip.file(name,content);}
-    zip.file('export_manifest.json',JSON.stringify(manifest,null,2));
-    const filename=`registry_analysis_${op.project.name.replace(/[^\w\u4e00-\u9fa5-]+/g,'_').slice(0,40)}_${fmtDate(new Date())}.zip`;
-    const audit=await sb.rpc('log_project_audit',{p_project_id:op.project.id,p_action:'paper_package',p_snapshot_id:metaRecord?.snapshot_id||null,p_details:{zip_name:filename,counts,manifest_sha256:await sha256Text(JSON.stringify(manifest))}});
-    if(audit.error)throw new Error('导出留痕记录失败，未生成文件：'+registryErrorMessage(audit.error));
-    const blob=await zip.generateAsync({type:'blob'});assertContext(op);
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},400);
-    frozenRequests.delete(frozen.requestKey);
-    toast(`分析包已导出：${counts.patients_baseline} 位患者、${counts.visits_long} 条随访。请按包内说明运行分析。`);
-    if(metaRecord)await loadSnapshots();
-  }catch(e){toast('打包失败，未提供不完整文件：'+registryErrorMessage(e));}finally{setBusy(btn,false);}
+// 用一个冻结数据版本生成分析包 ZIP 并下载（新建版本后，或从列表重新下载已有版本）。失败时不提供不完整文件。
+async function buildAndDownloadPack(op,frozen,{source='new_snapshot'}={}){
+  assertContext(op);
+  const tables=Object.fromEntries(Object.entries(frozen.content.tables).filter(([t])=>t!=='data_issues').map(([t,rows])=>[t,rows.map(r=>({...r,center_code:frozen.content.project.center_code,module:frozen.content.project.module}))]));
+  const issues=frozen.content.tables.data_issues||[];
+  const readAsset=async name=>{const r=await fetch('/assets/template/'+name,{cache:'no-cache'});if(!r.ok)throw new Error(`分析模板 ${name} 加载失败 (${r.status})`);const text=await r.text();if(/^\s*<!doctype html/i.test(text))throw new Error(`分析模板 ${name} 返回了网页`);return text;};
+  const assetNames=['run_analysis.py','merge_centers.py','requirements.txt','METHODS_TEMPLATE_EN.md','README_PACK.md','protocol_template.json','feasibility_report.py','feasibility_criteria_template.json'];
+  const assets=await Promise.all(assetNames.map(readAsset));assertContext(op);
+  const metaRecord=frozen;
+  const zip=new JSZip(),files={},counts={};
+  for(const [table,rows] of Object.entries(tables)){
+    files[`analysis/data/${table}.csv`]='\ufeff'+toCsv(rows,exportColumns(rows,[...COMMON_EXPORT_COLUMNS,...(EXPORT_FIELDS[table]||[])]),{spreadsheetSafe:false});
+    files[`excel_safe/${table}.csv`]='\ufeff'+toCsv(rows,exportColumns(rows,[...COMMON_EXPORT_COLUMNS,...(EXPORT_FIELDS[table]||[])]));counts[table]=rows.length;
+  }
+  files['analysis/run_analysis.py']=assets[0];files['analysis/merge_centers.py']=assets[1];files['analysis/requirements.txt']=assets[2];
+  files['analysis/METHODS_TEMPLATE_EN.md']=assets[3];files['analysis/README.md']=assets[4].replaceAll('{{PROJECT_NAME}}',op.project.name).replaceAll('{{EXPORT_DATE}}',fmtDate(new Date()));
+  // 研究方案参数模板：示例数值全部标为需 PI 确认，未确认前分析脚本不计算终点。
+  files['analysis/protocol_template.json']=assets[5];
+  // 可行性统计：按中心计数满足书面筛选条件的患者数，条件文件须经研究团队确认后才会计算。
+  files['analysis/feasibility_report.py']=assets[6];files['analysis/feasibility_criteria_template.json']=assets[7];
+  // JSON preserves exact raw strings/types independently of spreadsheet-safe CSV escaping.
+  files['research_data.json']=frozen.content_text;
+  files['qc_issues.csv']='\ufeff'+toCsv(issues,exportColumns(issues,['id','project_id','patient_code','record_type','record_id','rule_code','severity','status','message','resolution_note']));
+  files['qc_summary.json']=JSON.stringify({...calcQcSummary(tables.visits_long),open_issues:issues.filter(r=>!['RESOLVED','WONT_FIX'].includes(r.status)).length,resolved:issues.filter(r=>r.status==='RESOLVED').length,accepted_without_fix:issues.filter(r=>r.status==='WONT_FIX').length},null,2);
+  files['data_dictionary.json']=JSON.stringify({schema_version:frozen.schema_version,identity_key:['project_id','center_code','patient_code'],record_key:'id',baseline_upcr:'Canonical mg/g only if baseline_upcr_unit is mg/g. Historical missing units require review; do not infer scale.',baseline_scr:'umol/L',visits:{scr_umol_l:'umol/L',upcr:'mg/g',egfr:'Derived per egfr_formula_version; verify provenance'},labs:'Raw value/unit and standard value/unit are separate columns.',missing:'null/empty = unknown or not collected; zero is a value.',csv:'analysis/data CSV preserves exact text for scripts. Use excel_safe CSV when opening in spreadsheets. research_data.json is the exact frozen server content.',patients_baseline_study_status:{consent_status:'知情同意状态：unconfirmed 未确认；consented 已签署知情同意；waiver 伦理委员会批准免除知情同意；declined 拒绝；withdrawn 撤回同意。',consent_date:'签署或确认知情同意的日期，可为空。',consent_version:'知情同意书版本，可为空。',followup_status:'随访状态：active 在访；lost 失访；withdrawn 退出研究；deceased 死亡；kidney_failure 肾衰竭（判定标准以研究方案为准）；transferred 转院。随访状态用于随访管理，不等同于经核实的临床终点事件。',followup_status_date:'随访状态变更日期，可为空。',consent_research:'由 consent_status 自动生成：consented 或 waiver 为 true，declined 或 withdrawn 为 false，unconfirmed 为空值（空值表示尚未确认，不表示“否”）。'},field_notes:frozen.content.field_notes||null},null,2);
+  files['README.md']=['# 科研数据与分析脚本包',`项目：${op.project.name}`,`中心：${op.project.center_code}`,'','这是导出的数据与可运行脚本，不是已完成的统计结果或论文。请先核对字段、单位与缺失，再按 analysis/README.md 运行分析。','数据来自同一次数据库一致性读取，服务器保存不可变版本；research_data.json保留原始冻结字节，可按SHA-256核对。','本ZIP每个文件的SHA-256记录于export_manifest.json。版本列表可重新下载冻结JSON；旧元数据批次不具有此能力。','analysis/data里的CSV供分析脚本使用并保留原始文字，不应直接双击用Excel打开。请用excel_safe目录下做过公式文本防护的CSV供Excel查看。请仅在已批准的协作范围内分享。'].join('\n');
+  const manifest={format:'registry-export-v3',project_id:op.project.id,center_code:op.project.center_code,exported_at:new Date().toISOString(),metadata_register_id:metaRecord?.snapshot_id||null,consistency:frozen.consistency,source_content_sha256:frozen.content_sha256,counts,files:{}};
+  for(const [name,content]of Object.entries(files)){manifest.files[name]={sha256:await sha256Text(content),utf8_bytes:new TextEncoder().encode(content).length};zip.file(name,content);}
+  zip.file('export_manifest.json',JSON.stringify(manifest,null,2));
+  const filename=`registry_analysis_${op.project.name.replace(/[^\w\u4e00-\u9fa5-]+/g,'_').slice(0,40)}_${fmtDate(new Date())}.zip`;
+  const audit=await sb.rpc('log_project_audit',{p_project_id:op.project.id,p_action:'paper_package',p_snapshot_id:metaRecord?.snapshot_id||null,p_details:{zip_name:filename,counts,source,manifest_sha256:await sha256Text(JSON.stringify(manifest))}});
+  if(audit.error)throw new Error('导出留痕记录失败，未生成文件：'+registryErrorMessage(audit.error));
+  const blob=await zip.generateAsync({type:'blob'});assertContext(op);
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},400);
+  toast(`分析包已下载：${counts.patients_baseline} 位患者、${counts.visits_long} 条随访。请按包内说明运行分析。`);
+  return {filename,counts};
 }
 
 // ═══════════════════════════════════════════════════════════

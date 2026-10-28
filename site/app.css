@@ -202,6 +202,9 @@ button.fu-tile:hover{border-color:rgba(37,99,235,.4);background:rgba(37,99,235,.
 .fu-radio label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);margin:4px 0;}
 .fu-radio input{width:auto;}
 .fu-hint{min-height:18px;margin-top:4px;color:#185886;}
+.fu-hint[data-tone="error"]{color:#b91c1c;}
+#snapshotOut[data-tone="error"]{background:#fef2f2;border-color:#fecaca;color:#991b1b;}
+#snapshotOut[data-tone="ok"]{background:#f0fdf4;border-color:#bbf7d0;color:#14532d;}
 .fu-invalid{border-color:#dc2626!important;}
 .fu-feedback{margin-top:10px;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.6;}
 .fu-feedback:empty{display:none;}
