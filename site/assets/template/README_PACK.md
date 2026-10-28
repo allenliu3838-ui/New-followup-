@@ -6,6 +6,8 @@
 
 `analysis/data/` 包含六张供脚本读取的原值 CSV 长表；`excel_safe/` 是适合用 Excel 打开的安全文本版本。请保留一份原包副本，不用 Excel 直接覆盖 CSV（编号 `001`、`1`、`NA` 必须作为原样字符串保留）。分析脚本按字符串读取标识；处理前要求每条非空记录包含 `project_id`、`center_code`、`patient_code`、原始记录 `id` 和 `module`。缺标识的旧导出请升级后重新导出；不能猜测项目或患者归属。
 
+**项目自定义入组字段**（工作台“自定义入组字段”）：`analysis/data/project_fields.csv` 是本项目的字段定义（字段代码 `field_key`、显示名称、类型、选项 `choices`、单位与范围、是否启用、来源），`data_dictionary.json` 的 `custom_fields` 也有一份；`analysis/data/patient_field_values.csv` 是取值，每位患者每个字段一行：单选、是/否（yes/no）与文本在 `value_text`，多选在 `value_codes`（分号分隔的选项代码，按定义中的顺序），数值在 `value_num`，日期在 `value_date`。选项代码的含义以字段定义为准；已停用的字段仍保留已录入的值。
+
 基线 UPCR 必须带经核实的 `baseline_upcr_unit`（mg/g 或 g/g）。无单位旧数据保留原值，但不参与 UPCR 变化、比例或阈值计算；由团队回溯来源核实。随访 UPCR 的存储单位为 mg/g。化验保留原值和单位，按每条记录显式单位换算；存储标准值与原值不一致时输出 QC，不按队列大小猜单位。
 
 ## 2. 安装与运行
@@ -45,6 +47,8 @@ python analysis/run_analysis.py --data analysis/merged-data
 **各中心导出的列必须一致。** 某中心的导出缺少其他中心有的列（例如旧版工作台导出没有 `consent_status`、`followup_status`、`followup_status_date` 或单位列）时，合并输出 `MERGE_FAILED` 并以非零状态退出，逐一写明哪个中心的哪张表缺哪些列，QC 文件的 `ColumnMismatch` 页也有记录。原因：缺少知情同意列的中心合并后同意状态为空，分析时该中心患者会全部被排除；缺少随访状态列的中心不会按随访状态截尾。正确做法是用同一版本工作台重新导出所有中心。确需合并旧导出时可加 `--allow-missing-columns`：缺失列以空值填充，并记录在 `MERGE_MANIFEST.json` 的 `column_mismatch`；分析脚本读取这份清单，在 `RUN_LOG.json` 中如实标注缺列的中心。
 
 **确认运行日志的 input_dir、input_sha256 和人数是合并后的输入，不能只运行默认命令而误分析旧的单中心 data。**
+
+**自定义入组字段：** 合并脚本合并各中心的 `patient_field_values.csv`，但不合并、也不核对字段定义 `project_fields.csv`。合并前请逐一比较各中心的字段定义（字段代码、类型和选项代码须一致）；不一致时同一代码在不同中心含义不同，不能直接合并分析。
 
 ## 4. 研究方案文件（终点定义）
 
@@ -120,6 +124,6 @@ KFRE 风险计算已停用：旧实现用 UPCR 替代 UACR、猜测检验单位�
 
 使用步骤：
 
-1. 复制 `analysis/time_windows_template.json`，按研究双方确认的方案修改 `timepoints`（名称、目标天数、窗口起止天数）与 `variables`；确认后把 `confirmed` 改为 `true`，填写 `confirmed_by` 与 `confirmed_date`。模板中的时间点只是示例。
+1. 复制 `analysis/time_windows_template.json`，按研究双方确认的方案修改 `timepoints`（名称、目标天数、窗口起止天数）与 `variables`；需要把入组字段一并放进宽表时，在 `patient_fields` 中按字段代码列出（例如 `["ethnicity", "comorbidities"]`），宽表会增加 `field_<代码>` 列，取值为导出中的原样代码、数值或日期。确认后把 `confirmed` 改为 `true`，填写 `confirmed_by` 与 `confirmed_date`。模板中的时间点只是示例。
 2. 运行 `python3 analysis/time_windows.py --data analysis/data --config 我的时间窗配置.json --out time_windows`（输出目录须为新的空目录）。
 3. 结果：`time_windows_long.csv`（长表，每行一位患者的一个时间点的一个变量）、`time_windows_wide.csv`（宽表，每位患者一行）、`time_windows_no_anchor.csv`（无对齐日期的患者及原因）和 `TIME_WINDOWS_LOG.json`（配置全文与 SHA-256、输入与输出文件 SHA-256、各时间点取到值的人数、知情同意筛选）。配置未确认时，所有文件名以 `UNCONFIRMED_` 开头，不能作为正式分析数据。

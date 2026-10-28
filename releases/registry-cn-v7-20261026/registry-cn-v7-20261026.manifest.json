@@ -1439,6 +1439,70 @@
         },
         {
           "rls": true,
+          "table": "patient_field_values",
+          "schema": "public",
+          "force_rls": false,
+          "anon_delete": true,
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_delete": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "constraints": [
+            {
+              "name": "patient_field_values_codes_size",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "31e52bb147d219af75ce7bfd1590ae4c"
+            },
+            {
+              "name": "patient_field_values_field_fk",
+              "type": "f",
+              "validated": true,
+              "definition_md5": "53c6a94a945ed12daa16b2c4c54707a3"
+            },
+            {
+              "name": "patient_field_values_one_value",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "9331419019f70dec350fa9a23a2d358d"
+            },
+            {
+              "name": "patient_field_values_patient_fk",
+              "type": "f",
+              "validated": true,
+              "definition_md5": "519efb4e5ec5766e13d5df74c5ed0e63"
+            },
+            {
+              "name": "patient_field_values_pkey",
+              "type": "p",
+              "validated": true,
+              "definition_md5": "4c6419b3704337bbfe50f018842a9ad3"
+            },
+            {
+              "name": "patient_field_values_project_id_fkey",
+              "type": "f",
+              "validated": true,
+              "definition_md5": "07f3414b4de8691ee7edea30c01f758f"
+            },
+            {
+              "name": "patient_field_values_text_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "35aa79b7738b292cd708999232e21eb8"
+            },
+            {
+              "name": "patient_field_values_unique",
+              "type": "u",
+              "validated": true,
+              "definition_md5": "1112f1119435e6b20c610ca6038b21b5"
+            }
+          ]
+        },
+        {
+          "rls": true,
           "table": "patient_tokens",
           "schema": "public",
           "force_rls": false,
@@ -1689,6 +1753,106 @@
         },
         {
           "rls": true,
+          "table": "project_fields",
+          "schema": "public",
+          "force_rls": false,
+          "anon_delete": false,
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_delete": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "constraints": [
+            {
+              "name": "project_fields_choices_shape",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "2e93e3bc2494f1b2656ca1662b29346e"
+            },
+            {
+              "name": "project_fields_help_text",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "2f2689081b6c83f836000685d261e6ed"
+            },
+            {
+              "name": "project_fields_key_format",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "d48974d3d909a32593e538a3646a8dc7"
+            },
+            {
+              "name": "project_fields_key_unique",
+              "type": "u",
+              "validated": true,
+              "definition_md5": "8b879f66e2b560e6b806f6d02fb18a78"
+            },
+            {
+              "name": "project_fields_label_text",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "5177b3fba5e7a58d8fbe79f6adcd490b"
+            },
+            {
+              "name": "project_fields_number_only",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "2a39527fd2609761af42a91f5aa57bad"
+            },
+            {
+              "name": "project_fields_pkey",
+              "type": "p",
+              "validated": true,
+              "definition_md5": "4c6419b3704337bbfe50f018842a9ad3"
+            },
+            {
+              "name": "project_fields_project_id_fkey",
+              "type": "f",
+              "validated": true,
+              "definition_md5": "07f3414b4de8691ee7edea30c01f758f"
+            },
+            {
+              "name": "project_fields_range_finite",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "c64ed250f4d9914cb53287e3e763b270"
+            },
+            {
+              "name": "project_fields_range_order",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "f5538bb58ff2131cad8346cce0d35291"
+            },
+            {
+              "name": "project_fields_sort_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "fa45b319ed2c7adef02f9ddcfe596e8a"
+            },
+            {
+              "name": "project_fields_source_text",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "2aa7028c2a941c5ff1fa15d4b77035cc"
+            },
+            {
+              "name": "project_fields_type_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "e6c190f113860ef41e83caff43a5c0ed"
+            },
+            {
+              "name": "project_fields_unit_text",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "b26cbf03b7448196db6974df24de7192"
+            }
+          ]
+        },
+        {
+          "rls": true,
           "table": "project_members",
           "schema": "public",
           "force_rls": false,
@@ -1885,7 +2049,7 @@
               "name": "registry_import_batches_kind_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "0e4300943876e028d25016bdcdbc945f"
+              "definition_md5": "336a571cb3428a0624fcb9c167bdfad7"
             },
             {
               "name": "registry_import_batches_pkey",
@@ -1949,7 +2113,7 @@
               "name": "registry_import_records_kind_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "0e4300943876e028d25016bdcdbc945f"
+              "definition_md5": "336a571cb3428a0624fcb9c167bdfad7"
             },
             {
               "name": "registry_import_records_project_id_fkey",
@@ -7916,6 +8080,234 @@
           "array_dimensions": 0
         },
         {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "75230039beb12ce952f24927f2bfa2f2",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "field_key",
+          "type": "text",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "id",
+          "type": "uuid",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "f3b72bb359a50b640590970a2ab8e514",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "patient_code",
+          "type": "text",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "75230039beb12ce952f24927f2bfa2f2",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "value_codes",
+          "type": "text[]",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 1
+        },
+        {
+          "name": "value_date",
+          "type": "date",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "value_num",
+          "type": "numeric",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "value_text",
+          "type": "text",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "active",
           "type": "boolean",
           "table": "patient_tokens",
@@ -9205,6 +9597,329 @@
           "auth_update": true,
           "default_md5": "86e751880b3791dd7c2efae188915799",
           "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": "b326b5062b2f0e69046810717534cb09",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "choices",
+          "type": "jsonb",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": "75230039beb12ce952f24927f2bfa2f2",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "field_key",
+          "type": "text",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "help_cn",
+          "type": "text",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "id",
+          "type": "uuid",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": "f3b72bb359a50b640590970a2ab8e514",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "label_cn",
+          "type": "text",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "max_value",
+          "type": "numeric",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "min_value",
+          "type": "numeric",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": "cfcd208495d565ef66e7dff9f98764da",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "source",
+          "type": "text",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "unit",
+          "type": "text",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": "75230039beb12ce952f24927f2bfa2f2",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "value_type",
+          "type": "text",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
           "array_dimensions": 0
         },
         {
@@ -13550,6 +14265,68 @@
         },
         {
           "live": true,
+          "name": "patient_field_values_pkey",
+          "ready": true,
+          "table": "patient_field_values",
+          "valid": true,
+          "schema": "public",
+          "unique": true,
+          "columns": [
+            {
+              "column": "id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            }
+          ],
+          "primary": true,
+          "immediate": true,
+          "key_count": 1,
+          "predicate_md5": null,
+          "definition_md5": "7e69bb966c5362bb33ed3b230f970619",
+          "attribute_count": 1,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
+          "name": "patient_field_values_unique",
+          "ready": true,
+          "table": "patient_field_values",
+          "valid": true,
+          "schema": "public",
+          "unique": true,
+          "columns": [
+            {
+              "column": "project_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "patient_code",
+              "included": false,
+              "position": 2,
+              "expression": false
+            },
+            {
+              "column": "field_key",
+              "included": false,
+              "position": 3,
+              "expression": false
+            }
+          ],
+          "primary": false,
+          "immediate": true,
+          "key_count": 3,
+          "predicate_md5": null,
+          "definition_md5": "fddd4501571e1e42c6b785379af577dd",
+          "attribute_count": 3,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
           "name": "patient_tokens_pkey",
           "ready": true,
           "table": "patient_tokens",
@@ -13794,6 +14571,93 @@
           "predicate_md5": null,
           "definition_md5": "beb5f6e9f37fd36ae2388a50f7043afb",
           "attribute_count": 2,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
+          "name": "project_fields_key_unique",
+          "ready": true,
+          "table": "project_fields",
+          "valid": true,
+          "schema": "public",
+          "unique": true,
+          "columns": [
+            {
+              "column": "project_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "field_key",
+              "included": false,
+              "position": 2,
+              "expression": false
+            }
+          ],
+          "primary": false,
+          "immediate": true,
+          "key_count": 2,
+          "predicate_md5": null,
+          "definition_md5": "e9dbe844583df4c30f0d9424af694e76",
+          "attribute_count": 2,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
+          "name": "project_fields_label_unique",
+          "ready": true,
+          "table": "project_fields",
+          "valid": true,
+          "schema": "public",
+          "unique": true,
+          "columns": [
+            {
+              "column": "project_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "label_cn",
+              "included": false,
+              "position": 2,
+              "expression": false
+            }
+          ],
+          "primary": false,
+          "immediate": true,
+          "key_count": 2,
+          "predicate_md5": null,
+          "definition_md5": "69a7d4dc62ae5f169aa36f39352c9271",
+          "attribute_count": 2,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
+          "name": "project_fields_pkey",
+          "ready": true,
+          "table": "project_fields",
+          "valid": true,
+          "schema": "public",
+          "unique": true,
+          "columns": [
+            {
+              "column": "id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            }
+          ],
+          "primary": true,
+          "immediate": true,
+          "key_count": 1,
+          "predicate_md5": null,
+          "definition_md5": "076c326f7ca60697497cc0ecda3c1099",
+          "attribute_count": 1,
           "expressions_md5": null,
           "nulls_not_distinct": false
         },
@@ -15334,6 +16198,54 @@
           "with_check": null
         },
         {
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "patient_field_values",
+          "policy": "member_delete",
+          "schema": "public",
+          "command": "DELETE",
+          "permissive": "PERMISSIVE",
+          "with_check": null
+        },
+        {
+          "qual": null,
+          "roles": [
+            "authenticated"
+          ],
+          "table": "patient_field_values",
+          "policy": "member_insert",
+          "schema": "public",
+          "command": "INSERT",
+          "permissive": "PERMISSIVE",
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
+        },
+        {
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "patient_field_values",
+          "policy": "member_read",
+          "schema": "public",
+          "command": "SELECT",
+          "permissive": "PERMISSIVE",
+          "with_check": null
+        },
+        {
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "patient_field_values",
+          "policy": "member_update",
+          "schema": "public",
+          "command": "UPDATE",
+          "permissive": "PERMISSIVE",
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
+        },
+        {
           "qual": "(EXISTS ( SELECT 1\n   FROM projects p\n  WHERE ((p.id = patient_tokens.project_id) AND (p.created_by = auth.uid()))))",
           "roles": [
             "authenticated"
@@ -15476,6 +16388,18 @@
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
           "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
+        },
+        {
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "project_fields",
+          "policy": "member_read",
+          "schema": "public",
+          "command": "SELECT",
+          "permissive": "PERMISSIVE",
+          "with_check": null
         },
         {
           "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
@@ -16009,6 +16933,48 @@
           "enabled": "O",
           "trigger": "tr_contract_entitlement",
           "definition_md5": "d22defb57fff589786665d1fbe54a5b1"
+        },
+        {
+          "table": "patient_field_values",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "a_registry_identity",
+          "definition_md5": "7293e2a39aab5fb0c2f3dade437981e7"
+        },
+        {
+          "table": "patient_field_values",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "registry_audit_field_value",
+          "definition_md5": "a31f8fcd064a26be696a06eea48474dc"
+        },
+        {
+          "table": "patient_field_values",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "registry_field_value_check",
+          "definition_md5": "b3e47eaf83e1e5656734e43b8e4dbf6c"
+        },
+        {
+          "table": "patient_field_values",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "tr_field_values_created_by",
+          "definition_md5": "e2a2ed50be2b46e104a7ab0418464494"
+        },
+        {
+          "table": "patient_field_values",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "tr_field_values_trial_lock",
+          "definition_md5": "647aab6b34e03c8e9272dc7a21f36fff"
+        },
+        {
+          "table": "patient_field_values",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "tr_field_values_updated_meta",
+          "definition_md5": "9d25ba49b7b282ad2780b2a4940bc1ce"
         },
         {
           "table": "patient_tokens",
@@ -17003,7 +17969,7 @@
           "signature": "create_registry_export(uuid,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "cf0a2050fa7912864b26d9d4e02f61f0",
+          "definition_md5": "b963cc3da136f9dd0068247c126e7d7d",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -17123,7 +18089,7 @@
           "signature": "import_registry_rows(uuid,text,jsonb,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "9c8ca4aab35103af4b0a262723b84472",
+          "definition_md5": "f067d6f39964275e2651a1c81e0fc77f",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -17360,6 +18326,18 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "registry_private.audit_patient_field_value()",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "20c912500582c1d9bdb1ff0e2f4bcde4",
+          "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "registry_private.audit_study_status_on_insert()",
           "volatility": "v",
           "anon_execute": false,
@@ -17408,6 +18386,18 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "registry_private.check_patient_field_value()",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "fe992a712fc2e381be361ac3d2d9c998",
+          "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "registry_private.check_research_dates()",
           "volatility": "v",
           "anon_execute": false,
@@ -17436,6 +18426,42 @@
           "volatility": "v",
           "anon_execute": false,
           "definition_md5": "0c5738cc7084aef1c95808846349f008",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "registry_private.field_value_columns(text,text,jsonb)",
+          "volatility": "i",
+          "anon_execute": false,
+          "definition_md5": "35a4290beac564dc0106bd1bc91ebb6b",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "signature": "registry_private.field_value_equals(patient_field_values,jsonb)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "295ef62e34bea7239762fa942290f614",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "signature": "registry_private.field_value_text(text,text[],numeric,date)",
+          "volatility": "i",
+          "anon_execute": false,
+          "definition_md5": "d660d9de66ea586b060c19747578de8a",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -17492,10 +18518,22 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "registry_private.import_field_row(uuid,jsonb,integer,uuid)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "75d362328d1fead64512dfba11ac2bfb",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "registry_private.import_record_digest(text,uuid)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "fd2758d69d4bf4294b53767ca35a7cec",
+          "definition_md5": "5cdb865152504fdf3a79e128decd48c6",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -17533,6 +18571,18 @@
           "anon_execute": false,
           "definition_md5": "e776b002c85777c586bf635cb2b90964",
           "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "signature": "registry_private.patient_field_values_json(uuid,text)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "5a1f7a8a54a14190ff598c3db16cc184",
+          "security_definer": false,
           "authenticated_execute": false
         },
         {
@@ -17706,6 +18756,18 @@
         {
           "owner": "postgres",
           "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "signature": "registry_private.valid_field_choices(jsonb)",
+          "volatility": "i",
+          "anon_execute": false,
+          "definition_md5": "d3d51b051cf3863d118e01a70811876e",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
           "language": "plpgsql",
           "parallel": "u",
           "signature": "registry_private.validate_clinical_input(text,jsonb)",
@@ -17766,6 +18828,18 @@
         {
           "owner": "postgres",
           "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "save_project_field(uuid,jsonb)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "d7b4bab4bbda819b9702527857fcee37",
+          "security_definer": true,
+          "authenticated_execute": true
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
           "language": "sql",
           "parallel": "u",
           "signature": "search_concepts_cn(text,text,integer)",
@@ -17816,6 +18890,18 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "set_patient_field_values(uuid,text,jsonb)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "d5b9eb105bcab4bd4963830dd1fa949d",
+          "security_definer": true,
+          "authenticated_execute": true
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "set_patient_study_status(uuid,text,jsonb,text)",
           "volatility": "v",
           "anon_execute": false,
@@ -17855,7 +18941,7 @@
           "signature": "undo_import_batch(uuid,uuid,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "7d6ad26cbe6039a24352a35838e2ec52",
+          "definition_md5": "890155299fb58352e75dec3e500ef1ab",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -19362,6 +20448,70 @@
         },
         {
           "rls": true,
+          "table": "patient_field_values",
+          "schema": "public",
+          "force_rls": false,
+          "anon_delete": true,
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_delete": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "constraints": [
+            {
+              "name": "patient_field_values_codes_size",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "31e52bb147d219af75ce7bfd1590ae4c"
+            },
+            {
+              "name": "patient_field_values_field_fk",
+              "type": "f",
+              "validated": true,
+              "definition_md5": "53c6a94a945ed12daa16b2c4c54707a3"
+            },
+            {
+              "name": "patient_field_values_one_value",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "9331419019f70dec350fa9a23a2d358d"
+            },
+            {
+              "name": "patient_field_values_patient_fk",
+              "type": "f",
+              "validated": true,
+              "definition_md5": "519efb4e5ec5766e13d5df74c5ed0e63"
+            },
+            {
+              "name": "patient_field_values_pkey",
+              "type": "p",
+              "validated": true,
+              "definition_md5": "4c6419b3704337bbfe50f018842a9ad3"
+            },
+            {
+              "name": "patient_field_values_project_id_fkey",
+              "type": "f",
+              "validated": true,
+              "definition_md5": "07f3414b4de8691ee7edea30c01f758f"
+            },
+            {
+              "name": "patient_field_values_text_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "35aa79b7738b292cd708999232e21eb8"
+            },
+            {
+              "name": "patient_field_values_unique",
+              "type": "u",
+              "validated": true,
+              "definition_md5": "1112f1119435e6b20c610ca6038b21b5"
+            }
+          ]
+        },
+        {
+          "rls": true,
           "table": "patient_tokens",
           "schema": "public",
           "force_rls": false,
@@ -19612,6 +20762,106 @@
         },
         {
           "rls": true,
+          "table": "project_fields",
+          "schema": "public",
+          "force_rls": false,
+          "anon_delete": false,
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_delete": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "constraints": [
+            {
+              "name": "project_fields_choices_shape",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "2e93e3bc2494f1b2656ca1662b29346e"
+            },
+            {
+              "name": "project_fields_help_text",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "2f2689081b6c83f836000685d261e6ed"
+            },
+            {
+              "name": "project_fields_key_format",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "d48974d3d909a32593e538a3646a8dc7"
+            },
+            {
+              "name": "project_fields_key_unique",
+              "type": "u",
+              "validated": true,
+              "definition_md5": "8b879f66e2b560e6b806f6d02fb18a78"
+            },
+            {
+              "name": "project_fields_label_text",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "5177b3fba5e7a58d8fbe79f6adcd490b"
+            },
+            {
+              "name": "project_fields_number_only",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "2a39527fd2609761af42a91f5aa57bad"
+            },
+            {
+              "name": "project_fields_pkey",
+              "type": "p",
+              "validated": true,
+              "definition_md5": "4c6419b3704337bbfe50f018842a9ad3"
+            },
+            {
+              "name": "project_fields_project_id_fkey",
+              "type": "f",
+              "validated": true,
+              "definition_md5": "07f3414b4de8691ee7edea30c01f758f"
+            },
+            {
+              "name": "project_fields_range_finite",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "c64ed250f4d9914cb53287e3e763b270"
+            },
+            {
+              "name": "project_fields_range_order",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "f5538bb58ff2131cad8346cce0d35291"
+            },
+            {
+              "name": "project_fields_sort_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "fa45b319ed2c7adef02f9ddcfe596e8a"
+            },
+            {
+              "name": "project_fields_source_text",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "2aa7028c2a941c5ff1fa15d4b77035cc"
+            },
+            {
+              "name": "project_fields_type_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "e6c190f113860ef41e83caff43a5c0ed"
+            },
+            {
+              "name": "project_fields_unit_text",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "b26cbf03b7448196db6974df24de7192"
+            }
+          ]
+        },
+        {
+          "rls": true,
           "table": "project_members",
           "schema": "public",
           "force_rls": false,
@@ -19808,7 +21058,7 @@
               "name": "registry_import_batches_kind_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "0e4300943876e028d25016bdcdbc945f"
+              "definition_md5": "336a571cb3428a0624fcb9c167bdfad7"
             },
             {
               "name": "registry_import_batches_pkey",
@@ -19872,7 +21122,7 @@
               "name": "registry_import_records_kind_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "0e4300943876e028d25016bdcdbc945f"
+              "definition_md5": "336a571cb3428a0624fcb9c167bdfad7"
             },
             {
               "name": "registry_import_records_project_id_fkey",
@@ -25839,6 +27089,234 @@
           "array_dimensions": 0
         },
         {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "75230039beb12ce952f24927f2bfa2f2",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "field_key",
+          "type": "text",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "id",
+          "type": "uuid",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "f3b72bb359a50b640590970a2ab8e514",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "patient_code",
+          "type": "text",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "75230039beb12ce952f24927f2bfa2f2",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "value_codes",
+          "type": "text[]",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 1
+        },
+        {
+          "name": "value_date",
+          "type": "date",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "value_num",
+          "type": "numeric",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "value_text",
+          "type": "text",
+          "table": "patient_field_values",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "active",
           "type": "boolean",
           "table": "patient_tokens",
@@ -27128,6 +28606,329 @@
           "auth_update": true,
           "default_md5": "86e751880b3791dd7c2efae188915799",
           "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": "b326b5062b2f0e69046810717534cb09",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "choices",
+          "type": "jsonb",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": "75230039beb12ce952f24927f2bfa2f2",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "field_key",
+          "type": "text",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "help_cn",
+          "type": "text",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "id",
+          "type": "uuid",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": "f3b72bb359a50b640590970a2ab8e514",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "label_cn",
+          "type": "text",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "max_value",
+          "type": "numeric",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "min_value",
+          "type": "numeric",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": "cfcd208495d565ef66e7dff9f98764da",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "source",
+          "type": "text",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "unit",
+          "type": "text",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": "75230039beb12ce952f24927f2bfa2f2",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "value_type",
+          "type": "text",
+          "table": "project_fields",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": false,
+          "anon_select": true,
+          "anon_update": false,
+          "auth_insert": false,
+          "auth_select": true,
+          "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
           "array_dimensions": 0
         },
         {
@@ -31473,6 +33274,68 @@
         },
         {
           "live": true,
+          "name": "patient_field_values_pkey",
+          "ready": true,
+          "table": "patient_field_values",
+          "valid": true,
+          "schema": "public",
+          "unique": true,
+          "columns": [
+            {
+              "column": "id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            }
+          ],
+          "primary": true,
+          "immediate": true,
+          "key_count": 1,
+          "predicate_md5": null,
+          "definition_md5": "7e69bb966c5362bb33ed3b230f970619",
+          "attribute_count": 1,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
+          "name": "patient_field_values_unique",
+          "ready": true,
+          "table": "patient_field_values",
+          "valid": true,
+          "schema": "public",
+          "unique": true,
+          "columns": [
+            {
+              "column": "project_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "patient_code",
+              "included": false,
+              "position": 2,
+              "expression": false
+            },
+            {
+              "column": "field_key",
+              "included": false,
+              "position": 3,
+              "expression": false
+            }
+          ],
+          "primary": false,
+          "immediate": true,
+          "key_count": 3,
+          "predicate_md5": null,
+          "definition_md5": "fddd4501571e1e42c6b785379af577dd",
+          "attribute_count": 3,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
           "name": "patient_tokens_pkey",
           "ready": true,
           "table": "patient_tokens",
@@ -31717,6 +33580,93 @@
           "predicate_md5": null,
           "definition_md5": "beb5f6e9f37fd36ae2388a50f7043afb",
           "attribute_count": 2,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
+          "name": "project_fields_key_unique",
+          "ready": true,
+          "table": "project_fields",
+          "valid": true,
+          "schema": "public",
+          "unique": true,
+          "columns": [
+            {
+              "column": "project_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "field_key",
+              "included": false,
+              "position": 2,
+              "expression": false
+            }
+          ],
+          "primary": false,
+          "immediate": true,
+          "key_count": 2,
+          "predicate_md5": null,
+          "definition_md5": "e9dbe844583df4c30f0d9424af694e76",
+          "attribute_count": 2,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
+          "name": "project_fields_label_unique",
+          "ready": true,
+          "table": "project_fields",
+          "valid": true,
+          "schema": "public",
+          "unique": true,
+          "columns": [
+            {
+              "column": "project_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "label_cn",
+              "included": false,
+              "position": 2,
+              "expression": false
+            }
+          ],
+          "primary": false,
+          "immediate": true,
+          "key_count": 2,
+          "predicate_md5": null,
+          "definition_md5": "69a7d4dc62ae5f169aa36f39352c9271",
+          "attribute_count": 2,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
+          "name": "project_fields_pkey",
+          "ready": true,
+          "table": "project_fields",
+          "valid": true,
+          "schema": "public",
+          "unique": true,
+          "columns": [
+            {
+              "column": "id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            }
+          ],
+          "primary": true,
+          "immediate": true,
+          "key_count": 1,
+          "predicate_md5": null,
+          "definition_md5": "076c326f7ca60697497cc0ecda3c1099",
+          "attribute_count": 1,
           "expressions_md5": null,
           "nulls_not_distinct": false
         },
@@ -33257,6 +35207,54 @@
           "with_check": null
         },
         {
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "patient_field_values",
+          "policy": "member_delete",
+          "schema": "public",
+          "command": "DELETE",
+          "permissive": "PERMISSIVE",
+          "with_check": null
+        },
+        {
+          "qual": null,
+          "roles": [
+            "authenticated"
+          ],
+          "table": "patient_field_values",
+          "policy": "member_insert",
+          "schema": "public",
+          "command": "INSERT",
+          "permissive": "PERMISSIVE",
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
+        },
+        {
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "patient_field_values",
+          "policy": "member_read",
+          "schema": "public",
+          "command": "SELECT",
+          "permissive": "PERMISSIVE",
+          "with_check": null
+        },
+        {
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "patient_field_values",
+          "policy": "member_update",
+          "schema": "public",
+          "command": "UPDATE",
+          "permissive": "PERMISSIVE",
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
+        },
+        {
           "qual": "(EXISTS ( SELECT 1\n   FROM projects p\n  WHERE ((p.id = patient_tokens.project_id) AND (p.created_by = auth.uid()))))",
           "roles": [
             "authenticated"
@@ -33399,6 +35397,18 @@
           "command": "UPDATE",
           "permissive": "PERMISSIVE",
           "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
+        },
+        {
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "project_fields",
+          "policy": "member_read",
+          "schema": "public",
+          "command": "SELECT",
+          "permissive": "PERMISSIVE",
+          "with_check": null
         },
         {
           "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
@@ -33932,6 +35942,48 @@
           "enabled": "O",
           "trigger": "tr_contract_entitlement",
           "definition_md5": "d22defb57fff589786665d1fbe54a5b1"
+        },
+        {
+          "table": "patient_field_values",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "a_registry_identity",
+          "definition_md5": "7293e2a39aab5fb0c2f3dade437981e7"
+        },
+        {
+          "table": "patient_field_values",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "registry_audit_field_value",
+          "definition_md5": "a31f8fcd064a26be696a06eea48474dc"
+        },
+        {
+          "table": "patient_field_values",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "registry_field_value_check",
+          "definition_md5": "b3e47eaf83e1e5656734e43b8e4dbf6c"
+        },
+        {
+          "table": "patient_field_values",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "tr_field_values_created_by",
+          "definition_md5": "e2a2ed50be2b46e104a7ab0418464494"
+        },
+        {
+          "table": "patient_field_values",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "tr_field_values_trial_lock",
+          "definition_md5": "647aab6b34e03c8e9272dc7a21f36fff"
+        },
+        {
+          "table": "patient_field_values",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "tr_field_values_updated_meta",
+          "definition_md5": "9d25ba49b7b282ad2780b2a4940bc1ce"
         },
         {
           "table": "patient_tokens",
@@ -34926,7 +36978,7 @@
           "signature": "create_registry_export(uuid,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "cf0a2050fa7912864b26d9d4e02f61f0",
+          "definition_md5": "b963cc3da136f9dd0068247c126e7d7d",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -35046,7 +37098,7 @@
           "signature": "import_registry_rows(uuid,text,jsonb,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "9c8ca4aab35103af4b0a262723b84472",
+          "definition_md5": "f067d6f39964275e2651a1c81e0fc77f",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -35283,6 +37335,18 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "registry_private.audit_patient_field_value()",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "20c912500582c1d9bdb1ff0e2f4bcde4",
+          "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "registry_private.audit_study_status_on_insert()",
           "volatility": "v",
           "anon_execute": false,
@@ -35331,6 +37395,18 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "registry_private.check_patient_field_value()",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "fe992a712fc2e381be361ac3d2d9c998",
+          "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "registry_private.check_research_dates()",
           "volatility": "v",
           "anon_execute": false,
@@ -35359,6 +37435,42 @@
           "volatility": "v",
           "anon_execute": false,
           "definition_md5": "0c5738cc7084aef1c95808846349f008",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "registry_private.field_value_columns(text,text,jsonb)",
+          "volatility": "i",
+          "anon_execute": false,
+          "definition_md5": "35a4290beac564dc0106bd1bc91ebb6b",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "signature": "registry_private.field_value_equals(patient_field_values,jsonb)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "295ef62e34bea7239762fa942290f614",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "signature": "registry_private.field_value_text(text,text[],numeric,date)",
+          "volatility": "i",
+          "anon_execute": false,
+          "definition_md5": "d660d9de66ea586b060c19747578de8a",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -35415,10 +37527,22 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "registry_private.import_field_row(uuid,jsonb,integer,uuid)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "75d362328d1fead64512dfba11ac2bfb",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "registry_private.import_record_digest(text,uuid)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "fd2758d69d4bf4294b53767ca35a7cec",
+          "definition_md5": "5cdb865152504fdf3a79e128decd48c6",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -35456,6 +37580,18 @@
           "anon_execute": false,
           "definition_md5": "e776b002c85777c586bf635cb2b90964",
           "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "signature": "registry_private.patient_field_values_json(uuid,text)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "5a1f7a8a54a14190ff598c3db16cc184",
+          "security_definer": false,
           "authenticated_execute": false
         },
         {
@@ -35629,6 +37765,18 @@
         {
           "owner": "postgres",
           "strict": false,
+          "language": "sql",
+          "parallel": "u",
+          "signature": "registry_private.valid_field_choices(jsonb)",
+          "volatility": "i",
+          "anon_execute": false,
+          "definition_md5": "d3d51b051cf3863d118e01a70811876e",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
           "language": "plpgsql",
           "parallel": "u",
           "signature": "registry_private.validate_clinical_input(text,jsonb)",
@@ -35689,6 +37837,18 @@
         {
           "owner": "postgres",
           "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "save_project_field(uuid,jsonb)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "d7b4bab4bbda819b9702527857fcee37",
+          "security_definer": true,
+          "authenticated_execute": true
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
           "language": "sql",
           "parallel": "u",
           "signature": "search_concepts_cn(text,text,integer)",
@@ -35739,6 +37899,18 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "set_patient_field_values(uuid,text,jsonb)",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "d5b9eb105bcab4bd4963830dd1fa949d",
+          "security_definer": true,
+          "authenticated_execute": true
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "set_patient_study_status(uuid,text,jsonb,text)",
           "volatility": "v",
           "anon_execute": false,
@@ -35778,7 +37950,7 @@
           "signature": "undo_import_batch(uuid,uuid,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "7d6ad26cbe6039a24352a35838e2ec52",
+          "definition_md5": "890155299fb58352e75dec3e500ef1ab",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -35850,7 +38022,7 @@
     }
   },
   "database_contract_protocol": "registry-contract-v3-pg17",
-  "database_contract_reference_sha256": "1011a446adb6f82f9a7e4e90268efc5b676e774853e1ef60267a7926403234a8",
+  "database_contract_reference_sha256": "e1b49cb788a721afc09e8d30f6ef788443e947138f05c5b2fa60508dd2e5dc7d",
   "database_contract_sha256": "aca7000205680905a853fc72280ff60a2f99af32d8b2807bb761de7769ed6b29",
   "database_server_major": 17,
   "files": {
@@ -35867,11 +38039,11 @@
       "old_sha256": "7eaeb413cfea13b715a4ce81969a84500971097c33cd1d8f05e93ce09a5bf6ab"
     },
     "app.css": {
-      "new_sha256": "11e872530d6f342bee81e9d2452b6ccf9909dafdcf874ab3638fb37a3e6cec76",
+      "new_sha256": "81045a2a21309fa12b2e7ff41992349607f83e758958898d1ea4de5228ae714a",
       "old_sha256": "f9daff5d2707d51d9da2c9bce708f2e86aa7694a4006dce08e5cf1612673321b"
     },
     "assets/help-faq.json": {
-      "new_sha256": "799ac3920548a80ebe3f71a635b23c5107eecc80da572c8102efcc126fd83dd2",
+      "new_sha256": "455dfa006d4e7da1294232130c9e5e6a22cd831a6dc6a67773d39be2afd4b030",
       "old_sha256": "4c5418684f4445903930824397f464f07971d9269ac18aaa92d1f111fad2f9e4"
     },
     "assets/mail-confirm.html": {
@@ -35911,7 +38083,7 @@
       "old_sha256": "8da066c8b250968199bc4cfe4c986215c7ff0d308eb9fc0cc32073ba596ce718"
     },
     "assets/sql/batch6_latest.sql": {
-      "new_sha256": "18a9c0b7b9a3b1386cdcd7fd8222dccc8c197e3e325f9f1dfe5c4b4bbcff488a",
+      "new_sha256": "fbff1758bb35f868fb6ba70a0f12fadef3fe5626a3c303de37fdf2a50948f01e",
       "old_sha256": "d34c02ef673adbc70228e0177d5ebcba9affd5d3a572e3be1069e98b9cd23e61"
     },
     "assets/template/METHODS_TEMPLATE_EN.md": {
@@ -35919,7 +38091,7 @@
       "old_sha256": "226227197e2a05e86c89bc1627ab7768cc29e444ae72a1276d704955366adffb"
     },
     "assets/template/README_PACK.md": {
-      "new_sha256": "a5354f6f31e89022b943b913a4614409b9dbf7f00c62b9bea9142dd7321119f5",
+      "new_sha256": "eb3fa406a218dfa1ed5cc5e70fcc25e23128065cfaff105e93c473a6b4f8faa0",
       "old_sha256": "d2d54ff8d60f26fdd2e5a63f3e104a64ab89767fba212a2be58ec9ec4863af5e"
     },
     "assets/template/feasibility_criteria_template.json": {
@@ -35943,15 +38115,15 @@
       "old_sha256": "c5a48736a9044a1a0b5dd3afb8a3f37d589f0c704a0a93463d80dd5b762b9d0d"
     },
     "assets/template/run_analysis.py": {
-      "new_sha256": "2a01b9c6b2b24afca79bb6cb5697a2d8576e60bdb2b5739df4efad2b323c8bca",
+      "new_sha256": "68a54a39d8d7f91b5b16ff1687dea2ce499c780c12f45400c54cd75fd957a78b",
       "old_sha256": "437d6b7a9efcbbe689367bcd052b4b322d5082bf70c592a58198239615b948d5"
     },
     "assets/template/time_windows.py": {
-      "new_sha256": "ee4bb0696eb2385eb2f523b02742d77eeaa7529c9fa39ca461e5cefd3af0fa7f",
+      "new_sha256": "94ae63fe052ce74c14440e9d8beafdf2f76a36de02fb5e0afd550f6a92ea964c",
       "old_sha256": null
     },
     "assets/template/time_windows_template.json": {
-      "new_sha256": "253868b05b52683b9b4b76e10a94093ed6aa3298b74e6bd401fe062f9d9df862",
+      "new_sha256": "3203aeee4c2831fe759b0e49ec2a38cd11cde9c0caea8961868c82212b099b92",
       "old_sha256": null
     },
     "assets/肾域科研_临床团队虚拟项目全流程演练册_V2.1.pdf": {
@@ -36015,7 +38187,7 @@
       "old_sha256": "45b8bc516de1ed8a06276682449f8178ed64ce4d1241d52fd2aa66ba08f748b2"
     },
     "guide.html": {
-      "new_sha256": "691ed9cc5f341f34820e15ea2fcdf11bedeea98142a482ae7ea6c8bb3b5e92f0",
+      "new_sha256": "2e54d93f5bc535dfd34e6f252e4cdd1cd268d7ba5efa82c81ce4ba1099af8c42",
       "old_sha256": "1eea1302f8bcee45b148c92035f323b0c9814f0f6a14da2988742d5eef10dd40"
     },
     "guide.js": {
@@ -36031,7 +38203,7 @@
       "old_sha256": "5bfa97ded368de86a54e1963f085bc99d05a7029f2911790135e3428c11ab8d6"
     },
     "lib/batch-import.js": {
-      "new_sha256": "56876dccf6d55850bcf98c3d898f78d95cc3e2816cc1ce1a014b2c1c3ec9c9a8",
+      "new_sha256": "255a2da0c62c41269d2b481bc32ee42575b1ade9f6ff671ecf65ba3c0388dab9",
       "old_sha256": "e913207ff31abc7c4015de340e57d1cc9eb9f4cf71c1e72915f3e69519abf5e1"
     },
     "lib/error-logger.js": {
@@ -36039,7 +38211,7 @@
       "old_sha256": "0131572e8e9a20d43e75623caac9f35280946af4160a6b70e274b1b01247a291"
     },
     "lib/followup-board.js": {
-      "new_sha256": "4eebc7523a26eaf1fd32bdd85f939ef962a8129f2114a97deab559128e6dd9ce",
+      "new_sha256": "a7610ac8fa689214753cd366ff56481b8b200d883ee7daf378b1b2df8bdc46cb",
       "old_sha256": "432d5ccfb1ad9ca4ab380328f870df0123febc2b1ef215b10febb523329dfd1b"
     },
     "lib/followup-dialogs.js": {
@@ -36066,6 +38238,14 @@
       "new_sha256": "b79d15726490c3f85dff919149e08d802ede3b1246cd64eb3fcaba99d142786e",
       "old_sha256": "b79d15726490c3f85dff919149e08d802ede3b1246cd64eb3fcaba99d142786e"
     },
+    "lib/project-fields-ui.js": {
+      "new_sha256": "7f7d2f217a3a0b449d5f038a8cbd49324240e12f18cb1ac21ca8434e037cf6bc",
+      "old_sha256": null
+    },
+    "lib/project-fields.js": {
+      "new_sha256": "0649bf484ab7c3e96eff4e6cfdc09d4c18da5fd2338ba29f02278560e058f414",
+      "old_sha256": null
+    },
     "lib/project-members.js": {
       "new_sha256": "12b4488fd8fd917feb8d5342dbd5d3e329794d1c6de8668594a21743ce5f7225",
       "old_sha256": "12b4488fd8fd917feb8d5342dbd5d3e329794d1c6de8668594a21743ce5f7225"
@@ -36075,7 +38255,7 @@
       "old_sha256": "ab609c56259cb841b2828b11c5c3e6024d2936feefafc3fd63e5e686c134589f"
     },
     "lib/registry-data.js": {
-      "new_sha256": "f9e8929ba9ba60a3fe81fbe5ecc06ea654d3332ff10faf71a1032ce7fdd63ff1",
+      "new_sha256": "e584b8cd935b7939463e2181baee4244330987daae839c3e366d1e2c2813e3ab",
       "old_sha256": "f35cfcf87687d6e6d4c6346bc9f65bce345c1301c8abf8d271f3696a9610734f"
     },
     "lib/supabase-client.js": {
@@ -36147,11 +38327,11 @@
       "old_sha256": "788fec31a4f422c36cd0acf65b23e226a4e2eee73655be50aeb668d5e2ff3ac7"
     },
     "staff.html": {
-      "new_sha256": "194a3012eeb50abcae55b25a4fdc99daa2119b8231b687a9446130bcd888031e",
+      "new_sha256": "e62ec7fa0c132aeaa2eb4843027d5e2c9ed742f717b8925cc866a9894db8701c",
       "old_sha256": "79705e51e7c96b35acaba3f50373d90fe3c3b63e14598533ce9b4b37af03c78c"
     },
     "staff.js": {
-      "new_sha256": "e658dc9e95a0f3f60351e7db5445f335ee131e711d4aa9686bb5abd408de5a4e",
+      "new_sha256": "d4b04fd342d377bcb3adca82b1fe65b3b2c6e74c87d7854ad1e0e649e30e6454",
       "old_sha256": "cf738d75db0a92be21d3eae87c4539a423ca7533a04973a4302c9147284192a2"
     },
     "terms.html": {
@@ -36159,12 +38339,12 @@
       "old_sha256": "69dcbe6466761db2a4073339497a3cbde2d1623041b3ffcef7587100e765beb5"
     },
     "user-manual-cn.html": {
-      "new_sha256": "f0f0c0b9a3d87a97fb08324fc604a0332436f878cf24fc753f9d0f283fe3e279",
+      "new_sha256": "20e2f15f37069816de9e5bf482dca3fb729eeb53fe95657e60ef192075ec5557",
       "old_sha256": "3c854823817d84d0d2a6b29112d9b9e5cd05ff3484ff47ba06ef8c6ab9e2cb81"
     }
   },
   "format": 2,
-  "migration_manifest_sha256": "3dd32a4f6bc8d055a4de6cc28fffc62a8f889bb932a31fe51fd41052b2d05b53",
+  "migration_manifest_sha256": "ef1a28117c7ff2f61e1126117717cd5fdc11ee27ceaa98259245fb22026a074e",
   "project_ref": "ksr-aliyun-cn-shanghai-1",
   "release": "registry-20261026-cn-v7",
   "required_db_checks": [
@@ -36211,6 +38391,9 @@
     "c3g_module_columns",
     "0043_biopsy_records",
     "biopsy_records_table",
+    "0044_project_fields",
+    "project_fields_tables",
+    "project_fields_signatures",
     "single_billing_order_overload"
   ],
   "required_schema_versions": [
@@ -36225,6 +38408,7 @@
     "0040_batch_import",
     "0041_followup_board",
     "0042_c3g_module",
-    "0043_biopsy_records"
+    "0043_biopsy_records",
+    "0044_project_fields"
   ]
 }

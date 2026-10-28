@@ -182,9 +182,13 @@ def validate_config(raw):
                               "(other equations are added only after both study teams agree on them)")
         egfr = {"creatinine_variable": scr["name"], "height_variable": height["name"], "height_window_days": hw,
                 "adult_equation": "CKD-EPI-2021-Cr", "child_equation": "Schwartz-2009-bedside"}
+    fields = raw.get("patient_fields", [])
+    if not isinstance(fields, list) or len(fields) > 100 or len(set(map(str, fields))) != len(fields) \
+            or any(not isinstance(k, str) or not re.fullmatch(r"[a-z][a-z0-9_]{1,39}", k) for k in fields):
+        raise ConfigError("patient_fields must be a list of distinct custom field codes (project_fields.field_key), such as [\"ethnicity\"]")
     return {"format": CONFIG_FORMAT, "confirmed": confirmed, "confirmed_by": raw.get("confirmed_by") or "",
             "confirmed_date": raw.get("confirmed_date") or "", "anchor": {"sources": list(sources)}, "selection": dict(SELECTION),
-            "timepoints": timepoints, "variables": variables, "egfr": egfr}
+            "timepoints": timepoints, "variables": variables, "egfr": egfr, "patient_fields": list(fields)}
 
 
 def load_config(path):
@@ -323,6 +327,27 @@ def recompute_egfr(scr_pick, height_points, patient, config):
     return np.nan, "", "age_outside_equations", age, None
 
 
+def field_values(data_dir, frames, keys):
+    """Custom enrollment field values per patient for the listed field codes (exported text: codes, numbers, dates)."""
+    if not keys:
+        return {}
+    path = Path(data_dir)/"project_fields.csv"
+    if not path.is_file():
+        raise DataContractError("patient_fields: the export has no custom field definitions (project_fields.csv); "
+                                "re-export with the current registry or remove patient_fields from the configuration")
+    with path.open(encoding="utf-8-sig", newline="") as f:
+        defined = {r.get("field_key") for r in csv.DictReader(f)}
+    unknown = [k for k in keys if k not in defined]
+    if unknown:
+        raise DataContractError(f"patient_fields: {unknown} are not custom fields of this export (see project_fields.csv)")
+    out = {}
+    for r in frames["patient_field_values"].to_dict("records"):
+        if r["field_key"] in keys:
+            text = next((str(r[c]) for c in ("value_codes", "value_text", "value_num", "value_date") if str(r.get(c) or "").strip()), "")
+            out.setdefault(_key(r), {})[r["field_key"]] = text
+    return out
+
+
 def build(data_dir, config, allow_fully_excluded_centers=False):
     frames = load_tables(data_dir)
     frames, consent = apply_consent_filter(frames)
@@ -335,13 +360,14 @@ def build(data_dir, config, allow_fully_excluded_centers=False):
     labs_norm = normalize_labs(frames["labs_long"], issues)
     series = {v["name"]: measurements(frames, labs_norm, v) for v in config["variables"]}
     by_key = {_key(p): p for p in patients.to_dict("records")}
+    fields = field_values(data_dir, frames, config["patient_fields"])
     long_rows, wide_rows = [], []
     egfr = config["egfr"]
     for key in sorted(anchors):
         p = by_key[key]
         anchor, source, kind = anchors[key]
         base = {**dict(zip(KEY, key)), "module": p.get("module", ""), "anchor_date": anchor.date().isoformat(), "anchor_source": source}
-        wide = {**base, "anchor_biopsy_kind": kind}
+        wide = {**base, "anchor_biopsy_kind": kind, **{f"field_{k}": fields.get(key, {}).get(k, "") for k in config["patient_fields"]}}
         for tp in config["timepoints"]:
             lo, hi = tp["window_days"]
             frame = {**base, "timepoint": tp["name"], "target_days": tp["target_days"], "window_from_days": lo, "window_to_days": hi}
@@ -409,7 +435,7 @@ def run(data_dir, config_path, out_dir, allow_fully_excluded_centers=False):
         raise DataContractError("input files changed during the run; freeze the export and retry")
     out_dir.mkdir(parents=True, exist_ok=True)
     prefix = "" if config["confirmed"] else "UNCONFIRMED_"
-    wide_header = KEY + ["module", "anchor_date", "anchor_source", "anchor_biopsy_kind"]
+    wide_header = KEY + ["module", "anchor_date", "anchor_source", "anchor_biopsy_kind"] + [f"field_{k}" for k in config["patient_fields"]]
     for tp in config["timepoints"]:
         for v in config["variables"]:
             wide_header += [f"{tp['name']}_{v['name']}", f"{tp['name']}_{v['name']}_date", f"{tp['name']}_{v['name']}_n"]

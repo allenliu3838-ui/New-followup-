@@ -747,6 +747,8 @@ unset PGPASSWORD OLD_DB_URL OLD_KEY
 
 **状态（2026-10-28）：** v7 尚未上线，并加入迁移 0043（肾活检记录、6 个新用药类别、疫苗接种改在用药记录登记，见附录 C.5）。上线时按顺序在生产库执行 0042、0043，再发布前端；此前生成的 v7 发布包作废，须按当前提交重新生成。
 
+**补充（2026-10-28）：** 迁移 0044（每个项目自定义入组字段，见附录 C.6）随 v7 一起上线时，顺序为 0042、0043、0044，再发布前端。
+
 | 文件 | 位置 | 现状 | 需要的改动 |
 |---|---|---|---|
 | `scripts/capture_registry_database.py` | 第 13 行 `PROJECT_REF`；`connection_environment()`（约第 30–49 行） | 只接受 `db.etsyglgpiutflethgirs.supabase.co`，或 `*.pooler.supabase.com` 且用户为 `postgres.etsyglgpiutflethgirs` | 新的项目身份（例如 `ksr-aliyun-<地域>-1`）；主机规则改为精确匹配新数据库主机名（如 `db.registry.internal`）与用户 `postgres`；保留 `verify-full` TLS、清除继承的 `PG*` 变量、只读事务、只接受审查过的预检 SQL 等全部现有约束。可选加强：在预检 SQL 中输出 `pg_control_system()` 的 `system_identifier` 并在工具中固定比对，因为自托管主机名不像 Supabase 项目编号那样全局唯一 |
@@ -1048,3 +1050,28 @@ docker exec -i supabase-db psql -U postgres -d postgres -X -t -A \
 然后重新生成只读预检报告，`0043_biopsy_records` 与 `biopsy_records_table` 均须为 `true`。**顺序仍是先数据库、后前端**：新前端会读取 `biopsies_long`，数据库未升级时“肾活检记录”区显示读取失败，其余功能不受影响。
 
 分析包同步：`run_analysis.py` 把 `biopsies_long` 作为可选表读取；新增 `time_windows.py` 与 `time_windows_template.json`（按活检日对齐的时间窗数据表：窗口内取距目标日最近的一天，距离相同取较早的一天，同一天多个值取中位数；时间点与窗口须研究双方确认，未确认时输出文件名带 UNCONFIRMED_）。
+
+### C.6 后续增量 0044（每个项目自定义入组字段）
+
+须在 0043 之后执行；未登记 0043 时中止并整体回滚。0044 只新增表和函数，不改任何已有数据（验收测试 `tests/project-fields-db.mjs` 对比迁移前后每一行），可重复执行。迁移不创建任何字段，REIGNITE 入组字段草案由项目负责人在工作台自行载入。内容：
+
+- 新表 `project_fields`：每个项目的字段定义（字段代码、显示名称、填写说明、类型、选项、数值单位与范围、显示顺序、是否启用、定义来源）。类型为单选、多选、是/否、数值、日期、文本。只能由项目负责人通过 `save_project_field` 修改，客户端不能直接写表；字段代码与类型创建后不变，已有选项代码不能删除（可改显示名称、可增加选项），显示名称在项目内唯一，数值范围须为有限数字，每个项目最多 100 个字段；`id`、`project_id`、`center_code`、`module`、`patient_code` 不能用作字段代码。新增与修改记入 `audit_log`（修改前后的定义）。
+- 新表 `patient_field_values`：每位患者每个字段一行。所有写入路径（`set_patient_field_values`、批量导入、直接写表）都由触发器 `check_patient_field_value` 按字段定义校验：选项、多选不重复（按定义顺序保存）、是/否、数值范围（拒绝 NaN 与无穷）、日期不晚于今天（北京时间）且不早于 1900 年、文本 1–200 字单行且无个人信息；已停用的字段不能新增或改值（已有的值保留，可以清除）；取值不能移到另一个字段。行级安全、身份不可改、试用到期只读锁、创建与修改人与其他临床表一致；修改与删除记入字段审计（`field_name` 为 `x_字段代码`，记录修改前后的值）。
+- `set_patient_field_values`：一次保存一位患者的多个字段，空值表示清除，相同的值不写入。
+- 批量导入新增类型 `fields`：每位患者一行，`patient_code` 加每个字段一列；空白单元格不导入；已有相同的值记为匹配，已有不同的值整批拒绝（导入不覆盖）；可按批次撤销，导入后被更正的值保留。
+- 冻结导出 `create_registry_export` 增加 `project_fields` 与 `patient_field_values` 两张表及字段说明。
+- 0043 的 `import_record_digest`、`import_registry_rows`、`undo_import_batch`、`create_registry_export` 按以上内容扩展，其余逐字不变（迁移文件由脚本从原文生成，差异经核对）。
+
+执行方式与 0043 相同：
+
+```bash
+docker exec -i supabase-db psql -U postgres -d postgres -X -q -v ON_ERROR_STOP=1 -f - \
+  < supabase/migrations/0044_project_fields.sql
+docker exec -i supabase-db psql -U postgres -d postgres -X -t -A \
+  -c "SELECT version FROM public.registry_schema_versions WHERE version='0044_project_fields'"
+# 预期：0044_project_fields
+```
+
+然后重新生成只读预检报告，`0044_project_fields`、`project_fields_tables` 与 `project_fields_signatures` 均须为 `true`。**顺序仍是先数据库、后前端**：新前端会读取 `project_fields`，数据库未升级时“自定义入组字段”区显示读取失败，其余功能不受影响。
+
+分析包同步：`run_analysis.py` 把 `patient_field_values` 作为可选表读取（多选为分号分隔的代码），`merge_centers.py` 随之合并；字段定义在 `analysis/data/project_fields.csv` 与 `data_dictionary.json` 的 `custom_fields` 中。`time_windows.py` 的配置可用 `patient_fields` 把入组字段加入宽表（`field_<代码>` 列）。多中心合并前须核对各中心的字段定义一致。

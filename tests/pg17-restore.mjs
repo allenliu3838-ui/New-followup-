@@ -124,7 +124,7 @@ try{
  await assert.rejects(restored.restoreCustom(backup.archive),/existing application objects/);
  pass('actual pg_restore reproduces every dumped table, value, sequence and reviewed catalog/ACL');
 
- assert.equal(await applyMigrations(restored,{phase:'upgrade'}),12);
+ assert.equal(await applyMigrations(restored,{phase:'upgrade'}),13);
  const upgradedRows=await captureRows(restored);
  // Two reviewed value changes are asserted exactly below; every other historical value must survive.
  const reviewedChange={
@@ -159,7 +159,7 @@ try{
  const reference=JSON.parse(fs.readFileSync(path.join(root,'supabase/database-contract-pg17.json'),'utf8'));
  assert.deepEqual(await readContract(restored),reference.database_contract_profiles.canonical,
   'Restored then upgraded database must match one complete reviewed canonical profile');
- pass('0032–0043 upgrade preserves 15 populated tables (consent default and plaintext links replaced exactly as reviewed; 0042 and 0043 add only their dictionary entries) and matches the approved PG17 profile');
+ pass('0032–0044 upgrade preserves 15 populated tables (consent default and plaintext links replaced exactly as reviewed; 0042 and 0043 add only their dictionary entries) and matches the approved PG17 profile');
 
  await asRole(restored,null,async()=>{
   await assert.rejects(restored.query('SELECT * FROM public.visit_receipts'),permissionDenied);

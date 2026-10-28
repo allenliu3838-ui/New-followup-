@@ -52,6 +52,9 @@ TABLE_COLUMNS = {
     # Kidney biopsy records (registry 0043); optional, read by time_windows.py for the biopsy anchor.
     "biopsies_long": KEY + ["id", "module", "biopsy_date", "biopsy_kind", "is_index", "glomeruli_total", "crescent_pct",
                             "oxford_m", "oxford_e", "oxford_s", "oxford_t", "oxford_c"],
+    # Custom enrollment fields (0044): one row per patient and field; value_codes holds a multi-choice
+    # as codes separated by ';'. The field definitions are in project_fields.csv (not a patient table).
+    "patient_field_values": KEY + ["id", "module", "field_key", "value_text", "value_codes", "value_num", "value_date"],
 }
 EGFR_REFERENCE = "https://escholarship.org/content/qt3gj2d8m2/qt3gj2d8m2.pdf"
 

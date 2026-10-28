@@ -110,7 +110,7 @@ function createMock({ access }) {
       }
       case 'patient_tokens': return tokens.filter(t => !f.patient_code || t.patient_code === f.patient_code);
       case 'visits_long': case 'patients_baseline': case 'user_profiles': case 'project_custom_labs': case 'lab_test_catalog': case 'lab_test_unit_map':
-      case 'labs_long': case 'meds_long': case 'events_long': case 'variants_long': case 'data_issues': case 'biopsies_long':
+      case 'labs_long': case 'meds_long': case 'events_long': case 'variants_long': case 'data_issues': case 'biopsies_long': case 'project_fields': case 'patient_field_values':
         return [];
       default: unknown.push(`GET ${table}`); return [];
     }

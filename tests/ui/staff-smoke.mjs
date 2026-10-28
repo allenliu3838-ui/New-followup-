@@ -194,7 +194,7 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
       case 'demo_requests': return data.admin ? [...inquiries].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)) : [];
       case 'patients_baseline': return Object.values(data.baselines).filter(b => (!f.patient_code || b.patient_code === f.patient_code) && (!f.id || b.id === f.id));
       case 'user_profiles': case 'lab_test_catalog': case 'lab_test_unit_map': case 'project_custom_labs':
-      case 'labs_long': case 'meds_long': case 'events_long': case 'variants_long': case 'data_issues':
+      case 'labs_long': case 'meds_long': case 'events_long': case 'variants_long': case 'data_issues': case 'project_fields': case 'patient_field_values':
         return [];
       case 'biopsies_long': return biopsies.filter(b => b.project_id === f.project_id && (!f.is_index || String(b.is_index) === f.is_index));
       default: unknown.push(`GET ${table}`); return [];

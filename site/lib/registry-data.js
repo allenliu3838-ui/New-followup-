@@ -219,6 +219,13 @@ export function assertNoPII(text, fieldLabel) {
 }
 
 const ERROR_MESSAGES=[
+  // 自定义入组字段（迁移 0044）。其余入组字段错误由数据库附带的中文提示说明（写明字段名称与可选值），不在此列。
+  ['field_key_is_immutable','入组字段的取值不能改到另一个字段；请清除原字段的值后，在正确的字段中重新录入。'],
+  ['field_values_required','没有需要保存的入组字段。'],
+  ['invalid_field_sort_order','显示顺序须为 0–99999 的整数。'],
+  ['invalid_field_active','启用状态无效，请刷新页面后重试。'],
+  ['invalid_field_source','定义来源说明最多 60 字，不能含换行等控制字符。'],
+  ['unsupported_field_property','字段定义包含不支持的设置，请刷新页面后重试。'],
   // 随访看板批量操作（迁移 0041）。放在最前：bulk_reason_required、invalid_patient_code_list 含有较短的已有代码。
   ['followup_start_date_requires_dedicated_action','提醒起算日只能在随访看板中勾选患者后，用“设置提醒起算日”修改，不能通过导入、更正或直接写表修改。'],
   ['followup_start_before_baseline','提醒起算日不能早于所选患者的基线日期，请核对后重试；本次没有修改任何患者。'],
@@ -422,13 +429,16 @@ export function registryErrorMessage(error, options = {}){
   const row=raw.match(/row_(\d+)_/);
   // 例如 invalid_iso_date: consent_date —— 用中文字段名说明是哪一项。
   const field=raw.match(/:\s*([a-z_]+)\s*$/)?.[1];const fieldName=field&&(FIELD_LABELS[field]||SETTING_LABELS[field]);
+  // fieldLabels：项目自定义入组字段的代码 → 显示名称（数据库附带的中文提示已写明字段名称，不再重复）。
+  const customName=!fieldName&&field?options.fieldLabels?.[field]:null;
   // rowLine：分块导入时把块内第 n 行换算为 CSV 文件中的行号。
   const line=row?(typeof options.rowLine==='function'?options.rowLine(Number(row[1])):Number(row[1])+1):null;
   const prefix=(row&&line!=null&&options.rowPrefix!==false?`第 ${line} 行：`:'')+(fieldName?`${fieldName}：`:'');
-  for(const [code,message]of ERROR_MESSAGES)if(raw.includes(code))return prefix+message;
+  const named=prefix+(customName?`${customName}：`:'');
+  for(const [code,message]of ERROR_MESSAGES)if(raw.includes(code))return named+message;
   if(/check constraint|check_violation/i.test(raw)||error?.code==='23514'){const problem=constraintProblem(error,raw);if(problem)return prefix+problem;}
   const haystack=[raw,error?.code,error?.details].filter(Boolean).join(' ');
-  for(const [pattern,message]of ERROR_PATTERNS)if(pattern.test(haystack))return prefix+message;
+  for(const [pattern,message]of ERROR_PATTERNS)if(pattern.test(haystack))return named+message;
   if(/[一-龥]/.test(raw)&&!/[a-z_]{3,}\.[a-z_]{3,}|relation|function /i.test(raw))return prefix+raw;
   if(/[一-龥]/.test(error?.hint||''))return prefix+error.hint;
   if(raw&&typeof console!=='undefined')console.warn('[registry] 未翻译的错误：',raw);
