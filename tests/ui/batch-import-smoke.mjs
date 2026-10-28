@@ -49,6 +49,7 @@ const BATCHES = [
   { batch_id: '50000000-0000-4000-8000-000000000003', kind: 'meds', created_at: '2026-10-11T02:00:00Z', created_by_email: USER.email, inserted: 2, skipped: 0, total: 2, file_sha256: 'b'.repeat(64), file_name: 'meds.csv', chunk_index: 2, chunk_total: 3, undo_supported: false, undone_at: '2026-10-12T03:00:00Z', undo_reason: `重复导入${X('reason')}` },
   // 0040 之前导入的随访批次：没有逐条记录，不能自动撤销。
   { batch_id: '50000000-0000-4000-8000-000000000004', kind: 'visits', created_at: '2026-10-01T02:00:00Z', created_by_email: USER.email, inserted: 4, skipped: 0, total: 4, file_sha256: null, file_name: null, chunk_index: null, chunk_total: null, undo_supported: false, undone_at: null, undo_reason: null },
+  { batch_id: '50000000-0000-4000-8000-000000000005', kind: 'biopsies', created_at: '2026-09-30T02:00:00Z', created_by_email: USER.email, inserted: 2, skipped: 0, total: 2, file_sha256: 'c'.repeat(64), file_name: 'biopsies.csv', chunk_index: 1, chunk_total: 1, undo_supported: true, undone_at: null, undo_reason: null },
 ];
 
 // ── 本地静态服务器与浏览器 ───────────────────────────────────
@@ -598,7 +599,9 @@ async function main() {
     assert.ok(listText.includes('化验记录') && listText.includes('患者基线') && listText.includes('已撤销') && listText.includes('2/3'), listText);
     assert.ok(listText.includes('<img src=x'), '恶意文件名按文字显示');
     assert.equal(await page.locator('#importBatchesList img').count(), 0);
-    assert.equal(await page.locator('#importBatchesList [data-undo-index]').count(), 1, '只有未撤销、支持撤销的非基线批次可撤销');
+    assert.equal(await page.locator('#importBatchesList [data-undo-index]').count(), 2, '只有未撤销、支持撤销的非基线批次可撤销');
+    assert.ok((await text(page.locator('#importBatchesList tr[data-batch-row="4"]'))).includes('肾活检记录'));
+    assert.equal(await page.locator('#importBatchesList tr[data-batch-row="4"] [data-undo-index]').count(), 1, '肾活检记录批次可以撤销');
     assert.equal(await page.locator('#importBatchesList tr[data-batch-row="3"] [data-undo-index]').count(), 0, '0040 之前的批次不显示撤销按钮');
     assert.ok((await text(page.locator('#importBatchesList tr[data-batch-row="3"]'))).includes('该批次导入于支持撤销之前，不能自动撤销'));
     await page.click('#importBatchesList [data-undo-index="0"]');

@@ -3255,7 +3255,7 @@ const IMPORT_TEMPLATES={
   visits:{filename:'template_visits_long.csv',columns:VISIT_IMPORT_FIELDS,example:{patient_code:'0001',visit_date:'2026-09-14',sbp:'128',dbp:'78',scr_umol_l:'92',upcr:'450'}}
 };
 const isBatchKind=type=>BATCH_KINDS.includes(type);
-const UNDOABLE_KINDS=['visits','labs','meds','events'];
+const UNDOABLE_KINDS=['visits','labs','meds','events','biopsies'];
 const ROW_STATUS_LABELS={ok:'可写入',warn:'警告',block:'阻断',ignored:'不导入'};
 function downloadImportTemplate(){
   const type=el.importType.value;
