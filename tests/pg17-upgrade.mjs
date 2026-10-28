@@ -100,11 +100,12 @@ try {
       return {...original, token: null};
     }
   };
-  // 0042 adds display-dictionary entries for the C3 glomerulopathy module and the visit height;
-  // every other preserved table keeps exactly its historical rows.
+  // 0042 adds display-dictionary entries for the C3 glomerulopathy module and the visit height,
+  // 0043 those of the biopsy records and two medication-class abbreviations; every other
+  // preserved table keeps exactly its historical rows.
   const reviewedAdditions = {
-    concept_dictionary: ['c3g_biopsy_date', 'c3g_crescent_pct', 'c3g_em_pattern', 'c3g_if_c3_dominant', 'c3g_paraprotein', 'height_cm'],
-    abbreviation_dictionary: ['AH50', 'C3GN', 'C3NeF', 'CH50', 'DDD', 'sC5b-9'],
+    concept_dictionary: ['biopsy_kind', 'c3g_biopsy_date', 'c3g_crescent_pct', 'c3g_em_pattern', 'c3g_if_c3_dominant', 'c3g_paraprotein', 'crescent_pct', 'glomeruli_total', 'height_cm', 'is_index'],
+    abbreviation_dictionary: ['AH50', 'C3GN', 'C3NeF', 'CH50', 'DDD', 'ERA', 'MRA', 'sC5b-9'],
   };
   for (const table of preservedTables) {
     // Added columns may change JSON sort order, so compare by each historical row's key.
@@ -122,9 +123,9 @@ try {
         `${table}: every other pre-existing column value remains unchanged`);
     }
   }
-  assert.equal(Number((await row('SELECT count(*) AS n FROM public.registry_schema_versions')).n), 11);
+  assert.equal(Number((await row('SELECT count(*) AS n FROM public.registry_schema_versions')).n), 12);
   assert.equal(Number((await row('SELECT count(*) AS n FROM public.patient_tokens WHERE token IS NOT NULL')).n), 0);
-  pass('incremental 0032–0042 preserves historical clinical, receipt and dictionary values; consent default and plaintext links change exactly as reviewed; 0042 adds only its dictionary entries');
+  pass('incremental 0032–0043 preserves historical clinical, receipt and dictionary values; consent default and plaintext links change exactly as reviewed; 0042 and 0043 add only their dictionary entries');
 
   const dictionaryInsertStatements = [
     "INSERT INTO public.abbreviation_dictionary(abbr,full_name_cn,category_cn) VALUES('DENIED','Denied','Denied')",

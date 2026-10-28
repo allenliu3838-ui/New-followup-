@@ -49,6 +49,9 @@ TABLE_COLUMNS = {
     "meds_long": KEY + ["id", "module", "drug_name", "drug_class", "dose", "route", "frequency", "start_date", "end_date"],
     "variants_long": KEY + ["id", "module", "test_date", "gene", "variant", "hgvs_c", "hgvs_p"],
     "events_long": KEY + ["id", "module", "event_type", "event_date", "confirmed", "source"],
+    # Kidney biopsy records (registry 0043); optional, read by time_windows.py for the biopsy anchor.
+    "biopsies_long": KEY + ["id", "module", "biopsy_date", "biopsy_kind", "is_index", "glomeruli_total", "crescent_pct",
+                            "oxford_m", "oxford_e", "oxford_s", "oxford_t", "oxford_c"],
 }
 EGFR_REFERENCE = "https://escholarship.org/content/qt3gj2d8m2/qt3gj2d8m2.pdf"
 

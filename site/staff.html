@@ -440,7 +440,7 @@
           <b>导入规则：</b>基线只更新文件中提供的非空字段，缺失列及空格保持现有值；需要清空或更正时，请在看板中打开该患者的“随访记录”，使用“核对 / 更正基线”并填写原因。随访按服务器规则去重。未知列、重复表头及有错误的行会阻止整批导入。基线文件可包含知情同意状态与随访状态列（可填中文，如“已同意”“失访”），请先按原始知情同意记录核对；拒绝或撤回同意、退出研究、死亡不能通过导入登记，请先建档，再在患者的“研究状态”中登记并填写原因。基线与随访一次最多 500 行。
         </div>
         <div class="warnbox" style="margin-top:8px" data-import-rules="batch" hidden>
-          <b>导入规则：</b>一行一条记录；研究编号须为本项目已建档的患者。预览分为“可写入”“警告”“阻断”：阻断行不会写入，警告行须勾选“已核对警告”后才会写入。与已有记录完全相同的行自动跳过；同一患者同一业务键（化验：日期 + 项目；用药：药物 + 起始日期；终点：类型 + 日期）已有不同数据时，该块整块不写入，请先在记录纠错中核实。大文件按 500 行分块依次提交，某块失败即停止，可修正后重传同一文件补录。导入不会修改患者的研究状态；死亡、肾衰竭等请在“研究状态”中登记。eGFR 下降与缓解由分析脚本按研究方案计算，不接受导入。
+          <b>导入规则：</b>一行一条记录；研究编号须为本项目已建档的患者。预览分为“可写入”“警告”“阻断”：阻断行不会写入，警告行须勾选“已核对警告”后才会写入。与已有记录完全相同的行自动跳过；同一患者同一业务键（化验：日期 + 项目；用药：药物 + 起始日期；终点：类型 + 日期；活检：日期 + 类型）已有不同数据时，该块整块不写入，请先在记录纠错中核实。大文件按 500 行分块依次提交，某块失败即停止，可修正后重传同一文件补录。导入不会修改患者的研究状态；死亡、肾衰竭等请在“研究状态”中登记。eGFR 下降与缓解由分析脚本按研究方案计算，不接受导入。
         </div>
         <div class="infobox" style="margin-top:8px" id="importPiiNotice"><b>隐私提示：</b>不得包含姓名、身份证号、手机号、病案号；研究编号只用项目内编号。表头含“姓名、身份证、手机、电话、病案号、住院号”等列的文件会被拒绝。</div>
         <div class="row" style="margin-top:10px;align-items:flex-end;flex-wrap:wrap;gap:8px">
@@ -452,6 +452,7 @@
               <option value="labs">化验记录</option>
               <option value="meds">用药记录</option>
               <option value="events">终点事件</option>
+              <option value="biopsies">肾活检记录</option>
             </select>
             <div id="importLegacyOptions"><label for="importBaselineUnit">CSV 未标注时的基线 UPCR 单位</label><select id="importBaselineUnit"><option value="">请明确选择（有 UPCR 时必需）</option><option value="mg/g">mg/g</option><option value="g/g">g/g</option></select></div>
           </div>
@@ -509,6 +510,7 @@
               <button class="btn" id="btnExportMeds">导出用药记录</button>
               <button class="btn" id="btnExportVariants" hidden>导出基因变异</button>
               <button class="btn" id="btnExportEvents">导出终点事件</button>
+              <button class="btn" id="btnExportBiopsies">导出肾活检记录</button>
             </div>
           </div>
           <div class="col">
@@ -672,6 +674,12 @@
               <option value="降糖药（其他）">降糖药（其他）</option>
               <option value="降脂药">降脂药</option>
               <option value="抗凝/抗血小板">抗凝/抗血小板</option>
+              <option value="内皮素受体拮抗剂">内皮素受体拮抗剂（ERA）</option>
+              <option value="补体抑制剂">补体抑制剂</option>
+              <option value="盐皮质激素受体拮抗剂">盐皮质激素受体拮抗剂（MRA）</option>
+              <option value="预防性抗生素">预防性抗生素</option>
+              <option value="试验药物">试验药物</option>
+              <option value="疫苗">疫苗（接种记录：药品名称写疫苗名称，开始日期为接种日期）</option>
               <option value="其他">其他</option>
             </select>
             <div class="row">
@@ -734,6 +742,56 @@
           </div>
         </div>
 
+        <h3 class="fu-h3" id="biopsyHeading">肾活检记录</h3>
+        <div class="muted small" style="margin-bottom:10px">每次肾活检登记一条，自体肾和移植肾都可登记，可多次。把确诊那一次标为“基准活检”：按活检日对齐导出时以它的日期为第 0 天，每位患者最多一次。只填结构化结果，不要上传或粘贴病理报告原文和图片。</div>
+        <div class="row" id="biopsySection">
+          <div class="col">
+            <label for="bxPatientCode">研究编号</label>
+            <input id="bxPatientCode" list="patientCodeOptions" placeholder="例如：0001"/>
+            <div class="row">
+              <div class="col">
+                <label for="bxDate">活检日期</label>
+                <input id="bxDate" type="date"/>
+              </div>
+              <div class="col">
+                <label for="bxKind">活检类型</label>
+                <select id="bxKind">
+                  <option value="">-- 选择 --</option>
+                  <option value="native">自体肾</option>
+                  <option value="transplant">移植肾</option>
+                </select>
+              </div>
+            </div>
+            <label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px"><input id="bxIndex" type="checkbox" style="width:auto;margin-top:5px"/>基准活检（通常是确诊活检；每位患者最多一次）</label>
+            <div class="row">
+              <div class="col">
+                <label for="bxGlomeruli">肾小球总数（可选）</label>
+                <input id="bxGlomeruli" type="number" min="0" max="999" step="1" inputmode="numeric" placeholder="例如：24"/>
+              </div>
+              <div class="col">
+                <label for="bxCrescentPct">新月体比例（%，可选）</label>
+                <input id="bxCrescentPct" type="number" min="0" max="100" step="0.1" inputmode="decimal" placeholder="例如：8.3"/>
+              </div>
+            </div>
+            <div id="bxMestRow" class="row" hidden>
+              <div class="col"><label for="bxM">M（0/1）</label><select id="bxM"><option value=""></option><option value="0">0</option><option value="1">1</option></select></div>
+              <div class="col"><label for="bxE">E（0/1）</label><select id="bxE"><option value=""></option><option value="0">0</option><option value="1">1</option></select></div>
+              <div class="col"><label for="bxS">S（0/1）</label><select id="bxS"><option value=""></option><option value="0">0</option><option value="1">1</option></select></div>
+              <div class="col"><label for="bxT">T（0/1/2）</label><select id="bxT"><option value=""></option><option value="0">0</option><option value="1">1</option><option value="2">2</option></select></div>
+              <div class="col"><label for="bxC">C（0/1/2）</label><select id="bxC"><option value=""></option><option value="0">0</option><option value="1">1</option><option value="2">2</option></select></div>
+            </div>
+            <div id="bxHint" class="fu-hint small" aria-live="polite"></div>
+            <label for="bxNotes">备注（可选，勿填身份信息）</label>
+            <input id="bxNotes" maxlength="500" placeholder="例如：重复活检，评估治疗反应"/>
+            <div class="btnbar">
+              <button class="btn" id="btnAddBiopsy">添加活检记录</button>
+            </div>
+          </div>
+          <div class="col">
+            <div id="biopsiesPreview" class="muted small" style="margin-top:8px">暂无记录</div>
+          </div>
+        </div>
+
         <h3 class="fu-h3">临床终点事件</h3>
         <div class="muted small" style="margin-bottom:10px">手动录入经核实的终点事件，须注明判定依据来源。事件定义与判定标准以研究方案为准；eGFR 下降与缓解建议由分析脚本按研究方案计算，导出分析包后运行脚本，并由研究团队按方案核对与确认。死亡、肾衰竭等研究状态请另在看板的“研究状态”中登记。</div>
         <div class="row">
@@ -752,7 +810,6 @@
                   <option value="relapse">复发</option>
                   <option value="serious_infection">严重感染（在事件细节中写明部位或诊断）</option>
                   <option value="hospitalization">住院（在事件细节中写明原因）</option>
-                  <option value="vaccination">疫苗接种（在事件细节中写明疫苗名称）</option>
                   <option value="egfr_decline_40pct">eGFR 下降 ≥40%（建议由分析脚本按研究方案计算）</option>
                   <option value="egfr_decline_57pct">eGFR 下降 ≥57%（建议由分析脚本按研究方案计算）</option>
                   <option value="complete_remission">完全缓解（建议由分析脚本按研究方案计算）</option>
@@ -774,7 +831,7 @@
               <option value="death_certificate">死亡证明</option>
               <option value="other">其他</option>
             </select>
-            <label for="evtDetail">事件细节（“其他”时必填，勿填身份信息）</label>
+            <label for="evtDetail">事件细节（“其他”、严重感染、住院时必填，勿填身份信息）</label>
             <input id="evtDetail" maxlength="500" placeholder="例如：血液透析 / 活体供肾移植"/>
             <label for="evtNotes">备注（可选，勿填身份信息）</label>
             <input id="evtNotes" maxlength="500" placeholder="例如：缓解确认日期"/>

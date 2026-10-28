@@ -196,6 +196,7 @@ export function normalizeImportRow(kind,input,defaultUpcrUnit=''){
 
 // Chinese labels for CSV columns and correction fields; users never see raw column keys in messages.
 export const FIELD_LABELS=Object.freeze({patient_code:'研究编号',sex:'性别',birth_year:'出生年份',baseline_date:'基线日期',baseline_scr:'基线血肌酐',baseline_upcr:'基线UPCR',baseline_upcr_unit:'基线UPCR单位',baseline_upcr_raw:'基线UPCR原始值',baseline_upcr_original_unit:'基线UPCR原始单位',biopsy_date:'肾穿日期',oxford_m:'牛津分型M',oxford_e:'牛津分型E',oxford_s:'牛津分型S',oxford_t:'牛津分型T',oxford_c:'牛津分型C',ln_biopsy_date:'LN肾穿日期',ln_class:'LN病理分型',ln_activity_index:'LN活动指数',ln_chronicity_index:'LN慢性指数',ln_podocytopathy:'足细胞病变',treatment_arm:'研究分组',randomization_id:'随机号',randomization_date:'随机化日期',visit_date:'随访日期',sbp:'收缩压',dbp:'舒张压',scr_umol_l:'血肌酐（μmol/L）',upcr:'UPCR（mg/g）',egfr:'eGFR',notes:'备注',consent_status:'知情同意状态',consent_date:'知情同意日期',consent_version:'知情同意书版本',followup_status:'随访状态',followup_status_date:'随访状态日期',followup_start_date:'提醒起算日',c3g_biopsy_date:'C3G肾穿日期',c3g_if_c3_dominant:'免疫荧光C3优势',c3g_em_pattern:'C3G电镜分型',c3g_crescent_pct:'新月体比例（%）',c3g_paraprotein:'单克隆免疫球蛋白筛查',height_cm:'身高（cm）',
+  biopsy_kind:'活检类型',is_index:'基准活检',glomeruli_total:'肾小球总数',crescent_pct:'新月体比例（%）',
   lab_date:'化验日期',lab_test_code:'化验项目编码',lab_item_name:'化验项目名称',value_raw:'结果数值',unit_symbol:'单位',result_text:'结果文本',ref_range:'参考范围',abnormal_flag:'异常标志',
   drug_name:'药物名称',drug_class:'药物类别',dose_value:'剂量数值',dose_unit:'剂量单位',route:'给药途径',frequency:'频次',start_date:'起始日期',end_date:'结束日期',indication:'用药目的',
   event_type:'事件类型',event_date:'事件日期',event_detail:'事件细节',evidence_source:'判定依据来源',file_name:'文件名',file_sha256:'文件校验值'});
@@ -225,9 +226,20 @@ const ERROR_MESSAGES=[
   ['patient_codes_required','请先在随访看板中勾选患者。'],
   ['too_many_patients','每次最多处理 500 位患者，请减少勾选后分批操作。'],
   ['invalid_patient_code_list','所选患者有重复或为空，请刷新看板后重新勾选。'],
+  // 肾活检记录（迁移 0043）。唯一约束名放在通用的“记录已存在”之前。
+  ['index_biopsy_exists','该患者已有一次基准活检；每位患者只能有一次。请先核对已有活检记录，本次没有保存。'],
+  ['biopsies_long_one_index_per_patient','该患者已有一次基准活检；每位患者只能有一次。请先核对已有活检记录，本次没有保存。'],
+  ['biopsies_long_business_key','该患者在这一天已有同类型（自体肾或移植肾）的活检记录，请核对后再保存。'],
+  ['oxford_c_crescent_mismatch','牛津分型 C 与新月体比例不一致：C0 为无新月体，C1 为新月体占肾小球不足 25%，C2 为 25% 及以上。请按病理报告核对。'],
+  ['biopsy_kind_required','请填写活检类型：自体肾（native）或移植肾（transplant）。'],
+  ['invalid_biopsy_kind','活检类型只能为自体肾（native）或移植肾（transplant）。'],
+  ['biopsy_date_required','请填写活检日期。'],
+  ['future_biopsy_date','活检日期不能晚于今天（北京时间）。'],
+  ['integer_required','该项须为不带小数点的整数。'],
+  ['invalid_boolean','该项只能填“是”或“否”（true / false）。'],
   // 化验 / 用药 / 终点事件批量导入（迁移 0040）。较长、较具体的代码放在前面。
   ['derived_endpoint_not_importable','eGFR 下降与缓解属于由化验数据计算的终点，由分析脚本按研究方案判定，不能导入；请删除这些行后重试。'],
-  ['same_key_record_conflict','同一患者同一业务键（化验：日期 + 项目；用药：药物 + 起始日期；终点：类型 + 日期）已有不同数据，本块未写入。请先在记录纠错中核实。'],
+  ['same_key_record_conflict','同一患者同一业务键（化验：日期 + 项目；用药：药物 + 起始日期；终点：类型 + 日期；活检：日期 + 类型）已有不同数据，本块未写入。请先在记录纠错中核实。'],
   ['file_name_contains_pii','文件名疑似包含个人信息（姓名、手机号、身份证号、病案号或 8 位以上连续数字），请重命名文件后重新上传。'],
   ['file_name_too_long','文件名最多 200 个字符，请重命名后重新上传。'],
   ['invalid_file_sha256','文件校验值格式不正确，请重新选择文件后重试。'],
@@ -248,17 +260,17 @@ const ERROR_MESSAGES=[
   ['invalid_abnormal_flag','异常标志只能为 H（高）、L（低）或 N（正常）。'],
   ['drug_name_required','请填写药物名称。'],
   ['start_date_required','请填写用药起始日期。'],
-  ['invalid_drug_class','药物类别须为模板说明中的取值（如 RAS阻断剂、SGLT2抑制剂、糖皮质激素等）。'],
+  ['invalid_drug_class','药物类别须为模板说明中的取值（如 RAS阻断剂、SGLT2抑制剂、内皮素受体拮抗剂、补体抑制剂、疫苗等）。'],
   ['invalid_route','给药途径须为 PO、IV、SC、IM、topical 或 other。'],
   ['invalid_dose_value','剂量数值须为大于 0 的数字。'],
   ['end_date_before_start_date','结束日期不能早于起始日期。'],
   ['end_before_start','结束日期不能早于起始日期。'],
   ['event_type_required','请填写事件类型。'],
   ['event_date_required','请填写事件日期。'],
-  ['invalid_event_type','事件类型只能为终末期肾病、开始透析、肾移植、死亡、复发或其他；其他须填写事件细节。'],
+  ['invalid_event_type','事件类型只能为终末期肾病、开始透析、肾移植、死亡、复发、严重感染、住院或其他；疫苗接种请在用药记录中登记（药物类别“疫苗”）。'],
   ['evidence_source_required','请填写判定依据来源（病历记录、化验数据复核、电话随访、死亡证明或其他）。'],
   ['invalid_evidence_source','判定依据来源须为病历记录、化验数据复核、电话随访、死亡证明或其他。'],
-  ['event_detail_required','事件类型为“其他”时须填写事件细节。'],
+  ['event_detail_required','事件类型为“其他”、严重感染或住院时须填写事件细节（事件内容、感染部位或诊断、住院原因）。'],
   ['date_before_1900','日期不能早于 1900-01-01。'],
   ['date_too_early','日期不能早于 1900-01-01。'],
   ['lab_value_or_result_required','请填写结果数值或结果文本（至少一项）。'],
@@ -390,6 +402,11 @@ const CONSTRAINT_FIELDS=Object.freeze({
   oxford_t_check:['牛津分型T','只能为 0、1 或 2'],oxford_c_check:['牛津分型C','只能为 0、1 或 2'],
   ln_class_check:['LN病理分型','取值无效'],ln_activity_index_check:['LN活动指数','须在 0–24 之间'],ln_chronicity_index_check:['LN慢性指数','须在 0–12 之间'],
   c3g_em_pattern_check:['C3G电镜分型','只能为 C3GN、DDD 或 unclassified'],c3g_crescent_pct_check:['新月体比例','须在 0–100 之间'],c3g_paraprotein_check:['单克隆免疫球蛋白筛查','只能为 negative、positive 或 not_tested'],
+  biopsies_long_kind_check:['活检类型','只能为自体肾或移植肾'],biopsies_long_date_floor:['活检日期','不能早于 1900-01-01'],
+  biopsies_long_glomeruli_range:['肾小球总数','须为 0–999 的整数'],biopsies_long_crescent_range:['新月体比例','须在 0–100 之间'],
+  biopsies_long_oxford_m_check:['牛津分型M','只能为 0 或 1'],biopsies_long_oxford_e_check:['牛津分型E','只能为 0 或 1'],biopsies_long_oxford_s_check:['牛津分型S','只能为 0 或 1'],
+  biopsies_long_oxford_t_check:['牛津分型T','只能为 0、1 或 2'],biopsies_long_oxford_c_check:['牛津分型C','只能为 0、1 或 2'],
+  biopsies_long_oxford_c_crescents:['牛津分型C','须与新月体比例一致（C0 为 0，C1 小于 25%，C2 为 25% 及以上）'],biopsies_long_notes_length:['备注','须为 1–500 字'],
 });
 const COLUMN_KEYS=Object.keys(FIELD_LABELS).sort((a,b)=>b.length-a.length);
 /** 约束错误对应的字段：先查已知约束，再从 column 或约束名中找已知列名。不读取 details（其中是失败行的原始内容）。 */

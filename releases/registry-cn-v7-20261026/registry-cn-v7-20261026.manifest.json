@@ -739,6 +739,112 @@
         },
         {
           "rls": true,
+          "table": "biopsies_long",
+          "schema": "public",
+          "force_rls": false,
+          "anon_delete": true,
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_delete": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "constraints": [
+            {
+              "name": "biopsies_long_business_key",
+              "type": "u",
+              "validated": true,
+              "definition_md5": "5b1ae74e9821d6a0a72fbc91bc2718c7"
+            },
+            {
+              "name": "biopsies_long_crescent_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "8fbcd32e08f3a3086cc7b033ccd0d34f"
+            },
+            {
+              "name": "biopsies_long_date_floor",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "6a3e86b04ab52fde49ab8f502a61679c"
+            },
+            {
+              "name": "biopsies_long_glomeruli_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "4bea06ecd48e6277b08b97f44a5eeefe"
+            },
+            {
+              "name": "biopsies_long_kind_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "a834c1caadfa9c73da03f27a36fa05cf"
+            },
+            {
+              "name": "biopsies_long_notes_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "439843aa9b176b2ab258b17b88823dea"
+            },
+            {
+              "name": "biopsies_long_oxford_c_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "d52d31dd6de93f1fc8e8f7ea09d96a91"
+            },
+            {
+              "name": "biopsies_long_oxford_c_crescents",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "8ad964d261e7056b33b85750ee4276c7"
+            },
+            {
+              "name": "biopsies_long_oxford_e_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "3d8f8c08265a8b05d570515f8d0204d6"
+            },
+            {
+              "name": "biopsies_long_oxford_m_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "72bc71c7d46bef9a3de093b4692e790c"
+            },
+            {
+              "name": "biopsies_long_oxford_s_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "73fc9e3352b670b16f86eda596bdad4c"
+            },
+            {
+              "name": "biopsies_long_oxford_t_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "16a56cfc0fd24744583db7a3e0f1a5a3"
+            },
+            {
+              "name": "biopsies_long_patient_project_fk",
+              "type": "f",
+              "validated": true,
+              "definition_md5": "519efb4e5ec5766e13d5df74c5ed0e63"
+            },
+            {
+              "name": "biopsies_long_pkey",
+              "type": "p",
+              "validated": true,
+              "definition_md5": "4c6419b3704337bbfe50f018842a9ad3"
+            },
+            {
+              "name": "biopsies_long_project_id_fkey",
+              "type": "f",
+              "validated": true,
+              "definition_md5": "07f3414b4de8691ee7edea30c01f758f"
+            }
+          ]
+        },
+        {
+          "rls": true,
           "table": "concept_alias_dictionary",
           "schema": "public",
           "force_rls": false,
@@ -953,7 +1059,7 @@
               "name": "events_long_event_type_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "570097fcd5ae08e9eb338dc5985fe354"
+              "definition_md5": "78e19be0aeeb559ae6ab2ca4ff600a5e"
             },
             {
               "name": "events_long_evidence_source_check",
@@ -1779,7 +1885,7 @@
               "name": "registry_import_batches_kind_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "a56d94ed560a2a8cee1ec5fe1c32ecb7"
+              "definition_md5": "0e4300943876e028d25016bdcdbc945f"
             },
             {
               "name": "registry_import_batches_pkey",
@@ -1843,7 +1949,7 @@
               "name": "registry_import_records_kind_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "a56d94ed560a2a8cee1ec5fe1c32ecb7"
+              "definition_md5": "0e4300943876e028d25016bdcdbc945f"
             },
             {
               "name": "registry_import_records_project_id_fkey",
@@ -3701,6 +3807,348 @@
           "auth_insert": false,
           "auth_select": true,
           "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "biopsy_date",
+          "type": "date",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "biopsy_kind",
+          "type": "text",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "75230039beb12ce952f24927f2bfa2f2",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "crescent_pct",
+          "type": "numeric",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "glomeruli_total",
+          "type": "smallint",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "id",
+          "type": "uuid",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "f3b72bb359a50b640590970a2ab8e514",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "is_index",
+          "type": "boolean",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "68934a3e9455fa72420237eb05902327",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "oxford_c",
+          "type": "smallint",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "oxford_e",
+          "type": "smallint",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "oxford_m",
+          "type": "smallint",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "oxford_s",
+          "type": "smallint",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "oxford_t",
+          "type": "smallint",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "patient_code",
+          "type": "text",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "75230039beb12ce952f24927f2bfa2f2",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -12127,6 +12575,105 @@
         },
         {
           "live": true,
+          "name": "biopsies_long_business_key",
+          "ready": true,
+          "table": "biopsies_long",
+          "valid": true,
+          "schema": "public",
+          "unique": true,
+          "columns": [
+            {
+              "column": "project_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "patient_code",
+              "included": false,
+              "position": 2,
+              "expression": false
+            },
+            {
+              "column": "biopsy_date",
+              "included": false,
+              "position": 3,
+              "expression": false
+            },
+            {
+              "column": "biopsy_kind",
+              "included": false,
+              "position": 4,
+              "expression": false
+            }
+          ],
+          "primary": false,
+          "immediate": true,
+          "key_count": 4,
+          "predicate_md5": null,
+          "definition_md5": "e1e0e96f570257d98adb311b7e72eba7",
+          "attribute_count": 4,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
+          "name": "biopsies_long_one_index_per_patient",
+          "ready": true,
+          "table": "biopsies_long",
+          "valid": true,
+          "schema": "public",
+          "unique": true,
+          "columns": [
+            {
+              "column": "project_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "patient_code",
+              "included": false,
+              "position": 2,
+              "expression": false
+            }
+          ],
+          "primary": false,
+          "immediate": true,
+          "key_count": 2,
+          "predicate_md5": "9c38e766943490da8b732339e240c411",
+          "definition_md5": "846acbf5c6418d243e77604b163095c9",
+          "attribute_count": 2,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
+          "name": "biopsies_long_pkey",
+          "ready": true,
+          "table": "biopsies_long",
+          "valid": true,
+          "schema": "public",
+          "unique": true,
+          "columns": [
+            {
+              "column": "id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            }
+          ],
+          "primary": true,
+          "immediate": true,
+          "key_count": 1,
+          "predicate_md5": null,
+          "definition_md5": "6507bbf1330d2919cf003f82ca0eb6c2",
+          "attribute_count": 1,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
           "name": "concept_alias_dictionary_pkey",
           "ready": true,
           "table": "concept_alias_dictionary",
@@ -14302,6 +14849,54 @@
           "with_check": null
         },
         {
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "biopsies_long",
+          "policy": "member_delete",
+          "schema": "public",
+          "command": "DELETE",
+          "permissive": "PERMISSIVE",
+          "with_check": null
+        },
+        {
+          "qual": null,
+          "roles": [
+            "authenticated"
+          ],
+          "table": "biopsies_long",
+          "policy": "member_insert",
+          "schema": "public",
+          "command": "INSERT",
+          "permissive": "PERMISSIVE",
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
+        },
+        {
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "biopsies_long",
+          "policy": "member_read",
+          "schema": "public",
+          "command": "SELECT",
+          "permissive": "PERMISSIVE",
+          "with_check": null
+        },
+        {
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "biopsies_long",
+          "policy": "member_update",
+          "schema": "public",
+          "command": "UPDATE",
+          "permissive": "PERMISSIVE",
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
+        },
+        {
           "qual": "true",
           "roles": [
             "anon",
@@ -15157,6 +15752,55 @@
           "definition_md5": "6e9f21550320b47683990e1b80eab71d"
         },
         {
+          "table": "biopsies_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "a_registry_identity",
+          "definition_md5": "07e1b4bbf03c0f316c6780490afd4386"
+        },
+        {
+          "table": "biopsies_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "registry_audit_biopsy",
+          "definition_md5": "add65d6b5f0b313431ad010f972a8a3e"
+        },
+        {
+          "table": "biopsies_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "registry_biopsy_date_future",
+          "definition_md5": "98174fe59a4d196707e9a27576bbf2da"
+        },
+        {
+          "table": "biopsies_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "tr_biopsies_created_by",
+          "definition_md5": "efab1e2c3c93df432e838be20915ee2c"
+        },
+        {
+          "table": "biopsies_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "tr_biopsies_trial_lock",
+          "definition_md5": "193e911e42e30105ecaf64a015a8f5c3"
+        },
+        {
+          "table": "biopsies_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "tr_biopsies_updated_meta",
+          "definition_md5": "8f5347afc1ba7e4b5deccfeb902d459a"
+        },
+        {
+          "table": "biopsies_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "trg_pii_guard_biopsies",
+          "definition_md5": "d7008c586dd5b434947b176df398799b"
+        },
+        {
           "table": "concept_dictionary",
           "schema": "public",
           "enabled": "O",
@@ -15843,7 +16487,7 @@
           "signature": "_registry_input_columns(text)",
           "volatility": "i",
           "anon_execute": false,
-          "definition_md5": "f6734b53d811b3523f18731b92b3d824",
+          "definition_md5": "b2ec07d6962856dc4e3ad9edca4f10d3",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -15855,7 +16499,7 @@
           "signature": "_registry_validate_input(text,jsonb)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "c0ed81ce588532043c6ab75322657673",
+          "definition_md5": "4f01c2fa5dfb3b0e13725b43627978a2",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -16359,7 +17003,7 @@
           "signature": "create_registry_export(uuid,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "1c93bf790e7a75860cc1bf6b76352db5",
+          "definition_md5": "cf0a2050fa7912864b26d9d4e02f61f0",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -16479,7 +17123,7 @@
           "signature": "import_registry_rows(uuid,text,jsonb,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "44d443e356501b76d7868959101a1788",
+          "definition_md5": "9c8ca4aab35103af4b0a262723b84472",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -16743,7 +17387,7 @@
           "signature": "registry_private.check_clinical_row(text,jsonb)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "28eed8a7ae686af0a3658604c76a3344",
+          "definition_md5": "6290a30490aae42539239763bc0e7701",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -16839,7 +17483,7 @@
           "signature": "registry_private.import_clinical_row(uuid,text,jsonb,integer,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "355920f9047f06b3eab4140494c98c44",
+          "definition_md5": "f8bb1bed59e92def9b0243e4ba4e190f",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -16851,7 +17495,7 @@
           "signature": "registry_private.import_record_digest(text,uuid)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "b00e0893a2a6c890546d4c516653114f",
+          "definition_md5": "fd2758d69d4bf4294b53767ca35a7cec",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -16968,6 +17612,18 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "registry_private.reject_future_biopsy_date()",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "fe7688d3ce592c23b754edb224de96f1",
+          "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "registry_private.reject_future_research_dates()",
           "volatility": "v",
           "anon_execute": false,
@@ -17055,7 +17711,7 @@
           "signature": "registry_private.validate_clinical_input(text,jsonb)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "ed8c1792747ccc25f8e5454d509e02e3",
+          "definition_md5": "caac182e66aae5e6e29c1f2909d3db06",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -17199,7 +17855,7 @@
           "signature": "undo_import_batch(uuid,uuid,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "cf987a55aeac1e047fdeb91ed2eb55ad",
+          "definition_md5": "7d6ad26cbe6039a24352a35838e2ec52",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -18006,6 +18662,112 @@
         },
         {
           "rls": true,
+          "table": "biopsies_long",
+          "schema": "public",
+          "force_rls": false,
+          "anon_delete": true,
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_delete": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "constraints": [
+            {
+              "name": "biopsies_long_business_key",
+              "type": "u",
+              "validated": true,
+              "definition_md5": "5b1ae74e9821d6a0a72fbc91bc2718c7"
+            },
+            {
+              "name": "biopsies_long_crescent_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "8fbcd32e08f3a3086cc7b033ccd0d34f"
+            },
+            {
+              "name": "biopsies_long_date_floor",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "6a3e86b04ab52fde49ab8f502a61679c"
+            },
+            {
+              "name": "biopsies_long_glomeruli_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "4bea06ecd48e6277b08b97f44a5eeefe"
+            },
+            {
+              "name": "biopsies_long_kind_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "a834c1caadfa9c73da03f27a36fa05cf"
+            },
+            {
+              "name": "biopsies_long_notes_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "439843aa9b176b2ab258b17b88823dea"
+            },
+            {
+              "name": "biopsies_long_oxford_c_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "d52d31dd6de93f1fc8e8f7ea09d96a91"
+            },
+            {
+              "name": "biopsies_long_oxford_c_crescents",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "8ad964d261e7056b33b85750ee4276c7"
+            },
+            {
+              "name": "biopsies_long_oxford_e_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "3d8f8c08265a8b05d570515f8d0204d6"
+            },
+            {
+              "name": "biopsies_long_oxford_m_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "72bc71c7d46bef9a3de093b4692e790c"
+            },
+            {
+              "name": "biopsies_long_oxford_s_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "73fc9e3352b670b16f86eda596bdad4c"
+            },
+            {
+              "name": "biopsies_long_oxford_t_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "16a56cfc0fd24744583db7a3e0f1a5a3"
+            },
+            {
+              "name": "biopsies_long_patient_project_fk",
+              "type": "f",
+              "validated": true,
+              "definition_md5": "519efb4e5ec5766e13d5df74c5ed0e63"
+            },
+            {
+              "name": "biopsies_long_pkey",
+              "type": "p",
+              "validated": true,
+              "definition_md5": "4c6419b3704337bbfe50f018842a9ad3"
+            },
+            {
+              "name": "biopsies_long_project_id_fkey",
+              "type": "f",
+              "validated": true,
+              "definition_md5": "07f3414b4de8691ee7edea30c01f758f"
+            }
+          ]
+        },
+        {
+          "rls": true,
           "table": "concept_alias_dictionary",
           "schema": "public",
           "force_rls": false,
@@ -18220,7 +18982,7 @@
               "name": "events_long_event_type_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "570097fcd5ae08e9eb338dc5985fe354"
+              "definition_md5": "78e19be0aeeb559ae6ab2ca4ff600a5e"
             },
             {
               "name": "events_long_evidence_source_check",
@@ -19046,7 +19808,7 @@
               "name": "registry_import_batches_kind_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "a56d94ed560a2a8cee1ec5fe1c32ecb7"
+              "definition_md5": "0e4300943876e028d25016bdcdbc945f"
             },
             {
               "name": "registry_import_batches_pkey",
@@ -19110,7 +19872,7 @@
               "name": "registry_import_records_kind_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "a56d94ed560a2a8cee1ec5fe1c32ecb7"
+              "definition_md5": "0e4300943876e028d25016bdcdbc945f"
             },
             {
               "name": "registry_import_records_project_id_fkey",
@@ -20968,6 +21730,348 @@
           "auth_insert": false,
           "auth_select": true,
           "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "biopsy_date",
+          "type": "date",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "biopsy_kind",
+          "type": "text",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "75230039beb12ce952f24927f2bfa2f2",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "crescent_pct",
+          "type": "numeric",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "glomeruli_total",
+          "type": "smallint",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "id",
+          "type": "uuid",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "f3b72bb359a50b640590970a2ab8e514",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "is_index",
+          "type": "boolean",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "68934a3e9455fa72420237eb05902327",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "oxford_c",
+          "type": "smallint",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "oxford_e",
+          "type": "smallint",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "oxford_m",
+          "type": "smallint",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "oxford_s",
+          "type": "smallint",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "oxford_t",
+          "type": "smallint",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "patient_code",
+          "type": "text",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "75230039beb12ce952f24927f2bfa2f2",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "table": "biopsies_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -29394,6 +30498,105 @@
         },
         {
           "live": true,
+          "name": "biopsies_long_business_key",
+          "ready": true,
+          "table": "biopsies_long",
+          "valid": true,
+          "schema": "public",
+          "unique": true,
+          "columns": [
+            {
+              "column": "project_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "patient_code",
+              "included": false,
+              "position": 2,
+              "expression": false
+            },
+            {
+              "column": "biopsy_date",
+              "included": false,
+              "position": 3,
+              "expression": false
+            },
+            {
+              "column": "biopsy_kind",
+              "included": false,
+              "position": 4,
+              "expression": false
+            }
+          ],
+          "primary": false,
+          "immediate": true,
+          "key_count": 4,
+          "predicate_md5": null,
+          "definition_md5": "e1e0e96f570257d98adb311b7e72eba7",
+          "attribute_count": 4,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
+          "name": "biopsies_long_one_index_per_patient",
+          "ready": true,
+          "table": "biopsies_long",
+          "valid": true,
+          "schema": "public",
+          "unique": true,
+          "columns": [
+            {
+              "column": "project_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "patient_code",
+              "included": false,
+              "position": 2,
+              "expression": false
+            }
+          ],
+          "primary": false,
+          "immediate": true,
+          "key_count": 2,
+          "predicate_md5": "9c38e766943490da8b732339e240c411",
+          "definition_md5": "846acbf5c6418d243e77604b163095c9",
+          "attribute_count": 2,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
+          "name": "biopsies_long_pkey",
+          "ready": true,
+          "table": "biopsies_long",
+          "valid": true,
+          "schema": "public",
+          "unique": true,
+          "columns": [
+            {
+              "column": "id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            }
+          ],
+          "primary": true,
+          "immediate": true,
+          "key_count": 1,
+          "predicate_md5": null,
+          "definition_md5": "6507bbf1330d2919cf003f82ca0eb6c2",
+          "attribute_count": 1,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
           "name": "concept_alias_dictionary_pkey",
           "ready": true,
           "table": "concept_alias_dictionary",
@@ -31569,6 +32772,54 @@
           "with_check": null
         },
         {
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "biopsies_long",
+          "policy": "member_delete",
+          "schema": "public",
+          "command": "DELETE",
+          "permissive": "PERMISSIVE",
+          "with_check": null
+        },
+        {
+          "qual": null,
+          "roles": [
+            "authenticated"
+          ],
+          "table": "biopsies_long",
+          "policy": "member_insert",
+          "schema": "public",
+          "command": "INSERT",
+          "permissive": "PERMISSIVE",
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
+        },
+        {
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "biopsies_long",
+          "policy": "member_read",
+          "schema": "public",
+          "command": "SELECT",
+          "permissive": "PERMISSIVE",
+          "with_check": null
+        },
+        {
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "biopsies_long",
+          "policy": "member_update",
+          "schema": "public",
+          "command": "UPDATE",
+          "permissive": "PERMISSIVE",
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
+        },
+        {
           "qual": "true",
           "roles": [
             "anon",
@@ -32424,6 +33675,55 @@
           "definition_md5": "6e9f21550320b47683990e1b80eab71d"
         },
         {
+          "table": "biopsies_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "a_registry_identity",
+          "definition_md5": "07e1b4bbf03c0f316c6780490afd4386"
+        },
+        {
+          "table": "biopsies_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "registry_audit_biopsy",
+          "definition_md5": "add65d6b5f0b313431ad010f972a8a3e"
+        },
+        {
+          "table": "biopsies_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "registry_biopsy_date_future",
+          "definition_md5": "98174fe59a4d196707e9a27576bbf2da"
+        },
+        {
+          "table": "biopsies_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "tr_biopsies_created_by",
+          "definition_md5": "efab1e2c3c93df432e838be20915ee2c"
+        },
+        {
+          "table": "biopsies_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "tr_biopsies_trial_lock",
+          "definition_md5": "193e911e42e30105ecaf64a015a8f5c3"
+        },
+        {
+          "table": "biopsies_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "tr_biopsies_updated_meta",
+          "definition_md5": "8f5347afc1ba7e4b5deccfeb902d459a"
+        },
+        {
+          "table": "biopsies_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "trg_pii_guard_biopsies",
+          "definition_md5": "d7008c586dd5b434947b176df398799b"
+        },
+        {
           "table": "concept_dictionary",
           "schema": "public",
           "enabled": "O",
@@ -33110,7 +34410,7 @@
           "signature": "_registry_input_columns(text)",
           "volatility": "i",
           "anon_execute": false,
-          "definition_md5": "f6734b53d811b3523f18731b92b3d824",
+          "definition_md5": "b2ec07d6962856dc4e3ad9edca4f10d3",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -33122,7 +34422,7 @@
           "signature": "_registry_validate_input(text,jsonb)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "c0ed81ce588532043c6ab75322657673",
+          "definition_md5": "4f01c2fa5dfb3b0e13725b43627978a2",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -33626,7 +34926,7 @@
           "signature": "create_registry_export(uuid,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "1c93bf790e7a75860cc1bf6b76352db5",
+          "definition_md5": "cf0a2050fa7912864b26d9d4e02f61f0",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -33746,7 +35046,7 @@
           "signature": "import_registry_rows(uuid,text,jsonb,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "44d443e356501b76d7868959101a1788",
+          "definition_md5": "9c8ca4aab35103af4b0a262723b84472",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -34010,7 +35310,7 @@
           "signature": "registry_private.check_clinical_row(text,jsonb)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "28eed8a7ae686af0a3658604c76a3344",
+          "definition_md5": "6290a30490aae42539239763bc0e7701",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -34106,7 +35406,7 @@
           "signature": "registry_private.import_clinical_row(uuid,text,jsonb,integer,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "355920f9047f06b3eab4140494c98c44",
+          "definition_md5": "f8bb1bed59e92def9b0243e4ba4e190f",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -34118,7 +35418,7 @@
           "signature": "registry_private.import_record_digest(text,uuid)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "b00e0893a2a6c890546d4c516653114f",
+          "definition_md5": "fd2758d69d4bf4294b53767ca35a7cec",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -34235,6 +35535,18 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "registry_private.reject_future_biopsy_date()",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "fe7688d3ce592c23b754edb224de96f1",
+          "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "registry_private.reject_future_research_dates()",
           "volatility": "v",
           "anon_execute": false,
@@ -34322,7 +35634,7 @@
           "signature": "registry_private.validate_clinical_input(text,jsonb)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "ed8c1792747ccc25f8e5454d509e02e3",
+          "definition_md5": "caac182e66aae5e6e29c1f2909d3db06",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -34466,7 +35778,7 @@
           "signature": "undo_import_batch(uuid,uuid,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "cf987a55aeac1e047fdeb91ed2eb55ad",
+          "definition_md5": "7d6ad26cbe6039a24352a35838e2ec52",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -34538,7 +35850,7 @@
     }
   },
   "database_contract_protocol": "registry-contract-v3-pg17",
-  "database_contract_reference_sha256": "367766549c2044940ba8c7f1d8e8e815873d4975b32191545ca3c9af3c7bb922",
+  "database_contract_reference_sha256": "1011a446adb6f82f9a7e4e90268efc5b676e774853e1ef60267a7926403234a8",
   "database_contract_sha256": "aca7000205680905a853fc72280ff60a2f99af32d8b2807bb761de7769ed6b29",
   "database_server_major": 17,
   "files": {
@@ -34559,7 +35871,7 @@
       "old_sha256": "f9daff5d2707d51d9da2c9bce708f2e86aa7694a4006dce08e5cf1612673321b"
     },
     "assets/help-faq.json": {
-      "new_sha256": "eb1998a3193e4e84a3cd4d336589a1948626f3c0b70a6602bfbe9d789d19655b",
+      "new_sha256": "799ac3920548a80ebe3f71a635b23c5107eecc80da572c8102efcc126fd83dd2",
       "old_sha256": "4c5418684f4445903930824397f464f07971d9269ac18aaa92d1f111fad2f9e4"
     },
     "assets/mail-confirm.html": {
@@ -34599,15 +35911,15 @@
       "old_sha256": "8da066c8b250968199bc4cfe4c986215c7ff0d308eb9fc0cc32073ba596ce718"
     },
     "assets/sql/batch6_latest.sql": {
-      "new_sha256": "db450f1b8dc8a528f08a49641385dfb0c56bfaed876eed39f4e4f854471ceee9",
+      "new_sha256": "18a9c0b7b9a3b1386cdcd7fd8222dccc8c197e3e325f9f1dfe5c4b4bbcff488a",
       "old_sha256": "d34c02ef673adbc70228e0177d5ebcba9affd5d3a572e3be1069e98b9cd23e61"
     },
     "assets/template/METHODS_TEMPLATE_EN.md": {
-      "new_sha256": "00e5360982fce4d4d0945faea961d2ebf1aadfa32b4b9a42b16836c703f44bd5",
+      "new_sha256": "a2c589060ec17a860612c2f636bba37863e9c32b5d915783e87a833e0c90cbee",
       "old_sha256": "226227197e2a05e86c89bc1627ab7768cc29e444ae72a1276d704955366adffb"
     },
     "assets/template/README_PACK.md": {
-      "new_sha256": "f9eb3283e7d2952056ecb75f867c913021f27d89d0b6586451d98ff4caa38126",
+      "new_sha256": "8455df38eb05770bf4fb995652bb855b1c7882bf4d6098fc6d0524e1fd8ead3e",
       "old_sha256": "d2d54ff8d60f26fdd2e5a63f3e104a64ab89767fba212a2be58ec9ec4863af5e"
     },
     "assets/template/feasibility_criteria_template.json": {
@@ -34631,8 +35943,16 @@
       "old_sha256": "c5a48736a9044a1a0b5dd3afb8a3f37d589f0c704a0a93463d80dd5b762b9d0d"
     },
     "assets/template/run_analysis.py": {
-      "new_sha256": "b0e6b9ff70de9cd89c9739d4478f282ac9a6276a10c0fd7af5487b4994c6d3b4",
+      "new_sha256": "31545ee4741a7097461e1522d1624db3b1cd36c56aa0762455ca77443b281f37",
       "old_sha256": "437d6b7a9efcbbe689367bcd052b4b322d5082bf70c592a58198239615b948d5"
+    },
+    "assets/template/time_windows.py": {
+      "new_sha256": "1d2ba18cb26c9bd17ad0a2f579c75ce2f32352b369d417d37897c4ead43359ba",
+      "old_sha256": null
+    },
+    "assets/template/time_windows_template.json": {
+      "new_sha256": "253868b05b52683b9b4b76e10a94093ed6aa3298b74e6bd401fe062f9d9df862",
+      "old_sha256": null
     },
     "assets/肾域科研_临床团队虚拟项目全流程演练册_V2.1.pdf": {
       "new_sha256": "f5e5bd17cca13daf4a59840b81844c60ef70a98828dc5a5c53d5fb7fc5b159ca",
@@ -34695,7 +36015,7 @@
       "old_sha256": "45b8bc516de1ed8a06276682449f8178ed64ce4d1241d52fd2aa66ba08f748b2"
     },
     "guide.html": {
-      "new_sha256": "9b043129e219d119485fcf3c5d21865af228f8545165b165bc033dd62c582a46",
+      "new_sha256": "691ed9cc5f341f34820e15ea2fcdf11bedeea98142a482ae7ea6c8bb3b5e92f0",
       "old_sha256": "1eea1302f8bcee45b148c92035f323b0c9814f0f6a14da2988742d5eef10dd40"
     },
     "guide.js": {
@@ -34711,7 +36031,7 @@
       "old_sha256": "5bfa97ded368de86a54e1963f085bc99d05a7029f2911790135e3428c11ab8d6"
     },
     "lib/batch-import.js": {
-      "new_sha256": "c55e5ccf260483ea08db8e23e7af8552ab7a7f32c89b0e0d6fc16b688572e359",
+      "new_sha256": "56876dccf6d55850bcf98c3d898f78d95cc3e2816cc1ce1a014b2c1c3ec9c9a8",
       "old_sha256": "e913207ff31abc7c4015de340e57d1cc9eb9f4cf71c1e72915f3e69519abf5e1"
     },
     "lib/error-logger.js": {
@@ -34755,7 +36075,7 @@
       "old_sha256": "ab609c56259cb841b2828b11c5c3e6024d2936feefafc3fd63e5e686c134589f"
     },
     "lib/registry-data.js": {
-      "new_sha256": "68408c8d2113a3fdaa5e6d2f959eb4fcfea8686b5b632ddd64bfeb7c565239cc",
+      "new_sha256": "f9e8929ba9ba60a3fe81fbe5ecc06ea654d3332ff10faf71a1032ce7fdd63ff1",
       "old_sha256": "f35cfcf87687d6e6d4c6346bc9f65bce345c1301c8abf8d271f3696a9610734f"
     },
     "lib/supabase-client.js": {
@@ -34827,11 +36147,11 @@
       "old_sha256": "788fec31a4f422c36cd0acf65b23e226a4e2eee73655be50aeb668d5e2ff3ac7"
     },
     "staff.html": {
-      "new_sha256": "b3462ace615cce549efcd4fd86ea05882e14ae4eb6371e1d98d691f39c60cffb",
+      "new_sha256": "194a3012eeb50abcae55b25a4fdc99daa2119b8231b687a9446130bcd888031e",
       "old_sha256": "79705e51e7c96b35acaba3f50373d90fe3c3b63e14598533ce9b4b37af03c78c"
     },
     "staff.js": {
-      "new_sha256": "5980b09222e09d0e2c79124b9f27664a5452eea3a8a482a7d3f396dfd3aa370f",
+      "new_sha256": "1be31ada0eb083a74f95d3fbe4bf64295bd96194a46c509196f353659bb1ef0b",
       "old_sha256": "cf738d75db0a92be21d3eae87c4539a423ca7533a04973a4302c9147284192a2"
     },
     "terms.html": {
@@ -34839,12 +36159,12 @@
       "old_sha256": "69dcbe6466761db2a4073339497a3cbde2d1623041b3ffcef7587100e765beb5"
     },
     "user-manual-cn.html": {
-      "new_sha256": "1f1c8d85b2a5a354dfb473bb4ba4b0311eb3182faf5c8533932892fcbf91af82",
+      "new_sha256": "f0f0c0b9a3d87a97fb08324fc604a0332436f878cf24fc753f9d0f283fe3e279",
       "old_sha256": "3c854823817d84d0d2a6b29112d9b9e5cd05ff3484ff47ba06ef8c6ab9e2cb81"
     }
   },
   "format": 2,
-  "migration_manifest_sha256": "6f1d011a6a503fb2743db5a494ce6c37b32016e1af09baafd0819ab23d50bab5",
+  "migration_manifest_sha256": "3dd32a4f6bc8d055a4de6cc28fffc62a8f889bb932a31fe51fd41052b2d05b53",
   "project_ref": "ksr-aliyun-cn-shanghai-1",
   "release": "registry-20261026-cn-v7",
   "required_db_checks": [
@@ -34889,6 +36209,8 @@
     "followup_start_column",
     "0042_c3g_module",
     "c3g_module_columns",
+    "0043_biopsy_records",
+    "biopsy_records_table",
     "single_billing_order_overload"
   ],
   "required_schema_versions": [
@@ -34902,6 +36224,7 @@
     "0039_patient_token_hashing",
     "0040_batch_import",
     "0041_followup_board",
-    "0042_c3g_module"
+    "0042_c3g_module",
+    "0043_biopsy_records"
   ]
 }

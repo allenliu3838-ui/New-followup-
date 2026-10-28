@@ -124,7 +124,8 @@
       <h2 id="labs">8. 化验及扩展记录</h2>
       <p>在“附加数据”中先选研究对象，再选检验项目、采样或检验日期、原始数值与原单位，核对换算提示后保存。修改历史记录时用“核对 / 更正”并说明来源；原值与单位必须来自同一份报告。</p>
       <p>CD19 百分比不能当作细胞绝对计数；病毒载量 copies/mL 与 IU/mL 没有经过验证的换算关系时不能按 1:1 互换。无法换算或原值与换算值矛盾时，记录保留并交团队核实，相关结果不进入分析。</p>
-      <p>用药按已有记录填写名称或分类、剂量、途径、频次和日期；终点事件填写类型、日期、来源与确认状态，严重感染、住院、疫苗接种和“其他”须在事件细节中写明内容。系统不提供用药建议，事件仍需按研究方案裁定。用药和终点事件记录可由负责人或录入协作人删除，删除会留痕；化验记录录错时用“核对 / 更正”。</p>
+      <p>用药按已有记录填写名称或分类、剂量、途径、频次和日期；药物类别包括内皮素受体拮抗剂（ERA）、补体抑制剂、盐皮质激素受体拮抗剂（MRA）、预防性抗生素、试验药物和疫苗。疫苗接种在用药记录中登记：药品名称写疫苗名称，类别选“疫苗”，开始日期为接种日期。终点事件填写类型、日期、来源与确认状态，严重感染、住院和“其他”须在事件细节中写明内容。系统不提供用药建议，事件仍需按研究方案裁定。用药、终点事件和肾活检记录可由负责人或录入协作人删除，删除会留痕；化验记录录错时用“核对 / 更正”。</p>
+      <p>肾活检记录：每次肾活检登记一条，自体肾和移植肾都可登记，可多次；填写活检日期、类型、肾小球总数和新月体比例，IgA 肾病项目还可填牛津分型 MEST-C（C 须与新月体比例一致：C0 为无新月体，C1 不足 25%，C2 为 25% 及以上）。把确诊那一次勾选为“基准活检”，每位患者最多一次，按活检日对齐导出时以它的日期为第 0 天。只填结构化结果，不要上传或粘贴病理报告原文和图片。也可用“批量导入”中的“肾活检记录”模板整批导入。</p>
       <h3 id="advanced">病理、检验编码、基因与其他专业字段</h3>
       <p>病理评分照报告转录，例如 IgA 肾病的牛津病理分类评分（MEST-C）、狼疮性肾炎的 ISN/RPS 分型、C3 肾小球病的免疫荧光 C3 优势与电镜分型（C3GN / DDD）。检验项目代码（如 LOINC）须与实际项目、样本、方法和单位一致。基因字段保留报告中的基因、HGVS 命名、转录本、合子状态及来源；基因数据涉及人类遗传资源管理，工作台默认不开放录入，迁至境内并完成合规评估后由管理员开启。不要为填满表格编造专业代码；分析脚本不做遗传变异解释，也不会因字段齐全自动生成遗传诊断或风险分层。</p>
 
@@ -152,8 +153,8 @@
       <h3 id="export-mode">11.1 选择导出方式</h3>
       <p>负责人和分析协作人可在“导出当前项目数据”中单独下载基线、随访等 CSV 用于核对，但各次下载可能来自不同时刻。需要同一数据版本时，在“科研数据与分析脚本包”中点“创建冻结版本并导出分析包”：确认框会先显示项目和将冻结的数据范围，确认后新增一个冻结数据版本（基于数据库同一时刻的一次读取，之后不能修改或删除），再下载基于它的分析包。已有版本在“数据快照”列表中点“下载分析包”重新下载，不会新增版本。</p>
       <p>“冻结当前数据版本（不下载）”确认后只保存版本、不下载。版本列表中的已冻结版本可以重新下载相同内容与校验值；早期的“元数据记录”只有说明和数量，不能恢复历史数据。冻结不会锁住后续录入，也不等于备份恢复。</p>
-      <h3 id="export-tables">11.2 包内九张表</h3>
-      <div class="table-wrap" role="region" aria-label="冻结导出数据表清单" tabindex="0"><table id="exportTables"><caption>research_data.json 中的九张表（文件名即导出文件名）</caption><thead><tr><th scope="col">内容</th><th scope="col">文件名</th><th scope="col">分析脚本中的用途</th></tr></thead><tbody>
+      <h3 id="export-tables">11.2 包内十张表</h3>
+      <div class="table-wrap" role="region" aria-label="冻结导出数据表清单" tabindex="0"><table id="exportTables"><caption>research_data.json 中的十张表（文件名即导出文件名）</caption><thead><tr><th scope="col">内容</th><th scope="col">文件名</th><th scope="col">分析脚本中的用途</th></tr></thead><tbody>
         <tr><th scope="row">患者基线（含知情同意与随访状态）</th><td><code>patients_baseline</code></td><td>核心输入</td></tr>
         <tr><th scope="row">随访</th><td><code>visits_long</code></td><td>核心输入</td></tr>
         <tr><th scope="row">化验原值与换算值</th><td><code>labs_long</code></td><td>核心输入；单位核对</td></tr>
@@ -162,9 +163,10 @@
         <tr><th scope="row">终点事件</th><td><code>events_long</code></td><td>核心输入；核对确认状态与时间</td></tr>
         <tr><th scope="row">肾移植基线扩展</th><td><code>ktx_baseline_ext</code></td><td>保留，不自动分析</td></tr>
         <tr><th scope="row">肾移植随访扩展</th><td><code>ktx_visits_ext</code></td><td>保留，不自动分析</td></tr>
+        <tr><th scope="row">肾活检记录（自体肾 / 移植肾，可多次）</th><td><code>biopsies_long</code></td><td>按活检日对齐的时间窗数据表（time_windows.py）以基准活检为第 0 天</td></tr>
         <tr><th scope="row">数据质控问题</th><td><code>data_issues</code></td><td>写入包根目录的 qc_issues.csv 与 qc_summary.json</td></tr>
       </tbody></table></div>
-      <p><code>analysis/data/</code> 中有前八张表的原值 CSV，前六张是分析脚本的核心输入，空表也有表头。<code>excel_safe/</code> 中是供 Excel 查看的副本，文字可能带有防公式前缀，不要拿它替换分析输入。<code>research_data.json</code> 保留服务器原始内容和类型；<code>data_dictionary.json</code> 说明字段含义，包括知情同意与随访状态的取值。</p>
+      <p><code>analysis/data/</code> 中有除数据质控问题外九张表的原值 CSV，前六张是分析脚本的核心输入，空表也有表头。需要按活检日期对齐、在各时间点取值（窗口内取最近的一天，距离相同取较早的，同一天多个值取中位数）时，按分析包 README 第 8 节运行 <code>time_windows.py</code>；时间点和窗口须研究双方确认后写入配置文件，未确认时输出文件名带 UNCONFIRMED_。<code>excel_safe/</code> 中是供 Excel 查看的副本，文字可能带有防公式前缀，不要拿它替换分析输入。<code>research_data.json</code> 保留服务器原始内容和类型；<code>data_dictionary.json</code> 说明字段含义，包括知情同意与随访状态的取值。</p>
       <h3 id="export-verify">11.3 校验与留存</h3>
       <p><code>export_manifest.json</code> 记录源内容校验值 <code>source_content_sha256</code> 和包内每个文件的 SHA-256。请保留未改动的 ZIP 与清单；浏览器在读取冻结内容时会核对校验值，不一致会停止下载。同一冻结版本重新下载的 JSON 校验值相同；重新生成的 ZIP 可能因导出时间或脚本版本不同而不同。</p>
       <p>需要人工核对时，在解压后的包根目录运行下面一条命令，把输出与清单中的 <code>source_content_sha256</code> 比较：</p>

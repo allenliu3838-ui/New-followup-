@@ -84,3 +84,19 @@ creatinine in mg/dL) from the height recorded at that visit; a paediatric visit 
 height has no analysis eGFR and is an UNKNOWN measurement. Values tagged manual are used
 as stored; eGFR values of unverified provenance are excluded. The stored value is
 compared with the recomputed one and differences are listed in the quality report.
+
+## Biopsy-anchored time-window table (optional, `time_windows.py`)
+
+For comparisons with studies that align measurements on the kidney biopsy date, day 0 is
+the patient's index biopsy (the one biopsy record marked as index), or, when the
+configuration lists it, the disease module's baseline biopsy date or the earliest native
+biopsy; patients without an anchor are listed with the reason and are not imputed. For
+each pre-specified time point (target day and inclusive window, in days from day 0) and
+variable, same-day measurements are first combined into their median, the day nearest to
+the target day is then taken, and of two equally near days the earlier one. Laboratory
+values are used only after an explicit unit conversion. eGFR at each time point is
+recomputed from the creatinine selected for that time point (CKD-EPI 2021 creatinine
+equation for ages 18-120; bedside Schwartz 2009 for ages 1-17 with the height nearest to
+that day within the configured height window). The configuration file (time points,
+windows, variables, confirming investigators and date) and its SHA-256 are recorded in
+`TIME_WINDOWS_LOG.json`; output from an unconfirmed configuration is labelled UNCONFIRMED.

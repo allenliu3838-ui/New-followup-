@@ -1,0 +1,32 @@
+{
+  "_说明": "按活检日对齐的时间窗导出配置（time_windows.py）。下面的时间点与窗口只是示例，正式数值须由研究双方按方案确认；确认后把 confirmed 改为 true，并填写 confirmed_by 与 confirmed_date。未确认时输出文件名以 UNCONFIRMED_ 开头，不能作为正式分析数据。",
+  "_取值规则": "每个时间点在窗口内取距目标日最近的一天；距离相同取较早的一天；同一天多个值取中位数。窗口边界包含在内，单位为距对齐日期的天数（负数为对齐日期之前）。该规则固定，不能在配置中修改。",
+  "_对齐日期": "anchor.sources 按顺序查找：index_biopsy（肾活检记录中标为基准活检的那一次）、baseline_biopsy_date（患者基线中的肾穿日期：LN 用 ln_biopsy_date，C3G 用 c3g_biopsy_date，其余用 biopsy_date）、earliest_native_biopsy（最早一次自体肾活检，需明确加入才使用）。都找不到的患者列入 time_windows_no_anchor.csv。",
+  "_eGFR": "eGFR 按每个时间点选中的血肌酐重新计算：18 岁及以上用 CKD-EPI 2021 肌酐公式，1–17 岁用床旁 Schwartz 2009 公式并取该日前后 height_window_days 天内最近的身高。其他公式须研究双方商定后再加入。",
+  "format": "kidneysphere-time-windows-v1",
+  "confirmed": false,
+  "confirmed_by": "",
+  "confirmed_date": "",
+  "anchor": {"sources": ["index_biopsy", "baseline_biopsy_date"]},
+  "selection": {"rule": "nearest", "tie": "earlier", "same_day": "median"},
+  "timepoints": [
+    {"name": "Bx_minus12m", "target_days": -365, "window_days": [-455, -275]},
+    {"name": "Bx", "target_days": 0, "window_days": [-90, 30]},
+    {"name": "M6", "target_days": 182, "window_days": [120, 240]},
+    {"name": "M12", "target_days": 365, "window_days": [300, 430]},
+    {"name": "M24", "target_days": 730, "window_days": [640, 820]}
+  ],
+  "variables": [
+    {"name": "scr_umol_l", "label": "血肌酐", "unit": "μmol/L", "decimals": 1,
+     "sources": [{"table": "visits_long", "column": "scr_umol_l"}, {"table": "patients_baseline", "column": "baseline_scr"},
+                 {"table": "labs_long", "lab_test_code": "CREAT", "analysis_unit": "mg/dL", "factor": 88.4}]},
+    {"name": "upcr_mg_g", "label": "尿蛋白肌酐比", "unit": "mg/g", "decimals": 0,
+     "sources": [{"table": "visits_long", "column": "upcr"}, {"table": "patients_baseline", "column": "baseline_upcr"},
+                 {"table": "labs_long", "lab_test_code": "UPCR", "analysis_unit": "mg/g", "factor": 1}]},
+    {"name": "sbp", "label": "收缩压", "unit": "mmHg", "decimals": 0, "sources": [{"table": "visits_long", "column": "sbp"}]},
+    {"name": "dbp", "label": "舒张压", "unit": "mmHg", "decimals": 0, "sources": [{"table": "visits_long", "column": "dbp"}]},
+    {"name": "height_cm", "label": "身高", "unit": "cm", "decimals": 1, "sources": [{"table": "visits_long", "column": "height_cm"}]}
+  ],
+  "egfr": {"creatinine_variable": "scr_umol_l", "height_variable": "height_cm", "height_window_days": 90,
+           "adult_equation": "CKD-EPI-2021-Cr", "child_equation": "Schwartz-2009-bedside"}
+}

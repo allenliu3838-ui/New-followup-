@@ -107,3 +107,19 @@ KFRE 风险计算已停用：旧实现用 UPCR 替代 UACR、猜测检验单位�
 1. 复制 `analysis/feasibility_criteria_template.json`，填写病种模块、基线年龄范围、最近一次 eGFR 与 UPCR 的范围及时间窗、最近随访距截止日期的天数（不需要的条件填 `null`），把 `status` 改为 `confirmed` 并写明确认人和日期。模板状态下脚本会拒绝运行。
 2. 运行 `python3 analysis/feasibility_report.py --data analysis/data --out feasibility --criteria 我的条件.json`；截止日期默认取数据中最近一次随访日期，也可用 `--as-of YYYY-MM-DD` 指定。
 3. 结果：`feasibility_by_center.csv`（每个中心一行加合计：知情同意排除人数、纳入人数、有随访人数、各条件满足人数、全部满足人数）和 `FEASIBILITY_RUN_LOG.json`（条件全文与 SHA-256、输入文件 SHA-256、知情同意筛选、eGFR 来源说明）。知情同意筛选与 eGFR 的算法与 `run_analysis.py` 完全相同。
+
+## 8. 按活检日对齐的时间窗数据表（可选，`time_windows.py`）
+
+用于与外部研究（如按活检日期对齐取值的国际登记研究）做对比时，生成“每位患者 × 每个时间点”的数据表。时间点、窗口和变量全部写在配置文件里，脚本不内置任何研究的数值。
+
+- **对齐日期（第 0 天）**：按配置中 `anchor.sources` 的顺序查找：肾活检记录中标为“基准活检”的那一次（`index_biopsy`）；患者基线中的肾穿日期（`baseline_biopsy_date`：LN 用 LN 肾穿日期，C3G 用 C3G 肾穿日期，其余用肾穿日期）；最早一次自体肾活检（`earliest_native_biopsy`，需明确加入才使用）。找不到对齐日期的患者列入 `time_windows_no_anchor.csv` 并写明原因，不会被猜测补齐。
+- **取值规则（固定）**：每个时间点只在其窗口内取值；先把同一变量同一天的多个值合并为中位数，再取距目标日最近的一天；距离相同取较早的一天。窗口边界包含在内。长表中保留所选日期、距对齐日期天数、当天值的个数与原值，便于逐条核对。
+- **数据来源与单位**：随访记录、患者基线（基线肌酐、基线 UPCR）和化验记录都可作为来源。化验先按 `run_analysis.py` 的显式单位换算规则标准化（不能确认的单位不使用，并计入日志中的“不可用测量”），再按配置中写明的系数换算到变量单位，例如血肌酐 mg/dL × 88.4 = μmol/L。
+- **eGFR**：不单独挑选，而是用该时间点选中的血肌酐重新计算：18 岁及以上用 CKD-EPI 2021 肌酐公式；1–17 岁用床旁 Schwartz 2009 公式，身高取该日前后 `height_window_days` 天内最近的一次，没有身高则不计算并写明原因。库中保存的 eGFR 不使用。其他公式（如包含胱抑素 C 的公式）须研究双方商定后再加入。
+- **人群**：与 `run_analysis.py` 相同，只纳入知情同意状态为已同意或伦理豁免的患者。
+
+使用步骤：
+
+1. 复制 `analysis/time_windows_template.json`，按研究双方确认的方案修改 `timepoints`（名称、目标天数、窗口起止天数）与 `variables`；确认后把 `confirmed` 改为 `true`，填写 `confirmed_by` 与 `confirmed_date`。模板中的时间点只是示例。
+2. 运行 `python3 analysis/time_windows.py --data analysis/data --config 我的时间窗配置.json --out time_windows`（输出目录须为新的空目录）。
+3. 结果：`time_windows_long.csv`（长表，每行一位患者的一个时间点的一个变量）、`time_windows_wide.csv`（宽表，每位患者一行）、`time_windows_no_anchor.csv`（无对齐日期的患者及原因）和 `TIME_WINDOWS_LOG.json`（配置全文与 SHA-256、输入与输出文件 SHA-256、各时间点取到值的人数、知情同意筛选）。配置未确认时，所有文件名以 `UNCONFIRMED_` 开头，不能作为正式分析数据。

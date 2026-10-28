@@ -150,6 +150,7 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
   const served = [];            // 看板视图返回过的 patient_id（检查分页不漏不重）
   const tokens = data.tokens.map(t => ({ ...t }));
   const inquiries = (data.inquiries || []).map(r => ({ ...r }));
+  const biopsies = [];          // 肾活检记录（工作台直接写表）
   let newTokenCount = 0;
   // 冻结数据版本：按请求编号幂等（同一请求重试返回同一版本），内容与 SHA-256 一并保存，供“下载分析包”重新读取。
   const snapshots = [];
@@ -164,7 +165,7 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
     const visits = [{ id: '62000000-0000-4000-8000-000000000001', project_id: project.id, patient_code: 'P001', visit_date: '2024-06-01', sbp: 120, dbp: 80, scr_umol_l: 90, upcr: 500, egfr: 70, egfr_formula_version: 'CKD-EPI-2021-Cr' },
       { id: '62000000-0000-4000-8000-000000000002', project_id: project.id, patient_code: 'P002', visit_date: '2024-06-02', sbp: 130, dbp: 85, scr_umol_l: 100, upcr: 800, egfr: 60, egfr_formula_version: 'CKD-EPI-2021-Cr' }];
     const content = { schema_version: 'registry_v2', captured_at: new Date().toISOString(), project: { id: project.id, name: project.name, center_code: project.center_code, module: project.module, registry_type: project.registry_type },
-      tables: { patients_baseline: patients, visits_long: visits, labs_long: [], meds_long: [], variants_long: [], events_long: [], ktx_baseline_ext: [], ktx_visits_ext: [], data_issues: [] } };
+      tables: { patients_baseline: patients, visits_long: visits, labs_long: [], meds_long: [], variants_long: [], events_long: [], ktx_baseline_ext: [], ktx_visits_ext: [], data_issues: [], biopsies_long: [] } };
     const contentText = JSON.stringify(content);
     const code = `KS-2026-SYNTHETIC${String(n).padStart(4, '0')}`;
     const out = { snapshot_id: code, content_text: contentText, content_sha256: createHash('sha256').update(contentText, 'utf8').digest('hex'), consistency: 'single_statement_snapshot', schema_version: 'registry_v2' };
@@ -194,6 +195,7 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
       case 'user_profiles': case 'lab_test_catalog': case 'lab_test_unit_map': case 'project_custom_labs':
       case 'labs_long': case 'meds_long': case 'events_long': case 'variants_long': case 'data_issues':
         return [];
+      case 'biopsies_long': return biopsies.filter(b => b.project_id === f.project_id && (!f.is_index || String(b.is_index) === f.is_index));
       default: unknown.push(`GET ${table}`); return [];
     }
   }
@@ -279,6 +281,15 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
       const range = page.length ? `${offset}-${offset + page.length - 1}/${rows.length}` : `*/${rows.length}`;
       return json(200, page, { 'content-range': range });
     }
+    if (table === 'biopsies_long' && request.method() === 'POST') {
+      biopsies.unshift({ id: `70000000-0000-4000-8000-0000000000${String(biopsies.length + 1).padStart(2, '0')}`, ...body, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+      return settle(route.fulfill({ status: 201, headers }));
+    }
+    if (table === 'biopsies_long' && request.method() === 'DELETE') {
+      const id = filters(url, 'eq').id; const i = biopsies.findIndex(b => b.id === id);
+      if (i >= 0) biopsies.splice(i, 1);
+      return settle(route.fulfill({ status: 204, headers }));
+    }
     if (table === 'demo_requests' && request.method() === 'PATCH' && data.admin) {
       const row = inquiries.find(r => r.id === filters(url, 'eq').id);
       if (row) Object.assign(row, body);
@@ -296,7 +307,7 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
     return () => { holds.delete(`${table}:${patientCode}`); release(); };
   }
 
-  return { requests, external, unknown, importReplies, served, tokens, inquiries, hold, handle, rpcCalls: name => requests.filter(r => r.path === `/rest/v1/rpc/${name}`) };
+  return { requests, external, unknown, importReplies, served, tokens, inquiries, biopsies, hold, handle, rpcCalls: name => requests.filter(r => r.path === `/rest/v1/rpc/${name}`) };
 }
 
 function sessionFor() {
@@ -857,6 +868,51 @@ async function main() {
     await freezeModal.getByRole('button', { name: '取消' }).click();
     await page.evaluate(() => { document.querySelector('#accountDetails').open = false; });
     assert.equal(mock.rpcCalls('create_registry_export').length, 1, '取消的确认框不冻结');
+
+    // 7e. 肾活检记录（迁移 0043）：IgA 肾病项目显示牛津分型；C 与新月体比例不一致时即时提示并阻止保存；
+    //     保存的内容与填写一致，列表标出基准活检；导出 CSV 含活检列。用药类别含 6 个新类别，终点事件不再有疫苗接种。
+    assert.equal(await page.locator('#bxMestRow').isVisible(), true, 'IgA 肾病项目的活检记录显示牛津分型');
+    const medClasses = await page.locator('#medClass option').evaluateAll(options => options.map(o => o.value));
+    for (const c of ['内皮素受体拮抗剂', '补体抑制剂', '盐皮质激素受体拮抗剂', '预防性抗生素', '试验药物', '疫苗']) assert.ok(medClasses.includes(c), `用药类别应有“${c}”`);
+    assert.equal(medClasses.at(-1), '其他', '“其他”仍在最后');
+    const eventTypes = await page.locator('#evtType option').evaluateAll(options => options.map(o => o.value));
+    assert.ok(!eventTypes.includes('vaccination') && eventTypes.includes('serious_infection') && eventTypes.includes('hospitalization'), '疫苗接种改在用药记录登记');
+    const biopsyPosts = () => mock.requests.filter(r => r.method === 'POST' && r.path === '/rest/v1/biopsies_long');
+    await page.fill('#bxPatientCode', 'P001');
+    await page.fill('#bxDate', dayOffset(-300));
+    await page.selectOption('#bxKind', 'native');
+    await page.check('#bxIndex');
+    await page.fill('#bxGlomeruli', '24');
+    await page.fill('#bxCrescentPct', '30');
+    await page.selectOption('#bxC', '1');
+    await eventually(async () => (await text(page.locator('#bxHint')))?.includes('牛津分型 C 与新月体比例不一致'), 'C 与新月体比例不一致应即时提示');
+    assert.equal(await page.getAttribute('#bxHint', 'data-tone'), 'error');
+    await page.click('#btnAddBiopsy');
+    await eventually(async () => (await page.locator('.toast').innerText().catch(() => '')).includes('牛津分型 C 与新月体比例不一致'), '不一致时不保存并说明规则');
+    assert.equal(biopsyPosts().length, 0, '不一致时没有写入');
+    await page.fill('#bxCrescentPct', '12.5');
+    await eventually(async () => (await text(page.locator('#bxHint'))) === '', '一致后提示消失');
+    await page.selectOption('#bxM', '1'); await page.selectOption('#bxE', '0'); await page.selectOption('#bxS', '1'); await page.selectOption('#bxT', '0');
+    await page.fill('#bxNotes', '确诊活检');
+    await page.click('#btnAddBiopsy');
+    await eventually(async () => biopsyPosts().length === 1, '应写入一条活检记录');
+    assert.deepEqual(biopsyPosts()[0].body, { project_id: PROJECT.id, patient_code: 'P001', biopsy_date: dayOffset(-300), biopsy_kind: 'native', is_index: true, glomeruli_total: 24, crescent_pct: 12.5, notes: '确诊活检', oxford_m: 1, oxford_e: 0, oxford_s: 1, oxford_t: 0, oxford_c: 1 });
+    await eventually(async () => (await text(page.locator('#biopsiesPreview')))?.includes('基准'), '列表应显示基准活检');
+    const biopsyRow = await text(page.locator('#biopsiesPreview tbody tr').first());
+    for (const needle of ['P001', dayOffset(-300), '自体肾', '肾小球 24', '新月体 12.5%', 'M1 E0 S1 T0 C1']) assert.ok(biopsyRow.includes(needle), `活检列表应显示：${needle}（实际：${biopsyRow}）`);
+    assert.equal(await page.inputValue('#bxDate'), '', '保存后清空表单');
+    assert.equal(await page.isChecked('#bxIndex'), false);
+    await page.fill('#bxDate', dayOffset(1));
+    await page.selectOption('#bxKind', 'transplant');
+    await page.click('#btnAddBiopsy');
+    await eventually(async () => (await page.locator('.toast').innerText().catch(() => '')).includes('活检日期不能晚于今天'), '未来日期不能保存');
+    assert.equal(biopsyPosts().length, 1);
+    await page.fill('#bxDate', '');
+    const [biopsyCsv] = await Promise.all([page.waitForEvent('download'), page.click('#btnExportBiopsies')]);
+    assert.match(biopsyCsv.suggestedFilename(), /^biopsies_long_TST01_.*\.csv$/);
+    const biopsyCsvText = fs.readFileSync(await biopsyCsv.path(), 'utf8').replace(/^\ufeff/, '');
+    assert.ok(biopsyCsvText.split(/\r?\n/)[0].startsWith('id,project_id,center_code,module,patient_code,biopsy_date,biopsy_kind,is_index,glomeruli_total,crescent_pct,oxford_m,oxford_e,oxford_s,oxford_t,oxford_c,notes'), biopsyCsvText.split(/\r?\n/)[0]);
+    assert.equal(mock.rpcCalls('log_project_audit').at(-1).body.p_details.kind, 'biopsies', '导出留痕记录活检类型');
 
     // 8. 基因数据默认隐藏，且不读取基因表。
     assert.equal(await page.locator('#geneticsSection').isVisible(), false, '基因录入默认隐藏');
