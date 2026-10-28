@@ -2057,13 +2057,17 @@ function calcQcSummary(rows){
   const missing=Object.fromEntries(['sbp','dbp','scr_umol_l','upcr'].map(k=>[k,rows.filter(r=>r[k]==null||r[k]==='').length]));
   return {n_visits:rows.length,missing,missing_rate_pct:rows.length?Number((rows.filter(r=>Object.keys(missing).some(k=>r[k]==null||r[k]==='')).length/rows.length*100).toFixed(2)):null};
 }
+// 失败时写明结果（freezeOutcome）：服务器明确拒绝（数据库 SQLSTATE 或 PostgREST 错误码）时事务已回滚，肯定没有创建；
+// 网络中断、网关超时等没有错误码的失败，服务器可能已经创建，只能说无法确认；服务器已返回版本编号的则已经创建。
+const serverRefused=error=>/^([0-9A-Z]{5}|PGRST\d{3})$/.test(String(error?.code??''));
 async function freezeRegistryExport(op=captureContext()){
-  assertContext(op);if(!canProject('can_export'))throw new Error('当前项目角色没有导出权限');const key=op.userId+':'+op.project.id;
+  assertContext(op);if(!canProject('can_export'))throw Object.assign(new Error('当前项目角色没有导出权限'),{freezeOutcome:'not_created'});const key=op.userId+':'+op.project.id;
   if(!frozenRequests.has(key))frozenRequests.set(key,crypto.randomUUID());
   const {data,error}=await sb.rpc('create_registry_export',{p_project_id:op.project.id,p_request_id:frozenRequests.get(key)});
-  if(error)throw error;assertContext(op);
-  if(!data?.content_text || !data.content_sha256 || await sha256Text(data.content_text)!==data.content_sha256)throw new Error('冻结版本内容校验失败');
-  const content=JSON.parse(data.content_text);if(content.project?.id!==op.project.id)throw new Error('冻结版本项目不匹配');
+  if(error)throw Object.assign(error,{freezeOutcome:serverRefused(error)?'not_created':'unknown'});assertContext(op);
+  const received=message=>Object.assign(new Error(message),data?.snapshot_id?{freezeOutcome:'created',snapshotId:data.snapshot_id}:{freezeOutcome:'unknown'});
+  if(!data?.content_text || !data.content_sha256 || await sha256Text(data.content_text)!==data.content_sha256)throw received('冻结版本内容校验失败');
+  const content=JSON.parse(data.content_text);if(content.project?.id!==op.project.id)throw received('冻结版本项目不匹配');
   return {...data,content,requestKey:key};
 }
 // 冻结数据版本写入后不能修改或删除：执行前说明项目、数据范围和“会新增一个版本”，确认后才调用服务器。
@@ -2103,6 +2107,12 @@ function frozenSummary(frozen){
   const at=frozen?.content?.captured_at?formatLocalDateTime(frozen.content.captured_at):'';
   return `${at?`冻结于 ${at}，`:''}基线 ${n('patients_baseline')} 例、随访 ${n('visits_long')} 条，SHA-256 ${String(frozen?.content_sha256||'').slice(0,12)}…`;
 }
+function freezeFailureText(e){
+  const reason=registryErrorMessage(e).replace(/。$/,'');
+  if(e?.freezeOutcome==='not_created')return `没有创建冻结版本：${reason}。可以重试。`;
+  if(e?.freezeOutcome==='created')return `冻结版本 ${e.snapshotId} 已创建，但收到的内容没有通过校验（${reason}）。请在下方列表中点该版本的“下载分析包”重新读取，不会再新增版本。`;
+  return '无法确认冻结版本是否已创建：网络中断或服务器没有返回结果。已刷新下方“数据快照”列表：出现了新的版本就不要再创建；没有出现时在本页直接重试，重试沿用同一请求编号，服务器不会重复创建。刷新整个页面后再重试，可能多出一个版本。';
+}
 function showFreezeResult(result){
   if(!el.snapshotOut)return;
   if(!result){el.snapshotOut.style.display='none';el.snapshotOut.textContent='';delete el.snapshotOut.dataset.tone;return;}
@@ -2114,8 +2124,9 @@ async function runFreeze(op,{download,btn}){
   let frozen=null;
   try{frozen=await freezeRegistryExport(op);frozenRequests.delete(frozen.requestKey);}
   catch(e){
-    if(currentContext(op))showFreezeResult({tone:'error',text:`没有创建冻结版本：${registryErrorMessage(e)}。可以重试；网络中断后的重试不会重复创建。`});
-    setBusy(btn,false);return;
+    setBusy(btn,false);
+    if(currentContext(op)){showFreezeResult({tone:'error',text:freezeFailureText(e)});await loadSnapshots();}
+    return;
   }
   const info=frozenSummary(frozen);
   try{
