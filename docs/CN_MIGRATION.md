@@ -745,6 +745,8 @@ unset PGPASSWORD OLD_DB_URL OLD_KEY
 
 **状态（2026-10-26）：** v6 已于 2026-10-19 整体上线（发布包取自提交 d29b42f），0041 已执行。v7（`registry-20261026-cn-v7`）以 v6 清单为生产基线，含迁移 0042（C3 肾小球病模块、随访身高与儿童 eGFR、安全性事件，见附录 C.4）；上线时须先在生产库执行 0042，再发布前端。
 
+**状态（2026-10-28）：** v7 尚未上线，并加入迁移 0043（肾活检记录、6 个新用药类别、疫苗接种改在用药记录登记，见附录 C.5）。上线时按顺序在生产库执行 0042、0043，再发布前端；此前生成的 v7 发布包作废，须按当前提交重新生成。
+
 | 文件 | 位置 | 现状 | 需要的改动 |
 |---|---|---|---|
 | `scripts/capture_registry_database.py` | 第 13 行 `PROJECT_REF`；`connection_environment()`（约第 30–49 行） | 只接受 `db.etsyglgpiutflethgirs.supabase.co`，或 `*.pooler.supabase.com` 且用户为 `postgres.etsyglgpiutflethgirs` | 新的项目身份（例如 `ksr-aliyun-<地域>-1`）；主机规则改为精确匹配新数据库主机名（如 `db.registry.internal`）与用户 `postgres`；保留 `verify-full` TLS、清除继承的 `PG*` 变量、只读事务、只接受审查过的预检 SQL 等全部现有约束。可选加强：在预检 SQL 中输出 `pg_control_system()` 的 `system_identifier` 并在工具中固定比对，因为自托管主机名不像 Supabase 项目编号那样全局唯一 |
@@ -1022,3 +1024,27 @@ docker exec -i supabase-db psql -U postgres -d postgres -X -t -A \
 然后重新生成只读预检报告，`0042_c3g_module` 与 `c3g_module_columns` 均须为 `true`。**顺序仍是先数据库、后前端**：新前端的随访对话框会提交 `height_cm`，数据库未升级时导入会以 `unsupported_column: height_cm` 拒绝；反过来先升级数据库、暂不发前端没有影响。
 
 分析包同步：`run_analysis.py` 把 `height_cm` 当作可选列并按 `Schwartz-2009-bedside` 标记重算；新增 `feasibility_report.py` 与 `feasibility_criteria_template.json`（按中心统计满足书面筛选条件的患者数，只输出人数）。
+
+### C.5 后续增量 0043（肾活检记录、用药类别、疫苗改为用药登记）
+
+须在 0042 之后执行；未登记 0042 时中止并整体回滚。0043 不改任何已有数据（验收测试 `tests/biopsy-records-db.mjs` 对比迁移前后每一行），可重复执行。内容：
+
+- 新表 `biopsies_long`：每次肾活检一行（`biopsy_kind` 为 native 自体肾或 transplant 移植肾，可多次），含活检日期、`is_index`（基准活检，每位患者最多一次，部分唯一索引 `biopsies_long_one_index_per_patient`）、肾小球总数、新月体比例、牛津分型 MEST-C、备注；同一患者同一日期同一类型只能一行（`biopsies_long_business_key`）。牛津分型 C 与新月体比例同时填写时须一致（C0 为 0，C1 小于 25，C2 为 25 及以上）。行级安全、身份不可改、字段审计、试用到期只读锁、创建与修改人、备注个人信息拦截、活检日期不晚于今天（北京时间）与不早于 1900 年，均与其他临床表一致。迁移不从基线的肾穿日期自动生成活检记录。
+- `drug_class` 新增：内皮素受体拮抗剂、补体抑制剂、盐皮质激素受体拮抗剂、预防性抗生素、试验药物、疫苗。
+- 事件类型撤回 0042 新增的 `vaccination`，疫苗接种改在用药记录中登记（药物类别“疫苗”）。**库中已有 `vaccination` 事件时迁移会中止并提示**，须先人工改登为用药记录并删除原事件，再执行；迁移不会自动改写数据。
+- 批量导入新增类型 `biopsies`（业务键：研究编号 + 活检日期 + 活检类型），可按批次撤销；冻结导出 `create_registry_export` 增加 `biopsies_long` 表及字段说明。
+- 0040/0042 的 `_registry_input_columns`、`validate_clinical_input`、`check_clinical_row`、`import_record_digest`、`import_clinical_row`、`_registry_validate_input`、`import_registry_rows`、`undo_import_batch` 与 0038 的 `create_registry_export` 按以上内容扩展，其余逐字不变（迁移文件由脚本从原文生成，差异经核对）。
+
+执行方式与 0042 相同：
+
+```bash
+docker exec -i supabase-db psql -U postgres -d postgres -X -q -v ON_ERROR_STOP=1 -f - \
+  < supabase/migrations/0043_biopsy_records.sql
+docker exec -i supabase-db psql -U postgres -d postgres -X -t -A \
+  -c "SELECT version FROM public.registry_schema_versions WHERE version='0043_biopsy_records'"
+# 预期：0043_biopsy_records
+```
+
+然后重新生成只读预检报告，`0043_biopsy_records` 与 `biopsy_records_table` 均须为 `true`。**顺序仍是先数据库、后前端**：新前端会读取 `biopsies_long`，数据库未升级时“肾活检记录”区显示读取失败，其余功能不受影响。
+
+分析包同步：`run_analysis.py` 把 `biopsies_long` 作为可选表读取；新增 `time_windows.py` 与 `time_windows_template.json`（按活检日对齐的时间窗数据表：窗口内取距目标日最近的一天，距离相同取较早的一天，同一天多个值取中位数；时间点与窗口须研究双方确认，未确认时输出文件名带 UNCONFIRMED_）。

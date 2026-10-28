@@ -63,4 +63,5 @@ jobs:
         run: |
           python3 -m venv "$RUNNER_TEMP/analysis-venv"
           "$RUNNER_TEMP/analysis-venv/bin/pip" install --quiet -r site/assets/template/requirements.txt
-      - run: '"$RUNNER_TEMP/analysis-venv/bin/python" -I -m unittest discover -s tests -p test_analysis_protocol.py'
+      # Every analysis test (protocol, feasibility, biopsy-anchored time windows), as npm run test:analysis.
+      - run: '"$RUNNER_TEMP/analysis-venv/bin/python" -I -m unittest discover -s tests -p "test_analysis*.py"'

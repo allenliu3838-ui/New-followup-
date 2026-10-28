@@ -14,6 +14,7 @@ import hashlib
 import io
 import json
 import platform
+import re
 import shutil
 import sys
 import tempfile
@@ -469,17 +470,17 @@ class AnalysisProtocolTests(unittest.TestCase):
             with self.subTest(message=message):
                 with self.assertRaisesRegex(ra.DataContractError, message):
                     ra.load_protocol(self.variant_protocol(mutate))
-        for event_type in ra.EVENT_TYPES:  # the database vocabulary (0002_events.sql, 0040_batch_import.sql, 0042_c3g_module.sql) is accepted
+        for event_type in ra.EVENT_TYPES:  # the database vocabulary (the events_long CHECK as last set by 0043_biopsy_records.sql) is accepted
             ra.load_protocol(self.variant_protocol(lambda p, t=event_type: p["censoring"].update(event_types=[t])))
         for module in ra.SUPPORTED_MODULES:  # every project module, C3G included, can carry remission and eGFR-decline definitions
             ra.load_protocol(self.variant_protocol(lambda p, m=module: (p["egfr_decline"].update(modules=[m]),
                                                                         p["remission"].update({m: copy.deepcopy(p["remission"]["IGAN"])}))))
         self.assertIn("esrd", ra.EVENT_TYPES)
         self.assertNotIn("eskd", ra.EVENT_TYPES)
-        migration = "".join((ROOT / "supabase" / "migrations" / name).read_text(encoding="utf-8")
-                            for name in ("0002_events.sql", "0040_batch_import.sql", "0042_c3g_module.sql"))
-        for event_type in ra.EVENT_TYPES:
-            self.assertIn(f"'{event_type}'", migration)
+        migration = (ROOT / "supabase" / "migrations" / "0043_biopsy_records.sql").read_text(encoding="utf-8")
+        check = re.search(r"ADD CONSTRAINT events_long_event_type_check CHECK \(\s*event_type IN \((.*?)\)\);", migration, re.S)
+        self.assertEqual(set(re.findall(r"'([a-z0-9_]+)'", check.group(1))), set(ra.EVENT_TYPES), "same vocabulary as the database")
+        self.assertNotIn("vaccination", ra.EVENT_TYPES, "0043 withdrew the vaccination event type")
         modules_sql = (ROOT / "supabase" / "migrations" / "0042_c3g_module.sql").read_text(encoding="utf-8")
         self.assertIn("(" + ",".join(f"'{m}'" for m in ra.SUPPORTED_MODULES) + ")", modules_sql)
 

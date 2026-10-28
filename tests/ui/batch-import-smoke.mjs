@@ -1,4 +1,4 @@
-// 化验 / 用药 / 终点事件批量导入的浏览器冒烟测试（合成数据，不连接任何真实数据库）。
+// 化验 / 用药 / 终点事件 / 肾活检记录批量导入的浏览器冒烟测试（合成数据，不连接任何真实数据库）。
 // 运行：node tests/ui/batch-import-smoke.mjs   成功时打印 BATCH_IMPORT_UI_OK。
 // 与 staff-smoke.mjs 相同的方式：本地静态服务器提供 site/，Playwright 打开 staff.html，
 // 对 Supabase 域名的请求用 page.route 返回合成数据；其他外部主机的请求一律拦截并记为失败。
@@ -49,6 +49,7 @@ const BATCHES = [
   { batch_id: '50000000-0000-4000-8000-000000000003', kind: 'meds', created_at: '2026-10-11T02:00:00Z', created_by_email: USER.email, inserted: 2, skipped: 0, total: 2, file_sha256: 'b'.repeat(64), file_name: 'meds.csv', chunk_index: 2, chunk_total: 3, undo_supported: false, undone_at: '2026-10-12T03:00:00Z', undo_reason: `重复导入${X('reason')}` },
   // 0040 之前导入的随访批次：没有逐条记录，不能自动撤销。
   { batch_id: '50000000-0000-4000-8000-000000000004', kind: 'visits', created_at: '2026-10-01T02:00:00Z', created_by_email: USER.email, inserted: 4, skipped: 0, total: 4, file_sha256: null, file_name: null, chunk_index: null, chunk_total: null, undo_supported: false, undone_at: null, undo_reason: null },
+  { batch_id: '50000000-0000-4000-8000-000000000005', kind: 'biopsies', created_at: '2026-09-30T02:00:00Z', created_by_email: USER.email, inserted: 2, skipped: 0, total: 2, file_sha256: 'c'.repeat(64), file_name: 'biopsies.csv', chunk_index: 1, chunk_total: 1, undo_supported: true, undone_at: null, undo_reason: null },
 ];
 
 // ── 本地静态服务器与浏览器 ───────────────────────────────────
@@ -113,6 +114,8 @@ function createMock({ access }) {
       case 'patient_tokens': case 'visits_long': case 'patients_baseline': case 'user_profiles': case 'project_custom_labs':
       case 'labs_long': case 'meds_long': case 'events_long': case 'variants_long': case 'data_issues':
         return [];
+      // 已有的基准活检：P002 在系统中已有一次（导入预览据此提示）。
+      case 'biopsies_long': return f.is_index === 'true' ? [{ id: '71000000-0000-4000-8000-000000000001', patient_code: 'P002', biopsy_date: '2023-05-05', biopsy_kind: 'native' }] : [];
       default: unknown.push(`GET ${table}`); return [];
     }
   }
@@ -203,7 +206,8 @@ async function checkPureHelpers() {
   const data = await loadModule('lib/registry-data.js');
   const bi = await loadModule('lib/batch-import.js');
   const warn = console.warn; console.warn = () => {};
-  for (const code of ['derived_endpoint_not_importable', 'same_key_record_conflict', 'unit_not_allowed', 'file_name_contains_pii', 'batch_kind_not_undoable', 'event_detail_required', 'invalid_evidence_source', 'end_date_before_start_date', 'undo_reason_required', 'value_or_text_required']) {
+  for (const code of ['derived_endpoint_not_importable', 'same_key_record_conflict', 'unit_not_allowed', 'file_name_contains_pii', 'batch_kind_not_undoable', 'event_detail_required', 'invalid_evidence_source', 'end_date_before_start_date', 'undo_reason_required', 'value_or_text_required',
+    'index_biopsy_exists', 'oxford_c_crescent_mismatch', 'invalid_biopsy_kind', 'biopsy_kind_required', 'invalid_event_type', 'invalid_drug_class']) {
     const message = data.registryErrorMessage({ message: `row_4_${code}` });
     assert.match(message, /^第 5 行：.*[\u4e00-\u9fa5]/, `${code} 应翻译并带行号：${message}`);
     assert.ok(!/[a-z]+_[a-z]+/.test(message), `不得显示代码：${message}`);
@@ -304,13 +308,14 @@ async function main() {
     assert.equal(await page.locator('#importControls').isVisible(), true, '负责人可见导入入口');
     assert.equal(await page.locator('#importPiiNotice').isVisible(), true, '上传页显示隐私提示');
     assert.ok((await text(page.locator('#importPiiNotice'))).includes('不得包含姓名、身份证号、手机号、病案号'));
-    assert.deepEqual(await page.locator('#importType option').evaluateAll(o => o.map(x => x.value)), ['baseline', 'visits', 'labs', 'meds', 'events']);
+    assert.deepEqual(await page.locator('#importType option').evaluateAll(o => o.map(x => x.value)), ['baseline', 'visits', 'labs', 'meds', 'events', 'biopsies']);
 
     // 1. 三类模板：UTF-8 BOM、英文表头逐字一致、2–3 行虚构示例；填写说明含中文列说明与隐私提示。
     const HEADERS = {
       labs: ['template_labs_v1.csv', 'patient_code,lab_date,lab_test_code,lab_item_name,value_raw,unit_symbol,result_text,ref_range,abnormal_flag,notes'],
       meds: ['template_meds_v1.csv', 'patient_code,drug_name,drug_class,dose_value,dose_unit,route,frequency,start_date,end_date,indication,notes'],
       events: ['template_events_v1.csv', 'patient_code,event_type,event_date,event_detail,evidence_source,notes'],
+      biopsies: ['template_biopsies_v1.csv', 'patient_code,biopsy_date,biopsy_kind,is_index,glomeruli_total,crescent_pct,oxford_m,oxford_e,oxford_s,oxford_t,oxford_c,notes'],
     };
     for (const [kind, [filename, header]] of Object.entries(HEADERS)) {
       await page.selectOption('#importType', kind);
@@ -467,9 +472,9 @@ async function main() {
       'P001,relapse,2023-12-01,,medical_record,',
       'P003,严重感染,2025-05-03,,medical_record,',
       'P003,住院,2025-05-04,肺炎住院 6 天,病历记录,',
-      'P003,vaccination,2025-05-05,四价脑膜炎球菌结合疫苗,medical_record,']));
+      'P003,疫苗接种,2025-05-05,四价脑膜炎球菌结合疫苗,medical_record,']));
     await page.locator('#importCounts').waitFor({ state: 'visible' });
-    assert.deepEqual(await counts(page), { total: 10, writable: 5, warn: 3, block: 5 });
+    assert.deepEqual(await counts(page), { total: 10, writable: 4, warn: 3, block: 6 });
     assert.ok((await rowText(2)).includes('不接受导入') && (await rowText(3)).includes('不接受导入'), '派生终点阻断');
     assert.ok((await rowText(4)).includes('请到该患者的研究状态登记'), '死亡事件 + 在访患者给警告');
     assert.match(await page.locator('#importTable tr[data-line="4"]').getAttribute('class'), /bi-row-warn/);
@@ -477,10 +482,45 @@ async function main() {
     assert.ok((await rowText(6)).includes('请到该患者的研究状态登记'), '开始透析也提示登记研究状态');
     assert.ok((await rowText(7)).includes('改用 custom'));
     assert.ok((await rowText(8)).includes('早于该患者的基线日期'));
-    assert.ok((await rowText(9)).includes('严重感染、住院和疫苗接种须在事件细节中写明'), '严重感染须填细节');
+    assert.ok((await rowText(9)).includes('严重感染和住院须在事件细节中写明'), '严重感染须填细节');
     assert.match(await page.locator('#importTable tr[data-line="10"]').getAttribute('class'), /bi-row-ok/, '中文“住院”可导入');
-    assert.match(await page.locator('#importTable tr[data-line="11"]').getAttribute('class'), /bi-row-ok/, '疫苗接种可导入');
+    assert.ok((await rowText(11)).includes('疫苗接种改为在用药记录中登记'), '疫苗接种不再作为终点事件导入');
     await page.click('#btnCancelImport');
+
+    // 3b. 肾活检记录：中文取值、牛津分型 C 与新月体比例一致、同一患者文件内两次基准活检、系统中已有基准活检、整数与日期规则。
+    await page.selectOption('#importType', 'biopsies');
+    const BX_HEADER = HEADERS.biopsies[1];
+    const bxBuffer = Buffer.from('\ufeff' + [BX_HEADER,
+      'P001,2024-01-10,自体肾,是,24,8.3,1,0,1,0,1,确诊活检',   // 2 可写入
+      'P001,2025-02-01,native,false,18,30,1,0,1,1,1,',            // 3 C1 与 30% 不一致
+      'P003,2024-03-03,移植肾,true,15,,,,,,,',                     // 4 P003 两次基准活检
+      'P003,2024-04-04,native,true,,,,,,,,',                       // 5
+      'P001,2099-12-01,native,,,,,,,,,',                           // 6 未来日期
+      'P001,2025-06-01,other,,,,,,,,,',                            // 7 类型无效
+      'P001,2025-07-01,native,,12.0,,,,,,,',                       // 8 肾小球数须为整数
+      'P002,2025-08-01,native,true,,,,,,,,',                       // 9 系统中已有另一次基准活检
+      'P001,2025-09-01,transplant,否,,0,,,,,0,重复活检',           // 10 可写入
+    ].join('\r\n'), 'utf8');
+    await page.setInputFiles('#importFile', { name: 'biopsies.csv', mimeType: 'text/csv', buffer: bxBuffer });
+    await page.locator('#importCounts').waitFor({ state: 'visible' });
+    assert.deepEqual(await counts(page), { total: 9, writable: 2, warn: 0, block: 7 });
+    assert.ok((await rowText(3)).includes('牛津分型 C 与新月体比例不一致'), await rowText(3));
+    for (const line of [4, 5]) assert.ok((await rowText(line)).includes('同一患者在文件中有多次活检标为基准活检'), await rowText(line));
+    assert.ok((await rowText(6)).includes('晚于今天'));
+    assert.ok((await rowText(7)).includes('活检类型不在允许的取值中'));
+    assert.ok((await rowText(8)).includes('肾小球总数须为 0–999 的整数'));
+    assert.ok((await rowText(9)).includes('系统中已有另一次基准活检'));
+    const bxBefore = mock.rpcCalls('import_registry_rows').length;
+    await page.click('#btnConfirmImport');
+    await eventually(async () => (await text(page.locator('#importResult')))?.includes('导入完成'), '活检导入应完成');
+    const bxCall = mock.rpcCalls('import_registry_rows')[bxBefore].body;
+    assert.equal(bxCall.p_kind, 'biopsies');
+    assert.deepEqual(bxCall.p_rows, [
+      { patient_code: 'P001', biopsy_date: '2024-01-10', biopsy_kind: 'native', is_index: 'true', glomeruli_total: '24', crescent_pct: '8.3', oxford_m: '1', oxford_e: '0', oxford_s: '1', oxford_t: '0', oxford_c: '1', notes: '确诊活检' },
+      { patient_code: 'P001', biopsy_date: '2025-09-01', biopsy_kind: 'transplant', is_index: 'false', crescent_pct: '0', oxford_c: '0', notes: '重复活检' },
+    ], '只提交可写入行，中文取值换算为代码');
+    assert.ok((await text(page.locator('#importResult'))).includes('肾活检记录'));
+    assert.equal(mock.requests.filter(r => r.method === 'GET' && r.path === '/rest/v1/biopsies_long' && r.params.get('is_index') === 'eq.true').length, 1, '预览前读取已有基准活检');
 
     // 4. 表头含个人信息列：整份文件阻断，不能提交。
     await page.selectOption('#importType', 'meds');
@@ -559,7 +599,9 @@ async function main() {
     assert.ok(listText.includes('化验记录') && listText.includes('患者基线') && listText.includes('已撤销') && listText.includes('2/3'), listText);
     assert.ok(listText.includes('<img src=x'), '恶意文件名按文字显示');
     assert.equal(await page.locator('#importBatchesList img').count(), 0);
-    assert.equal(await page.locator('#importBatchesList [data-undo-index]').count(), 1, '只有未撤销、支持撤销的非基线批次可撤销');
+    assert.equal(await page.locator('#importBatchesList [data-undo-index]').count(), 2, '只有未撤销、支持撤销的非基线批次可撤销');
+    assert.ok((await text(page.locator('#importBatchesList tr[data-batch-row="4"]'))).includes('肾活检记录'));
+    assert.equal(await page.locator('#importBatchesList tr[data-batch-row="4"] [data-undo-index]').count(), 1, '肾活检记录批次可以撤销');
     assert.equal(await page.locator('#importBatchesList tr[data-batch-row="3"] [data-undo-index]').count(), 0, '0040 之前的批次不显示撤销按钮');
     assert.ok((await text(page.locator('#importBatchesList tr[data-batch-row="3"]'))).includes('该批次导入于支持撤销之前，不能自动撤销'));
     await page.click('#importBatchesList [data-undo-index="0"]');

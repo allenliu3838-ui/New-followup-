@@ -12,10 +12,11 @@
     "0039_patient_token_hashing",
     "0040_batch_import",
     "0041_followup_board",
-    "0042_c3g_module"
+    "0042_c3g_module",
+    "0043_biopsy_records"
   ],
   "order": "lexicographic filenames; historical duplicate prefixes retained, unique full filenames",
-  "bundle_sha256": "05e4e3add35f812814a46cd2043d75ed74660e5c86e5a34c7c0f7d252c725317",
+  "bundle_sha256": "08bcd46462542dc9c36fdf1bafd765283b80b9aea8cf87165bda7c4b95e1e9f1",
   "migrations": [
     {
       "ordinal": 1,
@@ -236,6 +237,11 @@
       "ordinal": 44,
       "file": "0042_c3g_module.sql",
       "sha256": "9f5ed9559f56deb0cacb8d589185032408804fca0ab57fb23cdbff683a8151d3"
+    },
+    {
+      "ordinal": 45,
+      "file": "0043_biopsy_records.sql",
+      "sha256": "8d59efce693acfbeb2a6036327789443467068fce1b5c94aced8fa5a15d61f47"
     }
   ]
 }

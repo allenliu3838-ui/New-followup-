@@ -57,7 +57,7 @@ python analysis/run_analysis.py --data analysis/merged-data
    - `baseline`：基线 eGFR / UPCR 取基线表记录，还是取基线日期前后若干天内的随访测量（`window_days`、`nearest` 或 `mean`）；
    - `egfr_decline`：下降阈值（如 40%）以及持续确认条件 `confirmation`——至少几次测量（`min_measurements`）、首末间隔至少几天（`min_interval_days`）、是否要求到最后一次测量仍低于阈值（`require_last_below`）；必填 `kidney_failure_or_death_before_confirmation`：确认下降之前发生已确认的 esrd / death 事件时，`count_as_event` 计为终点事件（复合终点，结果列名为 `egfr_decline_<阈值>pct_sustained_or_kidney_failure_death`，`event_basis` 写明是哪类事件），`censor` 在该日期截尾（信息性截尾，会低估下降）。模板示例为 `count_as_event`。随访状态 `kidney_failure` / `deceased` 只作截尾、不计为事件（数据字典说明随访状态不等同于经核实的终点事件），需要计入时请在事件表登记已确认事件；
    - `remission`：按病种（只能是 `IGAN`、`LN`、`MN`、`DKD`、`CKD`、`KTX`、`C3G`、`GENERAL`）分别写完全 / 部分缓解的 UPCR 条件、是否要求同日 eGFR 稳定、确认条件和评估时间窗；用了下降百分比（`upcr_reduction_pct_at_least`）就必须写 `upcr_reduction_reference`：`baseline`（方案基线值）或 `peak`（基线窗口起至该次测量之前的最高 UPCR，含基线值）；`baseline_upcr_at_least` 是评估缓解的入选条件（基线 UPCR 可得且不低于该值才评估，否则判为不可评估并写入质控；不填时至少要求基线 UPCR 可得且高于完全缓解的 `upcr_below`，无完全缓解定义时为部分缓解的 `upcr_below`），避免基线本来就很低或缺失的患者被判为缓解；没有写的病种不计算；脚本算不了的条件（如血清白蛋白）列在 `additional_criteria_not_computed`，结果会标为“其余条件未评估”，需人工补核；
-   - `censoring`：哪些随访状态（失访、退出、死亡、肾衰竭、转出）及哪些已确认事件的日期作为截尾。事件类型只能取登记系统事件表的取值（`esrd`、`death`、`dialysis_start`、`kidney_transplant`、`relapse`、`serious_infection`、`hospitalization`、`vaccination`、`custom`、`egfr_decline_40pct`、`egfr_decline_57pct`、`complete_remission`、`partial_remission`；肾衰竭是 `esrd`，不是 `eskd`）。截尾日当天的测量仍使用，之后的测量不参与判定。随访状态日期早于基线日期时，该日期不用于截尾（不会截掉基线与随访测量），并写入质控；
+   - `censoring`：哪些随访状态（失访、退出、死亡、肾衰竭、转出）及哪些已确认事件的日期作为截尾。事件类型只能取登记系统事件表的取值（`esrd`、`death`、`dialysis_start`、`kidney_transplant`、`relapse`、`serious_infection`、`hospitalization`、`custom`、`egfr_decline_40pct`、`egfr_decline_57pct`、`complete_remission`、`partial_remission`；肾衰竭是 `esrd`，不是 `eskd`）。截尾日当天的测量仍使用，之后的测量不参与判定。随访状态日期早于基线日期时，该日期不用于截尾（不会截掉基线与随访测量），并写入质控；
    - `units`：阈值使用的单位。随访 UPCR 在登记系统中以 mg/g 保存，`units.upcr` 必须写 mg/g；与数据单位不一致时脚本拒绝运行，不会自动换算阈值。UPCR 阈值按声明的单位检查量级，mg/g 方案中写 0.3 这类 g/g 数值会被拒绝。
 3. 确认后把相应章节的 `requires_pi_confirmation` 改为 `false`，并在 `confirmation` 中填写确认人和日期（YYYY-MM-DD）。有章节标为已确认但没有确认人或日期时，脚本拒绝运行。
 4. 字段名拼错、出现模板中没有的字段、数值越界、病种或事件类型不在登记系统取值内，都会导致拒绝运行，避免规则静默失效。以下划线开头的字段（如 `_说明`）是备注，脚本忽略。
@@ -107,3 +107,19 @@ KFRE 风险计算已停用：旧实现用 UPCR 替代 UACR、猜测检验单位�
 1. 复制 `analysis/feasibility_criteria_template.json`，填写病种模块、基线年龄范围、最近一次 eGFR 与 UPCR 的范围及时间窗、最近随访距截止日期的天数（不需要的条件填 `null`），把 `status` 改为 `confirmed` 并写明确认人和日期。模板状态下脚本会拒绝运行。
 2. 运行 `python3 analysis/feasibility_report.py --data analysis/data --out feasibility --criteria 我的条件.json`；截止日期默认取数据中最近一次随访日期，也可用 `--as-of YYYY-MM-DD` 指定。
 3. 结果：`feasibility_by_center.csv`（每个中心一行加合计：知情同意排除人数、纳入人数、有随访人数、各条件满足人数、全部满足人数）和 `FEASIBILITY_RUN_LOG.json`（条件全文与 SHA-256、输入文件 SHA-256、知情同意筛选、eGFR 来源说明）。知情同意筛选与 eGFR 的算法与 `run_analysis.py` 完全相同。
+
+## 8. 按活检日对齐的时间窗数据表（可选，`time_windows.py`）
+
+用于与外部研究（如按活检日期对齐取值的国际登记研究）做对比时，生成“每位患者 × 每个时间点”的数据表。时间点、窗口和变量全部写在配置文件里，脚本不内置任何研究的数值。
+
+- **对齐日期（第 0 天）**：按配置中 `anchor.sources` 的顺序查找：肾活检记录中标为“基准活检”的那一次（`index_biopsy`）；患者基线中的肾穿日期（`baseline_biopsy_date`：LN 用 LN 肾穿日期，C3G 用 C3G 肾穿日期，其余用肾穿日期）；最早一次自体肾活检（`earliest_native_biopsy`，需明确加入才使用）。找不到对齐日期的患者列入 `time_windows_no_anchor.csv` 并写明原因，不会被猜测补齐。
+- **取值规则（固定）**：每个时间点只在其窗口内取值；先把同一变量同一天的多个值合并为中位数，再取距目标日最近的一天；距离相同取较早的一天。窗口边界包含在内。长表中保留所选日期、距对齐日期天数、当天值的个数与原值，便于逐条核对。
+- **数据来源与单位**：随访记录、患者基线（基线肌酐、基线 UPCR）和化验记录都可作为来源。化验先按 `run_analysis.py` 的显式单位换算规则标准化（不能确认的单位不使用，并计入日志中的“不可用测量”），再按配置中写明的系数换算到变量单位，例如血肌酐 mg/dL × 88.4 = μmol/L。
+- **eGFR**：不单独挑选，而是用该时间点选中的血肌酐重新计算：18 岁及以上用 CKD-EPI 2021 肌酐公式；1–17 岁用床旁 Schwartz 2009 公式，身高取该日前后 `height_window_days` 天内最近的一次。没有身高，或选中的肌酐不是正数（例如误录为 0），都不计算，并在状态列写明原因（`missing_height`、`creatinine_not_positive`），这些行不计入取到 eGFR 的人数。库中保存的 eGFR 不使用。其他公式（如包含胱抑素 C 的公式）须研究双方商定后再加入。
+- **人群**：与 `run_analysis.py` 相同，只纳入知情同意状态为已同意或伦理豁免的患者。
+
+使用步骤：
+
+1. 复制 `analysis/time_windows_template.json`，按研究双方确认的方案修改 `timepoints`（名称、目标天数、窗口起止天数）与 `variables`；确认后把 `confirmed` 改为 `true`，填写 `confirmed_by` 与 `confirmed_date`。模板中的时间点只是示例。
+2. 运行 `python3 analysis/time_windows.py --data analysis/data --config 我的时间窗配置.json --out time_windows`（输出目录须为新的空目录）。
+3. 结果：`time_windows_long.csv`（长表，每行一位患者的一个时间点的一个变量）、`time_windows_wide.csv`（宽表，每位患者一行）、`time_windows_no_anchor.csv`（无对齐日期的患者及原因）和 `TIME_WINDOWS_LOG.json`（配置全文与 SHA-256、输入与输出文件 SHA-256、各时间点取到值的人数、知情同意筛选）。配置未确认时，所有文件名以 `UNCONFIRMED_` 开头，不能作为正式分析数据。

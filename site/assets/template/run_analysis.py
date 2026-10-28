@@ -49,6 +49,9 @@ TABLE_COLUMNS = {
     "meds_long": KEY + ["id", "module", "drug_name", "drug_class", "dose", "route", "frequency", "start_date", "end_date"],
     "variants_long": KEY + ["id", "module", "test_date", "gene", "variant", "hgvs_c", "hgvs_p"],
     "events_long": KEY + ["id", "module", "event_type", "event_date", "confirmed", "source"],
+    # Kidney biopsy records (registry 0043); optional, read by time_windows.py for the biopsy anchor.
+    "biopsies_long": KEY + ["id", "module", "biopsy_date", "biopsy_kind", "is_index", "glomeruli_total", "crescent_pct",
+                            "oxford_m", "oxford_e", "oxford_s", "oxford_t", "oxford_c"],
 }
 EGFR_REFERENCE = "https://escholarship.org/content/qt3gj2d8m2/qt3gj2d8m2.pdf"
 
@@ -434,10 +437,11 @@ CONSENT_INCLUDED = ("consented", "waiver")
 CONSENT_VALUES = ("unconfirmed", "consented", "waiver", "declined", "withdrawn")
 FOLLOWUP_STATUS_VALUES = ("active", "lost", "withdrawn", "deceased", "kidney_failure", "transferred")
 # Registry vocabularies (supabase/migrations): module codes accepted for projects
-# (0042_c3g_module.sql) and the events_long.event_type CHECK (0002_events.sql, 0040, 0042).
+# (0042_c3g_module.sql) and the events_long.event_type CHECK (0043_biopsy_records.sql: 0042's
+# vaccination was withdrawn; vaccinations are medications of class 疫苗).
 SUPPORTED_MODULES = ("IGAN", "LN", "MN", "DKD", "CKD", "KTX", "GENERAL", "C3G")
 EVENT_TYPES = ("egfr_decline_40pct", "egfr_decline_57pct", "esrd", "death", "complete_remission", "partial_remission", "custom",
-               "dialysis_start", "kidney_transplant", "relapse", "serious_infection", "hospitalization", "vaccination")
+               "dialysis_start", "kidney_transplant", "relapse", "serious_infection", "hospitalization")
 # Kidney failure (esrd, start of dialysis, kidney transplant) or death.
 KF_DEATH_EVENT_TYPES = ("esrd", "dialysis_start", "kidney_transplant", "death")
 KF_DEATH_OPTIONS = ("count_as_event", "censor")
