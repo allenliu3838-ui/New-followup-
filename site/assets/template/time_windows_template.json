@@ -28,5 +28,7 @@
     {"name": "height_cm", "label": "身高", "unit": "cm", "decimals": 1, "sources": [{"table": "visits_long", "column": "height_cm"}]}
   ],
   "egfr": {"creatinine_variable": "scr_umol_l", "height_variable": "height_cm", "height_window_days": 90,
-           "adult_equation": "CKD-EPI-2021-Cr", "child_equation": "Schwartz-2009-bedside"}
+           "adult_equation": "CKD-EPI-2021-Cr", "child_equation": "Schwartz-2009-bedside"},
+  "_入组字段": "可选：把项目自定义入组字段（如 ethnicity、comorbidities）按字段代码列在 patient_fields 中，宽表每位患者一行会增加 field_<代码> 列，取值为导出中的原样代码、数值或日期（多选为分号分隔的代码）。字段代码与选项含义见 analysis/data/project_fields.csv 和 data_dictionary.json 的 custom_fields。",
+  "patient_fields": []
 }

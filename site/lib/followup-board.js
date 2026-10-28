@@ -261,7 +261,7 @@ function dueText(row, today) {
   return `${escapeHtml(due)}${suffix ? `<span class="fu-sub${tone}">${suffix}</span>` : ''}${start}`;
 }
 
-export function renderBoardRow(row, { showLinks = false, today = researchToday(), selectable = false, selected = null } = {}) {
+export function renderBoardRow(row, { showLinks = false, showFields = false, today = researchToday(), selectable = false, selected = null } = {}) {
   const state = FOLLOWUP_STATES[row.followup_state];
   const consent = CONSENT_STATUSES[row.consent_status] || { label: '—', tone: 'muted' };
   const why = row.followup_state === 'inactive' ? inactiveReason(row) : '';
@@ -288,12 +288,14 @@ export function renderBoardRow(row, { showLinks = false, today = researchToday()
     + `<button type="button" class="btn small primary" data-act="visit" data-code="${code}" data-project-capability="can_write">录入随访</button>`
     + `<button type="button" class="btn small" data-act="history" data-code="${code}">随访记录</button>`
     + (showLinks ? `<button type="button" class="btn small" data-act="links" data-code="${code}">随访链接</button>` : '')
+    // 项目定义了自定义入组字段时显示；只读角色也可打开查看。
+    + (showFields ? `<button type="button" class="btn small" data-act="fields" data-code="${code}">入组字段</button>` : '')
     // 账户只读时负责人和录入协作人仍可登记拒绝/撤回同意或停止随访（对话框内只开放这些选项）。
     + `<button type="button" class="btn small" data-act="status" data-code="${code}" data-project-capability="can_record_study_exit">研究状态</button>`
     + `</td></tr>`;
 }
 
-export function renderBoardHtml(rows, { state = 'all', consent = 'all', search = '', limit = 100, showLinks = false, today = researchToday(), selectable = false, selected = null } = {}) {
+export function renderBoardHtml(rows, { state = 'all', consent = 'all', search = '', limit = 100, showLinks = false, showFields = false, today = researchToday(), selectable = false, selected = null } = {}) {
   const all = rows || [];
   if (!all.length) return { html: '<p class="muted small">本项目还没有患者。请先在下方“新增患者”中建立基线，或使用批量导入。</p>', shown: 0, matched: 0 };
   const matched = filterBoardRows(all, { state, consent, search });
@@ -308,7 +310,7 @@ export function renderBoardHtml(rows, { state = 'all', consent = 'all', search =
   const more = matched.length > visible.length ? `<div class="btnbar"><button type="button" class="btn small" data-act="more">再显示 100 位</button></div>` : '';
   return {
     visibleCodes: visible.map(r => r.patient_code),
-    html: `${summary}<div class="fu-table-wrap"><table class="table fu-board-table">${head}<tbody>${visible.map(r => renderBoardRow(r, { showLinks, today, selectable, selected })).join('')}</tbody></table></div>${more}`,
+    html: `${summary}<div class="fu-table-wrap"><table class="table fu-board-table">${head}<tbody>${visible.map(r => renderBoardRow(r, { showLinks, showFields, today, selectable, selected })).join('')}</tbody></table></div>${more}`,
     shown: visible.length,
     matched: matched.length,
   };

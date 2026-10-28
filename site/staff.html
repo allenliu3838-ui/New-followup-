@@ -200,6 +200,17 @@
           <div id="settingsFeedback" class="fu-feedback"></div>
           <div class="btnbar"><button class="btn primary" id="btnSaveSettings" data-project-capability="can_manage_project">保存项目设置</button></div>
         </details>
+
+        <details id="projectFieldsDetails" class="ws-fold" hidden>
+          <summary>自定义入组字段</summary>
+          <p class="muted small">按研究方案为本项目增加入组信息字段，例如民族、合并症、眼底检查。录入在随访看板中每位患者的“入组字段”里，也可以批量导入。只有项目负责人可以新增或修改字段：字段代码和类型创建后不能更改，已有选项不能删除；不再使用的字段请停用，已录入的值会保留。</p>
+          <div id="projectFieldsList"><p class="muted small">请先选择项目。</p></div>
+          <div id="projectFieldsFeedback" class="fu-feedback"></div>
+          <div class="btnbar" id="projectFieldsActions">
+            <button class="btn" id="btnNewField" type="button" data-project-capability="can_manage_project">新增字段</button>
+            <button class="btn" id="btnLoadFieldPreset" type="button" data-project-capability="can_manage_project">载入 REIGNITE 入组字段草案…</button>
+          </div>
+        </details>
         </div>
       </section>
 
@@ -453,6 +464,7 @@
               <option value="meds">用药记录</option>
               <option value="events">终点事件</option>
               <option value="biopsies">肾活检记录</option>
+              <option value="fields">入组字段（自定义）</option>
             </select>
             <div id="importLegacyOptions"><label for="importBaselineUnit">CSV 未标注时的基线 UPCR 单位</label><select id="importBaselineUnit"><option value="">请明确选择（有 UPCR 时必需）</option><option value="mg/g">mg/g</option><option value="g/g">g/g</option></select></div>
           </div>
@@ -511,6 +523,7 @@
               <button class="btn" id="btnExportVariants" hidden>导出基因变异</button>
               <button class="btn" id="btnExportEvents">导出终点事件</button>
               <button class="btn" id="btnExportBiopsies">导出肾活检记录</button>
+              <button class="btn" id="btnExportFields" hidden>导出入组字段</button>
             </div>
           </div>
           <div class="col">

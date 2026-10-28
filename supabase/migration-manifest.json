@@ -13,10 +13,11 @@
     "0040_batch_import",
     "0041_followup_board",
     "0042_c3g_module",
-    "0043_biopsy_records"
+    "0043_biopsy_records",
+    "0044_project_fields"
   ],
   "order": "lexicographic filenames; historical duplicate prefixes retained, unique full filenames",
-  "bundle_sha256": "08bcd46462542dc9c36fdf1bafd765283b80b9aea8cf87165bda7c4b95e1e9f1",
+  "bundle_sha256": "2a3c466244e17d3fce33edffca713cf8999596f13c172bcab14bedf81bd8b088",
   "migrations": [
     {
       "ordinal": 1,
@@ -242,6 +243,11 @@
       "ordinal": 45,
       "file": "0043_biopsy_records.sql",
       "sha256": "8d59efce693acfbeb2a6036327789443467068fce1b5c94aced8fa5a15d61f47"
+    },
+    {
+      "ordinal": 46,
+      "file": "0044_project_fields.sql",
+      "sha256": "1c055a234d333bde8384711998c41b9a0a4d2821a6a95924d419bd7dd5b48709"
     }
   ]
 }

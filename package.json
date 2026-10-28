@@ -8,13 +8,13 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "python3 tests/verify_recovered_release.py && python3 -I -m unittest discover -s tests -p test_external_hosts.py && python3 -I -m unittest discover -s tests -p test_email_templates.py && python3 -I -m unittest discover -s tests -p test_site_downloads.py && python3 -I scripts/check_external_hosts.py && python3 -m unittest discover -s tests -p test_pg17_release_contract.py && node tests/recovered-database.mjs && node tests/pg17-upgrade.mjs && node scripts/build_database_contract_pg17.mjs --check && node tests/pg17-preflight.mjs && node tests/pg17-view.mjs && node tests/adoption-db.mjs && node tests/batch-import-db.mjs && node tests/followup-board-db.mjs && node tests/c3g-module-db.mjs && node tests/biopsy-records-db.mjs",
+    "test": "python3 tests/verify_recovered_release.py && python3 -I -m unittest discover -s tests -p test_external_hosts.py && python3 -I -m unittest discover -s tests -p test_email_templates.py && python3 -I -m unittest discover -s tests -p test_site_downloads.py && python3 -I scripts/check_external_hosts.py && python3 -m unittest discover -s tests -p test_pg17_release_contract.py && node tests/recovered-database.mjs && node tests/pg17-upgrade.mjs && node scripts/build_database_contract_pg17.mjs --check && node tests/pg17-preflight.mjs && node tests/pg17-view.mjs && node tests/adoption-db.mjs && node tests/batch-import-db.mjs && node tests/followup-board-db.mjs && node tests/c3g-module-db.mjs && node tests/biopsy-records-db.mjs && node tests/project-fields-db.mjs",
     "test:e2e": "node scripts/refuse_unconfigured_e2e.cjs",
     "test:restore": "node tests/pg17-restore.mjs",
     "smoke": "bash scripts/smoke-test.sh",
     "lighthouse": "bash scripts/lighthouse-ci.sh",
     "build:release": "python3 scripts/build_registry_integrated.py",
-    "test:ui": "node tests/ui/staff-smoke.mjs && node tests/ui/patient-smoke.mjs && node tests/ui/public-a-smoke.mjs && node tests/ui/public-b-smoke.mjs && node tests/ui/batch-import-smoke.mjs && node tests/ui/board-actions-smoke.mjs && node tests/ui/help-assistant-smoke.mjs && node tests/ui/entry-consistency-smoke.mjs",
+    "test:ui": "node tests/ui/staff-smoke.mjs && node tests/ui/patient-smoke.mjs && node tests/ui/public-a-smoke.mjs && node tests/ui/public-b-smoke.mjs && node tests/ui/batch-import-smoke.mjs && node tests/ui/board-actions-smoke.mjs && node tests/ui/help-assistant-smoke.mjs && node tests/ui/entry-consistency-smoke.mjs && node tests/ui/project-fields-smoke.mjs",
     "test:analysis": "python3 -I -m unittest discover -s tests -p \"test_analysis*.py\""
   },
   "repository": {

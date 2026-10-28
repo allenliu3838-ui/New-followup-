@@ -16,7 +16,7 @@ for(const [name,historicalCrlf] of [['canonical',false],['historical_crlf',true]
   const version=(await db.query("select current_setting('server_version') as version")).rows[0].version;
   runtimes.add(version);
   assert.equal(await applyMigrations(db,{historicalCrlf,phase:'baseline'}),33);
-  assert.equal(await applyMigrations(db,{phase:'upgrade'}),12);
+  assert.equal(await applyMigrations(db,{phase:'upgrade'}),13);
   profiles[name]=await readContract(db);
   console.log('PG17_PROFILE_OK '+name+' '+version);
  }finally{await db.close();}

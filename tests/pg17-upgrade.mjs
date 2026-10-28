@@ -123,9 +123,9 @@ try {
         `${table}: every other pre-existing column value remains unchanged`);
     }
   }
-  assert.equal(Number((await row('SELECT count(*) AS n FROM public.registry_schema_versions')).n), 12);
+  assert.equal(Number((await row('SELECT count(*) AS n FROM public.registry_schema_versions')).n), 13);
   assert.equal(Number((await row('SELECT count(*) AS n FROM public.patient_tokens WHERE token IS NOT NULL')).n), 0);
-  pass('incremental 0032–0043 preserves historical clinical, receipt and dictionary values; consent default and plaintext links change exactly as reviewed; 0042 and 0043 add only their dictionary entries');
+  pass('incremental 0032–0044 preserves historical clinical, receipt and dictionary values; consent default and plaintext links change exactly as reviewed; 0042 and 0043 add only their dictionary entries');
 
   const dictionaryInsertStatements = [
     "INSERT INTO public.abbreviation_dictionary(abbr,full_name_cn,category_cn) VALUES('DENIED','Denied','Denied')",

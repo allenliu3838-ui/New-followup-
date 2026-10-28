@@ -50,6 +50,7 @@ const BATCHES = [
   // 0040 之前导入的随访批次：没有逐条记录，不能自动撤销。
   { batch_id: '50000000-0000-4000-8000-000000000004', kind: 'visits', created_at: '2026-10-01T02:00:00Z', created_by_email: USER.email, inserted: 4, skipped: 0, total: 4, file_sha256: null, file_name: null, chunk_index: null, chunk_total: null, undo_supported: false, undone_at: null, undo_reason: null },
   { batch_id: '50000000-0000-4000-8000-000000000005', kind: 'biopsies', created_at: '2026-09-30T02:00:00Z', created_by_email: USER.email, inserted: 2, skipped: 0, total: 2, file_sha256: 'c'.repeat(64), file_name: 'biopsies.csv', chunk_index: 1, chunk_total: 1, undo_supported: true, undone_at: null, undo_reason: null },
+  { batch_id: '50000000-0000-4000-8000-000000000006', kind: 'fields', created_at: '2026-09-29T02:00:00Z', created_by_email: USER.email, inserted: 3, skipped: 0, total: 3, file_sha256: 'd'.repeat(64), file_name: 'fields.csv', chunk_index: 1, chunk_total: 1, undo_supported: true, undone_at: null, undo_reason: null },
 ];
 
 // ── 本地静态服务器与浏览器 ───────────────────────────────────
@@ -112,7 +113,7 @@ function createMock({ access }) {
       case 'lab_test_catalog': return CATALOG;
       case 'lab_test_unit_map': return UNIT_MAP;
       case 'patient_tokens': case 'visits_long': case 'patients_baseline': case 'user_profiles': case 'project_custom_labs':
-      case 'labs_long': case 'meds_long': case 'events_long': case 'variants_long': case 'data_issues':
+      case 'labs_long': case 'meds_long': case 'events_long': case 'variants_long': case 'data_issues': case 'project_fields': case 'patient_field_values':
         return [];
       // 已有的基准活检：P002 在系统中已有一次（导入预览据此提示）。
       case 'biopsies_long': return f.is_index === 'true' ? [{ id: '71000000-0000-4000-8000-000000000001', patient_code: 'P002', biopsy_date: '2023-05-05', biopsy_kind: 'native' }] : [];
@@ -308,7 +309,11 @@ async function main() {
     assert.equal(await page.locator('#importControls').isVisible(), true, '负责人可见导入入口');
     assert.equal(await page.locator('#importPiiNotice').isVisible(), true, '上传页显示隐私提示');
     assert.ok((await text(page.locator('#importPiiNotice'))).includes('不得包含姓名、身份证号、手机号、病案号'));
-    assert.deepEqual(await page.locator('#importType option').evaluateAll(o => o.map(x => x.value)), ['baseline', 'visits', 'labs', 'meds', 'events', 'biopsies']);
+    assert.deepEqual(await page.locator('#importType option').evaluateAll(o => o.map(x => x.value)), ['baseline', 'visits', 'labs', 'meds', 'events', 'biopsies', 'fields']);
+    // 入组字段的模板随项目的字段定义生成；本项目没有字段时说明原因，不下载空模板（字段导入见 project-fields-smoke.mjs）。
+    await page.selectOption('#importType', 'fields');
+    await page.click('#btnDownloadTemplate');
+    await eventually(async () => (await toastText(page)).includes('本项目还没有启用的入组字段'), '没有字段时说明原因');
 
     // 1. 三类模板：UTF-8 BOM、英文表头逐字一致、2–3 行虚构示例；填写说明含中文列说明与隐私提示。
     const HEADERS = {
@@ -599,7 +604,9 @@ async function main() {
     assert.ok(listText.includes('化验记录') && listText.includes('患者基线') && listText.includes('已撤销') && listText.includes('2/3'), listText);
     assert.ok(listText.includes('<img src=x'), '恶意文件名按文字显示');
     assert.equal(await page.locator('#importBatchesList img').count(), 0);
-    assert.equal(await page.locator('#importBatchesList [data-undo-index]').count(), 2, '只有未撤销、支持撤销的非基线批次可撤销');
+    assert.equal(await page.locator('#importBatchesList [data-undo-index]').count(), 3, '只有未撤销、支持撤销的非基线批次可撤销');
+    assert.ok((await text(page.locator('#importBatchesList tr[data-batch-row="5"]'))).includes('入组字段'));
+    assert.equal(await page.locator('#importBatchesList tr[data-batch-row="5"] [data-undo-index]').count(), 1, '入组字段批次可以撤销');
     assert.ok((await text(page.locator('#importBatchesList tr[data-batch-row="4"]'))).includes('肾活检记录'));
     assert.equal(await page.locator('#importBatchesList tr[data-batch-row="4"] [data-undo-index]').count(), 1, '肾活检记录批次可以撤销');
     assert.equal(await page.locator('#importBatchesList tr[data-batch-row="3"] [data-undo-index]').count(), 0, '0040 之前的批次不显示撤销按钮');

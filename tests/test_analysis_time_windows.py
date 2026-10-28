@@ -238,6 +238,9 @@ class TimeWindowTests(unittest.TestCase):
             ({"variables": [{"name": "x", "unit": "cm", "sources": [{"table": "events_long", "column": "x"}]}], "egfr": None}, "table must be"),
             ({"egfr": {**base["egfr"], "adult_equation": "MDRD"}}, "agree"),
             ({"egfr": {**base["egfr"], "creatinine_variable": "sbp"}}, "creatinine_variable"),
+            ({"patient_fields": ["Ethnicity"]}, "patient_fields"),
+            ({"patient_fields": ["ethnicity", "ethnicity"]}, "patient_fields"),
+            ({"patient_fields": "ethnicity"}, "patient_fields"),
         ]
         for i, (change, message) in enumerate(bad):
             raw = copy.deepcopy(base)
@@ -247,6 +250,35 @@ class TimeWindowTests(unittest.TestCase):
                     tw.validate_config(raw)
                 self.assertIn(message, str(caught.exception))
         self.assertFalse((self.tmp / "out").exists())
+
+    def test_patient_fields_add_one_column_each_to_the_wide_table(self):
+        """Custom enrollment fields named in patient_fields become field_<code> columns with the exported value.
+        P6 has unconfirmed consent and is excluded; P2 has no value (blank)."""
+        a = lambda code, **kw: {"project_id": SP, "center_code": "A", "patient_code": code, "module": "IGAN", **kw}
+        write_csv(self.data / "project_fields.csv", ["id", "project_id", "center_code", "module", "field_key", "label_cn", "value_type", "choices"], [
+            {"id": "f1", "project_id": SP, "center_code": "A", "module": "IGAN", "field_key": "ethnicity", "label_cn": "民族", "value_type": "choice",
+             "choices": json.dumps([{"code": "han", "label": "汉族"}, {"code": "hui", "label": "回族"}], ensure_ascii=False)},
+            {"id": "f2", "project_id": SP, "center_code": "A", "module": "IGAN", "field_key": "comorbidities", "label_cn": "合并症", "value_type": "multi_choice",
+             "choices": json.dumps([{"code": "hypertension", "label": "高血压"}, {"code": "diabetes", "label": "糖尿病"}], ensure_ascii=False)}])
+        write_csv(self.data / "patient_field_values.csv", ra.TABLE_COLUMNS["patient_field_values"], [
+            a("P1", id="x1", field_key="ethnicity", value_text="hui"),
+            a("P1", id="x2", field_key="comorbidities", value_codes="hypertension;diabetes"),
+            a("P6", id="x3", field_key="ethnicity", value_text="han")])
+        out, log, _, _ = self.run_tw(patient_fields=["ethnicity", "comorbidities"])
+        wide_rows = read_csv(out / "time_windows_wide.csv")
+        self.assertEqual(list(wide_rows[0])[:9], ra.KEY + ["module", "anchor_date", "anchor_source", "anchor_biopsy_kind", "field_ethnicity", "field_comorbidities"])
+        wide = {r["patient_code"]: r for r in wide_rows}
+        self.assertEqual((wide["P1"]["field_ethnicity"], wide["P1"]["field_comorbidities"]), ("hui", "hypertension;diabetes"))
+        self.assertEqual((wide["P2"]["field_ethnicity"], wide["P2"]["field_comorbidities"]), ("", ""))
+        self.assertNotIn("P6", wide, "excluded patients carry no field values")
+        self.assertEqual(log["config"]["patient_fields"], ["ethnicity", "comorbidities"])
+        with self.assertRaisesRegex(ra.DataContractError, "not custom fields of this export"):
+            self.run_tw("out2", patient_fields=["blood_type"])
+        (self.data / "project_fields.csv").unlink()
+        with self.assertRaisesRegex(ra.DataContractError, "project_fields.csv"):
+            self.run_tw("out3", patient_fields=["ethnicity"])
+        _, _, rows, _ = self.run_tw("out4")
+        self.assertNotIn("field_ethnicity", read_csv(self.tmp / "out4" / "time_windows_wide.csv")[0], "no field columns unless configured")
 
     def test_values_are_rounded_half_up_at_their_decimal_form(self):
         self.assertEqual([tw._fmt(v, 1) for v in (103.05, 88.45, 0.05, 2.675 * 10)], ["103.1", "88.5", "0.1", "26.8"])

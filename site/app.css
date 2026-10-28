@@ -260,3 +260,8 @@ tr.bi-row-ignored td{color:var(--muted);text-decoration:line-through;}
 .bi-undo{margin-top:8px;border:1px solid rgba(220,38,38,.25);border-radius:12px;padding:8px 12px;}
 .bi-unmapped{margin:8px 0;border:1px solid rgba(217,119,6,.35);border-radius:12px;padding:8px 12px;background:rgba(217,119,6,.05);}
 .bi-unmapped select{max-width:320px;}
+/* 自定义入组字段（看板“入组字段”对话框与字段管理） */
+.pf-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 16px;margin:8px 0;}
+.pf-field>label{font-weight:600;}
+.pf-checks{display:flex;flex-wrap:wrap;gap:4px 14px;}
+label.fu-check{display:flex;align-items:center;gap:6px;font-size:13px;margin:4px 0;color:var(--text);}

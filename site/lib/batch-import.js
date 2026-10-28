@@ -38,7 +38,7 @@ export const EVIDENCE_SOURCES = Object.freeze({ medical_record: '病历记录', 
 /** 终点事件中需要同时在“研究状态”登记的类型（患者随访状态仍为“在访”时给警告）。 */
 const STATUS_EVENTS = new Set(['death', 'esrd', 'dialysis_start', 'kidney_transplant']);
 
-export const KIND_LABELS = Object.freeze({ baseline: '患者基线', visits: '随访记录', labs: '化验记录', meds: '用药记录', events: '终点事件', biopsies: '肾活检记录' });
+export const KIND_LABELS = Object.freeze({ baseline: '患者基线', visits: '随访记录', labs: '化验记录', meds: '用药记录', events: '终点事件', biopsies: '肾活检记录', fields: '入组字段' });
 
 export const TEMPLATES = Object.freeze({
   labs: {

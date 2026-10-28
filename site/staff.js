@@ -6,6 +6,8 @@ import { validatePassword } from "/lib/password-strength.js?v=registry-20261026-
 import { strictDate, finiteNumber, normalizeUpcr, parseRegistryCsv, readAllRows, readKeysetRows, exportColumns, sha256Text, BASELINE_IMPORT_FIELDS, VISIT_IMPORT_FIELDS, normalizeImportRow, registryErrorMessage, containsPII, assertNoPII, fieldLabel, creatinineUmol, correctionReasonError, CLINICAL_LIMITS, SCR_MGDL_TO_UMOL } from "/lib/registry-data.js?v=registry-20261026-cn-v7";
 import { renderOverviewHtml, renderBoardHtml, renderFilterBar, sortBoardRows, researchToday, formatLocalDateTime } from "/lib/followup-board.js?v=registry-20261026-cn-v7";
 import { createFollowupDialogs, openModal } from "/lib/followup-dialogs.js?v=registry-20261026-cn-v7";
+import { validateFieldsBatch, fieldsTemplateCsv, fieldsTemplateHelp, fieldsExportCsv, activeFields } from "/lib/project-fields.js?v=registry-20261026-cn-v7";
+import { createProjectFieldsUi } from "/lib/project-fields-ui.js?v=registry-20261026-cn-v7";
 import { BATCH_KINDS, TEMPLATES as BATCH_TEMPLATES, KIND_LABELS, PII_NOTICE, SKIP_MAPPING, CHUNK_SIZE, MAX_FILE_BYTES, MAX_FILE_ROWS, EVIDENCE_SOURCES, IMPORTABLE_EVENTS, DETAIL_REQUIRED_EVENTS, BIOPSY_KINDS, oxfordCMatchesCrescents, templateCsv, validateBatch, buildChunks, errorReportCsv, piiHeaderColumns, baseFileName, beijingToday, MASKED_CODE } from "/lib/batch-import.js?v=registry-20261026-cn-v7";
 
 const sb = supabase();
@@ -175,6 +177,10 @@ function injectAuthGatedContent() {
   el.btnExportVariants = qs("#btnExportVariants");
   el.btnExportEvents = qs("#btnExportEvents");
   el.btnExportBiopsies = qs("#btnExportBiopsies");
+  el.btnExportFields = qs("#btnExportFields");
+  el.projectFieldsDetails = qs("#projectFieldsDetails");
+  el.btnNewField = qs("#btnNewField");
+  el.btnLoadFieldPreset = qs("#btnLoadFieldPreset");
 
   el.btnPaperPack = qs("#btnPaperPack");
   el.btnCreateSnapshot = qs("#btnCreateSnapshot");
@@ -279,6 +285,10 @@ function bindAuthGatedEvents() {
   el.btnExportVariants?.addEventListener("click", ()=>exportTable("variants"));
   el.btnExportEvents?.addEventListener("click", ()=>exportTable("events"));
   el.btnExportBiopsies?.addEventListener("click", ()=>exportTable("biopsies"));
+  el.btnExportFields?.addEventListener("click", exportFields);
+  el.btnNewField?.addEventListener("click", ()=>fieldsUi.openEditor());
+  el.btnLoadFieldPreset?.addEventListener("click", ()=>fieldsUi.openPreset());
+  qs("#projectFieldsList")?.addEventListener("click", e=>{const b=e.target.closest("[data-edit-field]");if(b)fieldsUi.openEditor(b.dataset.editField);});
 
   el.btnPaperPack?.addEventListener("click", ()=>confirmFreeze({download:true}));
   el.btnCreateSnapshot?.addEventListener("click", ()=>confirmFreeze({download:false}));
@@ -380,12 +390,15 @@ function requireProjectCapability(capability){
   toast(!selectedProject?'请先选择项目':!projectAccess?'项目权限尚未加载，请重试':reason&&['can_write','can_manage_tokens'].includes(capability)?registryErrorMessage(reason):'当前项目角色没有此操作权限，请联系项目负责人');return false;
 }
 function applyProjectAccess(){
-  const groups={can_write:['btnCreatePatient','btnAddVariant','btnAddLab','btnAddMed','btnAddEvent','btnAddBiopsy','importFile','btnConfirmImport','btnOpenVisitEntry'],can_manage_project:['btnSaveSettings'],can_export:['btnExportBaseline','btnExportVisits','btnExportLabs','btnExportMeds','btnExportVariants','btnExportEvents','btnExportBiopsies','btnPaperPack','btnCreateSnapshot','btnRefreshSnapshots']};
+  const groups={can_write:['btnCreatePatient','btnAddVariant','btnAddLab','btnAddMed','btnAddEvent','btnAddBiopsy','importFile','btnConfirmImport','btnOpenVisitEntry'],can_manage_project:['btnSaveSettings','btnNewField','btnLoadFieldPreset'],can_export:['btnExportBaseline','btnExportVisits','btnExportLabs','btnExportMeds','btnExportVariants','btnExportEvents','btnExportBiopsies','btnExportFields','btnPaperPack','btnCreateSnapshot','btnRefreshSnapshots']};
   // data-blocked：按钮因本身状态不可用（如导入预览仍有错误），权限刷新时不重新启用。
   for(const [capability,keys]of Object.entries(groups))for(const key of keys){const node=el[key];if(node){node.dataset.projectCapability=capability;node.disabled=busyButtons.has(node)||!canProject(capability)||node.dataset.blocked==='1';}}
   qsa('[data-project-capability]').forEach(node=>{node.disabled=busyButtons.has(node)||!canProject(node.dataset.projectCapability)||node.dataset.blocked==='1';});
   const label=qs('#projectAccessStatus');if(label)label.textContent=!selectedProject?'请先选择项目':!projectAccess?'正在核对项目权限…':`我的项目角色：${({owner:'项目负责人',editor:'录入协作人',analyst:'分析协作人',viewer:'只读协作人'})[projectAccess.role]||'无权限'} · ${projectAccess.can_write?'可录入':'不可录入'} · ${projectAccess.can_export?'可导出':'不可导出'}${projectAccess.write_block_reason&&projectAccess.write_block_reason!=='role_read_only'?' · '+registryErrorMessage(projectAccess.write_block_reason):''}`;
   if(el.projectSettingsDetails)el.projectSettingsDetails.hidden=!canManageProject();
+  // 自定义入组字段：所有成员可查看字段清单，只有项目负责人看到新增、修改与载入草案。
+  if(el.projectFieldsDetails)el.projectFieldsDetails.hidden=!projectAccess;
+  const fieldActions=qs('#projectFieldsActions');if(fieldActions)fieldActions.hidden=!canManageProject();
   // 只读 / 分析角色（及账户只读）不显示批量导入入口；导入记录仍可查看。
   const canImport=canProject('can_write');const controls=qs('#importControls');if(controls)controls.hidden=!canImport;
   const note=qs('#importReadonlyNote');if(note)note.hidden=canImport||!projectAccess;
@@ -424,6 +437,7 @@ function renderBaselineScrHint(){
   try{const umol=creatinineUmol(raw,unit,'基线血肌酐');hint.textContent=unit==='mgdl'?`按 1 mg/dL = ${SCR_MGDL_TO_UMOL} μmol/L 换算，将保存为 ${umol} μmol/L。`:`将保存为 ${umol} μmol/L。`;}catch(e){hint.textContent=e.message;}
 }
 function clearProjectWorkspace(){
+  fieldsUi.clear();if(el.btnExportFields)el.btnExportFields.hidden=true;
   resetBaseline();_importParsed=null;projectCustomLabs=[];patients=[];patientsLoaded=false;projectOverview=null;
   Object.assign(boardView,{state:'all',consent:'all',search:'',limit:100});clearBoardSelection();
   ['varPatientCode','labPatientCode','medPatientCode','evtPatientCode','varTestDate','varTestName','varGene','varVariant','varHgvsC','varHgvsP','varZygosity','varClass','varLabName','varNotes','labDate','labValue','labQcReason','labCustomName','labCustomUnit','medName','medClass','medDoseValue','medDoseUnit','medIndication','medNotes','medRoute','medFrequency','medStart','medEnd','evtType','evtDate','evtNotes','evtEvidence','evtDetail','importFile','setInterval','setPublicTitle','setInstitution','setEthicsNo','setContact'].forEach(k=>{if(el[k])el[k].value='';});
@@ -546,6 +560,25 @@ const followupDialogs=createFollowupDialogs({
   openHistory:code=>openVisitHistory(code),
   // 随访链接固定指向站点根下的 /followup，不随工作台的打开路径（/staff、/staff/…）变化。
   linkOrigin:()=>location.origin,
+});
+
+// 自定义入组字段：字段管理（项目负责人）与看板中每位患者的“入组字段”对话框。
+const fieldsUi=createProjectFieldsUi({
+  sb,
+  capture:()=>captureContext(),
+  isCurrent:op=>currentContext(op),
+  assertCurrent:op=>assertContext(op),
+  can:capability=>canProject(capability),
+  canManage:()=>canManageProject(),
+  setBusy:(btn,flag)=>setBusy(btn,flag),
+  toast,
+  errorMessage:(error,options)=>registryErrorMessage(error,options),
+  containsPII,
+  today:()=>researchToday(),
+  list:()=>qs('#projectFieldsList'),
+  feedback:()=>qs('#projectFieldsFeedback'),
+  // 有字段时看板显示“入组字段”，导出区显示“导出入组字段”。
+  onFieldsChanged:fields=>{if(el.btnExportFields)el.btnExportFields.hidden=!fields.length;renderBoard();},
 });
 
 
@@ -1211,6 +1244,12 @@ async function saveProjectSettings(){
   finally{setBusy(el.btnSaveSettings,false);}
 }
 
+// 数据库尚未升级到 0044 时字段表不存在：只在字段区说明读取失败，其余功能不受影响。
+async function loadProjectFields(op=captureContext()){
+  try{await fieldsUi.load(op);}
+  catch(e){if(currentContext(op)){const box=qs('#projectFieldsList');if(box)box.textContent='入组字段读取失败：'+registryErrorMessage(e);}}
+}
+
 async function selectProject(projectId){
   if(projectId===selectedProject?.id)return;
   if(busyButtons.size)return toast("正在保存或导出，请完成后再切换项目。");
@@ -1220,7 +1259,7 @@ async function selectProject(projectId){
   const c=captureContext();applyProjectAccess();
   try{await loadProjectAccess(c);}catch(e){if(currentContext(c)){projectAccess=null;applyProjectAccess();qs('#projectAccessStatus').textContent='项目权限读取失败：'+registryErrorMessage(e);}return;}
   projectMembersController?.setContext({projectId:c.project.id,projectName:c.project.name,userId:c.userId,access:projectAccess});
-  await Promise.all([refreshFollowup(c),loadProjectCustomLabs(),loadExtras(),loadSnapshots(),loadIssueSummary()]);
+  await Promise.all([refreshFollowup(c),loadProjectCustomLabs(),loadExtras(),loadSnapshots(),loadIssueSummary(),loadProjectFields(c)]);
   if(currentContext(c)){const label=qs('#currentProjectLabel');if(label)label.textContent=`当前项目：${c.project.name} · ${c.project.center_code}`;}
 }
 
@@ -1462,7 +1501,7 @@ function renderBoard(){
   const selectable=canProject('can_write');
   if(!selectable)boardSelected.clear();
   else{const known=new Set(patients.map(p=>p.patient_code));for(const code of [...boardSelected])if(!known.has(code))boardSelected.delete(code);}
-  const result=renderBoardHtml(patients,{...boardView,showLinks:canRevokeTokens(),selectable,selected:boardSelected});
+  const result=renderBoardHtml(patients,{...boardView,showLinks:canRevokeTokens(),showFields:fieldsUi.fields.length>0,selectable,selected:boardSelected});
   el.patientsList.innerHTML=result.html;boardVisibleCodes=result.visibleCodes||[];
   renderBulkBar();
   applyProjectAccess();
@@ -1500,6 +1539,7 @@ function onBoardClick(e){
   else if(b.dataset.act==='history')openVisitHistory(code);
   else if(b.dataset.act==='links')followupDialogs.openLinks(code);
   else if(b.dataset.act==='status')followupDialogs.openStudyStatus(code);
+  else if(b.dataset.act==='fields')fieldsUi.openPatient(code);
   else if(b.dataset.act==='edit')openRecordEditor('patients_baseline',b.dataset.id);
   else if(b.dataset.act==='more'){boardView.limit+=100;renderBoard();}
 }
@@ -2113,6 +2153,7 @@ async function addBiopsy(){
 
 const EXPORT_TABLES={baseline:'patients_baseline',visits:'visits_long',labs:'labs_long',meds:'meds_long',variants:'variants_long',events:'events_long',biopsies:'biopsies_long'};
 const COMMON_EXPORT_COLUMNS=['id','project_id','center_code','module','patient_code'];
+const PROJECT_FIELD_COLUMNS=['id','project_id','center_code','module','field_key','label_cn','value_type','choices','unit','min_value','max_value','sort_order','active','source','help_cn'];
 const EXPORT_FIELDS={
 patients_baseline:['sex','birth_year','baseline_date','baseline_scr','baseline_upcr','baseline_upcr_unit','baseline_upcr_raw','baseline_upcr_original_unit','biopsy_date','oxford_m','oxford_e','oxford_s','oxford_t','oxford_c','ln_biopsy_date','ln_class','ln_activity_index','ln_chronicity_index','ln_podocytopathy','c3g_biopsy_date','c3g_if_c3_dominant','c3g_em_pattern','c3g_crescent_pct','c3g_paraprotein','treatment_arm','randomization_id','randomization_date','consent_status','consent_date','consent_version','followup_status','followup_status_date','created_at','updated_at'],
 visits_long:['visit_date','sbp','dbp','scr_umol_l','upcr','height_cm','egfr','egfr_formula_version','notes','qc_reason','created_at','updated_at'],
@@ -2121,6 +2162,7 @@ meds_long:['drug_name','drug_class','dose','route','frequency','start_date','end
 variants_long:['test_date','test_name','gene','variant','hgvs_c','hgvs_p','transcript','zygosity','classification','lab_name','notes','created_at','updated_at'],
 events_long:['event_type','event_date','confirmed','source','notes','created_at','updated_at'],
 biopsies_long:['biopsy_date','biopsy_kind','is_index','glomeruli_total','crescent_pct','oxford_m','oxford_e','oxford_s','oxford_t','oxford_c','notes','created_at','updated_at'],
+patient_field_values:['field_key','value_text','value_codes','value_num','value_date','created_at','updated_at'],
 ktx_baseline_ext:['transplant_date','donor_type','induction_therapy','maintenance_immuno','hla_mismatch_count','pra_status','dsa_status','dsa_titer','baseline_creatinine','baseline_egfr','created_at','updated_at'],
 ktx_visits_ext:['visit_date','tac_trough','csa_trough','weight_kg','infection_event','rejection_event','biopsy_banff','graft_failure_date','death_date','return_to_dialysis','return_to_dialysis_date','created_at','updated_at']
 };
@@ -2141,6 +2183,21 @@ async function exportTable(kind){
     if(log.error)throw new Error('导出留痕记录失败，未下载文件：'+registryErrorMessage(log.error));
     assertContext(op);downloadCsvUtf8Bom(filename,csv);toast(`已导出 ${rows.length} 条记录：${filename}`);
   }catch(e){toast('导出失败：'+registryErrorMessage(e));}finally{setBusy(btn,false);}
+}
+// 入组字段按“每位患者一行、每个字段一列”导出（多选为分号分隔的代码），格式与导入模板相同。
+async function exportFields(){
+  if(!requireProjectCapability('can_export'))return;
+  if(!selectedProject)return toast('请先选择项目');
+  const op=captureContext();setBusy(el.btnExportFields,true);
+  try{
+    const fields=await fieldsUi.load(op);
+    const rows=await readAllRows(sb,'patient_field_values',op.project.id,()=>assertContext(op));
+    const filename=`patient_field_values_${op.project.center_code}_${fmtDate(new Date())}.csv`;
+    const patientsN=new Set(rows.map(r=>r.patient_code)).size;
+    const log=await sb.rpc('log_project_audit',{p_project_id:op.project.id,p_action:'export_csv',p_snapshot_id:null,p_details:{kind:'fields',filename,rows:rows.length,patients:patientsN,complete_count_checked:true}});
+    if(log.error)throw new Error('导出留痕记录失败，未下载文件：'+registryErrorMessage(log.error));
+    assertContext(op);downloadCsvUtf8Bom(filename,fieldsExportCsv(fields,rows));toast(`已导出 ${patientsN} 位患者的入组字段：${filename}`);
+  }catch(e){toast('导出失败：'+registryErrorMessage(e));}finally{setBusy(el.btnExportFields,false);}
 }
 async function fetchProjectRows(pid,center_code,module,op=captureContext()){
   const tables=Object.values(EXPORT_TABLES);
@@ -2391,8 +2448,11 @@ async function buildAndDownloadPack(op,frozen,{source='new_snapshot'}={}){
   const metaRecord=frozen;
   const zip=new JSZip(),files={},counts={};
   for(const [table,rows] of Object.entries(tables)){
-    files[`analysis/data/${table}.csv`]='\ufeff'+toCsv(rows,exportColumns(rows,[...COMMON_EXPORT_COLUMNS,...(EXPORT_FIELDS[table]||[])]),{spreadsheetSafe:false});
-    files[`excel_safe/${table}.csv`]='\ufeff'+toCsv(rows,exportColumns(rows,[...COMMON_EXPORT_COLUMNS,...(EXPORT_FIELDS[table]||[])]));counts[table]=rows.length;
+    // 入组字段取值的多选列写成分号分隔的代码；字段定义不是患者记录，不加研究编号列。
+    const out=table==='patient_field_values'?rows.map(r=>({...r,value_codes:Array.isArray(r.value_codes)?r.value_codes.join(';'):r.value_codes})):rows;
+    const columns=exportColumns(out,table==='project_fields'?PROJECT_FIELD_COLUMNS:[...COMMON_EXPORT_COLUMNS,...(EXPORT_FIELDS[table]||[])]);
+    files[`analysis/data/${table}.csv`]='\ufeff'+toCsv(out,columns,{spreadsheetSafe:false});
+    files[`excel_safe/${table}.csv`]='\ufeff'+toCsv(out,columns);counts[table]=rows.length;
   }
   files['analysis/run_analysis.py']=assets[0];files['analysis/merge_centers.py']=assets[1];files['analysis/requirements.txt']=assets[2];
   files['analysis/METHODS_TEMPLATE_EN.md']=assets[3];files['analysis/README.md']=assets[4].replaceAll('{{PROJECT_NAME}}',op.project.name).replaceAll('{{EXPORT_DATE}}',fmtDate(new Date()));
@@ -2406,7 +2466,7 @@ async function buildAndDownloadPack(op,frozen,{source='new_snapshot'}={}){
   files['research_data.json']=frozen.content_text;
   files['qc_issues.csv']='\ufeff'+toCsv(issues,exportColumns(issues,['id','project_id','patient_code','record_type','record_id','rule_code','severity','status','message','resolution_note']));
   files['qc_summary.json']=JSON.stringify({...calcQcSummary(tables.visits_long),open_issues:issues.filter(r=>!['RESOLVED','WONT_FIX'].includes(r.status)).length,resolved:issues.filter(r=>r.status==='RESOLVED').length,accepted_without_fix:issues.filter(r=>r.status==='WONT_FIX').length},null,2);
-  files['data_dictionary.json']=JSON.stringify({schema_version:frozen.schema_version,identity_key:['project_id','center_code','patient_code'],record_key:'id',baseline_upcr:'Canonical mg/g only if baseline_upcr_unit is mg/g. Historical missing units require review; do not infer scale.',baseline_scr:'umol/L',visits:{scr_umol_l:'umol/L',upcr:'mg/g',egfr:'Derived per egfr_formula_version; verify provenance'},labs:'Raw value/unit and standard value/unit are separate columns.',missing:'null/empty = unknown or not collected; zero is a value.',csv:'analysis/data CSV preserves exact text for scripts. Use excel_safe CSV when opening in spreadsheets. research_data.json is the exact frozen server content.',patients_baseline_study_status:{consent_status:'知情同意状态：unconfirmed 未确认；consented 已签署知情同意；waiver 伦理委员会批准免除知情同意；declined 拒绝；withdrawn 撤回同意。',consent_date:'签署或确认知情同意的日期，可为空。',consent_version:'知情同意书版本，可为空。',followup_status:'随访状态：active 在访；lost 失访；withdrawn 退出研究；deceased 死亡；kidney_failure 肾衰竭（判定标准以研究方案为准）；transferred 转院。随访状态用于随访管理，不等同于经核实的临床终点事件。',followup_status_date:'随访状态变更日期，可为空。',consent_research:'由 consent_status 自动生成：consented 或 waiver 为 true，declined 或 withdrawn 为 false，unconfirmed 为空值（空值表示尚未确认，不表示“否”）。'},field_notes:frozen.content.field_notes||null},null,2);
+  files['data_dictionary.json']=JSON.stringify({schema_version:frozen.schema_version,identity_key:['project_id','center_code','patient_code'],record_key:'id',baseline_upcr:'Canonical mg/g only if baseline_upcr_unit is mg/g. Historical missing units require review; do not infer scale.',baseline_scr:'umol/L',visits:{scr_umol_l:'umol/L',upcr:'mg/g',egfr:'Derived per egfr_formula_version; verify provenance'},labs:'Raw value/unit and standard value/unit are separate columns.',missing:'null/empty = unknown or not collected; zero is a value.',csv:'analysis/data CSV preserves exact text for scripts. Use excel_safe CSV when opening in spreadsheets. research_data.json is the exact frozen server content.',patients_baseline_study_status:{consent_status:'知情同意状态：unconfirmed 未确认；consented 已签署知情同意；waiver 伦理委员会批准免除知情同意；declined 拒绝；withdrawn 撤回同意。',consent_date:'签署或确认知情同意的日期，可为空。',consent_version:'知情同意书版本，可为空。',followup_status:'随访状态：active 在访；lost 失访；withdrawn 退出研究；deceased 死亡；kidney_failure 肾衰竭（判定标准以研究方案为准）；transferred 转院。随访状态用于随访管理，不等同于经核实的临床终点事件。',followup_status_date:'随访状态变更日期，可为空。',consent_research:'由 consent_status 自动生成：consented 或 waiver 为 true，declined 或 withdrawn 为 false，unconfirmed 为空值（空值表示尚未确认，不表示“否”）。'},custom_fields:(frozen.content.tables.project_fields||[]).map(f=>Object.fromEntries(PROJECT_FIELD_COLUMNS.slice(4).map(k=>[k,f[k]??null]))),patient_field_values:'自定义入组字段的取值（每位患者每个字段一行）：value_text 存单选代码、是/否（yes/no）和文本，value_codes 存多选代码（分号分隔，按字段定义中的选项顺序），value_num 存数值，value_date 存日期；字段的显示名称、类型、选项含义、单位与范围见 custom_fields。',field_notes:frozen.content.field_notes||null},null,2);
   files['README.md']=['# 科研数据与分析脚本包',`项目：${op.project.name}`,`中心：${op.project.center_code}`,'','这是导出的数据与可运行脚本，不是已完成的统计结果或论文。请先核对字段、单位与缺失，再按 analysis/README.md 运行分析。','数据来自同一次数据库一致性读取，服务器保存不可变版本；research_data.json保留原始冻结字节，可按SHA-256核对。','本ZIP每个文件的SHA-256记录于export_manifest.json。版本列表可重新下载冻结JSON；旧元数据批次不具有此能力。','analysis/data里的CSV供分析脚本使用并保留原始文字，不应直接双击用Excel打开。请用excel_safe目录下做过公式文本防护的CSV供Excel查看。请仅在已批准的协作范围内分享。'].join('\n');
   const manifest={format:'registry-export-v3',project_id:op.project.id,center_code:op.project.center_code,exported_at:new Date().toISOString(),metadata_register_id:metaRecord?.snapshot_id||null,consistency:frozen.consistency,source_content_sha256:frozen.content_sha256,counts,files:{}};
   for(const [name,content]of Object.entries(files)){manifest.files[name]={sha256:await sha256Text(content),utf8_bytes:new TextEncoder().encode(content).length};zip.file(name,content);}
@@ -3254,11 +3314,14 @@ const IMPORT_TEMPLATES={
   baseline:{filename:'template_patients_baseline.csv',columns:BASELINE_IMPORT_FIELDS,example:{patient_code:'0001',sex:'F',birth_year:'1985',baseline_date:'2026-09-01',baseline_scr:'88.4',baseline_upcr:'500',baseline_upcr_unit:'mg/g'}},
   visits:{filename:'template_visits_long.csv',columns:VISIT_IMPORT_FIELDS,example:{patient_code:'0001',visit_date:'2026-09-14',sbp:'128',dbp:'78',scr_umol_l:'92',upcr:'450'}}
 };
-const isBatchKind=type=>BATCH_KINDS.includes(type);
-const UNDOABLE_KINDS=['visits','labs','meds','events','biopsies'];
+// 入组字段导入的列随项目的字段定义变化（project-fields.js），预览、分块提交与撤销与其他批量导入相同。
+const isBatchKind=type=>BATCH_KINDS.includes(type)||type==='fields';
+const UNDOABLE_KINDS=['visits','labs','meds','events','biopsies','fields'];
 const ROW_STATUS_LABELS={ok:'可写入',warn:'警告',block:'阻断',ignored:'不导入'};
+const NO_ACTIVE_FIELDS='本项目还没有启用的入组字段，请项目负责人先在“自定义入组字段”中添加。';
 function downloadImportTemplate(){
   const type=el.importType.value;
+  if(type==='fields'){if(!activeFields(fieldsUi.fields).length)return toast(NO_ACTIVE_FIELDS);return downloadCsvUtf8Bom(`template_fields_${selectedProject?.center_code||'project'}.csv`,fieldsTemplateCsv(fieldsUi.fields));}
   if(isBatchKind(type))return downloadCsvUtf8Bom(BATCH_TEMPLATES[type].filename,templateCsv(type));
   const t=IMPORT_TEMPLATES[type];if(t)downloadCsvUtf8Bom(t.filename,toCsv([t.example],t.columns));
 }
@@ -3266,12 +3329,13 @@ function closeImportHelp(){const box=qs('#importHelp');if(box){box.hidden=true;b
 function toggleImportHelp(){
   const box=qs('#importHelp');if(!box)return;
   if(!box.hidden)return closeImportHelp();
-  const type=el.importType.value;const batch=isBatchKind(type);
-  const fields=batch?BATCH_TEMPLATES[type].fields:IMPORT_TEMPLATES[type].columns.map(c=>[c,fieldLabel(c),c==='patient_code'?'必填':'选填','']);
-  const example=c=>batch?(BATCH_TEMPLATES[type].examples.map(e=>e[c]).find(v=>v)||''):(IMPORT_TEMPLATES[type].example[c]||'');
-  box.innerHTML=`<div><b>${escapeHtml(KIND_LABELS[type])}模板填写说明</b>${batch?`（${escapeHtml(BATCH_TEMPLATES[type].filename)}）`:''}</div>
+  const type=el.importType.value;const batch=isBatchKind(type);const custom=type==='fields';
+  if(custom&&!activeFields(fieldsUi.fields).length)return toast(NO_ACTIVE_FIELDS);
+  const fields=custom?fieldsTemplateHelp(fieldsUi.fields):batch?BATCH_TEMPLATES[type].fields:IMPORT_TEMPLATES[type].columns.map(c=>[c,fieldLabel(c),c==='patient_code'?'必填':'选填','']);
+  const example=c=>custom?'':batch?(BATCH_TEMPLATES[type].examples.map(e=>e[c]).find(v=>v)||''):(IMPORT_TEMPLATES[type].example[c]||'');
+  box.innerHTML=`<div><b>${escapeHtml(KIND_LABELS[type])}模板填写说明</b>${batch&&!custom?`（${escapeHtml(BATCH_TEMPLATES[type].filename)}）`:''}</div>
     <div class="infobox" style="margin:6px 0" data-pii-notice="help"><b>隐私提示：</b>${escapeHtml(PII_NOTICE)}</div>
-    <div class="muted small">CSV 编码 UTF-8（可带 BOM）；首行为英文列名，列顺序可调，列名须与模板逐字一致；日期格式 YYYY-MM-DD；选填列可留空或整列删除。</div>
+    <div class="muted small">${custom?'CSV 编码 UTF-8（可带 BOM）；每位患者一行，首行为 patient_code 和字段代码（也可用字段的显示名称作列名），列顺序可调；不需要的字段可整列删除，空白单元格不导入，也不会清除已有的值；已有不同值的单元格会被阻断，导入不会覆盖。':'CSV 编码 UTF-8（可带 BOM）；首行为英文列名，列顺序可调，列名须与模板逐字一致；日期格式 YYYY-MM-DD；选填列可留空或整列删除。'}</div>
     <table class="table"><thead><tr><th>列名</th><th>中文名</th><th>是否必填</th><th>规则与取值</th><th>示例</th></tr></thead>
     <tbody>${fields.map(([c,cn,req,rule])=>`<tr><td><code>${escapeHtml(c)}</code></td><td>${escapeHtml(cn)}</td><td>${escapeHtml(req)}</td><td>${escapeHtml(rule)}</td><td>${escapeHtml(example(c))}</td></tr>`).join('')}</tbody></table>`;
   box.hidden=false;qs('#btnImportHelp')?.setAttribute('aria-expanded','true');
@@ -3349,13 +3413,26 @@ async function handleBatchFile(file){
     const patientMap=await loadImportPatients(op);
     // 活检导入：读取已有的基准活检，预览时即可指出“该患者已有另一次基准活检”（数据库仍做最终校验）。
     const indexBiopsies=type==='biopsies'?new Map((await readAllRows(sb,'biopsies_long',op.project.id,()=>assertContext(op),500,{is_index:true},{select:'id,patient_code,biopsy_date,biopsy_kind'})).map(r=>[r.patient_code,r])):null;
-    _importParsed={op,type,batch:true,headers,data,lines,fileName,sha256,mapping:{},patients:patientMap,indexBiopsies,today:beijingToday(),result:null,chunks:null};
+    // 入组字段：读取最新的字段定义和已有取值，预览时即可指出“已有不同的值”（数据库仍做最终校验，不会覆盖）。
+    let fieldsCtx=null;
+    if(type==='fields'){
+      const defs=await fieldsUi.load(op);
+      if(!activeFields(defs).length)throw new Error(NO_ACTIVE_FIELDS);
+      const existing=new Map();
+      for(const r of await readAllRows(sb,'patient_field_values',op.project.id,()=>assertContext(op),500,{},{select:'id,patient_code,field_key,value_text,value_codes,value_num,value_date'})){
+        if(!existing.has(r.patient_code))existing.set(r.patient_code,new Map());existing.get(r.patient_code).set(r.field_key,r);
+      }
+      fieldsCtx={fields:defs,existing,fieldLabels:fieldsUi.fieldLabels()};
+    }
+    _importParsed={op,type,batch:true,headers,data,lines,fileName,sha256,mapping:{},patients:patientMap,indexBiopsies,fieldsCtx,today:beijingToday(),result:null,chunks:null};
     revalidateBatch();
   }catch(e){if(currentContext(op)){_importParsed=null;toast('无法预览：'+registryErrorMessage(e));}}
 }
 function revalidateBatch(){
   const b=_importParsed;if(!b?.batch)return;
-  b.result=validateBatch(b.type,b.headers,b.data,{catalog:labCatalog,unitMap,patients:b.patients,indexBiopsies:b.indexBiopsies,today:b.today,mapping:b.mapping,containsPII,lines:b.lines});
+  b.result=b.type==='fields'
+    ?validateFieldsBatch(b.fieldsCtx.fields,b.headers,b.data,{patients:b.patients,existing:b.fieldsCtx.existing,today:b.today,containsPII,lines:b.lines,piiHeaders:hs=>piiHeaderColumns(hs)})
+    :validateBatch(b.type,b.headers,b.data,{catalog:labCatalog,unitMap,patients:b.patients,indexBiopsies:b.indexBiopsies,today:b.today,mapping:b.mapping,containsPII,lines:b.lines});
   _lastImportReport={type:b.type,result:b.result};
   // 校验结果变化（新文件、处理未映射项目等）后须重新核对警告。
   const warnBox=qs('#importWarnConfirm');if(warnBox)warnBox.checked=false;
@@ -3380,8 +3457,8 @@ function renderBatchPreview(){
   }else{
     const problems=r.rows.filter(x=>x.status!=='ok'),fine=r.rows.filter(x=>x.status==='ok');
     const shown=[...problems.slice(0,300),...fine.slice(0,20)].sort((a,b2)=>a.line-b2.line);
-    const cols=b.headers;
-    el.importTable.innerHTML=`<table class="table"><thead><tr><th>行号</th><th>状态</th>${cols.map(h=>`<th title="${escapeHtml(h)}">${escapeHtml(fieldLabel(h))}</th>`).join('')}<th>问题与提示</th></tr></thead><tbody>${shown.map(x=>`<tr class="bi-row-${x.status}" data-line="${Number(x.line)}"><td>${Number(x.line)}</td><td>${ROW_STATUS_LABELS[x.status]}</td>${cols.map(h=>`<td>${escapeHtml(h==='patient_code'&&x.codePii?MASKED_CODE:(x.cells[h]??''))}</td>`).join('')}<td>${x.issues.map(i=>`<div class="bi-issue-${i.level}">${escapeHtml(fieldLabel(i.col))}：${escapeHtml(i.reason)}${i.fix?' '+escapeHtml(i.fix):''}</div>`).join('')}</td></tr>`).join('')}</tbody></table>${problems.length>300||fine.length>20?`<div class="muted small" style="padding:6px">仅显示前 300 个问题行与前 20 个正常行；完整清单请下载错误报告。</div>`:''}`;
+    const cols=b.headers;const labelOf=h=>b.fieldsCtx?.fieldLabels?.[h]||fieldLabel(h);
+    el.importTable.innerHTML=`<table class="table"><thead><tr><th>行号</th><th>状态</th>${cols.map(h=>`<th title="${escapeHtml(h)}">${escapeHtml(labelOf(h))}</th>`).join('')}<th>问题与提示</th></tr></thead><tbody>${shown.map(x=>`<tr class="bi-row-${x.status}" data-line="${Number(x.line)}"><td>${Number(x.line)}</td><td>${ROW_STATUS_LABELS[x.status]}</td>${cols.map(h=>`<td>${escapeHtml(h==='patient_code'&&x.codePii?MASKED_CODE:(x.cells[h]??''))}</td>`).join('')}<td>${x.issues.map(i=>`<div class="bi-issue-${i.level}">${escapeHtml(labelOf(i.col))}：${escapeHtml(i.reason)}${i.fix?' '+escapeHtml(i.fix):''}</div>`).join('')}</td></tr>`).join('')}</tbody></table>${problems.length>300||fine.length>20?`<div class="muted small" style="padding:6px">仅显示前 300 个问题行与前 20 个正常行；完整清单请下载错误报告。</div>`:''}`;
   }
   const warnRow=qs('#importWarnConfirmRow');warnRow.style.display=c.warn?'flex':'none';
   const warnBox=qs('#importWarnConfirm');warnBox.disabled=locked;if(!c.warn)warnBox.checked=false;
@@ -3456,7 +3533,7 @@ async function runBatchChunks(b){
       chunk.registered=true;chunk.error=null;
     }catch(e){
       if(!currentContext(b.op))throw e;
-      chunk.error=registryErrorMessage(e,{rowLine:n=>chunk.lines[n-1]??null});
+      chunk.error=registryErrorMessage(e,{rowLine:n=>chunk.lines[n-1]??null,fieldLabels:b.fieldsCtx?.fieldLabels});
       renderBatchResult(b,false);
       el.importProgress.textContent=`第 ${chunk.index}/${chunk.total} 块未完成，已停止提交后续块。${chunk.imported?'该块数据已写入，但文件信息登记未完成。':''}已成功的块不会重复写入。若是网络或登录问题，可点击“重试未完成的块”（沿用同一批次编号）；若需修改数据，请修正文件后重新上传，与已有记录相同的行会自动跳过。`;
       el.btnConfirmImport.dataset.label='重试未完成的块';
