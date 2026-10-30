@@ -65,7 +65,7 @@ const sha = text => createHash('sha256').update(text, 'utf8').digest('hex');
 try {
   // ---- Production-like database at 0039 ------------------------------------------------
   const upTo39 = migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) <= 39);
-  assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 39), [NEW_MIGRATION, '0041_followup_board.sql', '0042_c3g_module.sql', '0043_biopsy_records.sql', '0044_project_fields.sql', '0045_cystatin_urine_rbc.sql'],
+  assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 39), [NEW_MIGRATION, '0041_followup_board.sql', '0042_c3g_module.sql', '0043_biopsy_records.sql', '0044_project_fields.sql', '0045_cystatin_urine_rbc.sql', '0046_adpkd_module.sql'],
     '0040 directly follows 0039; 0041–0043 have their own acceptance (tests/followup-board-db.mjs, tests/c3g-module-db.mjs, tests/biopsy-records-db.mjs)');
   for (const file of upTo39) await apply(file);
   assert.equal(await count('SELECT count(*) AS n FROM public.registry_schema_versions'), 8);

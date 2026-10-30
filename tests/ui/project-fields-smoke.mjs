@@ -2,7 +2,7 @@
 // 运行：node tests/ui/project-fields-smoke.mjs   成功时打印 PROJECT_FIELDS_UI_OK。
 // 与其他工作台冒烟测试相同：本地静态服务器提供 site/，Playwright 打开 staff.html，
 // 对 Supabase 域名的请求用 page.route 返回合成数据；其他外部主机的请求一律拦截并记为失败。
-// 覆盖：载入 REIGNITE 入组字段草案、新增与修改字段（前端规则与数据库一致）、看板“入组字段”录入、
+// 覆盖：载入 REIGNITE 入组字段草案、ADPKD 项目载入多囊肾入组字段草案、新增与修改字段（前端规则与数据库一致）、看板“入组字段”录入、
 // 数据库提示原样显示、批量导入（显示名称作列名、已有不同值阻断）、导出 CSV、只读角色只能查看。
 import http from 'node:http';
 import fs from 'node:fs';
@@ -74,7 +74,7 @@ function sessionFor() {
 }
 
 // ── Supabase 模拟：字段定义与取值按数据库规则的最小子集保存 ──────────────
-function createMock({ access, fields = [], values = [] }) {
+function createMock({ access, fields = [], values = [], project = PROJECT }) {
   const requests = []; const external = []; const unknown = [];
   const errors = {};   // RPC 名 → 下一次调用返回的 PostgREST 错误
   let n = 0;
@@ -84,7 +84,7 @@ function createMock({ access, fields = [], values = [] }) {
   function restRows(table, url) {
     const f = filters(url, 'eq');
     switch (table) {
-      case 'projects': return [PROJECT];
+      case 'projects': return [project];
       case 'v_project_overview': return [OVERVIEW];
       case 'v_patient_followup_status': return BOARD.filter(r => !f.patient_code || r.patient_code === f.patient_code).filter(r => !filters(url, 'gt').patient_id || r.patient_id > filters(url, 'gt').patient_id);
       case 'project_fields': return fields.filter(x => x.project_id === f.project_id);
@@ -218,6 +218,7 @@ async function main() {
     await eventually(async () => (await text(page.locator('#projectFieldsList')))?.includes('本项目还没有自定义入组字段'), '空字段清单');
     assert.equal(await page.locator('#patientsList [data-act="fields"]').count(), 0, '没有字段时看板不显示入组字段');
     assert.equal(await page.locator('#btnExportFields').isHidden(), true);
+    assert.equal(await page.locator('#btnLoadAdpkdPreset').isHidden(), true, 'C3G 项目不显示多囊肾入组字段草案按钮');
     await page.click('#btnLoadFieldPreset');
     const preset = page.locator('[data-registry-modal="fieldPreset"]');
     await preset.waitFor();
@@ -363,6 +364,26 @@ async function main() {
     assert.deepEqual(viewer.pageErrors, []);
     assert.deepEqual(viewer.mock.unknown, []);
     await viewer.context.close();
+
+    // 7. ADPKD 项目：负责人看到“载入多囊肾入组字段草案”，按草案逐个新增 12 个字段；说明写明尚未核对、不含基因检测结果。
+    const pkd = await openWorkspace(browser, origin, { access: OWNER, project: { ...PROJECT, module: 'ADPKD', registry_type: 'adpkd' } });
+    await pkd.page.click('#projectFieldsDetails summary');
+    await eventually(async () => (await text(pkd.page.locator('#projectFieldsList')))?.includes('本项目还没有自定义入组字段'), 'ADPKD 项目空字段清单');
+    assert.equal(await pkd.page.locator('#btnLoadAdpkdPreset').isVisible(), true, 'ADPKD 项目显示多囊肾入组字段草案按钮');
+    await pkd.page.click('#btnLoadAdpkdPreset');
+    const pkdPreset = pkd.page.locator('[data-registry-modal="fieldPreset"]');
+    await pkdPreset.waitFor();
+    const notice = await text(pkdPreset.locator('[data-preset-id="adpkd"]'));
+    assert.ok(notice.includes('尚未与牵头单位的病例报告表核对') && notice.includes('人类遗传资源'), notice);
+    assert.equal(await pkdPreset.locator('tr[data-preset-key]').count(), 12);
+    await pkd.page.click('#fpConfirm');
+    await pkdPreset.waitFor({ state: 'detached' });
+    assert.deepEqual(pkd.mock.rpcCalls('save_project_field').map(r => r.body.p_field), fieldsModule.ADPKD_DRAFT.map(f => ({ ...f })), '按多囊肾草案逐个新增');
+    await eventually(async () => (await pkd.page.locator('#projectFieldsList tr[data-field-key]').count()) === 12, '字段清单显示 12 个字段');
+    assert.ok((await text(pkd.page.locator('#projectFieldsFeedback'))).includes('已载入多囊肾（ADPKD）入组字段草案：新增 12 个字段'));
+    assert.deepEqual(pkd.pageErrors, []);
+    assert.deepEqual(pkd.mock.unknown, []);
+    await pkd.context.close();
   } finally {
     await browser.close();
     server.close();

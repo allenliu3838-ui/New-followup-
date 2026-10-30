@@ -268,6 +268,15 @@ async function checkPureHelpers() {
   assert.equal(labs([lab({ result_text: '阴\r性', lab_test_code: 'IGA' })]).rows[0].status, 'block', '结果文本不能换行');
   assert.equal(meds([med({ drug_name: 'x'.repeat(200) })]).rows[0].status, 'ok', '药物名称上限 200 字（与数据库一致）');
   assert.equal(meds([med({ drug_name: 'x'.repeat(201) })]).rows[0].status, 'block');
+  // 药物类别：血管加压素 V2 受体拮抗剂（迁移 0046）；简写映射到完整名称后再提交，数据库只接受完整名称。
+  const CLASS_COLS = [...MED_COLS, 'drug_class'];
+  const classOf = value => bi.validateBatch('meds', CLASS_COLS, [med({ drug_class: value })], ctx).rows[0];
+  for (const v of ['血管加压素V2受体拮抗剂', '血管加压素v2受体拮抗剂', 'V2受体拮抗剂', '血管加压素受体拮抗剂']) {
+    const r = classOf(v);
+    assert.deepEqual([r.status, r.payload.drug_class], ['ok', '血管加压素V2受体拮抗剂'], `药物类别 ${v}`);
+  }
+  assert.equal(classOf('托伐普坦').status, 'block', '药物名称不能填在类别列');
+  assert.equal(bi.DRUG_CLASSES.at(-1), '其他', '“其他”仍在最后');
   const EVT_COLS = ['patient_code', 'event_type', 'event_date', 'event_detail', 'evidence_source'];
   const evts = rows => bi.validateBatch('events', EVT_COLS, rows, ctx);
   assert.equal(evts([{ patient_code: 'P001', event_type: 'relapse', event_date: '2025-01-01', event_detail: '第一行\n第二行', evidence_source: 'other' }]).rows[0].status, 'ok', '事件细节可以换行');

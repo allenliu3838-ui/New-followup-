@@ -751,6 +751,8 @@ unset PGPASSWORD OLD_DB_URL OLD_KEY
 
 **补充（2026-10-28）：** 迁移 0045（化验目录增加血清胱抑素 C 与两种尿红细胞计数，见附录 C.7）随 v7 一起上线时，顺序为 0042、0043、0044、0045，再发布前端。
 
+**状态（2026-10-30）：** v7（`registry-20261026-cn-v7`，发布包取自提交 0061cca）已于 2026-10-30 整体上线：生产库在备份后依次执行了 0042–0045，网页发布后的自动核对全部通过。此后的改动进入 v8（`registry-20261030-cn-v8`），以 v7 清单为生产基线，含迁移 0046（多囊肾 ADPKD 病种模块与血管加压素 V2 受体拮抗剂用药类别，见附录 C.8）；上线时先在生产库执行 0046，再发布前端。
+
 | 文件 | 位置 | 现状 | 需要的改动 |
 |---|---|---|---|
 | `scripts/capture_registry_database.py` | 第 13 行 `PROJECT_REF`；`connection_environment()`（约第 30–49 行） | 只接受 `db.etsyglgpiutflethgirs.supabase.co`，或 `*.pooler.supabase.com` 且用户为 `postgres.etsyglgpiutflethgirs` | 新的项目身份（例如 `ksr-aliyun-<地域>-1`）；主机规则改为精确匹配新数据库主机名（如 `db.registry.internal`）与用户 `postgres`；保留 `verify-full` TLS、清除继承的 `PG*` 变量、只读事务、只接受审查过的预检 SQL 等全部现有约束。可选加强：在预检 SQL 中输出 `pg_control_system()` 的 `system_identifier` 并在工具中固定比对，因为自托管主机名不像 Supabase 项目编号那样全局唯一 |
@@ -1099,3 +1101,26 @@ docker exec -i supabase-db psql -U postgres -d postgres -X -t -A \
 然后重新生成只读预检报告，`0045_cystatin_urine_rbc` 与 `cystatin_urine_rbc_labs` 均须为 `true`。数据库升级后，化验下拉框即出现这三个项目（下拉框由字典生成）；新前端的批量导入另外认识“胱抑素C”“尿红细胞”等名称，只写“尿红细胞”时按单位确定项目。先升级数据库、暂不发布前端没有影响。
 
 分析包同步：`run_analysis.py` 的显式单位换算加入这三个项目（各自只认本方法的单位写法），并新增 CKD-EPI 2012 胱抑素 C、CKD-EPI 2021 肌酐–胱抑素 C、CKiD U25 肌酐与胱抑素 C 公式；终点判定仍用肌酐公式。`time_windows.py` 的 `egfr` 配置可选这些公式（`adult_equation`、`child_equation`、`cystatin_variable`、`pair_window_days`），默认仍为 CKD-EPI 2021 肌酐公式与床旁 Schwartz 公式，原有配置的结果不变；模板增加胱抑素 C 与两种尿红细胞变量。
+
+### C.8 后续增量 0046（多囊肾 ADPKD 病种模块、血管加压素 V2 受体拮抗剂用药类别）
+
+须在 0045 之后执行；未登记 0045 时中止并整体回滚。0046 不改任何已有数据，不建任何项目、字段或记录，可重复执行（验收测试 `tests/adpkd-module-db.mjs` 对比迁移前后的项目、患者、用药、入组字段与取值、导入记录和审计行）。内容：
+
+- 项目病种模块可选 `ADPKD`：重建 0042 的建项目检查函数 `_create_project_account_guard`，只在白名单末尾加 `'ADPKD'`。
+- 用药类别增加“血管加压素V2受体拮抗剂”（托伐普坦属于这一类）：重建 0043 的 `registry_private.validate_clinical_input`，只在药物类别清单末尾加这一项；`meds_long.drug_class` 的列说明相应更新。已有用药记录的类别不改：此前记在“其他”下的托伐普坦仍在“其他”下，需要改类时走人工复核与更正留痕。
+- 缩写字典增加 `ADPKD`。
+- 两个函数由脚本从 0042、0043 原文生成，只含上述两处增量；验收测试逐字核对“迁移后函数原文 = 迁移前原文 + 这两处增量”，安全属性、`search_path` 与执行权限不变。
+
+执行方式与 0045 相同：
+
+```bash
+docker exec -i supabase-db psql -U postgres -d postgres -X -q -v ON_ERROR_STOP=1 -f - \
+  < supabase/migrations/0046_adpkd_module.sql
+docker exec -i supabase-db psql -U postgres -d postgres -X -t -A \
+  -c "SELECT version FROM public.registry_schema_versions WHERE version='0046_adpkd_module'"
+# 预期：0046_adpkd_module
+```
+
+然后重新生成只读预检报告，`0046_adpkd_module` 与 `adpkd_module_vocabulary` 均须为 `true`。先升级数据库、暂不发布前端没有影响：v7 网页不显示 ADPKD 选项和新类别，已有功能不变。
+
+前端与分析包（v8）：新建项目可选“ADPKD（常染色体显性多囊肾病）”；ADPKD 项目的负责人可在“自定义入组字段”中载入多囊肾入组字段草案（12 个字段，定义在 `site/lib/project-fields.js`，经 `save_project_field` 逐个新增，草案尚未与牵头单位的病例报告表核对；不含基因检测结果）；用药下拉与批量导入增加新类别。分析包新增 `descriptive_summary.py`（按中心统计入组字段、用药类别与结局事件的人数和占比，只输出人数与统计量），`merge_centers.py` 同时合并各中心的字段定义 `project_fields.csv`；`run_analysis.py` 与 `feasibility_report.py` 的病种代码加入 `ADPKD`。

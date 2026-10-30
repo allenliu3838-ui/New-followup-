@@ -41,6 +41,9 @@ const CASES = [
   ['多少钱', 'price'],
   ['胱抑素C', 'cystatin-egfr'],
   ['尿红细胞', 'urine-rbc'],
+  ['多囊肾项目怎么建', 'adpkd-module'],
+  ['托伐普坦', 'adpkd-module'],
+  ['基线特征表', 'descriptive-summary'],
 ];
 
 // 不下载浏览器：优先使用 Playwright 自带的，否则用 PLAYWRIGHT_BROWSERS_PATH 下已安装的 Chromium。

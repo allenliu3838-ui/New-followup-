@@ -1,4 +1,4 @@
-// 项目自定义入组字段：类型与取值规则、REIGNITE 入组字段草案、单个患者录入的取值换算、CSV 模板与批量导入校验、显示与导出。
+// 项目自定义入组字段：类型与取值规则、入组字段草案（REIGNITE、多囊肾）、单个患者录入的取值换算、CSV 模板与批量导入校验、显示与导出。
 // 纯函数模块：不访问网络、不操作页面，便于浏览器测试直接加载。写入仍走 save_project_field、set_patient_field_values
 // 和 import_registry_rows（数据库 check_patient_field_value 为最终校验，规则与这里一致）。
 
@@ -40,6 +40,52 @@ export const REIGNITE_DRAFT = Object.freeze([
     choices: options([['normal', '正常'], ['hypertensive', '高血压性视网膜病变'], ['diabetic', '糖尿病视网膜病变'], ['other_abnormal', '其他异常'], ['not_done', '未检查']]) },
   { field_key: 'fundus_exam_date', label_cn: '眼底检查日期', value_type: 'date' },
 ].map(f => Object.freeze({ ...f, source: REIGNITE_SOURCE })));
+
+// ── 多囊肾（ADPKD）入组字段草案 ───────────────────────────────
+export const ADPKD_SOURCE = '多囊肾（ADPKD）入组字段草案';
+/**
+ * 参照意大利 ADPKD 登记（RIRP）与常用的 ADPKD 研究变量拟定，尚未与牵头单位的病例报告表核对：载入后由项目负责人逐项核对。
+ * 不含基因检测结果：PKD1、PKD2 等结果须在人类遗传资源合规评估后再登记，这里只记录是否做过检测。
+ */
+export const ADPKD_DRAFT = Object.freeze([
+  { field_key: 'adpkd_dx_basis', label_cn: '诊断依据', value_type: 'multi_choice', help_cn: '可多选。影像学诊断标准以研究方案为准。',
+    choices: options([['imaging_family', '影像学诊断，有家族史'], ['imaging_no_family', '影像学诊断，无明确家族史'], ['genetic', '基因检测确诊'], ['other', '其他']]) },
+  { field_key: 'family_history', label_cn: '多囊肾家族史', value_type: 'choice', help_cn: '父母、兄弟姐妹或子女等亲属中有多囊肾患者。',
+    choices: options([['yes', '有'], ['no', '无'], ['unknown', '不详']]) },
+  { field_key: 'age_at_diagnosis', label_cn: '确诊年龄', value_type: 'number', unit: '岁', min_value: 0, max_value: 100 },
+  { field_key: 'hypertension', label_cn: '高血压', value_type: 'yes_no', help_cn: '既往诊断高血压，或正在服用降压药。' },
+  { field_key: 'hypertension_onset_age', label_cn: '高血压确诊年龄', value_type: 'number', unit: '岁', min_value: 0, max_value: 100,
+    help_cn: '“高血压”为“是”时填写。35 岁前出现高血压是进展风险评估（如 PROPKD 评分）用到的指标。' },
+  { field_key: 'kidney_history', label_cn: '肾脏相关病史', value_type: 'multi_choice', help_cn: '可多选，记录到入组时为止的情况；都没有选“无”。',
+    choices: options([['gross_hematuria', '肉眼血尿'], ['flank_pain', '慢性腰腹痛'], ['cyst_infection', '囊肿感染'], ['cyst_hemorrhage', '囊肿出血'],
+      ['kidney_stones', '肾结石'], ['none', '无']]) },
+  { field_key: 'first_urologic_event_age', label_cn: '首次泌尿系事件年龄', value_type: 'number', unit: '岁', min_value: 0, max_value: 100,
+    help_cn: '首次出现肉眼血尿、腰腹痛或囊肿感染时的年龄，进展风险评估（如 PROPKD 评分）用到的指标。' },
+  { field_key: 'liver_cysts', label_cn: '肝囊肿', value_type: 'choice', choices: options([['yes', '有'], ['no', '无'], ['not_assessed', '未评估']]) },
+  { field_key: 'ia_family_history', label_cn: '颅内动脉瘤或蛛网膜下腔出血家族史', value_type: 'choice',
+    choices: options([['yes', '有'], ['no', '无'], ['unknown', '不详']]) },
+  { field_key: 'ia_screening', label_cn: '颅内动脉瘤筛查', value_type: 'choice', help_cn: '以磁共振血管成像等检查结果为准。',
+    choices: options([['not_screened', '未筛查'], ['negative', '已筛查，未发现'], ['positive', '已筛查，发现动脉瘤']]) },
+  { field_key: 'other_extrarenal', label_cn: '其他肾外表现', value_type: 'multi_choice', help_cn: '可多选；都没有选“无”。',
+    choices: options([['pancreatic_cysts', '胰腺囊肿'], ['seminal_vesicle_cysts', '精囊囊肿'], ['arachnoid_cysts', '蛛网膜囊肿'],
+      ['mitral_valve_prolapse', '二尖瓣脱垂'], ['abdominal_hernia', '腹壁疝'], ['other', '其他'], ['none', '无']]) },
+  { field_key: 'genetic_testing', label_cn: '基因检测', value_type: 'choice',
+    help_cn: '只记录是否做过。PKD1、PKD2 等检测结果须在人类遗传资源合规评估后再登记，不要写进备注或其他字段。',
+    choices: options([['done', '已做'], ['not_done', '未做'], ['unknown', '不详']]) },
+].map(f => Object.freeze({ ...f, source: ADPKD_SOURCE })));
+
+/**
+ * 可载入的入组字段草案。modules 为空时所有项目都提供；否则只在这些病种模块的项目中提供。
+ * notice 是对话框顶部的说明（静态 HTML，只含本文件中的固定文字）。
+ */
+export const FIELD_PRESETS = Object.freeze({
+  reignite: Object.freeze({ id: 'reignite', title: 'REIGNITE 入组字段草案', fields: REIGNITE_DRAFT, modules: null,
+    notice: '这是本系统按 REIGNITE 入组信息拟定的草案，选项<b>尚未与对方的病例报告表核对</b>。载入后请项目负责人逐项核对：可以修改显示名称、增加选项或停用字段；字段代码与类型载入后不能更改。' }),
+  adpkd: Object.freeze({ id: 'adpkd', title: '多囊肾（ADPKD）入组字段草案', fields: ADPKD_DRAFT, modules: Object.freeze(['ADPKD']),
+    notice: '这是本系统参照意大利 ADPKD 登记和常用研究变量拟定的草案，<b>尚未与牵头单位的病例报告表核对</b>。不含基因检测结果：PKD1、PKD2 等结果须在人类遗传资源合规评估后再登记。载入后请项目负责人逐项核对：可以修改显示名称、增加选项或停用字段；字段代码与类型载入后不能更改。' }),
+});
+/** 某个病种模块的项目可以载入的草案。 */
+export const presetsForModule = module => Object.values(FIELD_PRESETS).filter(p => !p.modules || p.modules.includes(String(module || '').toUpperCase()));
 
 // ── 字段定义 ─────────────────────────────────────────────────
 /** 选项文本：每行“代码 显示名称”（代码与名称之间用空格、等号或冒号分隔）。返回 { choices } 或 { error }。 */

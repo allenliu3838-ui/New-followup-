@@ -3,7 +3,7 @@
   "database_server_major": 17,
   "reference_server_version": "17.6",
   "runtime": "@embedded-postgres/linux-x64@17.6.0-beta.15",
-  "migration_manifest_sha256": "d477129afe329862341655b784391079e497fbce9d78fb960dede4e81c50a797",
+  "migration_manifest_sha256": "238c2a29468f38d8ecff3789c5f91a4c57a706892b15d10ab71a1a2363a6e793",
   "database_contract_sha256": "aca7000205680905a853fc72280ff60a2f99af32d8b2807bb761de7769ed6b29",
   "profile_definition": "canonical: all reviewed LF SQL; historical_crlf: first 33 reviewed SQL files encoded CRLF, then ten new LF migrations. UTC and fixed search_path. Synthetic Auth/Storage only.",
   "database_contract_profiles": {
@@ -17374,7 +17374,7 @@
           "signature": "_create_project_account_guard()",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "2a1ff038302c8c8cc68a8849a00992ac",
+          "definition_md5": "55054a633cfdf262e5e43515c3b58e96",
           "security_definer": true,
           "authenticated_execute": false
         },
@@ -18778,7 +18778,7 @@
           "signature": "registry_private.validate_clinical_input(text,jsonb)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "caac182e66aae5e6e29c1f2909d3db06",
+          "definition_md5": "56a61631438876782b4cfc24fd2fe030",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -36383,7 +36383,7 @@
           "signature": "_create_project_account_guard()",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "2a1ff038302c8c8cc68a8849a00992ac",
+          "definition_md5": "55054a633cfdf262e5e43515c3b58e96",
           "security_definer": true,
           "authenticated_execute": false
         },
@@ -37787,7 +37787,7 @@
           "signature": "registry_private.validate_clinical_input(text,jsonb)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "caac182e66aae5e6e29c1f2909d3db06",
+          "definition_md5": "56a61631438876782b4cfc24fd2fe030",
           "security_definer": false,
           "authenticated_execute": false
         },

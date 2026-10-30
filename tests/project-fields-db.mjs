@@ -84,8 +84,8 @@ const FIELDS = [
 try {
   // ---- A v7 database at 0043 -------------------------------------------------------------
   const upTo43 = migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) <= 43);
-  assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 43), [NEW_MIGRATION, '0045_cystatin_urine_rbc.sql'],
-    '0044 directly follows 0043; 0045 has its own acceptance (tests/cystatin-urine-rbc-db.mjs)');
+  assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 43), [NEW_MIGRATION, '0045_cystatin_urine_rbc.sql', '0046_adpkd_module.sql'],
+    '0044 directly follows 0043; 0045 and 0046 have their own acceptance (tests/cystatin-urine-rbc-db.mjs, tests/adpkd-module-db.mjs)');
   for (const file of upTo43) await apply(file);
   assert.equal(await count('SELECT count(*) AS n FROM public.registry_schema_versions'), 12);
   for (const id of [owner, editor, analyst, viewer, outsider]) {

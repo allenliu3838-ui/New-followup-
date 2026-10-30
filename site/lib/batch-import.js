@@ -25,9 +25,10 @@ export const TEMPLATE_COLUMNS = Object.freeze({
 const REQUIRED_COLUMNS = Object.freeze({ labs: ['patient_code', 'lab_date'], meds: ['patient_code', 'drug_name', 'start_date'], events: ['patient_code', 'event_type', 'event_date', 'evidence_source'], biopsies: ['patient_code', 'biopsy_date', 'biopsy_kind'] });
 
 export const DRUG_CLASSES = Object.freeze(['RAS阻断剂', 'SGLT2抑制剂', '糖皮质激素', '免疫抑制剂', '利尿剂', '降压药（其他）', '降糖药（其他）', '降脂药', '抗凝/抗血小板',
-  '内皮素受体拮抗剂', '补体抑制剂', '盐皮质激素受体拮抗剂', '预防性抗生素', '试验药物', '疫苗', '其他']);
-/** 药物类别的常见英文缩写写法（导入时可直接填写）。 */
-const DRUG_CLASS_INPUT = Object.freeze({ era: '内皮素受体拮抗剂', mra: '盐皮质激素受体拮抗剂', vaccine: '疫苗', '疫苗接种': '疫苗', '研究药物': '试验药物' });
+  '内皮素受体拮抗剂', '补体抑制剂', '盐皮质激素受体拮抗剂', '预防性抗生素', '试验药物', '疫苗', '血管加压素V2受体拮抗剂', '其他']);
+/** 药物类别的常见缩写与简写（导入时可直接填写；键为 enumKey 之后的写法）。 */
+const DRUG_CLASS_INPUT = Object.freeze({ era: '内皮素受体拮抗剂', mra: '盐皮质激素受体拮抗剂', vaccine: '疫苗', '疫苗接种': '疫苗', '研究药物': '试验药物',
+  'v2受体拮抗剂': '血管加压素V2受体拮抗剂', '血管加压素受体拮抗剂': '血管加压素V2受体拮抗剂' });
 export const ROUTES = Object.freeze({ PO: '口服', IV: '静脉', SC: '皮下注射', IM: '肌肉注射', topical: '外用', other: '其他' });
 export const IMPORTABLE_EVENTS = Object.freeze({ esrd: '终末期肾病', dialysis_start: '开始透析', kidney_transplant: '肾移植', death: '死亡', relapse: '复发', serious_infection: '严重感染', hospitalization: '住院', custom: '其他' });
 /** 须在事件细节中写明内容的事件类型（与数据库 check_clinical_row 一致）。 */

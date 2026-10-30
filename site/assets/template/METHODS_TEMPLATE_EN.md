@@ -109,3 +109,20 @@ selected for the time point. Cystatin C was measured by [assay], traceable to ER
 The configuration file (time points,
 windows, variables, confirming investigators and date) and its SHA-256 are recorded in
 `TIME_WINDOWS_LOG.json`; output from an unconfirmed configuration is labelled UNCONFIRMED.
+
+## Descriptive summary (optional, `descriptive_summary.py`)
+
+Baseline characteristics were summarised per centre and for all centres combined among the
+included patients (same population as above): counts and percentages for categorical
+enrollment fields, with all included patients of the centre and patients with the field
+recorded as two stated denominators; n, mean, SD, median, quartiles and range for numeric
+fields; the proportion of patients with at least one record of each medication class
+[e.g. vasopressin V2 receptor antagonist]; and the proportion with kidney failure, defined as
+a recorded end-stage kidney disease, start of dialysis or kidney transplantation event, or a
+follow-up status of kidney failure. Fields were combined across centres by field code only
+when their type agreed [state whether all centres used the same field draft]. Free-text
+fields were counted as recorded or not and their content was not analysed. The output
+contains aggregate counts only; small cells were [suppressed below N / reported as is] in
+accordance with the data use agreement. Input file SHA-256 values and the consent selection
+are recorded in `SUMMARY_RUN_LOG.json`.
+

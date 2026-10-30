@@ -124,7 +124,7 @@ try{
  await assert.rejects(restored.restoreCustom(backup.archive),/existing application objects/);
  pass('actual pg_restore reproduces every dumped table, value, sequence and reviewed catalog/ACL');
 
- assert.equal(await applyMigrations(restored,{phase:'upgrade'}),14);
+ assert.equal(await applyMigrations(restored,{phase:'upgrade'}),15);
  const upgradedRows=await captureRows(restored);
  // Two reviewed value changes are asserted exactly below; every other historical value must survive.
  const reviewedChange={
@@ -132,11 +132,12 @@ try{
   'public.patient_tokens':record=>({...record,token:null})
  };
  // 0042 adds display-dictionary entries (C3 glomerulopathy fields, visit height), 0043 those of
- // the biopsy records and two medication-class abbreviations, 0045 the abbreviations CysC and HPF;
+ // the biopsy records and two medication-class abbreviations, 0045 the abbreviations CysC and HPF,
+ // 0046 the abbreviation ADPKD;
  // no other preserved table gains or loses a row. Rows are matched by their stable key.
  const reviewedAdditions={
   'public.concept_dictionary':['biopsy_kind','c3g_biopsy_date','c3g_crescent_pct','c3g_em_pattern','c3g_if_c3_dominant','c3g_paraprotein','crescent_pct','glomeruli_total','height_cm','is_index'],
-  'public.abbreviation_dictionary':['AH50','C3GN','C3NeF','CH50','CysC','DDD','ERA','HPF','MRA','sC5b-9'],
+  'public.abbreviation_dictionary':['ADPKD','AH50','C3GN','C3NeF','CH50','CysC','DDD','ERA','HPF','MRA','sC5b-9'],
  };
  const rowKey=(table,record)=>table==='public.concept_alias_dictionary'?`${record.concept_code}:${record.alias_cn}`
   :record.id??record.visit_id??record.code??record.abbr;
@@ -159,7 +160,7 @@ try{
  const reference=JSON.parse(fs.readFileSync(path.join(root,'supabase/database-contract-pg17.json'),'utf8'));
  assert.deepEqual(await readContract(restored),reference.database_contract_profiles.canonical,
   'Restored then upgraded database must match one complete reviewed canonical profile');
- pass('0032–0045 upgrade preserves 15 populated tables (consent default and plaintext links replaced exactly as reviewed; 0042, 0043 and 0045 add only their dictionary entries) and matches the approved PG17 profile');
+ pass('0032–0046 upgrade preserves 15 populated tables (consent default and plaintext links replaced exactly as reviewed; 0042, 0043, 0045 and 0046 add only their dictionary entries) and matches the approved PG17 profile');
 
  await asRole(restored,null,async()=>{
   await assert.rejects(restored.query('SELECT * FROM public.visit_receipts'),permissionDenied);
