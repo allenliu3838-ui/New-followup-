@@ -1,11 +1,11 @@
 // 工作台：自定义入组字段的管理（项目负责人）与每位患者的“入组字段”对话框。
 // 权限与项目上下文由 staff.js 注入；数据库 RPC（save_project_field、set_patient_field_values）仍是唯一的权限与校验依据。
-import { escapeHtml } from '/lib/utils.js?v=registry-20261030-cn-v8';
-import { openModal } from '/lib/followup-dialogs.js?v=registry-20261030-cn-v8';
+import { escapeHtml } from '/lib/utils.js?v=registry-20261030-cn-v9';
+import { openModal } from '/lib/followup-dialogs.js?v=registry-20261030-cn-v9';
 import {
   FIELD_TYPES, YES_NO, MAX_FIELDS, TEXT_MAX, FIELD_PRESETS, sortFields, definitionProblem, parseChoicesText, choicesText,
   fieldRule, inputToValue, storedValue, valueDisplay,
-} from '/lib/project-fields.js?v=registry-20261030-cn-v8';
+} from '/lib/project-fields.js?v=registry-20261030-cn-v9';
 
 const VALUE_COLUMNS = 'field_key,value_text,value_codes,value_num,value_date';
 // 中文与英文之间留一个空格：“载入 REIGNITE…”“载入多囊肾…”。

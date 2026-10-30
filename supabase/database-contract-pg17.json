@@ -3,7 +3,7 @@
   "database_server_major": 17,
   "reference_server_version": "17.6",
   "runtime": "@embedded-postgres/linux-x64@17.6.0-beta.15",
-  "migration_manifest_sha256": "238c2a29468f38d8ecff3789c5f91a4c57a706892b15d10ab71a1a2363a6e793",
+  "migration_manifest_sha256": "6707367a6176fa4fd0fd42844934f12c66f12726344c8e9537ebc160a0d28f72",
   "database_contract_sha256": "aca7000205680905a853fc72280ff60a2f99af32d8b2807bb761de7769ed6b29",
   "profile_definition": "canonical: all reviewed LF SQL; historical_crlf: first 33 reviewed SQL files encoded CRLF, then ten new LF migrations. UTC and fixed search_path. Synthetic Auth/Storage only.",
   "database_contract_profiles": {

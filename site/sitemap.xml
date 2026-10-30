@@ -31,6 +31,11 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://kidneysphereregistry.cn/research.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://kidneysphereregistry.cn/demo</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

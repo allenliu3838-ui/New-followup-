@@ -1,14 +1,14 @@
-import { supabase } from "/lib/supabase-client.js?v=registry-20261030-cn-v8";
-import { createProjectMembers } from "/lib/project-members.js?v=registry-20261030-cn-v8";
-import { qs, qsa, toast, toCsv, downloadText, downloadCsvUtf8Bom, fmtDate, daysLeft, escapeHtml } from "/lib/utils.js?v=registry-20261030-cn-v8";
-import { throttle } from "/lib/rate-limit.js?v=registry-20261030-cn-v8";
-import { validatePassword } from "/lib/password-strength.js?v=registry-20261030-cn-v8";
-import { strictDate, finiteNumber, normalizeUpcr, parseRegistryCsv, readAllRows, readKeysetRows, exportColumns, sha256Text, BASELINE_IMPORT_FIELDS, VISIT_IMPORT_FIELDS, normalizeImportRow, registryErrorMessage, containsPII, assertNoPII, fieldLabel, creatinineUmol, correctionReasonError, CLINICAL_LIMITS, SCR_MGDL_TO_UMOL } from "/lib/registry-data.js?v=registry-20261030-cn-v8";
-import { renderOverviewHtml, renderBoardHtml, renderFilterBar, sortBoardRows, researchToday, formatLocalDateTime } from "/lib/followup-board.js?v=registry-20261030-cn-v8";
-import { createFollowupDialogs, openModal } from "/lib/followup-dialogs.js?v=registry-20261030-cn-v8";
-import { validateFieldsBatch, fieldsTemplateCsv, fieldsTemplateHelp, fieldsExportCsv, activeFields } from "/lib/project-fields.js?v=registry-20261030-cn-v8";
-import { createProjectFieldsUi } from "/lib/project-fields-ui.js?v=registry-20261030-cn-v8";
-import { BATCH_KINDS, TEMPLATES as BATCH_TEMPLATES, KIND_LABELS, PII_NOTICE, SKIP_MAPPING, CHUNK_SIZE, MAX_FILE_BYTES, MAX_FILE_ROWS, EVIDENCE_SOURCES, IMPORTABLE_EVENTS, DETAIL_REQUIRED_EVENTS, BIOPSY_KINDS, oxfordCMatchesCrescents, templateCsv, validateBatch, buildChunks, errorReportCsv, piiHeaderColumns, baseFileName, beijingToday, MASKED_CODE } from "/lib/batch-import.js?v=registry-20261030-cn-v8";
+import { supabase } from "/lib/supabase-client.js?v=registry-20261030-cn-v9";
+import { createProjectMembers } from "/lib/project-members.js?v=registry-20261030-cn-v9";
+import { qs, qsa, toast, toCsv, downloadText, downloadCsvUtf8Bom, fmtDate, daysLeft, escapeHtml } from "/lib/utils.js?v=registry-20261030-cn-v9";
+import { throttle } from "/lib/rate-limit.js?v=registry-20261030-cn-v9";
+import { validatePassword } from "/lib/password-strength.js?v=registry-20261030-cn-v9";
+import { strictDate, finiteNumber, normalizeUpcr, parseRegistryCsv, readAllRows, readKeysetRows, exportColumns, sha256Text, BASELINE_IMPORT_FIELDS, VISIT_IMPORT_FIELDS, normalizeImportRow, registryErrorMessage, containsPII, assertNoPII, fieldLabel, creatinineUmol, correctionReasonError, CLINICAL_LIMITS, SCR_MGDL_TO_UMOL } from "/lib/registry-data.js?v=registry-20261030-cn-v9";
+import { renderOverviewHtml, renderBoardHtml, renderFilterBar, sortBoardRows, researchToday, formatLocalDateTime } from "/lib/followup-board.js?v=registry-20261030-cn-v9";
+import { createFollowupDialogs, openModal } from "/lib/followup-dialogs.js?v=registry-20261030-cn-v9";
+import { validateFieldsBatch, fieldsTemplateCsv, fieldsTemplateHelp, fieldsExportCsv, activeFields } from "/lib/project-fields.js?v=registry-20261030-cn-v9";
+import { createProjectFieldsUi } from "/lib/project-fields-ui.js?v=registry-20261030-cn-v9";
+import { BATCH_KINDS, TEMPLATES as BATCH_TEMPLATES, KIND_LABELS, PII_NOTICE, SKIP_MAPPING, CHUNK_SIZE, MAX_FILE_BYTES, MAX_FILE_ROWS, EVIDENCE_SOURCES, IMPORTABLE_EVENTS, DETAIL_REQUIRED_EVENTS, BIOPSY_KINDS, oxfordCMatchesCrescents, templateCsv, validateBatch, buildChunks, errorReportCsv, piiHeaderColumns, baseFileName, beijingToday, MASKED_CODE } from "/lib/batch-import.js?v=registry-20261030-cn-v9";
 
 const sb = supabase();
 // 基因数据涉及人类遗传资源管理：默认关闭，仅当服务器配置 CONFIG.FEATURES.GENETICS === true 时显示。

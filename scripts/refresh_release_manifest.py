@@ -6,11 +6,12 @@ Run only after the source changes have been reviewed. It recomputes, never relax
   2. supabase/database-contract-pg17.json (native PG17 rebuild; skip with --no-contract)
   3. the release manifest and reviewed-tool hashes under releases/<release dir>/
 
-Production baselines (old_sha256) are the bytes production serves now. The previous manifest
-(registry-cn-v7-20261026) was applied in full on 2026-10-30, so every file's
-baseline is that manifest's new_sha256; files new to this release get old_sha256 = None. If a
-release is pinned again before the previous one has been deployed, set PREVIOUS_DEPLOYED = False
-so the baselines are inherited from the previous manifest's old_sha256 instead.
+Production baselines (old_sha256) are the bytes production serves when this release is applied.
+v9 is pinned while the previous manifest (registry-cn-v8-20261030, kit from 77c672b) awaits
+deployment; the plan deploys v8 first, so every file's baseline is that manifest's new_sha256 and
+files new to this release get old_sha256 = None. The release tool refuses files whose live bytes
+match neither baseline nor target, so v9 cannot be applied before v8. If v8 is skipped, set
+PREVIOUS_DEPLOYED = False and re-pin, so the baselines are inherited from v8's old_sha256 instead.
 CI must only verify (npm test); it must never run this script.
 """
 from pathlib import Path
@@ -25,12 +26,13 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 import registry_integrated_release as release  # noqa: E402
 
-RELEASE_DIR = ROOT / 'releases/registry-cn-v8-20261030'
-MANIFEST_NAME = 'registry-cn-v8-20261030.manifest.json'
-PREVIOUS = ROOT / 'releases/registry-cn-v7-20261026/registry-cn-v7-20261026.manifest.json'
-# PREVIOUS 已整体上线（2026-10-30 发布，发布包取自提交 0061cca）：线上字节 = 它的 new_sha256。
+RELEASE_DIR = ROOT / 'releases/registry-cn-v9-20261030'
+MANIFEST_NAME = 'registry-cn-v9-20261030.manifest.json'
+PREVIOUS = ROOT / 'releases/registry-cn-v8-20261030/registry-cn-v8-20261030.manifest.json'
+# PREVIOUS（v8，发布包取自提交 77c672b）按计划先于 v9 上线：v9 的基线 = 它的 new_sha256。
+# v8 未上线时发布工具会拒绝 v9；若决定跳过 v8，改为 False 后重新固定。
 PREVIOUS_DEPLOYED = True
-PRODUCTION_BASELINE_COMMIT = '0061cca974d881de0af590a2b9d3269ac2c08f46'
+PRODUCTION_BASELINE_COMMIT = '77c672b8cb7ab71fc050bd1fe99ac4f4949dfe25'
 TOOLS = ['build_database_contract_pg17.mjs', 'registry_integrated_release.py', 'registry_pages_release.py', 'registry_visual_release.py']
 BUNDLE_HEADER = '-- GENERATED from supabase/migrations in canonical filename order.\n-- Fresh/isolated databases only; use reviewed increments for production.\n\n'
 ORDER = 'lexicographic filenames; historical duplicate prefixes retained, unique full filenames'

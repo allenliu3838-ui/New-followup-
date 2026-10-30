@@ -74,9 +74,14 @@
     return { label: STATUS_PROPOSED, cls: 'proposed', note: STATUS_PROPOSED_NOTE };
   }
 
+  // 卡片按钮打开合作咨询表单，并带上研究代码；表单按代码在 CollabData 中查出研究名称写入留言，
+  // 每条申请都记入咨询记录，便于逐条跟进。
+  var JOIN_TYPE = '参与研究合作方向';
+  function applyHref(item){
+    return '/demo?type=' + encodeURIComponent(JOIN_TYPE) + '&study=' + encodeURIComponent(item.slug);
+  }
+
   function ProjectCard(item){
-    var subject = encodeURIComponent(item.emailSubject || ('咨询项目：' + item.name));
-    var mailto = 'mailto:' + CONTACT_EMAIL + '?subject=' + subject;
     var st = projectStatus(item);
     var statusStyle = st.cls === 'proposed' ? ' style="background:rgba(217,119,6,.10);color:#92400e;border:1px solid rgba(217,119,6,.28)"' : '';
     var statusHtml = '<span class="proj-status ' + escapeHtml(st.cls) + '"' + statusStyle + '>' + escapeHtml(st.label) + '</span>';
@@ -108,7 +113,7 @@
         ${supportHtml}
         ${detailsHtml}
         <div class="btnbar" style="margin-top:10px">
-          <a class="btn small primary" href="${escapeHtml(mailto)}">${escapeHtml(item.ctaLabel || (st.cls === 'proposed' ? '咨询牵头或参与' : '联系加入'))}</a>
+          <a class="btn small primary" href="${escapeHtml(applyHref(item))}" data-apply-study="${escapeHtml(item.slug)}">${escapeHtml(item.ctaLabel || (st.cls === 'proposed' ? '咨询牵头或参与' : '联系加入'))}</a>
         </div>
         <button type="button" class="copy-email" style="display:none" data-copy-email="${CONTACT_EMAIL}" title="复制邮箱">
           📋 ${CONTACT_EMAIL}

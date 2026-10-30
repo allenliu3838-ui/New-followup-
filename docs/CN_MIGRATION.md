@@ -753,6 +753,8 @@ unset PGPASSWORD OLD_DB_URL OLD_KEY
 
 **状态（2026-10-30）：** v7（`registry-20261026-cn-v7`，发布包取自提交 0061cca）已于 2026-10-30 整体上线：生产库在备份后依次执行了 0042–0045，网页发布后的自动核对全部通过。此后的改动进入 v8（`registry-20261030-cn-v8`），以 v7 清单为生产基线，含迁移 0046（多囊肾 ADPKD 病种模块与血管加压素 V2 受体拮抗剂用药类别，见附录 C.8）；上线时先在生产库执行 0046，再发布前端。
 
+**补充（2026-10-30）：** 研究广场页（`/research.html`）等公开页面改动进入 v9（`registry-20261030-cn-v9`），以 v8 清单为生产基线，没有新迁移，须在 v8 上线之后发布（见附录 C.9）。
+
 | 文件 | 位置 | 现状 | 需要的改动 |
 |---|---|---|---|
 | `scripts/capture_registry_database.py` | 第 13 行 `PROJECT_REF`；`connection_environment()`（约第 30–49 行） | 只接受 `db.etsyglgpiutflethgirs.supabase.co`，或 `*.pooler.supabase.com` 且用户为 `postgres.etsyglgpiutflethgirs` | 新的项目身份（例如 `ksr-aliyun-<地域>-1`）；主机规则改为精确匹配新数据库主机名（如 `db.registry.internal`）与用户 `postgres`；保留 `verify-full` TLS、清除继承的 `PG*` 变量、只读事务、只接受审查过的预检 SQL 等全部现有约束。可选加强：在预检 SQL 中输出 `pg_control_system()` 的 `system_identifier` 并在工具中固定比对，因为自托管主机名不像 Supabase 项目编号那样全局唯一 |
@@ -1124,3 +1126,21 @@ docker exec -i supabase-db psql -U postgres -d postgres -X -t -A \
 然后重新生成只读预检报告，`0046_adpkd_module` 与 `adpkd_module_vocabulary` 均须为 `true`。先升级数据库、暂不发布前端没有影响：v7 网页不显示 ADPKD 选项和新类别，已有功能不变。
 
 前端与分析包（v8）：新建项目可选“ADPKD（常染色体显性多囊肾病）”；ADPKD 项目的负责人可在“自定义入组字段”中载入多囊肾入组字段草案（12 个字段，定义在 `site/lib/project-fields.js`，经 `save_project_field` 逐个新增，草案尚未与牵头单位的病例报告表核对；不含基因检测结果）；用药下拉与批量导入增加新类别。分析包新增 `descriptive_summary.py`（按中心统计入组字段、用药类别与结局事件的人数和占比，只输出人数与统计量），`merge_centers.py` 同时合并各中心的字段定义 `project_fields.csv`；`run_analysis.py` 与 `feasibility_report.py` 的病种代码加入 `ADPKD`。
+
+### C.9 v9：研究广场页（无迁移）
+
+v9（`registry-20261030-cn-v9`）只改公开页面，不含迁移，以 v8 清单（发布包取自提交 77c672b）为生产基线：
+各文件的基线 = v8 的 `new_sha256`，新文件 `research.html` 的基线为空。发布工具核对线上文件时，只认基线或目标两种字节，
+所以 v8 没有上线时 v9 会被拒绝（`Unreviewed files`）。若决定跳过 v8、直接发布 v9，须把 `refresh_release_manifest.py`
+的 `PREVIOUS_DEPLOYED` 改为 `False` 后重新固定发布身份，再生成发布包。
+
+- 新页面 `research.html`（研究广场）：正在征集的研究卡片、发起自己的研究、我的研究、方法与资料、参与规则。
+  医生端用 `https://kidneysphereregistry.cn/research.html?from=doctorapp` 打开；`from` 只接受 `doctorapp`，其余记为研究广场。
+  线上 Nginx 的精确路由不在发布工具管理范围内（`kidneysphereregistry.conf` 是哨兵文件），所以链接用 `.html` 全名，不依赖 `/research` 短链接。
+- 研究卡片的“咨询牵头或参与”由发邮件改为打开合作咨询表单，带上研究代码：`/demo?type=参与研究合作方向&study=<代码>`。
+  表单按代码在 `collaboration-data.js` 中查出研究名称，与来源一起写进留言（`demo_requests.message`），不增加数据库列；未知代码和来源不显示、不写入。
+- 研究方向增加“多囊肾（ADPKD）多中心登记”，状态为“拟议方向（征集牵头单位）”。
+- 首页、合作页和研究广场页的研究卡片是预渲染的：改了 `collaboration-data.js` 或 `collaboration-components.js` 后，
+  运行 `node scripts/build_collaboration_pages.mjs` 重新生成，`--check` 只检查；`tests/ui/public-a-smoke.mjs` 逐字核对。
+
+发布步骤与 v8 相同：数据库服务器只生成预检报告（没有迁移要执行），网站服务器先只读检查，再发布前端。
