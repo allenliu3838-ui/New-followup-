@@ -120,7 +120,7 @@ fields; the proportion of patients with at least one record of each medication c
 [e.g. vasopressin V2 receptor antagonist]; and the proportion with kidney failure, defined as
 a recorded end-stage kidney disease, start of dialysis or kidney transplantation event, or a
 follow-up status of kidney failure. Fields were combined across centres by field code only
-when their type agreed [state whether all centres used the same field draft]. Free-text
+when their type (and, for numbers, their unit) agreed [state whether all centres used the same field draft]. Free-text
 fields were counted as recorded or not and their content was not analysed. The output
 contains aggregate counts only; small cells were [suppressed below N / reported as is] in
 accordance with the data use agreement. Input file SHA-256 values and the consent selection

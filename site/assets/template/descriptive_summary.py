@@ -159,10 +159,17 @@ def overview_rows(patients, visits, groups):
 
 
 def _merged_definition(key, definitions, warnings):
-    """One definition of a field across projects for the ALL rows, or None when the types differ."""
+    """One definition of a field across projects for the ALL rows, or None when the types (or a number's units) differ."""
     kinds = {d["value_type"] for d in definitions}
     if len(kinds) > 1:
         warnings.append(f"字段 {key} 在不同项目中的类型不同（{sorted(kinds)}），合计行不汇总该字段 / field {key} has different types across projects; no ALL row")
+        return None
+    # Numbers are pooled only in one unit; values are never converted, so a unit written differently
+    # (or given in one project and not in another) leaves the field out of the ALL rows.
+    units = {d["unit"] for d in definitions}
+    if kinds == {"number"} and len(units) > 1:
+        shown = " / ".join(sorted(u or "未填单位" for u in units))
+        warnings.append(f"数值字段 {key} 在不同项目中的单位不同（{shown}），合计行不汇总该字段 / field {key} has different units across projects; no ALL row")
         return None
     labels, options = [], []
     for d in definitions:
@@ -176,9 +183,8 @@ def _merged_definition(key, definitions, warnings):
                 hit["labels"].append(c["label"])
     if len(labels) > 1:
         warnings.append(f"字段 {key} 在不同项目中的显示名称不同（{' / '.join(labels)}），合计行按代码汇总 / field {key} has different labels across projects")
-    units = sorted({d["unit"] for d in definitions if d["unit"]})
     return {"field_key": key, "label_cn": " / ".join(labels), "value_type": definitions[0]["value_type"],
-            "choices": [{"code": o["code"], "label": " / ".join(o["labels"])} for o in options], "unit": " / ".join(units),
+            "choices": [{"code": o["code"], "label": " / ".join(o["labels"])} for o in options], "unit": definitions[0]["unit"],
             "active": any(d["active"] for d in definitions), "sort_order": min(d["sort_order"] for d in definitions)}
 
 

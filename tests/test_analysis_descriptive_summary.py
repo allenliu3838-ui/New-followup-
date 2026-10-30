@@ -210,6 +210,20 @@ class DescriptiveSummaryTests(unittest.TestCase):
         with self.assertRaises(ra.DataContractError):
             ds.run(self.tmp / "data", self.tmp / "y", module="C3G")
 
+    def test_numbers_in_different_units_are_not_pooled(self):
+        for unit in ("years", ""):  # written differently, or given in one project only
+            with self.subTest(unit=unit):
+                data = make_pack(self.tmp / f"data-{unit or 'none'}", projects=(P1, P2))
+                rows = read(data / "project_fields.csv")
+                next(r for r in rows if r["project_id"] == P2 and r["field_key"] == "age_at_diagnosis")["unit"] = unit
+                write_csv(data / "project_fields.csv", FIELD_DEF_HEADER, rows)
+                log, t = self.run_summary(data, name=f"out-{unit or 'none'}")
+                num = t["summary_fields_numeric.csv"]
+                self.assertEqual(sorted(r["center_code"] for r in num if r["field_key"] == "age_at_diagnosis"), ["PKD01", "PKD02"], "each centre keeps its own row")
+                self.assertFalse([r for r in t["summary_field_completeness.csv"] if r["center_code"] == "ALL" and r["field_key"] == "age_at_diagnosis"])
+                self.assertTrue(any("age_at_diagnosis" in w and "单位" in w for w in log["warnings"]), log["warnings"])
+                self.assertEqual(pick(num, center_code="PKD01", field_key="age_at_diagnosis")["unit"], "岁")
+
     def test_refuses_values_without_definitions_and_a_used_output_directory(self):
         make_pack(self.tmp / "data", drop=("project_fields",))
         with self.assertRaisesRegex(ra.DataContractError, "project_fields.csv"):

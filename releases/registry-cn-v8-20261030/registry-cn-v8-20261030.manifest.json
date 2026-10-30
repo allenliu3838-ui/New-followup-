@@ -38087,15 +38087,15 @@
       "old_sha256": "e258a8c8fb738d8e6c36f355ec7832f9d241f15692dfa66fceed9bebefb15859"
     },
     "assets/template/METHODS_TEMPLATE_EN.md": {
-      "new_sha256": "e557493db044127df19da3580cee8eff82c07e00c92789fbce1e08c425ec54c9",
+      "new_sha256": "adbe4631dddcd5805d96c0b740b1cd5e88feaf83ff96ffb6d15e10e35af9daca",
       "old_sha256": "fbeecb09771c4a71e137c796aecf045b4d79d7666d3fc19aa27e2cc92c4a7165"
     },
     "assets/template/README_PACK.md": {
-      "new_sha256": "d3e5ead8096a8228d09200f3779c1a89c1c7584e918a1f1777517d2557cc0f20",
+      "new_sha256": "eb64245bb0aaf23f2772d998f4ddbaf1422d68817879b4ba6f18e115de3b980f",
       "old_sha256": "ef89e9530d15b71aabee16eb76b2cfcb95d5c559635c54235bc465d9d35dd90a"
     },
     "assets/template/descriptive_summary.py": {
-      "new_sha256": "ec5aa5fe9a416fbc4e11a5169ffae9bc92c34216303f8503b094737b782be3f2",
+      "new_sha256": "91c058bc1779d5fc231f4ff93ee536d12a8b2897e7efa82794f5d551a4d16220",
       "old_sha256": null
     },
     "assets/template/feasibility_criteria_template.json": {
