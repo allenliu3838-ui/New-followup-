@@ -66,7 +66,7 @@ const NEW_CLASSES = ['内皮素受体拮抗剂', '补体抑制剂', '盐皮质�
 try {
   // ---- A v7 database at 0042 -------------------------------------------------------------
   const upTo42 = migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) <= 42);
-  assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 42), [NEW_MIGRATION, '0044_project_fields.sql', '0045_cystatin_urine_rbc.sql'],
+  assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 42), [NEW_MIGRATION, '0044_project_fields.sql', '0045_cystatin_urine_rbc.sql', '0046_adpkd_module.sql'],
     'the reviewed increment directly follows 0042 (0044 has its own acceptance, tests/project-fields-db.mjs)');
   for (const file of upTo42) await apply(file);
   assert.equal(await count('SELECT count(*) AS n FROM public.registry_schema_versions'), 11);

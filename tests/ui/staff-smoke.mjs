@@ -548,8 +548,10 @@ async function main() {
     await page.click('#projectOverview [data-metric="n_patients"]');
     assert.deepEqual(await boardCodes(page), EXPECTED_ORDER);
 
-    // 3b. 病种模块含 C3G；IgAN 项目不显示 C3G 病理框。
-    assert.ok((await page.locator('#projModule option').evaluateAll(o => o.map(x => x.value))).includes('C3G'), '病种模块应可选 C3G');
+    // 3b. 病种模块含 C3G 与 ADPKD；IgAN 项目不显示 C3G 病理框和多囊肾入组字段草案按钮。
+    const moduleOptions = await page.locator('#projModule option').evaluateAll(o => o.map(x => x.value));
+    assert.ok(moduleOptions.includes('C3G') && moduleOptions.includes('ADPKD'), '病种模块应可选 C3G 和 ADPKD');
+    assert.equal(await page.locator('#btnLoadAdpkdPreset').isHidden(), true, 'IgAN 项目不显示多囊肾入组字段草案按钮');
     assert.deepEqual(await page.evaluate(() => [document.querySelector('#c3gPathBox').style.display, document.querySelector('#iganPathBox').style.display]), ['none', 'block'], 'IgAN 项目显示牛津分型框、隐藏 C3G 病理框');
 
     // 4. 录入随访：130/80 自动拆分、mg/dL 换算、身高、单行 import_registry_rows、skipped 中文提示。
@@ -881,7 +883,7 @@ async function main() {
     //     保存的内容与填写一致，列表标出基准活检；导出 CSV 含活检列。用药类别含 6 个新类别，终点事件不再有疫苗接种。
     assert.equal(await page.locator('#bxMestRow').isVisible(), true, 'IgA 肾病项目的活检记录显示牛津分型');
     const medClasses = await page.locator('#medClass option').evaluateAll(options => options.map(o => o.value));
-    for (const c of ['内皮素受体拮抗剂', '补体抑制剂', '盐皮质激素受体拮抗剂', '预防性抗生素', '试验药物', '疫苗']) assert.ok(medClasses.includes(c), `用药类别应有“${c}”`);
+    for (const c of ['内皮素受体拮抗剂', '补体抑制剂', '盐皮质激素受体拮抗剂', '预防性抗生素', '试验药物', '疫苗', '血管加压素V2受体拮抗剂']) assert.ok(medClasses.includes(c), `用药类别应有“${c}”`);
     assert.equal(medClasses.at(-1), '其他', '“其他”仍在最后');
     const eventTypes = await page.locator('#evtType option').evaluateAll(options => options.map(o => o.value));
     assert.ok(!eventTypes.includes('vaccination') && eventTypes.includes('serious_infection') && eventTypes.includes('hospitalization'), '疫苗接种改在用药记录登记');

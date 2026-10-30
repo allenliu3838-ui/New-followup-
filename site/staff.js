@@ -1,14 +1,14 @@
-import { supabase } from "/lib/supabase-client.js?v=registry-20261026-cn-v7";
-import { createProjectMembers } from "/lib/project-members.js?v=registry-20261026-cn-v7";
-import { qs, qsa, toast, toCsv, downloadText, downloadCsvUtf8Bom, fmtDate, daysLeft, escapeHtml } from "/lib/utils.js?v=registry-20261026-cn-v7";
-import { throttle } from "/lib/rate-limit.js?v=registry-20261026-cn-v7";
-import { validatePassword } from "/lib/password-strength.js?v=registry-20261026-cn-v7";
-import { strictDate, finiteNumber, normalizeUpcr, parseRegistryCsv, readAllRows, readKeysetRows, exportColumns, sha256Text, BASELINE_IMPORT_FIELDS, VISIT_IMPORT_FIELDS, normalizeImportRow, registryErrorMessage, containsPII, assertNoPII, fieldLabel, creatinineUmol, correctionReasonError, CLINICAL_LIMITS, SCR_MGDL_TO_UMOL } from "/lib/registry-data.js?v=registry-20261026-cn-v7";
-import { renderOverviewHtml, renderBoardHtml, renderFilterBar, sortBoardRows, researchToday, formatLocalDateTime } from "/lib/followup-board.js?v=registry-20261026-cn-v7";
-import { createFollowupDialogs, openModal } from "/lib/followup-dialogs.js?v=registry-20261026-cn-v7";
-import { validateFieldsBatch, fieldsTemplateCsv, fieldsTemplateHelp, fieldsExportCsv, activeFields } from "/lib/project-fields.js?v=registry-20261026-cn-v7";
-import { createProjectFieldsUi } from "/lib/project-fields-ui.js?v=registry-20261026-cn-v7";
-import { BATCH_KINDS, TEMPLATES as BATCH_TEMPLATES, KIND_LABELS, PII_NOTICE, SKIP_MAPPING, CHUNK_SIZE, MAX_FILE_BYTES, MAX_FILE_ROWS, EVIDENCE_SOURCES, IMPORTABLE_EVENTS, DETAIL_REQUIRED_EVENTS, BIOPSY_KINDS, oxfordCMatchesCrescents, templateCsv, validateBatch, buildChunks, errorReportCsv, piiHeaderColumns, baseFileName, beijingToday, MASKED_CODE } from "/lib/batch-import.js?v=registry-20261026-cn-v7";
+import { supabase } from "/lib/supabase-client.js?v=registry-20261030-cn-v8";
+import { createProjectMembers } from "/lib/project-members.js?v=registry-20261030-cn-v8";
+import { qs, qsa, toast, toCsv, downloadText, downloadCsvUtf8Bom, fmtDate, daysLeft, escapeHtml } from "/lib/utils.js?v=registry-20261030-cn-v8";
+import { throttle } from "/lib/rate-limit.js?v=registry-20261030-cn-v8";
+import { validatePassword } from "/lib/password-strength.js?v=registry-20261030-cn-v8";
+import { strictDate, finiteNumber, normalizeUpcr, parseRegistryCsv, readAllRows, readKeysetRows, exportColumns, sha256Text, BASELINE_IMPORT_FIELDS, VISIT_IMPORT_FIELDS, normalizeImportRow, registryErrorMessage, containsPII, assertNoPII, fieldLabel, creatinineUmol, correctionReasonError, CLINICAL_LIMITS, SCR_MGDL_TO_UMOL } from "/lib/registry-data.js?v=registry-20261030-cn-v8";
+import { renderOverviewHtml, renderBoardHtml, renderFilterBar, sortBoardRows, researchToday, formatLocalDateTime } from "/lib/followup-board.js?v=registry-20261030-cn-v8";
+import { createFollowupDialogs, openModal } from "/lib/followup-dialogs.js?v=registry-20261030-cn-v8";
+import { validateFieldsBatch, fieldsTemplateCsv, fieldsTemplateHelp, fieldsExportCsv, activeFields } from "/lib/project-fields.js?v=registry-20261030-cn-v8";
+import { createProjectFieldsUi } from "/lib/project-fields-ui.js?v=registry-20261030-cn-v8";
+import { BATCH_KINDS, TEMPLATES as BATCH_TEMPLATES, KIND_LABELS, PII_NOTICE, SKIP_MAPPING, CHUNK_SIZE, MAX_FILE_BYTES, MAX_FILE_ROWS, EVIDENCE_SOURCES, IMPORTABLE_EVENTS, DETAIL_REQUIRED_EVENTS, BIOPSY_KINDS, oxfordCMatchesCrescents, templateCsv, validateBatch, buildChunks, errorReportCsv, piiHeaderColumns, baseFileName, beijingToday, MASKED_CODE } from "/lib/batch-import.js?v=registry-20261030-cn-v8";
 
 const sb = supabase();
 // 基因数据涉及人类遗传资源管理：默认关闭，仅当服务器配置 CONFIG.FEATURES.GENETICS === true 时显示。
@@ -181,6 +181,7 @@ function injectAuthGatedContent() {
   el.projectFieldsDetails = qs("#projectFieldsDetails");
   el.btnNewField = qs("#btnNewField");
   el.btnLoadFieldPreset = qs("#btnLoadFieldPreset");
+  el.btnLoadAdpkdPreset = qs("#btnLoadAdpkdPreset");
 
   el.btnPaperPack = qs("#btnPaperPack");
   el.btnCreateSnapshot = qs("#btnCreateSnapshot");
@@ -288,6 +289,7 @@ function bindAuthGatedEvents() {
   el.btnExportFields?.addEventListener("click", exportFields);
   el.btnNewField?.addEventListener("click", ()=>fieldsUi.openEditor());
   el.btnLoadFieldPreset?.addEventListener("click", ()=>fieldsUi.openPreset());
+  el.btnLoadAdpkdPreset?.addEventListener("click", ()=>fieldsUi.openPreset("adpkd"));
   qs("#projectFieldsList")?.addEventListener("click", e=>{const b=e.target.closest("[data-edit-field]");if(b)fieldsUi.openEditor(b.dataset.editField);});
 
   el.btnPaperPack?.addEventListener("click", ()=>confirmFreeze({download:true}));
@@ -390,7 +392,7 @@ function requireProjectCapability(capability){
   toast(!selectedProject?'请先选择项目':!projectAccess?'项目权限尚未加载，请重试':reason&&['can_write','can_manage_tokens'].includes(capability)?registryErrorMessage(reason):'当前项目角色没有此操作权限，请联系项目负责人');return false;
 }
 function applyProjectAccess(){
-  const groups={can_write:['btnCreatePatient','btnAddVariant','btnAddLab','btnAddMed','btnAddEvent','btnAddBiopsy','importFile','btnConfirmImport','btnOpenVisitEntry'],can_manage_project:['btnSaveSettings','btnNewField','btnLoadFieldPreset'],can_export:['btnExportBaseline','btnExportVisits','btnExportLabs','btnExportMeds','btnExportVariants','btnExportEvents','btnExportBiopsies','btnExportFields','btnPaperPack','btnCreateSnapshot','btnRefreshSnapshots']};
+  const groups={can_write:['btnCreatePatient','btnAddVariant','btnAddLab','btnAddMed','btnAddEvent','btnAddBiopsy','importFile','btnConfirmImport','btnOpenVisitEntry'],can_manage_project:['btnSaveSettings','btnNewField','btnLoadFieldPreset','btnLoadAdpkdPreset'],can_export:['btnExportBaseline','btnExportVisits','btnExportLabs','btnExportMeds','btnExportVariants','btnExportEvents','btnExportBiopsies','btnExportFields','btnPaperPack','btnCreateSnapshot','btnRefreshSnapshots']};
   // data-blocked：按钮因本身状态不可用（如导入预览仍有错误），权限刷新时不重新启用。
   for(const [capability,keys]of Object.entries(groups))for(const key of keys){const node=el[key];if(node){node.dataset.projectCapability=capability;node.disabled=busyButtons.has(node)||!canProject(capability)||node.dataset.blocked==='1';}}
   qsa('[data-project-capability]').forEach(node=>{node.disabled=busyButtons.has(node)||!canProject(node.dataset.projectCapability)||node.dataset.blocked==='1';});
@@ -620,6 +622,8 @@ function showIganPathBox(){
   el.iganPathBox.style.display = (mod === "IGAN") ? "block" : "none";
   el.lnPathBox.style.display   = (mod === "LN")   ? "block" : "none";
   if (el.c3gPathBox) el.c3gPathBox.style.display = (mod === "C3G") ? "block" : "none";
+  // 多囊肾入组字段草案只在 ADPKD 项目中提供。
+  if (el.btnLoadAdpkdPreset) el.btnLoadAdpkdPreset.hidden = mod !== "ADPKD";
   // 肾活检记录中的牛津分型 MEST-C 只用于 IgA 肾病项目。
   if (el.bxMestRow) el.bxMestRow.hidden = mod !== "IGAN";
   refreshBiopsyHint();
@@ -2443,7 +2447,7 @@ async function buildAndDownloadPack(op,frozen,{source='new_snapshot'}={}){
   const tables=Object.fromEntries(Object.entries(frozen.content.tables).filter(([t])=>t!=='data_issues').map(([t,rows])=>[t,rows.map(r=>({...r,center_code:frozen.content.project.center_code,module:frozen.content.project.module}))]));
   const issues=frozen.content.tables.data_issues||[];
   const readAsset=async name=>{const r=await fetch('/assets/template/'+name,{cache:'no-cache'});if(!r.ok)throw new Error(`分析模板 ${name} 加载失败 (${r.status})`);const text=await r.text();if(/^\s*<!doctype html/i.test(text))throw new Error(`分析模板 ${name} 返回了网页`);return text;};
-  const assetNames=['run_analysis.py','merge_centers.py','requirements.txt','METHODS_TEMPLATE_EN.md','README_PACK.md','protocol_template.json','feasibility_report.py','feasibility_criteria_template.json','time_windows.py','time_windows_template.json'];
+  const assetNames=['run_analysis.py','merge_centers.py','requirements.txt','METHODS_TEMPLATE_EN.md','README_PACK.md','protocol_template.json','feasibility_report.py','feasibility_criteria_template.json','time_windows.py','time_windows_template.json','descriptive_summary.py'];
   const assets=await Promise.all(assetNames.map(readAsset));assertContext(op);
   const metaRecord=frozen;
   const zip=new JSZip(),files={},counts={};
@@ -2462,6 +2466,8 @@ async function buildAndDownloadPack(op,frozen,{source='new_snapshot'}={}){
   files['analysis/feasibility_report.py']=assets[6];files['analysis/feasibility_criteria_template.json']=assets[7];
   // 按活检日对齐的时间窗数据表：时间点与窗口须研究双方确认，未确认时输出文件名带 UNCONFIRMED_。
   files['analysis/time_windows.py']=assets[8];files['analysis/time_windows_template.json']=assets[9];
+  // 描述性汇总：按中心统计入组字段、用药类别与结局事件的人数和占比，只输出人数与统计量。
+  files['analysis/descriptive_summary.py']=assets[10];
   // JSON preserves exact raw strings/types independently of spreadsheet-safe CSV escaping.
   files['research_data.json']=frozen.content_text;
   files['qc_issues.csv']='\ufeff'+toCsv(issues,exportColumns(issues,['id','project_id','patient_code','record_type','record_id','rule_code','severity','status','message','resolution_note']));

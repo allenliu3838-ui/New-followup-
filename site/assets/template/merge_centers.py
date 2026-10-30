@@ -12,9 +12,13 @@ others have (for example consent_status or followup_status from an older registr
 version) stops the merge, because blank-filled consent would exclude that whole center
 from analysis and blank follow-up status would silently disable its censoring. Only
 --allow-missing-columns proceeds; the gaps are then recorded in MERGE_MANIFEST.json.
+Custom field definitions (project_fields.csv, one row per project and field) are merged too, so
+time_windows.py and descriptive_summary.py can read the merged data; the same project field sent
+twice must be identical, and a centre with field values must carry its definitions.
 """
 from __future__ import annotations
 import argparse
+import csv
 from pathlib import Path
 import json
 import os
@@ -37,6 +41,45 @@ CRITICAL_COLUMNS = {
     "lab_unit": "化验单位（lab unit）",
     "standard_unit": "化验标准单位（lab standard unit）",
 }
+
+
+def merge_field_definitions(center_dirs, merged_values, hashes, conflicts, duplicates):
+    """project_fields.csv of every centre: (header, rows) with identical re-sends removed, or None if no centre has one."""
+    header, records = None, {}
+    for directory in center_dirs:
+        src = directory/"project_fields.csv"
+        hashes[str(src)] = sha256(src) if src.exists() else None
+        if not src.exists():
+            continue
+        with src.open(encoding="utf-8-sig", newline="") as f:
+            reader = csv.DictReader(f)
+            fields, rows = reader.fieldnames, list(reader)
+        if not fields or len(fields) != len(set(fields)) or not {"project_id", "field_key", "value_type"} <= set(fields):
+            raise DataContractError(f"{src}: missing or duplicate header (project_id, field_key and value_type are required)")
+        if header is None:
+            header = fields
+        elif fields != header:
+            raise DataContractError(f"{src}: columns differ from the other centres' project_fields.csv; re-export with the same registry version")
+        for row in rows:
+            if None in row or any(v is None for v in row.values()) or not row["project_id"].strip() or not row["field_key"].strip():
+                raise DataContractError(f"{src}: malformed row or blank project_id/field_key")
+            key = (row["project_id"], row["field_key"])
+            if key in records:
+                previous = records[key]
+                if previous[0] != row:
+                    for original, source in (previous, (row, str(src))):
+                        conflicts.append({"table": "project_fields", "conflict": "field_definition_differs", **original, "_source_file": source})
+                else:
+                    duplicates.append({"table": "project_fields", "project_id": key[0], "id": row.get("id", ""), "kept_source": previous[1], "duplicate_source": str(src)})
+                continue
+            records[key] = (row, str(src))
+    used = {(r["project_id"], r["field_key"]) for r in merged_values.to_dict("records")} if not merged_values.empty else set()
+    missing = sorted(used - set(records))
+    if missing:
+        raise DataContractError(f"patient_field_values without a definition in any project_fields.csv: {missing[:5]}; include each centre's complete export")
+    if header is None:
+        return None
+    return header, [records[k][0] for k in sorted(records)]
 
 
 def discover_center_dirs(base):
@@ -119,6 +162,7 @@ def merge_all(center_dirs, out_dir, qc_path, verbose=True, allow_missing_columns
                 baseline_keys[pkey]=row
             records[rid]=row;keep.append({c:row[c] for c in cols})
         merged[table]=pd.DataFrame(keep,columns=cols).sort_values(KEY+["id"],kind="stable")
+    definitions=merge_field_definitions(center_dirs,merged["patient_field_values"],hashes,conflicts,duplicates)
     if any((sha256(p) if Path(p).exists() else None)!=digest for p,digest in hashes.items()):
         raise DataContractError("Input exports changed during merge; freeze inputs and retry")
     qc_path.parent.mkdir(parents=True,exist_ok=True)
@@ -136,12 +180,15 @@ def merge_all(center_dirs, out_dir, qc_path, verbose=True, allow_missing_columns
     stage=Path(tempfile.mkdtemp(prefix=".merge-stage-",dir=out_dir.parent))
     try:
         for t,df in merged.items(): df.to_csv(stage/f"{t}.csv",index=False,encoding="utf-8-sig")
+        if definitions is not None:
+            with (stage/"project_fields.csv").open("w",encoding="utf-8-sig",newline="") as f:
+                writer=csv.DictWriter(f,fieldnames=definitions[0],lineterminator="\n");writer.writeheader();writer.writerows(definitions[1])
         # Verify patient referential integrity across the complete merged output.
         load_tables(stage)
         manifest={"version":VERSION,"status":"merged_no_conflicts" if not mismatches else "merged_no_conflicts_with_missing_columns_filled_blank",
                   "input_sha256":hashes,"identity_key":KEY,"exact_retransmissions_removed":len(duplicates),
                   "allow_missing_columns":bool(allow_missing_columns),"column_mismatch":mismatches,"centers":centers,
-                  "counts":{t:len(df) for t,df in merged.items()},"output_sha256":{p.name:sha256(p) for p in sorted(stage.glob('*.csv'))}}
+                  "counts":{**{t:len(df) for t,df in merged.items()},**({"project_fields":len(definitions[1])} if definitions is not None else {})},"output_sha256":{p.name:sha256(p) for p in sorted(stage.glob('*.csv'))}}
         (stage/"MERGE_MANIFEST.json").write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding="utf-8")
         if out_dir.exists():out_dir.rmdir()
         os.replace(stage,out_dir)

@@ -1,13 +1,15 @@
 // 工作台：自定义入组字段的管理（项目负责人）与每位患者的“入组字段”对话框。
 // 权限与项目上下文由 staff.js 注入；数据库 RPC（save_project_field、set_patient_field_values）仍是唯一的权限与校验依据。
-import { escapeHtml } from '/lib/utils.js?v=registry-20261026-cn-v7';
-import { openModal } from '/lib/followup-dialogs.js?v=registry-20261026-cn-v7';
+import { escapeHtml } from '/lib/utils.js?v=registry-20261030-cn-v8';
+import { openModal } from '/lib/followup-dialogs.js?v=registry-20261030-cn-v8';
 import {
-  FIELD_TYPES, YES_NO, MAX_FIELDS, TEXT_MAX, REIGNITE_DRAFT, sortFields, definitionProblem, parseChoicesText, choicesText,
+  FIELD_TYPES, YES_NO, MAX_FIELDS, TEXT_MAX, FIELD_PRESETS, sortFields, definitionProblem, parseChoicesText, choicesText,
   fieldRule, inputToValue, storedValue, valueDisplay,
-} from '/lib/project-fields.js?v=registry-20261026-cn-v7';
+} from '/lib/project-fields.js?v=registry-20261030-cn-v8';
 
 const VALUE_COLUMNS = 'field_key,value_text,value_codes,value_num,value_date';
+// 中文与英文之间留一个空格：“载入 REIGNITE…”“载入多囊肾…”。
+const afterVerb = title => (/^[A-Za-z0-9]/.test(title) ? ' ' : '') + title;
 
 function sameInput(field, before, after) {
   if (before == null || after == null) return before == null && after == null;
@@ -45,7 +47,7 @@ export function createProjectFieldsUi(deps) {
     const box = node(deps.list); if (!box) return;
     const manage = deps.canManage();
     if (!fields.length) {
-      box.innerHTML = `<p class="muted small" data-fields-empty>本项目还没有自定义入组字段。${manage ? '可以新增字段，或载入 REIGNITE 入组字段草案后逐项核对。' : '如研究方案需要，请项目负责人添加。'}</p>`;
+      box.innerHTML = `<p class="muted small" data-fields-empty>本项目还没有自定义入组字段。${manage ? '可以新增字段，或载入入组字段草案后逐项核对。' : '如研究方案需要，请项目负责人添加。'}</p>`;
       return;
     }
     box.innerHTML = `<div class="fu-table-wrap"><table class="table"><thead><tr><th>显示名称</th><th>代码</th><th>类型</th><th>选项 / 单位与范围</th><th>状态</th><th>来源</th>${manage ? '<th></th>' : ''}</tr></thead><tbody>${sortFields(fields).map(f => `<tr data-field-key="${escapeHtml(f.field_key)}">
@@ -136,19 +138,24 @@ ${previous ? `<label class="fu-check"><input type="checkbox" id="feActive"${prev
     return modal;
   }
 
-  /** 载入 REIGNITE 入组字段草案：只新增本项目还没有的字段代码，已有的跳过；载入后由项目负责人逐项核对。 */
-  function openPreset() {
+  /** 载入入组字段草案（FIELD_PRESETS）：只新增本项目还没有的字段代码，已有的跳过；载入后由项目负责人逐项核对。 */
+  function openPreset(presetId = 'reignite') {
     if (!deps.canManage()) { deps.toast('只有项目负责人可以载入字段草案。'); return null; }
+    const preset = FIELD_PRESETS[presetId];
+    if (!preset) return null;
     const op = deps.capture();
-    const plan = REIGNITE_DRAFT.map(f => {
+    if (preset.modules && !preset.modules.includes(String(op.project.module || '').toUpperCase())) {
+      deps.toast(`${preset.title}只用于病种模块为 ${preset.modules.join('、')} 的项目。`); return null;
+    }
+    const plan = preset.fields.map(f => {
       const sameKey = fields.find(x => x.field_key === f.field_key);
       const sameLabel = fields.find(x => x.field_key !== f.field_key && x.label_cn === f.label_cn);
       return { f, skip: sameKey ? '已有同代码字段，跳过' : sameLabel ? `显示名称与“${sameLabel.field_key}”重复，跳过` : '' };
     });
     const adding = plan.filter(p => !p.skip);
     const room = MAX_FIELDS - fields.length;
-    const modal = openModal({ id: 'fieldPreset', title: '载入 REIGNITE 入组字段草案', wide: true, html: `
-<p class="warnbox small">这是本系统按 REIGNITE 入组信息拟定的草案，选项<b>尚未与对方的病例报告表核对</b>。载入后请项目负责人逐项核对：可以修改显示名称、增加选项或停用字段；字段代码与类型载入后不能更改。</p>
+    const modal = openModal({ id: 'fieldPreset', title: `载入${afterVerb(preset.title)}`, wide: true, html: `
+<p class="warnbox small" data-preset-id="${escapeHtml(preset.id)}">${preset.notice}</p>
 <div class="fu-table-wrap"><table class="table"><thead><tr><th>显示名称</th><th>代码</th><th>类型</th><th>选项</th><th>处理</th></tr></thead><tbody>${plan.map(({ f, skip }) => `<tr data-preset-key="${escapeHtml(f.field_key)}"><td>${escapeHtml(f.label_cn)}</td><td><code>${escapeHtml(f.field_key)}</code></td><td>${escapeHtml(FIELD_TYPES[f.value_type])}</td><td class="small">${escapeHtml((f.choices || []).map(c => c.label).join('、'))}</td><td>${escapeHtml(skip || '新增')}</td></tr>`).join('')}</tbody></table></div>
 ${adding.length > room ? `<p class="fu-warn-line small">本项目最多还能新增 ${room} 个字段，草案中的 ${adding.length} 个不能全部载入。</p>` : ''}
 <div id="fpFeedback" class="fu-feedback"></div>
@@ -166,7 +173,7 @@ ${adding.length > room ? `<p class="fu-warn-line small">本项目最多还能新
         }
         delete modal.overlay.dataset.busy; modal.close();
         await load(op);
-        feedback(node(deps.feedback), `已载入 REIGNITE 入组字段草案：新增 ${done} 个字段${plan.length > adding.length ? `，跳过 ${plan.length - adding.length} 个` : ''}。请逐项核对选项。`, 'ok');
+        feedback(node(deps.feedback), `已载入${afterVerb(preset.title)}：新增 ${done} 个字段${plan.length > adding.length ? `，跳过 ${plan.length - adding.length} 个` : ''}。请逐项核对选项。`, 'ok');
       } catch (e) {
         if (deps.isCurrent(op)) {
           feedback(out, `载入未完成：已新增 ${done} 个字段，${message(e)}。可以关闭后重新载入，已有的字段会跳过。`);

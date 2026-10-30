@@ -511,9 +511,9 @@ CONSENT_INCLUDED = ("consented", "waiver")
 CONSENT_VALUES = ("unconfirmed", "consented", "waiver", "declined", "withdrawn")
 FOLLOWUP_STATUS_VALUES = ("active", "lost", "withdrawn", "deceased", "kidney_failure", "transferred")
 # Registry vocabularies (supabase/migrations): module codes accepted for projects
-# (0042_c3g_module.sql) and the events_long.event_type CHECK (0043_biopsy_records.sql: 0042's
+# (0042_c3g_module.sql, 0046_adpkd_module.sql) and the events_long.event_type CHECK (0043_biopsy_records.sql: 0042's
 # vaccination was withdrawn; vaccinations are medications of class 疫苗).
-SUPPORTED_MODULES = ("IGAN", "LN", "MN", "DKD", "CKD", "KTX", "GENERAL", "C3G")
+SUPPORTED_MODULES = ("IGAN", "LN", "MN", "DKD", "CKD", "KTX", "GENERAL", "C3G", "ADPKD")
 EVENT_TYPES = ("egfr_decline_40pct", "egfr_decline_57pct", "esrd", "death", "complete_remission", "partial_remission", "custom",
                "dialysis_start", "kidney_transplant", "relapse", "serious_infection", "hospitalization")
 # Kidney failure (esrd, start of dialysis, kidney transplant) or death.

@@ -82,7 +82,7 @@ const day = async offset => (await row('SELECT (CURRENT_DATE + $1::int)::text AS
 try {
   const upTo37 = migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) <= 37);
   assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 37),
-    [...NEW_MIGRATIONS, '0040_batch_import.sql', '0041_followup_board.sql', '0042_c3g_module.sql', '0043_biopsy_records.sql', '0044_project_fields.sql', '0045_cystatin_urine_rbc.sql'],
+    [...NEW_MIGRATIONS, '0040_batch_import.sql', '0041_followup_board.sql', '0042_c3g_module.sql', '0043_biopsy_records.sql', '0044_project_fields.sql', '0045_cystatin_urine_rbc.sql', '0046_adpkd_module.sql'],
     'the two reviewed increments directly follow 0037 (0040–0044 have their own acceptance, tests/batch-import-db.mjs, tests/followup-board-db.mjs, tests/c3g-module-db.mjs, tests/biopsy-records-db.mjs and tests/project-fields-db.mjs)');
   await applyReviewed(upTo37);
   assert.equal(Number((await row('SELECT count(*) AS n FROM public.registry_schema_versions')).n), 6);

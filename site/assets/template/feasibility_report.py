@@ -33,7 +33,7 @@ from run_analysis import (KEY, VERSION, DataContractError, apply_consent_filter,
                           number, sha256)
 
 CRITERIA_SCHEMA = "feasibility-criteria-v1"
-MODULES = ("IGAN", "LN", "MN", "DKD", "CKD", "KTX", "C3G", "GENERAL")
+MODULES = ("IGAN", "LN", "MN", "DKD", "CKD", "KTX", "C3G", "ADPKD", "GENERAL")
 
 
 class CriteriaError(ValueError):

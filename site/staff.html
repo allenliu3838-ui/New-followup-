@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>科研工作台 · 肾域·科研</title>
   <meta name="robots" content="noindex,nofollow"/>
-  <link rel="stylesheet" href="/app.css?v=registry-20261026-cn-v7"/>
-  <link rel="stylesheet" href="/lib/product-nav.css?v=registry-20261026-cn-v7">
-  <script src="/lib/product-nav.js?v=registry-20261026-cn-v7" defer></script>
-  <script src="/lib/help-assistant.js?v=registry-20261026-cn-v7" defer></script>
+  <link rel="stylesheet" href="/app.css?v=registry-20261030-cn-v8"/>
+  <link rel="stylesheet" href="/lib/product-nav.css?v=registry-20261030-cn-v8">
+  <script src="/lib/product-nav.js?v=registry-20261030-cn-v8" defer></script>
+  <script src="/lib/help-assistant.js?v=registry-20261030-cn-v8" defer></script>
   <link rel="icon" href="/assets/kidneysphere-ai.png"/>
   <style>
     /* 字段提示气泡 */
@@ -171,6 +171,7 @@
                 <option value="LN">LN（狼疮性肾炎）</option>
                 <option value="MN">MN（膜性肾病）</option>
                 <option value="C3G">C3G（C3 肾小球病）</option>
+                <option value="ADPKD">ADPKD（常染色体显性多囊肾病）</option>
                 <option value="GENERAL">通用（混合/其他）</option>
                 <option value="KTX">KTx（肾移植术后）</option>
               </select>
@@ -209,6 +210,7 @@
           <div class="btnbar" id="projectFieldsActions">
             <button class="btn" id="btnNewField" type="button" data-project-capability="can_manage_project">新增字段</button>
             <button class="btn" id="btnLoadFieldPreset" type="button" data-project-capability="can_manage_project">载入 REIGNITE 入组字段草案…</button>
+            <button class="btn" id="btnLoadAdpkdPreset" type="button" data-project-capability="can_manage_project" hidden>载入多囊肾入组字段草案…</button>
           </div>
         </details>
         </div>
@@ -693,6 +695,7 @@
               <option value="预防性抗生素">预防性抗生素</option>
               <option value="试验药物">试验药物</option>
               <option value="疫苗">疫苗（接种记录：药品名称写疫苗名称，开始日期为接种日期）</option>
+              <option value="血管加压素V2受体拮抗剂">血管加压素V2受体拮抗剂（如托伐普坦）</option>
               <option value="其他">其他</option>
             </select>
             <div class="row">
@@ -958,10 +961,10 @@
     </template>
   </div>
 
-  <script src="/lib/error-logger.js?v=registry-20261026-cn-v7"></script>
-  <script src="/config.js?v=registry-20261026-cn-v7"></script>
-  <script src="/lib/vendor/jszip.min.js?v=registry-20261026-cn-v7"></script>
-  <script type="module" src="/staff.js?v=registry-20261026-cn-v7"></script>
+  <script src="/lib/error-logger.js?v=registry-20261030-cn-v8"></script>
+  <script src="/config.js?v=registry-20261030-cn-v8"></script>
+  <script src="/lib/vendor/jszip.min.js?v=registry-20261030-cn-v8"></script>
+  <script type="module" src="/staff.js?v=registry-20261030-cn-v8"></script>
   <footer class="site-footer">
     <div>微信：GlomConChina1 · 邮箱：<a href="mailto:china@kidneysphere.com">china@kidneysphere.com</a></div>
     <div style="margin-top:4px">© 2025–2026 上海胤域医学科技有限公司 · 肾域·科研 · <a href="/security">安全合规</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a> · <a href="/disclaimer">免责声明</a> · <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">沪ICP备2026008040号-1</a> · <a href="https://beian.mps.gov.cn/#/query/webSearch?code=37091102000922" target="_blank" rel="noopener">鲁公网安备37091102000922号</a></div>

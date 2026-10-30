@@ -48,7 +48,7 @@ python analysis/run_analysis.py --data analysis/merged-data
 
 **确认运行日志的 input_dir、input_sha256 和人数是合并后的输入，不能只运行默认命令而误分析旧的单中心 data。**
 
-**自定义入组字段：** 合并脚本合并各中心的 `patient_field_values.csv`，但不合并、也不核对字段定义 `project_fields.csv`。合并前请逐一比较各中心的字段定义（字段代码、类型和选项代码须一致）；不一致时同一代码在不同中心含义不同，不能直接合并分析。
+**自定义入组字段：** 合并脚本同时合并各中心的 `patient_field_values.csv` 和字段定义 `project_fields.csv`。同一项目同一字段重复传送时须完全相同，否则阻止合并；某中心有字段取值却没有字段定义，也阻止合并。不同项目之间的字段定义不会自动核对：同一字段代码在各中心的类型和选项代码须一致，合计才有意义。`descriptive_summary.py` 遇到类型不同的字段不汇总合计行，并在日志中提示。各中心最好载入同一份字段草案。
 
 ## 4. 研究方案文件（终点定义）
 
@@ -60,7 +60,7 @@ python analysis/run_analysis.py --data analysis/merged-data
 2. PI 对照所采用指南版本或研究方案的原文逐项核对、修改（模板中提到的指南只供查找原文，模板没有转述指南条文）：
    - `baseline`：基线 eGFR / UPCR 取基线表记录，还是取基线日期前后若干天内的随访测量（`window_days`、`nearest` 或 `mean`）；
    - `egfr_decline`：下降阈值（如 40%）以及持续确认条件 `confirmation`——至少几次测量（`min_measurements`）、首末间隔至少几天（`min_interval_days`）、是否要求到最后一次测量仍低于阈值（`require_last_below`）；必填 `kidney_failure_or_death_before_confirmation`：确认下降之前发生已确认的 esrd / death 事件时，`count_as_event` 计为终点事件（复合终点，结果列名为 `egfr_decline_<阈值>pct_sustained_or_kidney_failure_death`，`event_basis` 写明是哪类事件），`censor` 在该日期截尾（信息性截尾，会低估下降）。模板示例为 `count_as_event`。随访状态 `kidney_failure` / `deceased` 只作截尾、不计为事件（数据字典说明随访状态不等同于经核实的终点事件），需要计入时请在事件表登记已确认事件；
-   - `remission`：按病种（只能是 `IGAN`、`LN`、`MN`、`DKD`、`CKD`、`KTX`、`C3G`、`GENERAL`）分别写完全 / 部分缓解的 UPCR 条件、是否要求同日 eGFR 稳定、确认条件和评估时间窗；用了下降百分比（`upcr_reduction_pct_at_least`）就必须写 `upcr_reduction_reference`：`baseline`（方案基线值）或 `peak`（基线窗口起至该次测量之前的最高 UPCR，含基线值）；`baseline_upcr_at_least` 是评估缓解的入选条件（基线 UPCR 可得且不低于该值才评估，否则判为不可评估并写入质控；不填时至少要求基线 UPCR 可得且高于完全缓解的 `upcr_below`，无完全缓解定义时为部分缓解的 `upcr_below`），避免基线本来就很低或缺失的患者被判为缓解；没有写的病种不计算；脚本算不了的条件（如血清白蛋白）列在 `additional_criteria_not_computed`，结果会标为“其余条件未评估”，需人工补核；
+   - `remission`：按病种（只能是 `IGAN`、`LN`、`MN`、`DKD`、`CKD`、`KTX`、`C3G`、`ADPKD`、`GENERAL`）分别写完全 / 部分缓解的 UPCR 条件、是否要求同日 eGFR 稳定、确认条件和评估时间窗；用了下降百分比（`upcr_reduction_pct_at_least`）就必须写 `upcr_reduction_reference`：`baseline`（方案基线值）或 `peak`（基线窗口起至该次测量之前的最高 UPCR，含基线值）；`baseline_upcr_at_least` 是评估缓解的入选条件（基线 UPCR 可得且不低于该值才评估，否则判为不可评估并写入质控；不填时至少要求基线 UPCR 可得且高于完全缓解的 `upcr_below`，无完全缓解定义时为部分缓解的 `upcr_below`），避免基线本来就很低或缺失的患者被判为缓解；没有写的病种不计算；脚本算不了的条件（如血清白蛋白）列在 `additional_criteria_not_computed`，结果会标为“其余条件未评估”，需人工补核；
    - `censoring`：哪些随访状态（失访、退出、死亡、肾衰竭、转出）及哪些已确认事件的日期作为截尾。事件类型只能取登记系统事件表的取值（`esrd`、`death`、`dialysis_start`、`kidney_transplant`、`relapse`、`serious_infection`、`hospitalization`、`custom`、`egfr_decline_40pct`、`egfr_decline_57pct`、`complete_remission`、`partial_remission`；肾衰竭是 `esrd`，不是 `eskd`）。截尾日当天的测量仍使用，之后的测量不参与判定。随访状态日期早于基线日期时，该日期不用于截尾（不会截掉基线与随访测量），并写入质控；
    - `units`：阈值使用的单位。随访 UPCR 在登记系统中以 mg/g 保存，`units.upcr` 必须写 mg/g；与数据单位不一致时脚本拒绝运行，不会自动换算阈值。UPCR 阈值按声明的单位检查量级，mg/g 方案中写 0.3 这类 g/g 数值会被拒绝。
 3. 确认后把相应章节的 `requires_pi_confirmation` 改为 `false`，并在 `confirmation` 中填写确认人和日期（YYYY-MM-DD）。有章节标为已确认但没有确认人或日期时，脚本拒绝运行。
@@ -135,3 +135,19 @@ KFRE 风险计算已停用：旧实现用 UPCR 替代 UACR、猜测检验单位�
 1. 复制 `analysis/time_windows_template.json`，按研究双方确认的方案修改 `timepoints`（名称、目标天数、窗口起止天数）与 `variables`；需要把入组字段一并放进宽表时，在 `patient_fields` 中按字段代码列出（例如 `["ethnicity", "comorbidities"]`），宽表会增加 `field_<代码>` 列，取值为导出中的原样代码、数值或日期。确认后把 `confirmed` 改为 `true`，填写 `confirmed_by` 与 `confirmed_date`。模板中的时间点只是示例。
 2. 运行 `python3 analysis/time_windows.py --data analysis/data --config 我的时间窗配置.json --out time_windows`（输出目录须为新的空目录）。
 3. 结果：`time_windows_long.csv`（长表，每行一位患者的一个时间点的一个变量）、`time_windows_wide.csv`（宽表，每位患者一行）、`time_windows_no_anchor.csv`（无对齐日期的患者及原因）和 `TIME_WINDOWS_LOG.json`（配置全文与 SHA-256、输入与输出文件 SHA-256、各时间点取到值的人数、知情同意筛选）。配置未确认时，所有文件名以 `UNCONFIRMED_` 开头，不能作为正式分析数据。
+
+## 9. 描述性汇总（可选，`descriptive_summary.py`）
+
+按项目/中心和全部中心合计，统计已纳入患者的基本情况、入组字段、用药类别和结局事件，输出人数、占比和统计量，可用于登记研究的基线特征表和各中心数据完整性核对。不输出研究编号；文本字段只统计是否填写，不输出内容。
+
+1. 运行 `python3 analysis/descriptive_summary.py --data analysis/data --out summary`（输出目录须为新的空目录）。多中心先用 `merge_centers.py` 合并，再把合并后的目录传给 `--data`。只汇总一个病种时加 `--module`，例如 `--module ADPKD`。
+2. 结果：
+   - `summary_overview.csv`：人数、性别、基线年龄与基线 eGFR（中位数与四分位数）、有随访的人数与随访年数。
+   - `summary_fields_categorical.csv`：单选、是/否、多选字段每个选项的人数。`pct_of_patients` 以该中心全部纳入患者为分母，`pct_of_recorded` 以填写了该字段的患者为分母，两者并列。
+   - `summary_fields_numeric.csv`：数值字段的例数、均值、标准差、中位数、四分位数、最小值和最大值。
+   - `summary_field_completeness.csv`：每个字段的填写人数与比例，用于核对各中心数据完整性。
+   - `summary_medications.csv`：每种药物类别至少有一条记录的患者数与占比，例如多囊肾项目的“血管加压素V2受体拮抗剂”。
+   - `summary_events.csv`：每种事件类型的患者数（已确认的与任何记录分列），以及肾衰竭合计（终末期肾病、开始透析或肾移植事件，或随访状态为肾衰竭）。
+   - `SUMMARY_RUN_LOG.json`：输入文件 SHA-256、知情同意筛选、各项口径说明与提示。
+3. 合计行（`ALL`）的入组字段按字段代码汇总，只计入定义了该字段的项目。同一代码在不同项目中类型不同，或数值字段的单位写法不同时，不汇总合计行（脚本不换算单位）；显示名称不同时合并显示。这些情况都在日志中提示。
+4. 人群、年龄和基线 eGFR 的口径与 `run_analysis.py` 相同。人数很少的格子也可能识别出个人：对外提供汇总结果前，按数据使用协议的小样本抑制规则处理。
