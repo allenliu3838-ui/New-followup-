@@ -166,7 +166,7 @@ async function projectStatuses(name, page, gridSelector) {
   check(st.confirmed > 0 || !st.labels.includes('招募中'), `${name}: 没有牵头单位/PI/伦理信息的项目不应显示“招募中”`);
 }
 
-// 首页与合作页预渲染的项目卡必须与 collaboration-data.js + collaboration-components.js 的输出逐字一致；
+// 首页、合作页与研究广场页预渲染的项目卡必须与 collaboration-data.js + collaboration-components.js 的输出逐字一致；
 // 浏览器端在卡片 slug 一致时会直接复用预渲染内容，数据改了而 HTML 没重新生成会悄悄显示旧文案。
 {
   const sandbox = { window: {} };
@@ -177,7 +177,7 @@ async function projectStatuses(name, page, gridSelector) {
   const expected = sandbox.window.CollabComponents.projectsHtml(sandbox.window.CollabData.projectCards);
   const BEGIN = '<!-- BEGIN GENERATED PROJECT CARDS: node scripts/build_collaboration_pages.mjs -->';
   const END = '<!-- END GENERATED PROJECT CARDS -->';
-  for (const f of ['index.html', 'collaboration.html']) {
+  for (const f of ['index.html', 'collaboration.html', 'research.html']) {
     const src = fs.readFileSync(path.join(SITE, f), 'utf8');
     const a = src.indexOf(BEGIN), b = src.indexOf(END);
     if (a < 0 || b < 0) { check(false, `${f}: 缺少预渲染项目卡标记`); continue; }
@@ -269,6 +269,49 @@ try {
     await productNav('collaboration', r.page);
     await bannedWords('collaboration', r.page);
     await projectStatuses('collaboration', r.page, '#projectsGrid');
+    const applyLinks = await r.page.evaluate(() => Array.from(document.querySelectorAll('#projectsGrid a[data-apply-study]')).map(a => a.getAttribute('href')));
+    check(applyLinks.length > 0 && applyLinks.every(h => h.startsWith('/demo?type=')), `collaboration: 项目卡按钮应打开合作咨询表单 ${JSON.stringify(applyLinks.slice(0, 2))}`);
+    await r.context.close();
+  }
+
+  // 研究广场：栏目、项目卡、按钮去向（合作咨询表单 + 研究代码 + 来源）；来源只认固定取值
+  for (const [from, expected] of [['', 'research'], ['doctorapp', 'doctorapp'], ['evil', 'research']]) {
+    const r = await openPage(browser, '/research.html' + (from ? `?from=${from}` : ''));
+    const name = `research(${from || 'direct'})`;
+    commonChecks(name, r);
+    await noPlausible(name, r.page);
+    await productNav(name, r.page);
+    await bannedWords(name, r.page);
+    await projectStatuses(name, r.page, '#researchProjects');
+    const st = await r.page.evaluate(() => ({
+      title: document.title,
+      h1: (document.querySelector('h1') || {}).textContent,
+      sections: ['studies', 'start-own', 'my-research', 'resources', 'rules'].filter(id => document.getElementById(id)),
+      tabs: document.querySelectorAll('#researchTabs .filter-tab').length,
+      cards: Array.from(document.querySelectorAll('#researchProjects .project-card')).map(c => ({
+        slug: c.dataset.projectSlug,
+        href: (c.querySelector('a[data-apply-study]') || { getAttribute: () => '' }).getAttribute('href'),
+      })),
+      demoLinks: Array.from(document.querySelectorAll('a[href^="/demo"]')).map(a => a.getAttribute('href')),
+    }));
+    check(st.title === '研究广场 · 肾域·科研' && st.h1 === '研究广场', `${name}: 页面名称 ${st.title} / ${st.h1}`);
+    check(st.sections.length === 5, `${name}: 栏目不全 ${JSON.stringify(st.sections)}`);
+    check(st.tabs > 1, `${name}: 方向筛选未显示`);
+    check(st.cards.some(c => c.slug === 'adpkd-registry'), `${name}: 缺少多囊肾登记卡片`);
+    for (const c of st.cards) {
+      const u = new URL(c.href, ORIGIN);
+      check(u.pathname === '/demo' && u.searchParams.get('type') === '参与研究合作方向' && u.searchParams.get('study') === c.slug
+        && u.searchParams.get('from') === expected, `${name}: ${c.slug} 的申请按钮去向 ${c.href}`);
+    }
+    check(st.demoLinks.length === st.cards.length + 2, `${name}: 合作咨询链接数 ${st.demoLinks.length}`);
+    check(st.demoLinks.every(h => new URL(h, ORIGIN).searchParams.get('from') === expected), `${name}: 合作咨询链接未带来源 ${JSON.stringify(st.demoLinks)}`);
+    if (from === 'doctorapp') {
+      // 医生端多在手机上打开：窄屏不应出现横向滚动
+      await r.page.setViewportSize({ width: 375, height: 812 });
+      await r.page.waitForTimeout(200);
+      const w = await r.page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+      check(w.scroll <= w.client, `${name}: 375px 宽度出现横向滚动 ${JSON.stringify(w)}`);
+    }
     await r.context.close();
   }
 
@@ -333,6 +376,69 @@ try {
       check(row.use_case === 'INDUSTRY_RWS_CRO', `${name}: use_case ${row.use_case}`);
       check(String(row.message).includes('咨询类型：药企医学 / 真实世界研究 / CRO') && String(row.message).includes('真实世界研究合作'),
         `${name}: message ${row.message}`);
+    }
+    await r.context.close();
+  }
+
+  // 合作咨询：研究卡片带来的研究代码与来源写进留言；未知代码、未知来源不显示也不写入；不增加表单字段
+  for (const [query, studyName, sourceLabel] of [
+    ['?study=adpkd-registry&from=doctorapp', '多囊肾（ADPKD）多中心登记', '医生端'],
+    ['?type=' + encodeURIComponent('参与研究合作方向') + '&study=c3g-cohort&from=research', 'C3G 多中心前瞻性队列', '研究广场'],
+    ['?study=no-such-study&from=evil', null, null],
+  ]) {
+    const posted = [];
+    const r = await openPage(browser, '/demo' + query, {
+      overrides: {
+        '/config.js': t => `${t}\n;window.CONFIG.SUPABASE_URL=${JSON.stringify(ORIGIN + '/__sb')};window.CONFIG.SUPABASE_ANON_KEY='smoke-anon-key';`,
+      },
+      onRequest: async (route, req, url) => {
+        if (!url.pathname.startsWith('/__sb/')) return false;
+        if (url.pathname === '/__sb/rest/v1/demo_requests' && req.method() === 'POST') {
+          posted.push(JSON.parse(req.postData() || 'null'));
+          await route.fulfill({ status: 201, contentType: 'application/json', body: '' });
+        } else {
+          await route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
+        }
+        return true;
+      },
+    });
+    const name = `demo-study(${query})`;
+    commonChecks(name, r);
+    const st = await r.page.evaluate(() => {
+      const note = document.getElementById('studyNote');
+      return {
+        note: note && !note.hidden ? note.textContent : null,
+        selected: document.getElementById('f_inquiry_type').value,
+        fields: Array.from(document.querySelectorAll('#demoForm input, #demoForm select, #demoForm textarea')).map(e => e.id),
+      };
+    });
+    check(JSON.stringify(st.fields) === JSON.stringify(['f_name', 'f_institution', 'f_contact_kind', 'f_contact', 'f_inquiry_type', 'f_message']),
+      `${name}: 表单字段 ${JSON.stringify(st.fields)}`);
+    if (studyName) {
+      check(st.note === `申请牵头或参与的研究：${studyName}`, `${name}: 研究说明 ${st.note}`);
+      check(st.selected === '参与研究合作方向', `${name}: 应预选“参与研究合作方向” ${st.selected}`);
+    } else {
+      check(st.note === null, `${name}: 未知研究代码不应显示 ${st.note}`);
+      check(st.selected === '', `${name}: 未知研究代码不应预选类型 ${st.selected}`);
+      await r.page.selectOption('#f_inquiry_type', '预约演示');
+    }
+    await r.page.fill('#f_name', '测试医生');
+    await r.page.fill('#f_institution', '测试医院肾内科');
+    await r.page.fill('#f_contact', 'doctor@example.com');
+    await r.page.click('#btnSubmit');
+    await r.page.locator('[data-testid=demo-success]').waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+    check(posted.length === 1, `${name}: 提交次数 ${posted.length}`);
+    const row = Array.isArray(posted[0]) ? posted[0][0] : posted[0];
+    if (row) {
+      const extra = Object.keys(row).filter(k => !DEMO_COLUMNS.has(k));
+      check(extra.length === 0, `${name}: 载荷含未授权列 ${extra}`);
+      const msg = String(row.message);
+      if (studyName) {
+        check(row.use_case === 'JOIN_PROJECT', `${name}: use_case ${row.use_case}`);
+        check(msg === `咨询类型：参与研究合作方向 | 研究：${studyName} | 来源：${sourceLabel}`, `${name}: message ${msg}`);
+      } else {
+        check(msg === '咨询类型：预约演示', `${name}: 未知代码与来源不应写入 message ${msg}`);
+      }
     }
     await r.context.close();
   }

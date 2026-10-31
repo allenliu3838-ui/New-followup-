@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "release": "registry-20261030-cn-v8",
+  "release": "registry-20261030-cn-v9",
   "required_versions": [
     "0032_security_integrity",
     "0033_billing_registration",
