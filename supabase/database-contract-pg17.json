@@ -3,7 +3,7 @@
   "database_server_major": 17,
   "reference_server_version": "17.6",
   "runtime": "@embedded-postgres/linux-x64@17.6.0-beta.15",
-  "migration_manifest_sha256": "6707367a6176fa4fd0fd42844934f12c66f12726344c8e9537ebc160a0d28f72",
+  "migration_manifest_sha256": "2d20b320649f50a23a29f7c02ae730aa09ca839f2125cf89f7f1ef1897e3d4ce",
   "database_contract_sha256": "aca7000205680905a853fc72280ff60a2f99af32d8b2807bb761de7769ed6b29",
   "profile_definition": "canonical: all reviewed LF SQL; historical_crlf: first 33 reviewed SQL files encoded CRLF, then ten new LF migrations. UTC and fixed search_path. Synthetic Auth/Storage only.",
   "database_contract_profiles": {
@@ -1064,13 +1064,19 @@
               "name": "events_long_event_type_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "78e19be0aeeb559ae6ab2ca4ff600a5e"
+              "definition_md5": "95afd377d96f88d47f64b5fc947002b7"
             },
             {
               "name": "events_long_evidence_source_check",
               "type": "c",
               "validated": true,
               "definition_md5": "d0eb6ce5c230de62546ecf940e0d6540"
+            },
+            {
+              "name": "events_long_los_days_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "8941aa16ec9f03f5473f0fcd78e9a084"
             },
             {
               "name": "events_long_patient_project_fk",
@@ -1117,6 +1123,124 @@
               "type": "p",
               "validated": true,
               "definition_md5": "4c6419b3704337bbfe50f018842a9ad3"
+            }
+          ]
+        },
+        {
+          "rls": true,
+          "table": "imaging_long",
+          "schema": "public",
+          "force_rls": false,
+          "anon_delete": true,
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_delete": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "constraints": [
+            {
+              "name": "imaging_long_business_key",
+              "type": "u",
+              "validated": true,
+              "definition_md5": "1df352592b2adc92b6c6b8734be8ffe7"
+            },
+            {
+              "name": "imaging_long_date_floor",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "9f203b7f6574189bbabdfab4e7e64d2b"
+            },
+            {
+              "name": "imaging_long_has_measurement",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "a9a3007eda05b59b55bf2d3ccf6686ff"
+            },
+            {
+              "name": "imaging_long_left_depth_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "ba4636ffbf289f99aa99979cefff8b19"
+            },
+            {
+              "name": "imaging_long_left_length_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "648aa16d63c071e9eab3dc9b894e758e"
+            },
+            {
+              "name": "imaging_long_left_width_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "6cb104ac6efdcff98c74f121c5347f90"
+            },
+            {
+              "name": "imaging_long_liver_cysts_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "e873ece699e84bf2102ba58978abd320"
+            },
+            {
+              "name": "imaging_long_mayo_class_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "67fa390c5a17b896f9dec9bb529f2089"
+            },
+            {
+              "name": "imaging_long_mayo_class_modality",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "4d2d9426fb2fdb792d0dc73770920e90"
+            },
+            {
+              "name": "imaging_long_modality_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "6a304cf023cd618919d34079bde2baab"
+            },
+            {
+              "name": "imaging_long_notes_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "439843aa9b176b2ab258b17b88823dea"
+            },
+            {
+              "name": "imaging_long_patient_project_fk",
+              "type": "f",
+              "validated": true,
+              "definition_md5": "519efb4e5ec5766e13d5df74c5ed0e63"
+            },
+            {
+              "name": "imaging_long_pkey",
+              "type": "p",
+              "validated": true,
+              "definition_md5": "4c6419b3704337bbfe50f018842a9ad3"
+            },
+            {
+              "name": "imaging_long_project_id_fkey",
+              "type": "f",
+              "validated": true,
+              "definition_md5": "07f3414b4de8691ee7edea30c01f758f"
+            },
+            {
+              "name": "imaging_long_right_depth_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "4585a720fb6b542f52dbd7e5964989c0"
+            },
+            {
+              "name": "imaging_long_right_length_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "fd930a81c17018eb61176b2dabc5e14e"
+            },
+            {
+              "name": "imaging_long_right_width_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "78067b9b32874298e0fbf85bd8d1f741"
             }
           ]
         },
@@ -2054,7 +2178,7 @@
               "name": "registry_import_batches_kind_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "336a571cb3428a0624fcb9c167bdfad7"
+              "definition_md5": "de670e03f52a63284701773042c468aa"
             },
             {
               "name": "registry_import_batches_pkey",
@@ -2118,7 +2242,7 @@
               "name": "registry_import_records_kind_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "336a571cb3428a0624fcb9c167bdfad7"
+              "definition_md5": "de670e03f52a63284701773042c468aa"
             },
             {
               "name": "registry_import_records_project_id_fkey",
@@ -2351,6 +2475,12 @@
               "type": "c",
               "validated": true,
               "definition_md5": "4f2751bb20b2af4cdc38000969f6b971"
+            },
+            {
+              "name": "visits_long_weight_kg_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "66bbeab8150b528468d7dfdabdf906b5"
             },
             {
               "name": "visits_sbp_range",
@@ -5596,6 +5726,25 @@
           "array_dimensions": 0
         },
         {
+          "name": "los_days",
+          "type": "smallint",
+          "table": "events_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "notes",
           "type": "text",
           "table": "events_long",
@@ -5895,6 +6044,367 @@
           "auth_insert": false,
           "auth_select": true,
           "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "75230039beb12ce952f24927f2bfa2f2",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "exam_date",
+          "type": "date",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "id",
+          "type": "uuid",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "f3b72bb359a50b640590970a2ab8e514",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "left_depth_cm",
+          "type": "numeric",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "left_length_cm",
+          "type": "numeric",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "left_width_cm",
+          "type": "numeric",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "liver_cysts",
+          "type": "text",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "mayo_image_class",
+          "type": "text",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "modality",
+          "type": "text",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "patient_code",
+          "type": "text",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "right_depth_cm",
+          "type": "numeric",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "right_length_cm",
+          "type": "numeric",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "right_width_cm",
+          "type": "numeric",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "tkv_ml",
+          "type": "numeric",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "s",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "a9907d77a355f4564bfb14425365212c",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "75230039beb12ce952f24927f2bfa2f2",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -12493,6 +13003,25 @@
           "array_dimensions": 0
         },
         {
+          "name": "weight_kg",
+          "type": "numeric",
+          "table": "visits_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "action",
           "type": "text",
           "table": "visits_long_history",
@@ -13991,6 +14520,74 @@
           "predicate_md5": null,
           "definition_md5": "7ac4b1a58515e3e8ee28418fea794c4c",
           "attribute_count": 3,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
+          "name": "imaging_long_business_key",
+          "ready": true,
+          "table": "imaging_long",
+          "valid": true,
+          "schema": "public",
+          "unique": true,
+          "columns": [
+            {
+              "column": "project_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "patient_code",
+              "included": false,
+              "position": 2,
+              "expression": false
+            },
+            {
+              "column": "exam_date",
+              "included": false,
+              "position": 3,
+              "expression": false
+            },
+            {
+              "column": "modality",
+              "included": false,
+              "position": 4,
+              "expression": false
+            }
+          ],
+          "primary": false,
+          "immediate": true,
+          "key_count": 4,
+          "predicate_md5": null,
+          "definition_md5": "778337036cb18196718941819cae9621",
+          "attribute_count": 4,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
+          "name": "imaging_long_pkey",
+          "ready": true,
+          "table": "imaging_long",
+          "valid": true,
+          "schema": "public",
+          "unique": true,
+          "columns": [
+            {
+              "column": "id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            }
+          ],
+          "primary": true,
+          "immediate": true,
+          "key_count": 1,
+          "predicate_md5": null,
+          "definition_md5": "f59c3a2c227f0b5f628166319b42074c",
+          "attribute_count": 1,
           "expressions_md5": null,
           "nulls_not_distinct": false
         },
@@ -15977,6 +16574,54 @@
           "roles": [
             "authenticated"
           ],
+          "table": "imaging_long",
+          "policy": "member_delete",
+          "schema": "public",
+          "command": "DELETE",
+          "permissive": "PERMISSIVE",
+          "with_check": null
+        },
+        {
+          "qual": null,
+          "roles": [
+            "authenticated"
+          ],
+          "table": "imaging_long",
+          "policy": "member_insert",
+          "schema": "public",
+          "command": "INSERT",
+          "permissive": "PERMISSIVE",
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
+        },
+        {
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "imaging_long",
+          "policy": "member_read",
+          "schema": "public",
+          "command": "SELECT",
+          "permissive": "PERMISSIVE",
+          "with_check": null
+        },
+        {
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "imaging_long",
+          "policy": "member_update",
+          "schema": "public",
+          "command": "UPDATE",
+          "permissive": "PERMISSIVE",
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
+        },
+        {
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
+          "roles": [
+            "authenticated"
+          ],
           "table": "ktx_baseline_ext",
           "policy": "member_delete",
           "schema": "public",
@@ -16779,6 +17424,55 @@
           "definition_md5": "118323cde9536235ab239bedf81611d0"
         },
         {
+          "table": "imaging_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "a_registry_identity",
+          "definition_md5": "ab88593822b6c17878d1a7f25a69612e"
+        },
+        {
+          "table": "imaging_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "registry_audit_imaging",
+          "definition_md5": "112f24bfc257e07f1b120ef8a33a10c6"
+        },
+        {
+          "table": "imaging_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "registry_exam_date_future",
+          "definition_md5": "9abe6cefa7dd225e82db8e4874cf4325"
+        },
+        {
+          "table": "imaging_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "tr_imaging_created_by",
+          "definition_md5": "e956b434d505a3a17fe4462b3e6536cc"
+        },
+        {
+          "table": "imaging_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "tr_imaging_trial_lock",
+          "definition_md5": "9fd125e5bd73998087aee7d8b1bffedf"
+        },
+        {
+          "table": "imaging_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "tr_imaging_updated_meta",
+          "definition_md5": "92bacdab5f10ccd96cb1c804e9e8b361"
+        },
+        {
+          "table": "imaging_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "trg_pii_guard_imaging",
+          "definition_md5": "15caa214b3da807e9229c4aaa38dd3c1"
+        },
+        {
           "table": "ktx_baseline_ext",
           "schema": "public",
           "enabled": "O",
@@ -17458,7 +18152,7 @@
           "signature": "_registry_input_columns(text)",
           "volatility": "i",
           "anon_execute": false,
-          "definition_md5": "b2ec07d6962856dc4e3ad9edca4f10d3",
+          "definition_md5": "fca9872455c23c9d37b2b223341977bb",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -17470,7 +18164,7 @@
           "signature": "_registry_validate_input(text,jsonb)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "4f01c2fa5dfb3b0e13725b43627978a2",
+          "definition_md5": "6355a49bd3a71f89d758126a7e03a23d",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -17974,7 +18668,7 @@
           "signature": "create_registry_export(uuid,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "b963cc3da136f9dd0068247c126e7d7d",
+          "definition_md5": "eb4f5e1047ff651ddf2b3c5681534ecb",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -18094,7 +18788,7 @@
           "signature": "import_registry_rows(uuid,text,jsonb,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "f067d6f39964275e2651a1c81e0fc77f",
+          "definition_md5": "9f0ea511ed5ab00f269151cb9742746c",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -18370,7 +19064,7 @@
           "signature": "registry_private.check_clinical_row(text,jsonb)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "6290a30490aae42539239763bc0e7701",
+          "definition_md5": "7920dbf10c4a8193118f029715ae9914",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -18514,7 +19208,7 @@
           "signature": "registry_private.import_clinical_row(uuid,text,jsonb,integer,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "f8bb1bed59e92def9b0243e4ba4e190f",
+          "definition_md5": "e3e109c2baf0804d18b6b15c7a4efe07",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -18538,7 +19232,7 @@
           "signature": "registry_private.import_record_digest(text,uuid)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "5cdb865152504fdf3a79e128decd48c6",
+          "definition_md5": "ced159d6a669e51958dcb90112896cfa",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -18679,6 +19373,18 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "registry_private.reject_future_exam_date()",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "4c386f0df5b8dab48c6645a984b088c0",
+          "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "registry_private.reject_future_research_dates()",
           "volatility": "v",
           "anon_execute": false,
@@ -18778,7 +19484,7 @@
           "signature": "registry_private.validate_clinical_input(text,jsonb)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "56a61631438876782b4cfc24fd2fe030",
+          "definition_md5": "52af8e6ee6b4a25508fd10949124bd1d",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -18946,7 +19652,7 @@
           "signature": "undo_import_batch(uuid,uuid,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "890155299fb58352e75dec3e500ef1ab",
+          "definition_md5": "d91b48d1224e7fac87cc8f03fd6eeb16",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -20073,13 +20779,19 @@
               "name": "events_long_event_type_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "78e19be0aeeb559ae6ab2ca4ff600a5e"
+              "definition_md5": "95afd377d96f88d47f64b5fc947002b7"
             },
             {
               "name": "events_long_evidence_source_check",
               "type": "c",
               "validated": true,
               "definition_md5": "d0eb6ce5c230de62546ecf940e0d6540"
+            },
+            {
+              "name": "events_long_los_days_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "8941aa16ec9f03f5473f0fcd78e9a084"
             },
             {
               "name": "events_long_patient_project_fk",
@@ -20126,6 +20838,124 @@
               "type": "p",
               "validated": true,
               "definition_md5": "4c6419b3704337bbfe50f018842a9ad3"
+            }
+          ]
+        },
+        {
+          "rls": true,
+          "table": "imaging_long",
+          "schema": "public",
+          "force_rls": false,
+          "anon_delete": true,
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_delete": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "constraints": [
+            {
+              "name": "imaging_long_business_key",
+              "type": "u",
+              "validated": true,
+              "definition_md5": "1df352592b2adc92b6c6b8734be8ffe7"
+            },
+            {
+              "name": "imaging_long_date_floor",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "9f203b7f6574189bbabdfab4e7e64d2b"
+            },
+            {
+              "name": "imaging_long_has_measurement",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "a9a3007eda05b59b55bf2d3ccf6686ff"
+            },
+            {
+              "name": "imaging_long_left_depth_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "ba4636ffbf289f99aa99979cefff8b19"
+            },
+            {
+              "name": "imaging_long_left_length_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "648aa16d63c071e9eab3dc9b894e758e"
+            },
+            {
+              "name": "imaging_long_left_width_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "6cb104ac6efdcff98c74f121c5347f90"
+            },
+            {
+              "name": "imaging_long_liver_cysts_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "e873ece699e84bf2102ba58978abd320"
+            },
+            {
+              "name": "imaging_long_mayo_class_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "67fa390c5a17b896f9dec9bb529f2089"
+            },
+            {
+              "name": "imaging_long_mayo_class_modality",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "4d2d9426fb2fdb792d0dc73770920e90"
+            },
+            {
+              "name": "imaging_long_modality_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "6a304cf023cd618919d34079bde2baab"
+            },
+            {
+              "name": "imaging_long_notes_length",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "439843aa9b176b2ab258b17b88823dea"
+            },
+            {
+              "name": "imaging_long_patient_project_fk",
+              "type": "f",
+              "validated": true,
+              "definition_md5": "519efb4e5ec5766e13d5df74c5ed0e63"
+            },
+            {
+              "name": "imaging_long_pkey",
+              "type": "p",
+              "validated": true,
+              "definition_md5": "4c6419b3704337bbfe50f018842a9ad3"
+            },
+            {
+              "name": "imaging_long_project_id_fkey",
+              "type": "f",
+              "validated": true,
+              "definition_md5": "07f3414b4de8691ee7edea30c01f758f"
+            },
+            {
+              "name": "imaging_long_right_depth_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "4585a720fb6b542f52dbd7e5964989c0"
+            },
+            {
+              "name": "imaging_long_right_length_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "fd930a81c17018eb61176b2dabc5e14e"
+            },
+            {
+              "name": "imaging_long_right_width_range",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "78067b9b32874298e0fbf85bd8d1f741"
             }
           ]
         },
@@ -21063,7 +21893,7 @@
               "name": "registry_import_batches_kind_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "336a571cb3428a0624fcb9c167bdfad7"
+              "definition_md5": "de670e03f52a63284701773042c468aa"
             },
             {
               "name": "registry_import_batches_pkey",
@@ -21127,7 +21957,7 @@
               "name": "registry_import_records_kind_check",
               "type": "c",
               "validated": true,
-              "definition_md5": "336a571cb3428a0624fcb9c167bdfad7"
+              "definition_md5": "de670e03f52a63284701773042c468aa"
             },
             {
               "name": "registry_import_records_project_id_fkey",
@@ -21360,6 +22190,12 @@
               "type": "c",
               "validated": true,
               "definition_md5": "4f2751bb20b2af4cdc38000969f6b971"
+            },
+            {
+              "name": "visits_long_weight_kg_check",
+              "type": "c",
+              "validated": true,
+              "definition_md5": "66bbeab8150b528468d7dfdabdf906b5"
             },
             {
               "name": "visits_sbp_range",
@@ -24605,6 +25441,25 @@
           "array_dimensions": 0
         },
         {
+          "name": "los_days",
+          "type": "smallint",
+          "table": "events_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "notes",
           "type": "text",
           "table": "events_long",
@@ -24904,6 +25759,367 @@
           "auth_insert": false,
           "auth_select": true,
           "auth_update": false,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "75230039beb12ce952f24927f2bfa2f2",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "exam_date",
+          "type": "date",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "id",
+          "type": "uuid",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "f3b72bb359a50b640590970a2ab8e514",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "left_depth_cm",
+          "type": "numeric",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "left_length_cm",
+          "type": "numeric",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "left_width_cm",
+          "type": "numeric",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "liver_cysts",
+          "type": "text",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "mayo_image_class",
+          "type": "text",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "modality",
+          "type": "text",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "patient_code",
+          "type": "text",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": "pg_catalog.\"default\"",
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "right_depth_cm",
+          "type": "numeric",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "right_length_cm",
+          "type": "numeric",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "right_width_cm",
+          "type": "numeric",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
+          "name": "tkv_ml",
+          "type": "numeric",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "s",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "a9907d77a355f4564bfb14425365212c",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": true,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": "75230039beb12ce952f24927f2bfa2f2",
+          "has_default": true,
+          "array_dimensions": 0
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "table": "imaging_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
           "default_md5": null,
           "has_default": false,
           "array_dimensions": 0
@@ -31502,6 +32718,25 @@
           "array_dimensions": 0
         },
         {
+          "name": "weight_kg",
+          "type": "numeric",
+          "table": "visits_long",
+          "schema": "public",
+          "identity": "",
+          "not_null": false,
+          "collation": null,
+          "generated": "",
+          "anon_insert": true,
+          "anon_select": true,
+          "anon_update": true,
+          "auth_insert": true,
+          "auth_select": true,
+          "auth_update": true,
+          "default_md5": null,
+          "has_default": false,
+          "array_dimensions": 0
+        },
+        {
           "name": "action",
           "type": "text",
           "table": "visits_long_history",
@@ -33000,6 +34235,74 @@
           "predicate_md5": null,
           "definition_md5": "7ac4b1a58515e3e8ee28418fea794c4c",
           "attribute_count": 3,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
+          "name": "imaging_long_business_key",
+          "ready": true,
+          "table": "imaging_long",
+          "valid": true,
+          "schema": "public",
+          "unique": true,
+          "columns": [
+            {
+              "column": "project_id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            },
+            {
+              "column": "patient_code",
+              "included": false,
+              "position": 2,
+              "expression": false
+            },
+            {
+              "column": "exam_date",
+              "included": false,
+              "position": 3,
+              "expression": false
+            },
+            {
+              "column": "modality",
+              "included": false,
+              "position": 4,
+              "expression": false
+            }
+          ],
+          "primary": false,
+          "immediate": true,
+          "key_count": 4,
+          "predicate_md5": null,
+          "definition_md5": "778337036cb18196718941819cae9621",
+          "attribute_count": 4,
+          "expressions_md5": null,
+          "nulls_not_distinct": false
+        },
+        {
+          "live": true,
+          "name": "imaging_long_pkey",
+          "ready": true,
+          "table": "imaging_long",
+          "valid": true,
+          "schema": "public",
+          "unique": true,
+          "columns": [
+            {
+              "column": "id",
+              "included": false,
+              "position": 1,
+              "expression": false
+            }
+          ],
+          "primary": true,
+          "immediate": true,
+          "key_count": 1,
+          "predicate_md5": null,
+          "definition_md5": "f59c3a2c227f0b5f628166319b42074c",
+          "attribute_count": 1,
           "expressions_md5": null,
           "nulls_not_distinct": false
         },
@@ -34986,6 +36289,54 @@
           "roles": [
             "authenticated"
           ],
+          "table": "imaging_long",
+          "policy": "member_delete",
+          "schema": "public",
+          "command": "DELETE",
+          "permissive": "PERMISSIVE",
+          "with_check": null
+        },
+        {
+          "qual": null,
+          "roles": [
+            "authenticated"
+          ],
+          "table": "imaging_long",
+          "policy": "member_insert",
+          "schema": "public",
+          "command": "INSERT",
+          "permissive": "PERMISSIVE",
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
+        },
+        {
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('read'::text) AS project_ids_with_permission))",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "imaging_long",
+          "policy": "member_read",
+          "schema": "public",
+          "command": "SELECT",
+          "permissive": "PERMISSIVE",
+          "with_check": null
+        },
+        {
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
+          "roles": [
+            "authenticated"
+          ],
+          "table": "imaging_long",
+          "policy": "member_update",
+          "schema": "public",
+          "command": "UPDATE",
+          "permissive": "PERMISSIVE",
+          "with_check": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))"
+        },
+        {
+          "qual": "(project_id IN ( SELECT registry_private.project_ids_with_permission('write'::text) AS project_ids_with_permission))",
+          "roles": [
+            "authenticated"
+          ],
           "table": "ktx_baseline_ext",
           "policy": "member_delete",
           "schema": "public",
@@ -35788,6 +37139,55 @@
           "definition_md5": "118323cde9536235ab239bedf81611d0"
         },
         {
+          "table": "imaging_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "a_registry_identity",
+          "definition_md5": "ab88593822b6c17878d1a7f25a69612e"
+        },
+        {
+          "table": "imaging_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "registry_audit_imaging",
+          "definition_md5": "112f24bfc257e07f1b120ef8a33a10c6"
+        },
+        {
+          "table": "imaging_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "registry_exam_date_future",
+          "definition_md5": "9abe6cefa7dd225e82db8e4874cf4325"
+        },
+        {
+          "table": "imaging_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "tr_imaging_created_by",
+          "definition_md5": "e956b434d505a3a17fe4462b3e6536cc"
+        },
+        {
+          "table": "imaging_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "tr_imaging_trial_lock",
+          "definition_md5": "9fd125e5bd73998087aee7d8b1bffedf"
+        },
+        {
+          "table": "imaging_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "tr_imaging_updated_meta",
+          "definition_md5": "92bacdab5f10ccd96cb1c804e9e8b361"
+        },
+        {
+          "table": "imaging_long",
+          "schema": "public",
+          "enabled": "O",
+          "trigger": "trg_pii_guard_imaging",
+          "definition_md5": "15caa214b3da807e9229c4aaa38dd3c1"
+        },
+        {
           "table": "ktx_baseline_ext",
           "schema": "public",
           "enabled": "O",
@@ -36467,7 +37867,7 @@
           "signature": "_registry_input_columns(text)",
           "volatility": "i",
           "anon_execute": false,
-          "definition_md5": "b2ec07d6962856dc4e3ad9edca4f10d3",
+          "definition_md5": "fca9872455c23c9d37b2b223341977bb",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -36479,7 +37879,7 @@
           "signature": "_registry_validate_input(text,jsonb)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "4f01c2fa5dfb3b0e13725b43627978a2",
+          "definition_md5": "6355a49bd3a71f89d758126a7e03a23d",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -36983,7 +38383,7 @@
           "signature": "create_registry_export(uuid,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "b963cc3da136f9dd0068247c126e7d7d",
+          "definition_md5": "eb4f5e1047ff651ddf2b3c5681534ecb",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -37103,7 +38503,7 @@
           "signature": "import_registry_rows(uuid,text,jsonb,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "f067d6f39964275e2651a1c81e0fc77f",
+          "definition_md5": "9f0ea511ed5ab00f269151cb9742746c",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -37379,7 +38779,7 @@
           "signature": "registry_private.check_clinical_row(text,jsonb)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "6290a30490aae42539239763bc0e7701",
+          "definition_md5": "7920dbf10c4a8193118f029715ae9914",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -37523,7 +38923,7 @@
           "signature": "registry_private.import_clinical_row(uuid,text,jsonb,integer,uuid)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "f8bb1bed59e92def9b0243e4ba4e190f",
+          "definition_md5": "e3e109c2baf0804d18b6b15c7a4efe07",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -37547,7 +38947,7 @@
           "signature": "registry_private.import_record_digest(text,uuid)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "5cdb865152504fdf3a79e128decd48c6",
+          "definition_md5": "ced159d6a669e51958dcb90112896cfa",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -37688,6 +39088,18 @@
           "strict": false,
           "language": "plpgsql",
           "parallel": "u",
+          "signature": "registry_private.reject_future_exam_date()",
+          "volatility": "v",
+          "anon_execute": false,
+          "definition_md5": "4c386f0df5b8dab48c6645a984b088c0",
+          "security_definer": true,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
           "signature": "registry_private.reject_future_research_dates()",
           "volatility": "v",
           "anon_execute": false,
@@ -37787,7 +39199,7 @@
           "signature": "registry_private.validate_clinical_input(text,jsonb)",
           "volatility": "s",
           "anon_execute": false,
-          "definition_md5": "56a61631438876782b4cfc24fd2fe030",
+          "definition_md5": "52af8e6ee6b4a25508fd10949124bd1d",
           "security_definer": false,
           "authenticated_execute": false
         },
@@ -37955,7 +39367,7 @@
           "signature": "undo_import_batch(uuid,uuid,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "890155299fb58352e75dec3e500ef1ab",
+          "definition_md5": "d91b48d1224e7fac87cc8f03fd6eeb16",
           "security_definer": true,
           "authenticated_execute": true
         },

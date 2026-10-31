@@ -7,13 +7,13 @@ import re
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-EVIDENCE = ROOT / 'releases/registry-cn-v9-20261030'
+EVIDENCE = ROOT / 'releases/registry-cn-v10-20261031'
 
 def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 def verify():
-    manifest = json.loads((EVIDENCE / 'registry-cn-v9-20261030.manifest.json').read_text())
+    manifest = json.loads((EVIDENCE / 'registry-cn-v10-20261031.manifest.json').read_text())
     contract_bytes = (ROOT / 'supabase/database-contract-pg17.json').read_bytes()
     contract = json.loads(contract_bytes)
     assert manifest['database_contract_reference_sha256'] == sha(contract_bytes)

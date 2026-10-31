@@ -68,7 +68,7 @@ const withoutNewColumns = r => { const {c3g_biopsy_date, c3g_if_c3_dominant, c3g
 try {
   // ---- Production-like database at 0041 ------------------------------------------------
   const upTo41 = migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) <= 41);
-  assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 41), [NEW_MIGRATION, '0043_biopsy_records.sql', '0044_project_fields.sql', '0045_cystatin_urine_rbc.sql', '0046_adpkd_module.sql'],
+  assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 41), [NEW_MIGRATION, '0043_biopsy_records.sql', '0044_project_fields.sql', '0045_cystatin_urine_rbc.sql', '0046_adpkd_module.sql', '0047_imaging_records.sql', '0048_reignite_batch2.sql'],
     '0042 directly follows 0041; 0043 has its own acceptance (tests/biopsy-records-db.mjs)');
   for (const file of upTo41) await apply(file);
   assert.equal(await count('SELECT count(*) AS n FROM public.registry_schema_versions'), 10);

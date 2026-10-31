@@ -69,7 +69,7 @@ const NEW_UNITS = [
 try {
   // ---- A v7 database at 0044 -------------------------------------------------------------
   const upTo44 = migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) <= 44);
-  assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 44), [NEW_MIGRATION, '0046_adpkd_module.sql'],
+  assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 44), [NEW_MIGRATION, '0046_adpkd_module.sql', '0047_imaging_records.sql', '0048_reignite_batch2.sql'],
     '0045 directly follows 0044; 0046 has its own acceptance (tests/adpkd-module-db.mjs)');
   for (const file of upTo44) await apply(file);
   assert.equal(await count('SELECT count(*) AS n FROM public.registry_schema_versions'), 13);

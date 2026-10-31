@@ -19,7 +19,7 @@ BACKUPS=Path('/root/registry-integrated-releases')
 PROJECT_REF='ksr-aliyun-cn-shanghai-1'
 # PostgreSQL system_identifier of the registry database (Aliyun cn-shanghai).
 SYSTEM_IDENTIFIER='7697419573917356067'
-VERSION='registry-20261030-cn-v9'
+VERSION='registry-20261031-cn-v10'
 CONTRACT_PROTOCOL='registry-contract-v3-pg17'
 CONTRACT_SERVER_MAJOR=17
 CONTRACT_CATEGORIES=('functions','triggers','policies','tables','columns','indexes','schema_privileges','buckets','views')

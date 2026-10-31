@@ -79,7 +79,7 @@ const ALL_CODES = ['H-OLD', 'H-VISIT', 'H-RECENT', 'N-NEW', 'S-1', 'S-2', 'S-3',
 try {
   // ---- Production-like database at 0040 ------------------------------------------------
   const upTo40 = migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) <= 40);
-  assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 40), [NEW_MIGRATION, '0042_c3g_module.sql', '0043_biopsy_records.sql', '0044_project_fields.sql', '0045_cystatin_urine_rbc.sql', '0046_adpkd_module.sql'],
+  assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 40), [NEW_MIGRATION, '0042_c3g_module.sql', '0043_biopsy_records.sql', '0044_project_fields.sql', '0045_cystatin_urine_rbc.sql', '0046_adpkd_module.sql', '0047_imaging_records.sql', '0048_reignite_batch2.sql'],
     '0041 directly follows 0040; 0042 and 0043 have their own acceptance (tests/c3g-module-db.mjs, tests/biopsy-records-db.mjs)');
   for (const file of upTo40) await apply(file);
   assert.equal(await count('SELECT count(*) AS n FROM public.registry_schema_versions'), 9);

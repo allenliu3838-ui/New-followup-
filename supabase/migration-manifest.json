@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "release": "registry-20261030-cn-v9",
+  "release": "registry-20261031-cn-v10",
   "required_versions": [
     "0032_security_integrity",
     "0033_billing_registration",
@@ -16,10 +16,12 @@
     "0043_biopsy_records",
     "0044_project_fields",
     "0045_cystatin_urine_rbc",
-    "0046_adpkd_module"
+    "0046_adpkd_module",
+    "0047_imaging_records",
+    "0048_reignite_batch2"
   ],
   "order": "lexicographic filenames; historical duplicate prefixes retained, unique full filenames",
-  "bundle_sha256": "ec4e6f179e478a9434245cba99152d31802621e2d9db5804ece27efd18903111",
+  "bundle_sha256": "4e411e9c8425e9b1fabbb979dc006539015ab0fd184560c7aa06335f79b264bd",
   "migrations": [
     {
       "ordinal": 1,
@@ -260,6 +262,16 @@
       "ordinal": 48,
       "file": "0046_adpkd_module.sql",
       "sha256": "43932df229aa3404b81cab090e5c0322a4bf1c6102ad0752e4b517d2c2e81558"
+    },
+    {
+      "ordinal": 49,
+      "file": "0047_imaging_records.sql",
+      "sha256": "d4196d3e7c3704ba37627f865987ff321af77308554098eeb80a660891fb7930"
+    },
+    {
+      "ordinal": 50,
+      "file": "0048_reignite_batch2.sql",
+      "sha256": "176fb83768380b415957b13d5b52a49f1a9c061dbc2e425ee18c92ef0661b342"
     }
   ]
 }
