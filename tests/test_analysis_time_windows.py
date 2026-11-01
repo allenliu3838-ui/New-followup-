@@ -149,6 +149,49 @@ class TimeWindowTests(unittest.TestCase):
         self.assertEqual((egfr["status"], egfr["egfr_formula"], egfr["value"], egfr["age_years"], egfr["value_date"]),
                          ("computed", "CKD-EPI-2021-Cr", f"{expected:.1f}", "43", d(-20)))
 
+    def test_treatment_start_time_points_and_date_free_output(self):
+        """P1 starts a glucocorticoid on day 150 (an earlier start on day -200 is before the search start, an ACE inhibitor on
+        day 10 is not a listed class); the TxStart window [-30, 30] around day 150 finds the creatinine of day 180. P5 has no
+        index biopsy anchor in this configuration and P2 has no treatment: no_treatment_start."""
+        meds = ra.KEY + ["id", "module", "drug_name", "drug_class", "start_date"]
+        a = lambda code, **kw: {"project_id": SP, "center_code": "A", "patient_code": code, "module": "IGAN", **kw}
+        write_csv(self.data / "meds_long.csv", meds, [
+            a("P1", id="m1", drug_name="泼尼松", drug_class="糖皮质激素", start_date=d(-200)),
+            a("P1", id="m2", drug_name="泼尼松", drug_class="糖皮质激素", start_date=d(150)),
+            a("P1", id="m3", drug_name="贝那普利", drug_class="RAS阻断剂", start_date=d(10))])
+        tx = {"name": "TxStart", "relative_to": "treatment_start", "drug_classes": ["糖皮质激素", "免疫抑制剂"],
+              "treatment_search_from_days": -91, "target_days": 0, "window_days": [-30, 30]}
+        points = [{"name": "Bx", "target_days": 0, "window_days": [-90, 30]}, tx]
+        out, log, rows, pick = self.run_tw(timepoints=points)
+        p1 = pick[("P1", "TxStart", "scr_umol_l")]
+        self.assertEqual((p1["status"], p1["value"], p1["offset_days"], p1["reference_date"], p1["reference_offset_days"]),
+                         ("selected", "90.0", "180", d(150), "150"))
+        self.assertEqual((p1["target_days"], p1["window_from_days"], p1["window_to_days"]), ("150", "120", "180"))
+        self.assertEqual(pick[("P2", "TxStart", "scr_umol_l")]["status"], "no_treatment_start")
+        self.assertEqual(pick[("P2", "TxStart", "egfr")]["status"], "no_treatment_start")
+        wide = {r["patient_code"]: r for r in read_csv(out / "time_windows_wide.csv")}
+        self.assertEqual((wide["P1"]["TxStart_reference_date"], wide["P1"]["TxStart_scr_umol_l"]), (d(150), "90.0"))
+        out2, log2 = tw.run(self.data, config(self.tmp, timepoints=points), self.tmp / "nodates", no_dates=True)
+        self.assertTrue(log2["no_dates"])
+        for name in ("time_windows_long.csv", "time_windows_wide.csv"):
+            text = (out2 / name).read_text(encoding="utf-8-sig")
+            self.assertNotRegex(text, r"\d{4}-\d{2}-\d{2}", f"{name} carries no calendar date")
+        long2 = {(r["patient_code"], r["timepoint"], r["variable"]): r for r in read_csv(out2 / "time_windows_long.csv")}
+        self.assertEqual((long2[("P1", "TxStart", "scr_umol_l")]["offset_days"], long2[("P1", "TxStart", "scr_umol_l")]["reference_offset_days"]), ("180", "150"))
+        with self.assertRaises(tw.ConfigError):
+            config_path = config(self.tmp, timepoints=[{**tx, "drug_classes": []}])
+            tw.load_config(config_path)
+
+    def test_reignite_template_is_valid_and_its_windows_do_not_overlap(self):
+        cfg = tw.load_config(TEMPLATE / "time_windows_reignite.json")
+        self.assertFalse(cfg["confirmed"], "the REIGNITE windows wait for both study teams")
+        anchored = [tp for tp in cfg["timepoints"] if tp.get("relative_to") != "treatment_start"]
+        self.assertEqual([tp["name"] for tp in anchored[:4]], ["Bx_minus12m", "Bx", "M3", "M6"])
+        for prev, nxt in zip(anchored, anchored[1:]):
+            self.assertLess(prev["window_days"][1], nxt["window_days"][0], f"{prev['name']} and {nxt['name']} overlap")
+        self.assertEqual(anchored[1]["window_days"], [-91, 76], "biopsy window: 3 months before to 2.5 months after")
+        self.assertEqual(sum(1 for tp in cfg["timepoints"] if tp.get("relative_to") == "treatment_start"), 1)
+
     def test_anchor_sources_follow_the_configured_order(self):
         """P1 index biopsy; P2/P3 IgAN baseline biopsy_date; P4 LN ln_biopsy_date; P7 transplant index biopsy;
         P5 has biopsies but none marked index; P8 has no biopsy date; P6 is not consented and appears nowhere."""
@@ -360,6 +403,25 @@ class TimeWindowTests(unittest.TestCase):
             self.run_tw("out3", patient_fields=["ethnicity"])
         _, _, rows, _ = self.run_tw("out4")
         self.assertNotIn("field_ethnicity", read_csv(self.tmp / "out4" / "time_windows_wide.csv")[0], "no field columns unless configured")
+
+    def test_no_dates_drops_date_type_fields_whatever_their_code(self):
+        """--no-dates omits a custom field defined as a date even when its code does not end in _date."""
+        a = lambda code, **kw: {"project_id": SP, "center_code": "A", "patient_code": code, "module": "IGAN", **kw}
+        write_csv(self.data / "project_fields.csv", ["id", "project_id", "center_code", "module", "field_key", "label_cn", "value_type", "choices"], [
+            {"id": "f1", "project_id": SP, "center_code": "A", "module": "IGAN", "field_key": "symptom_onset", "label_cn": "起病日", "value_type": "date"},
+            {"id": "f2", "project_id": SP, "center_code": "A", "module": "IGAN", "field_key": "ethnicity", "label_cn": "民族", "value_type": "text"}])
+        write_csv(self.data / "patient_field_values.csv", ra.TABLE_COLUMNS["patient_field_values"], [
+            a("P1", id="x1", field_key="symptom_onset", value_date="2020-03-04"),
+            a("P1", id="x2", field_key="ethnicity", value_text="hui")])
+        out, _, _, _ = self.run_tw(patient_fields=["symptom_onset", "ethnicity"])
+        self.assertEqual({r["patient_code"]: r for r in read_csv(out / "time_windows_wide.csv")}["P1"]["field_symptom_onset"], "2020-03-04", "kept when dates are allowed")
+        out2, log2 = tw.run(self.data, config(self.tmp, patient_fields=["symptom_onset", "ethnicity"]), self.tmp / "nodates2", no_dates=True)
+        self.assertTrue(log2["no_dates"])
+        for name in ("time_windows_wide.csv", "time_windows_long.csv"):
+            text = (out2 / name).read_text(encoding="utf-8-sig")
+            self.assertNotIn("2020-03-04", text)
+            self.assertNotIn("symptom_onset", text)
+        self.assertEqual({r["patient_code"]: r for r in read_csv(out2 / "time_windows_wide.csv")}["P1"]["field_ethnicity"], "hui")
 
     def test_values_are_rounded_half_up_at_their_decimal_form(self):
         self.assertEqual([tw._fmt(v, 1) for v in (103.05, 88.45, 0.05, 2.675 * 10)], ["103.1", "88.5", "0.1", "26.8"])

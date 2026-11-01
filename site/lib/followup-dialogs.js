@@ -6,7 +6,7 @@ import {
   visitSaveMessage, validationDetails, isSameDayConflict, tokenState, revokeReasonLabel, buildFollowupLink,
   linkMessageText, revokesLinks, newLinkBlockReason, CONSENT_STATUSES, FOLLOWUP_STATUSES, FOLLOWUP_STATUS_OPTIONS, FOLLOWUP_STATES, REASON_REQUIRED_CONSENT, REASON_REQUIRED_FOLLOWUP,
   EXIT_CONSENT_STATUSES, EXIT_FOLLOWUP_STATUSES, consentDateLabel, inactiveReason,
-} from '/lib/followup-board.js?v=registry-20261030-cn-v9';
+} from '/lib/followup-board.js?v=registry-20261031-cn-v10';
 
 const TOKEN_COLUMNS = 'id,patient_code,created_at,expires_at,single_use,used_at,revoked_at,revoke_reason,active';
 
@@ -178,6 +178,7 @@ export function createFollowupDialogs(deps) {
 </div>
 <div class="fu-grid">
   <div><label for="veHeight">身高（cm）</label><input id="veHeight" inputmode="decimal" autocomplete="off" placeholder="例如 145"/><div class="fu-hint small">1–17 岁患者请填写：系统按身高用 Schwartz 2009 公式估算 eGFR；成人可不填。</div></div>
+  <div><label for="veWeight">体重（kg，可选）</label><input id="veWeight" inputmode="decimal" autocomplete="off" placeholder="例如 62.5"/></div>
 </div>
 <label for="veNotes">备注（可选，最多 500 字）</label>
 <textarea id="veNotes" maxlength="500" placeholder="例如：外院复查结果补录。请勿填写姓名、电话、病案号等身份信息。"></textarea>
@@ -192,12 +193,12 @@ export function createFollowupDialogs(deps) {
 <p class="muted small">血肌酐统一按 μmol/L 保存，UPCR 统一按 mg/g 保存。eGFR 由系统根据血肌酐及基线性别、出生年份按 CKD-EPI 2021 公式自动计算；1–17 岁按本次身高用 Schwartz 2009 公式计算，未填身高则不计算。</p>`,
     });
     const q = modal.q;
-    const fields = { code: q('#veCode'), date: q('#veDate'), sbp: q('#veSbp'), dbp: q('#veDbp'), scr: q('#veScr'), scrUnit: q('#veScrUnit'), upcr: q('#veUpcr'), upcrUnit: q('#veUpcrUnit'), height: q('#veHeight'), notes: q('#veNotes') };
+    const fields = { code: q('#veCode'), date: q('#veDate'), sbp: q('#veSbp'), dbp: q('#veDbp'), scr: q('#veScr'), scrUnit: q('#veScrUnit'), upcr: q('#veUpcr'), upcrUnit: q('#veUpcrUnit'), height: q('#veHeight'), weight: q('#veWeight'), notes: q('#veNotes') };
     const feedback = q('#veFeedback');
     let pending = null;
     let busy = false;
 
-    const draft = () => ({ patientCode: fields.code.value, visitDate: fields.date.value, sbp: fields.sbp.value, dbp: fields.dbp.value, scr: fields.scr.value, scrUnit: fields.scrUnit.value, upcr: fields.upcr.value, upcrUnit: fields.upcrUnit.value, height: fields.height.value, notes: fields.notes.value });
+    const draft = () => ({ patientCode: fields.code.value, visitDate: fields.date.value, sbp: fields.sbp.value, dbp: fields.dbp.value, scr: fields.scr.value, scrUnit: fields.scrUnit.value, upcr: fields.upcr.value, upcrUnit: fields.upcrUnit.value, height: fields.height.value, weight: fields.weight.value, notes: fields.notes.value });
 
     // 血压只按内容拆分，与输入方式无关：收缩压一栏是完整的“130/80”而舒张压一栏为空（或一致）时填入两栏。
     let lastSplit = null;
@@ -297,7 +298,7 @@ export function createFollowupDialogs(deps) {
 
     function resetForNext(message, tone = 'ok') {
       cancelContextRead();
-      for (const key of ['sbp', 'dbp', 'scr', 'upcr', 'height', 'notes']) fields[key].value = '';
+      for (const key of ['sbp', 'dbp', 'scr', 'upcr', 'height', 'weight', 'notes']) fields[key].value = '';
       fields.code.readOnly = false;
       fields.code.value = '';
       lastSplit = null;
@@ -322,7 +323,7 @@ export function createFollowupDialogs(deps) {
       }
       if (errors.length) {
         setFeedback(feedback, errors.length === 1 ? errors[0].message : ['请先修正以下内容：', ...errors.map(e => e.message)], 'error');
-        ({ code: fields.code, date: fields.date, sbp: fields.sbp, dbp: fields.dbp, scr: fields.scr, upcr: fields.upcr, height: fields.height, notes: fields.notes })[errors[0].field]?.focus();
+        ({ code: fields.code, date: fields.date, sbp: fields.sbp, dbp: fields.dbp, scr: fields.scr, upcr: fields.upcr, height: fields.height, weight: fields.weight, notes: fields.notes })[errors[0].field]?.focus();
         return;
       }
       try { deps.assertCurrent(op); } catch (e) { setFeedback(feedback, deps.errorMessage(e), 'error'); return; }

@@ -1,0 +1,614 @@
+{
+ "_说明": "REIGNITE 方案 V1.0（GlomCon，2026-07-15）第 1.3 节的时间点与窗口，按 1 个月 = 30.4375 天换算为天数：活检前 12 个月取活检前 12 到前 3 个月；活检时取前 3 到后 2.5 个月；第 3 个月取 2.5 到 4 个月；之后每 3 个月取前后 1 个月（这里列到第 60 个月，可按需延长）；另加“开始治疗时”，取开始治疗前后 30 天。窗口端点为整数天，与方案原文的月数可能差 1 天，相邻时间点不重叠。正式使用前须由研究双方核对并确认；确认后把 confirmed 改为 true，并填写 confirmed_by 与 confirmed_date。",
+ "_开始治疗": "TxStart 以 drug_classes 中任一类药物在 meds_long 中最早的 start_date 为参照日（从活检前 91 天起查找）；哪些药物算“开始治疗”须由研究双方商定。没有这类用药的患者在该时间点记为 no_treatment_start。",
+ "_日期": "需要提交不含日期的数据时，运行时加 --no-dates：输出只保留距活检日的天数，不含任何日历日期。本系统的数据只存放在境内，向其他机构提供数据须按数据使用协议和适用法规另行审批。",
+ "_化验": "化验变量按分析包的单位换算（run_analysis.py 的 LAB_UNITS）；字典中没有单位的定性项目（自身抗体、乙肝、丙肝、HIV、梅毒）不进入时间窗表，可直接从 labs_long.csv 的 result_text 汇总。",
+ "format": "kidneysphere-time-windows-v1",
+ "confirmed": false,
+ "confirmed_by": "",
+ "confirmed_date": "",
+ "anchor": {
+  "sources": [
+   "index_biopsy",
+   "baseline_biopsy_date"
+  ]
+ },
+ "selection": {
+  "rule": "nearest",
+  "tie": "earlier",
+  "same_day": "median"
+ },
+ "timepoints": [
+  {
+   "name": "Bx_minus12m",
+   "target_days": -365,
+   "window_days": [
+    -365,
+    -92
+   ]
+  },
+  {
+   "name": "Bx",
+   "target_days": 0,
+   "window_days": [
+    -91,
+    76
+   ]
+  },
+  {
+   "name": "M3",
+   "target_days": 91,
+   "window_days": [
+    77,
+    122
+   ]
+  },
+  {
+   "name": "M6",
+   "target_days": 183,
+   "window_days": [
+    152,
+    213
+   ]
+  },
+  {
+   "name": "M9",
+   "target_days": 274,
+   "window_days": [
+    244,
+    304
+   ]
+  },
+  {
+   "name": "M12",
+   "target_days": 365,
+   "window_days": [
+    335,
+    396
+   ]
+  },
+  {
+   "name": "M15",
+   "target_days": 457,
+   "window_days": [
+    426,
+    487
+   ]
+  },
+  {
+   "name": "M18",
+   "target_days": 548,
+   "window_days": [
+    517,
+    578
+   ]
+  },
+  {
+   "name": "M21",
+   "target_days": 639,
+   "window_days": [
+    609,
+    670
+   ]
+  },
+  {
+   "name": "M24",
+   "target_days": 730,
+   "window_days": [
+    700,
+    761
+   ]
+  },
+  {
+   "name": "M27",
+   "target_days": 822,
+   "window_days": [
+    791,
+    852
+   ]
+  },
+  {
+   "name": "M30",
+   "target_days": 913,
+   "window_days": [
+    883,
+    944
+   ]
+  },
+  {
+   "name": "M33",
+   "target_days": 1004,
+   "window_days": [
+    974,
+    1035
+   ]
+  },
+  {
+   "name": "M36",
+   "target_days": 1096,
+   "window_days": [
+    1065,
+    1126
+   ]
+  },
+  {
+   "name": "M39",
+   "target_days": 1187,
+   "window_days": [
+    1157,
+    1218
+   ]
+  },
+  {
+   "name": "M42",
+   "target_days": 1278,
+   "window_days": [
+    1248,
+    1309
+   ]
+  },
+  {
+   "name": "M45",
+   "target_days": 1370,
+   "window_days": [
+    1339,
+    1400
+   ]
+  },
+  {
+   "name": "M48",
+   "target_days": 1461,
+   "window_days": [
+    1431,
+    1491
+   ]
+  },
+  {
+   "name": "M51",
+   "target_days": 1552,
+   "window_days": [
+    1522,
+    1583
+   ]
+  },
+  {
+   "name": "M54",
+   "target_days": 1644,
+   "window_days": [
+    1613,
+    1674
+   ]
+  },
+  {
+   "name": "M57",
+   "target_days": 1735,
+   "window_days": [
+    1704,
+    1765
+   ]
+  },
+  {
+   "name": "M60",
+   "target_days": 1826,
+   "window_days": [
+    1796,
+    1857
+   ]
+  },
+  {
+   "name": "TxStart",
+   "relative_to": "treatment_start",
+   "drug_classes": [
+    "糖皮质激素",
+    "免疫抑制剂",
+    "补体抑制剂",
+    "内皮素受体拮抗剂",
+    "试验药物"
+   ],
+   "treatment_search_from_days": -91,
+   "target_days": 0,
+   "window_days": [
+    -30,
+    30
+   ]
+  }
+ ],
+ "variables": [
+  {
+   "name": "scr_umol_l",
+   "label": "血肌酐",
+   "unit": "μmol/L",
+   "decimals": 1,
+   "sources": [
+    {
+     "table": "visits_long",
+     "column": "scr_umol_l"
+    },
+    {
+     "table": "patients_baseline",
+     "column": "baseline_scr"
+    },
+    {
+     "table": "labs_long",
+     "lab_test_code": "CREAT",
+     "analysis_unit": "mg/dL",
+     "factor": 88.4
+    }
+   ]
+  },
+  {
+   "name": "scys_mg_l",
+   "label": "血清胱抑素C",
+   "unit": "mg/L",
+   "decimals": 2,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "CYSC",
+     "analysis_unit": "mg/L",
+     "factor": 1
+    }
+   ]
+  },
+  {
+   "name": "upcr_mg_g",
+   "label": "尿蛋白肌酐比",
+   "unit": "mg/g",
+   "decimals": 0,
+   "sources": [
+    {
+     "table": "visits_long",
+     "column": "upcr"
+    },
+    {
+     "table": "patients_baseline",
+     "column": "baseline_upcr"
+    },
+    {
+     "table": "labs_long",
+     "lab_test_code": "UPCR",
+     "analysis_unit": "mg/g",
+     "factor": 1
+    }
+   ]
+  },
+  {
+   "name": "uacr_mg_g",
+   "label": "尿白蛋白肌酐比",
+   "unit": "mg/g",
+   "decimals": 0,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "UACR",
+     "analysis_unit": "mg/g",
+     "factor": 1
+    }
+   ]
+  },
+  {
+   "name": "utp24_g",
+   "label": "24小时尿蛋白",
+   "unit": "g/24h",
+   "decimals": 2,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "UTP24",
+     "analysis_unit": "g/24h",
+     "factor": 1
+    }
+   ]
+  },
+  {
+   "name": "ualb24_mg",
+   "label": "24小时尿白蛋白",
+   "unit": "mg/24h",
+   "decimals": 0,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "UALB24",
+     "analysis_unit": "mg/24h",
+     "factor": 1
+    }
+   ]
+  },
+  {
+   "name": "ucrea24_mmol",
+   "label": "24小时尿肌酐",
+   "unit": "mmol/24h",
+   "decimals": 2,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "UCREA24",
+     "analysis_unit": "mmol/24h",
+     "factor": 1
+    }
+   ]
+  },
+  {
+   "name": "urbc_per_ul",
+   "label": "尿红细胞（仪器，/μL）",
+   "unit": "cells/μL",
+   "decimals": 0,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "URBC_UL",
+     "analysis_unit": "cells/μL",
+     "factor": 1
+    }
+   ]
+  },
+  {
+   "name": "urbc_per_hpf",
+   "label": "尿红细胞（镜检，/HPF）",
+   "unit": "cells/HPF",
+   "decimals": 0,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "URBC_HPF",
+     "analysis_unit": "cells/HPF",
+     "factor": 1
+    }
+   ]
+  },
+  {
+   "name": "sbp",
+   "label": "收缩压",
+   "unit": "mmHg",
+   "decimals": 0,
+   "sources": [
+    {
+     "table": "visits_long",
+     "column": "sbp"
+    }
+   ]
+  },
+  {
+   "name": "dbp",
+   "label": "舒张压",
+   "unit": "mmHg",
+   "decimals": 0,
+   "sources": [
+    {
+     "table": "visits_long",
+     "column": "dbp"
+    }
+   ]
+  },
+  {
+   "name": "height_cm",
+   "label": "身高",
+   "unit": "cm",
+   "decimals": 1,
+   "sources": [
+    {
+     "table": "visits_long",
+     "column": "height_cm"
+    }
+   ]
+  },
+  {
+   "name": "weight_kg",
+   "label": "体重",
+   "unit": "kg",
+   "decimals": 1,
+   "sources": [
+    {
+     "table": "visits_long",
+     "column": "weight_kg"
+    }
+   ]
+  },
+  {
+   "name": "alb_g_l",
+   "label": "血清白蛋白",
+   "unit": "g/L",
+   "decimals": 1,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "ALB",
+     "analysis_unit": "g/dL",
+     "factor": 10
+    }
+   ]
+  },
+  {
+   "name": "hgb_g_l",
+   "label": "血红蛋白",
+   "unit": "g/L",
+   "decimals": 0,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "HGB",
+     "analysis_unit": "g/dL",
+     "factor": 10
+    }
+   ]
+  },
+  {
+   "name": "wbc",
+   "label": "白细胞计数",
+   "unit": "10^9/L",
+   "decimals": 2,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "WBC",
+     "analysis_unit": "10^9/L",
+     "factor": 1
+    }
+   ]
+  },
+  {
+   "name": "neut",
+   "label": "中性粒细胞计数",
+   "unit": "10^9/L",
+   "decimals": 2,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "NEUT",
+     "analysis_unit": "10^9/L",
+     "factor": 1
+    }
+   ]
+  },
+  {
+   "name": "lymph",
+   "label": "淋巴细胞计数",
+   "unit": "10^9/L",
+   "decimals": 2,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "LYMPH",
+     "analysis_unit": "10^9/L",
+     "factor": 1
+    }
+   ]
+  },
+  {
+   "name": "alt",
+   "label": "谷丙转氨酶",
+   "unit": "U/L",
+   "decimals": 0,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "ALT",
+     "analysis_unit": "U/L",
+     "factor": 1
+    }
+   ]
+  },
+  {
+   "name": "ast",
+   "label": "谷草转氨酶",
+   "unit": "U/L",
+   "decimals": 0,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "AST",
+     "analysis_unit": "U/L",
+     "factor": 1
+    }
+   ]
+  },
+  {
+   "name": "tbil_umol_l",
+   "label": "血清总胆红素",
+   "unit": "μmol/L",
+   "decimals": 1,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "TBIL",
+     "analysis_unit": "μmol/L",
+     "factor": 1
+    }
+   ]
+  },
+  {
+   "name": "iga_g_l",
+   "label": "血清IgA",
+   "unit": "g/L",
+   "decimals": 2,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "IGA",
+     "analysis_unit": "g/L",
+     "factor": 1
+    }
+   ]
+  },
+  {
+   "name": "igg_g_l",
+   "label": "血清IgG",
+   "unit": "g/L",
+   "decimals": 2,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "IGG",
+     "analysis_unit": "g/L",
+     "factor": 1
+    }
+   ]
+  },
+  {
+   "name": "igm_g_l",
+   "label": "血清IgM",
+   "unit": "g/L",
+   "decimals": 2,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "IGM",
+     "analysis_unit": "g/L",
+     "factor": 1
+    }
+   ]
+  },
+  {
+   "name": "gd_iga1",
+   "label": "半乳糖缺陷IgA1",
+   "unit": "μg/mL",
+   "decimals": 2,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "GDIGA1",
+     "analysis_unit": "μg/mL",
+     "factor": 1
+    }
+   ]
+  },
+  {
+   "name": "c3_g_l",
+   "label": "补体C3",
+   "unit": "g/L",
+   "decimals": 2,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "C3",
+     "analysis_unit": "g/L",
+     "factor": 1
+    }
+   ]
+  },
+  {
+   "name": "c4_g_l",
+   "label": "补体C4",
+   "unit": "g/L",
+   "decimals": 2,
+   "sources": [
+    {
+     "table": "labs_long",
+     "lab_test_code": "C4",
+     "analysis_unit": "g/L",
+     "factor": 1
+    }
+   ]
+  }
+ ],
+ "egfr": {
+  "creatinine_variable": "scr_umol_l",
+  "cystatin_variable": "scys_mg_l",
+  "height_variable": "height_cm",
+  "height_window_days": 90,
+  "pair_window_days": 0,
+  "adult_equation": "CKD-EPI-2021-Cr",
+  "child_equation": "Schwartz-2009-bedside"
+ },
+ "patient_fields": []
+}

@@ -72,7 +72,7 @@ const VALIDATE = 'registry_private.validate_clinical_input(text,jsonb)';
 try {
   // ---- A v7 database at 0045 -------------------------------------------------------------
   const upTo45 = migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) <= 45);
-  assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 45), [NEW_MIGRATION],
+  assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 45), [NEW_MIGRATION, '0047_imaging_records.sql', '0048_reignite_batch2.sql'],
     'exactly one reviewed increment follows 0045');
   for (const file of upTo45) await apply(file);
   assert.equal(await count('SELECT count(*) AS n FROM public.registry_schema_versions'), 14);

@@ -22,7 +22,8 @@ const STORAGE_KEY = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-tok
 // ── 合成数据 ────────────────────────────────────────────────
 const pad = n => String(n).padStart(2, '0');
 const isoDay = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const dayOffset = days => { const d = new Date(); d.setDate(d.getDate() + days); return isoDay(d); };
+// 研究日期按北京时间（与页面 researchToday() 一致）；用运行环境的本地日期在 UTC 16:00–24:00 会差一天。
+const dayOffset = days => { const d = new Date(Date.now() + 8 * 3600 * 1000); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); };
 const tsOffset = days => new Date(Date.now() + days * 86400000).toISOString();
 const USER = { id: '00000000-0000-4000-8000-0000000000a1', aud: 'authenticated', role: 'authenticated', email: 'pi.synthetic@example.test', app_metadata: { provider: 'email' }, user_metadata: {}, created_at: '2026-01-01T00:00:00Z' };
 const PROJECT = { id: '10000000-0000-4000-8000-000000000001', name: '合成测试队列', center_code: 'TST01', module: 'IGAN', registry_type: 'igan', description: null, created_by: USER.id, created_at: '2026-02-01T00:00:00Z', followup_interval_days: 90, public_title: '合成随访研究', institution_name: '测试医院肾内科', ethics_approval_no: 'TEST-2026-001', contact_display: '研究护士 测试老师' };
@@ -110,7 +111,7 @@ function createMock({ access }) {
       }
       case 'patient_tokens': return tokens.filter(t => !f.patient_code || t.patient_code === f.patient_code);
       case 'visits_long': case 'patients_baseline': case 'user_profiles': case 'project_custom_labs': case 'lab_test_catalog': case 'lab_test_unit_map':
-      case 'labs_long': case 'meds_long': case 'events_long': case 'variants_long': case 'data_issues': case 'biopsies_long': case 'project_fields': case 'patient_field_values':
+      case 'labs_long': case 'meds_long': case 'events_long': case 'variants_long': case 'data_issues': case 'biopsies_long': case 'imaging_long': case 'project_fields': case 'patient_field_values':
         return [];
       default: unknown.push(`GET ${table}`); return [];
     }

@@ -106,6 +106,8 @@ within the configured height window. Creatinine-based equations start from the c
 selected for the time point, and combined equations use the cystatin C measured on the same
 day [or within N days, if configured]; cystatin C-only equations start from the cystatin C
 selected for the time point. Cystatin C was measured by [assay], traceable to ERM-DA471/IFCC.
+[If used: one time point was placed relative to the start of treatment, the earliest recorded start of
+[drug classes] on or after [N] days from day 0, with a window of [-30 to +30] days around it.]
 The configuration file (time points,
 windows, variables, confirming investigators and date) and its SHA-256 are recorded in
 `TIME_WINDOWS_LOG.json`; output from an unconfirmed configuration is labelled UNCONFIRMED.
@@ -125,4 +127,18 @@ fields were counted as recorded or not and their content was not analysed. The o
 contains aggregate counts only; small cells were [suppressed below N / reported as is] in
 accordance with the data use agreement. Input file SHA-256 values and the consent selection
 are recorded in `SUMMARY_RUN_LOG.json`.
+
+## Kidney imaging measures (optional, `imaging_metrics.py`)
+
+Total kidney volume was estimated from the recorded length, width and depth of each kidney with
+the ellipsoid formula (pi/6 x length x width x depth, both kidneys added) [state the imaging
+modality and the measuring plane]; it was not obtained by segmentation. Height-adjusted TKV was
+TKV divided by the height in metres recorded nearest to the examination within [365] days.
+Patients with typical (class 1) imaging on CT or MRI aged 15-80 years were assigned Mayo imaging
+classes 1A-1E from the estimated yearly kidney growth ((htTKV/150)^(1/age) - 1) x 100 %, with
+limits of 1.5, 3, 4.5 and 6 % (Irazabal et al., J Am Soc Nephrol 2015); age was the calendar-year
+age, and classes near a limit were checked against the exact age [state]. The classes were
+computed by the analysis program and reviewed by [investigators] before use. Ultrasound kidney
+length was summarised as the longer of the two kidneys [and > 16.5 cm, Bhutani et al., Kidney Int
+2015]. Input file SHA-256 values are recorded in `IMAGING_METRICS_LOG.json`.
 

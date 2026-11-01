@@ -56,13 +56,17 @@ WITH checks AS (
   'cystatin_urine_rbc_labs',(SELECT count(*)=3 FROM public.lab_test_catalog WHERE (code,standard_unit) IN (('CYSC','mg/L'),('URBC_UL','cells/μL'),('URBC_HPF','cells/HPF'))) AND (SELECT count(*)=9 AND bool_and(multiplier=1 AND offset_val=0) FROM public.lab_test_unit_map WHERE lab_test_code IN ('CYSC','URBC_UL','URBC_HPF')) AND NOT EXISTS(SELECT 1 FROM public.lab_test_unit_map u JOIN public.lab_test_unit_map h ON h.unit_symbol=u.unit_symbol WHERE u.lab_test_code='URBC_UL' AND h.lab_test_code='URBC_HPF'),
   '0046_adpkd_module',EXISTS(SELECT 1 FROM public.registry_schema_versions WHERE version='0046_adpkd_module'),
   'adpkd_module_vocabulary',COALESCE((SELECT position('''ADPKD''' in p.prosrc)>0 FROM pg_proc p WHERE p.oid=to_regprocedure('public._create_project_account_guard()')),false) AND COALESCE((SELECT position('血管加压素V2受体拮抗剂' in p.prosrc)>0 FROM pg_proc p WHERE p.oid=to_regprocedure('registry_private.validate_clinical_input(text,jsonb)')),false) AND EXISTS(SELECT 1 FROM public.abbreviation_dictionary WHERE abbr='ADPKD'),
+  '0047_imaging_records',EXISTS(SELECT 1 FROM public.registry_schema_versions WHERE version='0047_imaging_records'),
+  'imaging_records_table',COALESCE((SELECT c.relrowsecurity FROM pg_class c WHERE c.oid=to_regclass('public.imaging_long')),false) AND (SELECT count(*)=4 FROM pg_policies WHERE schemaname='public' AND tablename='imaging_long') AND (SELECT count(*)=7 FROM pg_trigger WHERE tgrelid=to_regclass('public.imaging_long') AND NOT tgisinternal AND tgenabled='O') AND EXISTS(SELECT 1 FROM pg_attribute WHERE attrelid=to_regclass('public.imaging_long') AND attname='tkv_ml' AND attgenerated='s') AND EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.registry_import_batches'::regclass AND conname='registry_import_batches_kind_check' AND pg_get_constraintdef(oid) ~ 'imaging') AND (SELECT count(*)=3 FROM public.lab_test_unit_map WHERE lab_test_code='TBIL'),
+  '0048_reignite_batch2',EXISTS(SELECT 1 FROM public.registry_schema_versions WHERE version='0048_reignite_batch2'),
+  'reignite_batch2_vocabulary',EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.events_long'::regclass AND conname='events_long_event_type_check' AND pg_get_constraintdef(oid) ~ 'hypertension_new_or_worse' AND pg_get_constraintdef(oid) ~ 'pregnancy') AND EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.events_long'::regclass AND conname='events_long_los_days_check') AND EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.visits_long'::regclass AND conname='visits_long_weight_kg_check') AND (SELECT count(*)=20 FROM public.lab_test_catalog WHERE code IN ('IGG','IGM','GDIGA1','NEUT','LYMPH','MONO','EOS','BASO','UTP24','UALB24','UCREA24','ANA','MPO_ANCA','PR3_ANCA','ANTI_GBM','HBSAG','HCV_AB','HIV_AB','RPR','TP_AB')),
   'single_billing_order_overload',(SELECT count(*)=1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='create_billing_order')
  ) AS value
 ), contract AS (
  __DATABASE_CONTRACT_QUERY__
 )
 SELECT jsonb_build_object(
- 'release','registry-20261030-cn-v9',
+ 'release','registry-20261031-cn-v10',
  'contract_protocol','registry-contract-v3-pg17',
  'database_server_major',current_setting('server_version_num')::int/10000,
  'database_contract_sha256','__DATABASE_CONTRACT_SHA256__',

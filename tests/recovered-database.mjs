@@ -35,8 +35,8 @@ try {
   assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),migration.sha256);
   try{await db.exec(bytes.toString());}catch(e){throw new Error(migration.file+': '+e.message);}
  }
- assert.equal(manifest.migrations.length,48);
- pass('48 canonical migrations execute strictly with real pgcrypto');
+ assert.equal(manifest.migrations.length,50);
+ pass('50 canonical migrations execute strictly with real pgcrypto');
  const ids=Array.from({length:5},()=>crypto.randomUUID());
  for(let i=0;i<ids.length;i++)await db.query('INSERT INTO auth.users(id,email) VALUES($1,$2)',[ids[i],`recovery${i}@example.invalid`]);
  const project=await asUser(ids[0],async()=>(await value("select public.create_project('Synthetic recovery','RECOVERY','IGAN') as id")).id);
@@ -57,11 +57,11 @@ try {
  const request=crypto.randomUUID();
  const exported=await asUser(ids[2],async()=>(await value('select public.create_registry_export($1,$2) as e',[project,request])).e);
  assert.equal(crypto.createHash('sha256').update(exported.content_text).digest('hex'),exported.content_sha256);
- assert.equal(Object.keys(JSON.parse(exported.content_text).tables).length,12);
+ assert.equal(Object.keys(JSON.parse(exported.content_text).tables).length,13);
  const replay=await asUser(ids[2],async()=>(await value('select public.create_registry_export($1,$2) as e',[project,request])).e);
  assert.equal(replay.content_text,exported.content_text);
  for(const i of [1,3,4])await asUser(ids[i],async()=>assert.rejects(db.query('select public.create_registry_export($1,$2)',[project,crypto.randomUUID()])));
- pass('frozen exports contain twelve tables (biopsy records since 0043, project fields since 0044), match SHA256 and enforce export authority/idempotence');
+ pass('frozen exports contain thirteen tables (biopsy records since 0043, project fields since 0044, imaging records since 0047), match SHA256 and enforce export authority/idempotence');
  await asUser(ids[0],async()=>assert.rejects(db.query("select public.admin_set_subscription($1,'pro',now()+interval '1 year')",[project]),/admin/i));
  pass('project owners cannot grant themselves paid entitlements');
  await asUser(ids[0],async()=>db.query("select public.create_patient_token_v2($1,'0001',1,true)",[project]));

@@ -44,7 +44,7 @@ BASE = Path(__file__).resolve().parent
 KEY = ["project_id", "center_code", "patient_code"]
 TABLE_COLUMNS = {
     "patients_baseline": KEY + ["id", "module", "sex", "birth_year", "baseline_date", "baseline_scr", "baseline_upcr", "baseline_upcr_unit"],
-    "visits_long": KEY + ["id", "module", "visit_date", "sbp", "dbp", "scr_umol_l", "upcr", "egfr", "egfr_formula_version", "height_cm"],
+    "visits_long": KEY + ["id", "module", "visit_date", "sbp", "dbp", "scr_umol_l", "upcr", "egfr", "egfr_formula_version", "height_cm", "weight_kg"],
     "labs_long": KEY + ["id", "module", "lab_date", "lab_test_code", "lab_name", "lab_value", "lab_unit", "value_raw", "unit_symbol", "value_standard", "standard_unit", "measured_at"],
     "meds_long": KEY + ["id", "module", "drug_name", "drug_class", "dose", "route", "frequency", "start_date", "end_date"],
     "variants_long": KEY + ["id", "module", "test_date", "gene", "variant", "hgvs_c", "hgvs_p"],
@@ -55,6 +55,10 @@ TABLE_COLUMNS = {
     # Custom enrollment fields (0044): one row per patient and field; value_codes holds a multi-choice
     # as codes separated by ';'. The field definitions are in project_fields.csv (not a patient table).
     "patient_field_values": KEY + ["id", "module", "field_key", "value_text", "value_codes", "value_num", "value_date"],
+    # Kidney imaging records (registry 0047); optional, read by imaging_metrics.py. tkv_ml is computed by the
+    # registry (ellipsoid, both kidneys) and is empty unless all six diameters were recorded.
+    "imaging_long": KEY + ["id", "module", "exam_date", "modality", "left_length_cm", "left_width_cm", "left_depth_cm",
+                           "right_length_cm", "right_width_cm", "right_depth_cm", "tkv_ml", "liver_cysts", "mayo_image_class"],
 }
 EGFR_REFERENCE = "https://escholarship.org/content/qt3gj2d8m2/qt3gj2d8m2.pdf"
 
@@ -376,6 +380,14 @@ LAB_UNITS = {
     # is converted into the other.
     "URBC_UL": ("cells/μL", {"cells/μL": 1, "个/μL": 1, "/μL": 1}),
     "URBC_HPF": ("cells/HPF", {"cells/HPF": 1, "个/HPF": 1, "/HPF": 1, "个/HP": 1, "/HP": 1}),
+    "HGB": ("g/dL", {"g/dL": 1, "g/L": 0.1}),
+    # Registry 0047/0048 (the same factors as lab_test_unit_map).
+    "TBIL": ("μmol/L", {"μmol/L": 1, "umol/L": 1, "mg/dL": 17.104}),
+    "IGG": ("g/L", {"g/L": 1, "mg/dL": 0.01}),
+    "IGM": ("g/L", {"g/L": 1, "mg/dL": 0.01}),
+    "UTP24": ("g/24h", {"g/24h": 1, "mg/24h": 0.001}),
+    "UALB24": ("mg/24h", {"mg/24h": 1, "g/24h": 1000}),
+    "UCREA24": ("mmol/24h", {"mmol/24h": 1, "μmol/24h": 0.001, "mg/24h": 0.008842, "g/24h": 8.842}),
 }
 
 

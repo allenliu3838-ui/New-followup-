@@ -438,7 +438,8 @@ export function buildVisitRow(draft, { today = researchToday(), containsPII = ()
   const scrRaw = parseDecimal(draft.scr);
   const upcrRaw = parseDecimal(draft.upcr);
   const heightRaw = parseDecimal(draft.height);
-  for (const [value, field, label] of [[sbp, 'sbp', '收缩压'], [dbp, 'dbp', '舒张压'], [scrRaw, 'scr', '血肌酐'], [upcrRaw, 'upcr', '尿蛋白肌酐比'], [heightRaw, 'height', '身高']]) {
+  const weightRaw = parseDecimal(draft.weight);
+  for (const [value, field, label] of [[sbp, 'sbp', '收缩压'], [dbp, 'dbp', '舒张压'], [scrRaw, 'scr', '血肌酐'], [upcrRaw, 'upcr', '尿蛋白肌酐比'], [heightRaw, 'height', '身高'], [weightRaw, 'weight', '体重']]) {
     if (Number.isNaN(value) && !(bp.error && (field === 'sbp' || field === 'dbp'))) errors.push({ field, message: `${label}请填写数字（可含小数点）。` });
   }
   const ok = v => v !== null && !Number.isNaN(v);
@@ -464,6 +465,7 @@ export function buildVisitRow(draft, { today = researchToday(), containsPII = ()
       : `尿蛋白肌酐比（换算后 ${upcr} mg/g）超出系统允许的 0–50000 mg/g，请核对数值与单位。` });
   }
   if (ok(heightRaw) && (heightRaw < 30 || heightRaw > 250)) errors.push({ field: 'height', message: '身高须在 30–250 cm 之间，请核对。' });
+  if (ok(weightRaw) && (weightRaw < 1 || weightRaw > 300)) errors.push({ field: 'weight', message: '体重须在 1–300 kg 之间，请核对。' });
   const notes = String(draft.notes ?? '').trim();
   if (notes.length > 500) errors.push({ field: 'notes', message: '备注最多 500 字。' });
   if (notes && containsPII(notes)) errors.push({ field: 'notes', message: '备注中检测到疑似个人身份信息（手机号、身份证号、住院号、姓名等），请删除后再保存。' });
@@ -475,6 +477,7 @@ export function buildVisitRow(draft, { today = researchToday(), containsPII = ()
   if (ok(scr)) row.scr_umol_l = scr;
   if (ok(upcr)) row.upcr = upcr;
   if (ok(heightRaw)) row.height_cm = heightRaw;
+  if (ok(weightRaw)) row.weight_kg = weightRaw;
   if (notes) row.notes = notes;
   return { row, errors, missing };
 }

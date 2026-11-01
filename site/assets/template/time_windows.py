@@ -26,12 +26,20 @@ same marker. Children's height is the one nearest to the measurement day within 
 height window (same rules for ties and same-day values). The equations are in run_analysis.py
 (the default pair is also the database trigger's). Stored eGFR values are not used.
 
+A time point may instead be placed relative to the start of treatment ("relative_to":
+"treatment_start"): its target day and window are counted from the earliest start_date in
+meds_long.csv of the listed drug classes, searched from treatment_search_from_days (relative to
+the anchor) onwards. Patients without such a start get status no_treatment_start for that time
+point. Offsets in the output stay relative to the anchor; reference_date gives the start used.
+
 The population is that of run_analysis.py (consent_status consented/waiver when the column
 exists). Time points, windows and variables come from the configuration file only (see
-time_windows_template.json). Until the study teams mark the configuration confirmed, the
-output file names start with UNCONFIRMED_.
+time_windows_template.json and time_windows_reignite.json). Until the study teams mark the
+configuration confirmed, the output file names start with UNCONFIRMED_. With --no-dates the
+tables carry no calendar date at all, only whole days from the anchor (and the reference date's
+offset); the run log keeps the configuration but no date of any patient.
 
-Run:  python3 time_windows.py --data data --config time_windows_config.json --out time_windows
+Run:  python3 time_windows.py --data data --config time_windows_config.json --out time_windows [--no-dates]
 No database/network access; the input CSVs are never changed.
 """
 from __future__ import annotations
@@ -60,7 +68,7 @@ ANCHOR_SOURCES = ("index_biopsy", "baseline_biopsy_date", "earliest_native_biops
 BASELINE_BIOPSY_COLUMN = {"LN": "ln_biopsy_date", "C3G": "c3g_biopsy_date"}
 SELECTION = {"rule": "nearest", "tie": "earlier", "same_day": "median"}
 # Measurement columns a variable may read, with the unit the registry stores them in.
-VISIT_COLUMNS = {"scr_umol_l": "μmol/L", "upcr": "mg/g", "sbp": "mmHg", "dbp": "mmHg", "height_cm": "cm"}
+VISIT_COLUMNS = {"scr_umol_l": "μmol/L", "upcr": "mg/g", "sbp": "mmHg", "dbp": "mmHg", "height_cm": "cm", "weight_kg": "kg"}
 BASELINE_COLUMNS = {"baseline_scr": "μmol/L", "baseline_upcr": "mg/g"}
 NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,29}$")
 TRUE = {"true", "t", "1", "yes"}
@@ -70,6 +78,10 @@ LONG_COLUMNS = KEY + ["module", "anchor_date", "anchor_source", "timepoint", "ta
                       "egfr_formula", "age_years", "height_cm_used", "height_date_used"]
 # Added to the long table only when an equation uses cystatin C.
 CYSTATIN_COLUMNS = ["cystatin_mg_l_used", "cystatin_date_used"]
+# Added when a time point is placed relative to the start of treatment.
+REFERENCE_COLUMNS = ["reference_date", "reference_offset_days"]
+# Calendar-date columns dropped with --no-dates (offsets in days remain).
+DATE_COLUMNS = {"anchor_date", "value_date", "height_date_used", "cystatin_date_used", "reference_date"}
 # eGFR equations and the measurements each needs; adults are 18-120 and children 1-17 years.
 ADULT_EQUATIONS = {"CKD-EPI-2021-Cr": ("creatinine",), "CKD-EPI-2012-Cys": ("cystatin",),
                    "CKD-EPI-2021-CrCys": ("creatinine", "cystatin")}
@@ -123,7 +135,18 @@ def validate_config(raw):
         lo, hi = _int(window[0], f"{where}.window_days[0]"), _int(window[1], f"{where}.window_days[1]")
         if not lo <= target <= hi:
             raise ConfigError(f"{where}: the window must contain the target day ({lo} <= {target} <= {hi})")
-        timepoints.append({"name": tp["name"], "target_days": target, "window_days": [lo, hi]})
+        relative = tp.get("relative_to", "anchor")
+        if relative not in ("anchor", "treatment_start"):
+            raise ConfigError(f"{where}.relative_to must be anchor or treatment_start")
+        point = {"name": tp["name"], "target_days": target, "window_days": [lo, hi]}
+        if relative == "treatment_start":
+            classes = tp.get("drug_classes")
+            if not isinstance(classes, list) or not classes or any(not isinstance(c, str) or not c.strip() for c in classes) \
+                    or len(set(classes)) != len(classes):
+                raise ConfigError(f"{where}.drug_classes must list the medication classes (meds_long.drug_class) that start the treatment")
+            point.update({"relative_to": relative, "drug_classes": list(classes),
+                          "treatment_search_from_days": _int(tp.get("treatment_search_from_days"), f"{where}.treatment_search_from_days")})
+        timepoints.append(point)
     if len({tp["name"] for tp in timepoints}) != len(timepoints):
         raise ConfigError("timepoint names must be unique")
     specs = raw.get("variables")
@@ -417,6 +440,30 @@ def field_values(data_dir, frames, keys):
     return out
 
 
+def date_field_keys(data_dir, keys):
+    """The listed custom field codes whose definition (project_fields.csv value_type) is a date."""
+    path = Path(data_dir)/"project_fields.csv"
+    if not keys or not path.is_file():
+        return set()
+    with path.open(encoding="utf-8-sig", newline="") as f:
+        return {r.get("field_key") for r in csv.DictReader(f) if r.get("field_key") in keys and (r.get("value_type") or "").strip() == "date"}
+
+
+def treatment_starts(meds, classes, anchors, search_from):
+    """{patient key: earliest start_date of the listed classes on or after anchor + search_from days}."""
+    out = {}
+    for m in meds.to_dict("records"):
+        key = _key(m)
+        if key not in anchors or str(m.get("drug_class", "")).strip() not in classes:
+            continue
+        d = date(m.get("start_date", ""))
+        if pd.isna(d) or (d - anchors[key][0]).days < search_from:
+            continue
+        if key not in out or d < out[key]:
+            out[key] = d
+    return out
+
+
 def build(data_dir, config, allow_fully_excluded_centers=False):
     frames = load_tables(data_dir)
     frames, consent = apply_consent_filter(frames)
@@ -433,6 +480,8 @@ def build(data_dir, config, allow_fully_excluded_centers=False):
     long_rows, wide_rows = [], []
     egfr = config["egfr"]
     decimals = {v["name"]: v["decimals"] for v in config["variables"]}
+    starts = {tp["name"]: treatment_starts(frames["meds_long"], set(tp["drug_classes"]), anchors, tp["treatment_search_from_days"])
+              for tp in config["timepoints"] if tp.get("relative_to") == "treatment_start"}
     for key in sorted(anchors):
         p = by_key[key]
         anchor, source, kind = anchors[key]
@@ -440,10 +489,29 @@ def build(data_dir, config, allow_fully_excluded_centers=False):
         wide = {**base, "anchor_biopsy_kind": kind, **{f"field_{k}": fields.get(key, {}).get(k, "") for k in config["patient_fields"]}}
         for tp in config["timepoints"]:
             lo, hi = tp["window_days"]
-            frame = {**base, "timepoint": tp["name"], "target_days": tp["target_days"], "window_from_days": lo, "window_to_days": hi}
+            target = tp["target_days"]
+            reference = {}
+            if tp.get("relative_to") == "treatment_start":
+                start = starts[tp["name"]].get(key)
+                if start is None:
+                    frame = {**base, "timepoint": tp["name"]}
+                    for name in [v["name"] for v in config["variables"]] + (["egfr"] if egfr else []):
+                        long_rows.append({**frame, "variable": name, "status": "no_treatment_start"})
+                    wide.update({f"{tp['name']}_reference_date": "", f"{tp['name']}_reference_offset_days": ""})
+                    for v in config["variables"]:
+                        prefix = f"{tp['name']}_{v['name']}"
+                        wide.update({prefix: "", f"{prefix}_date": "", f"{prefix}_n": ""})
+                    if egfr:
+                        wide.update({f"{tp['name']}_egfr": "", f"{tp['name']}_egfr_formula": ""})
+                    continue
+                shift = (start - anchor).days
+                target, lo, hi = target + shift, lo + shift, hi + shift
+                reference = {"reference_date": start.date().isoformat(), "reference_offset_days": shift}
+                wide.update({f"{tp['name']}_{k}": v for k, v in reference.items()})
+            frame = {**base, "timepoint": tp["name"], "target_days": target, "window_from_days": lo, "window_to_days": hi, **reference}
             picks = {}
             for v in config["variables"]:
-                pick = select(series[v["name"]][0].get(key, []), anchor, tp["target_days"], lo, hi)
+                pick = select(series[v["name"]][0].get(key, []), anchor, target, lo, hi)
                 picks[v["name"]] = pick
                 prefix = f"{tp['name']}_{v['name']}"
                 if pick is None:
@@ -504,7 +572,7 @@ def write_rows(path, header, rows):
             w.writerow({k: r.get(k, "") for k in header})
 
 
-def run(data_dir, config_path, out_dir, allow_fully_excluded_centers=False):
+def run(data_dir, config_path, out_dir, allow_fully_excluded_centers=False, no_dates=False):
     config = load_config(config_path)
     data_dir, out_dir = Path(data_dir), Path(out_dir)
     if out_dir.is_symlink() or (out_dir.exists() and any(out_dir.iterdir())):
@@ -518,23 +586,35 @@ def run(data_dir, config_path, out_dir, allow_fully_excluded_centers=False):
     out_dir.mkdir(parents=True, exist_ok=True)
     prefix = "" if config["confirmed"] else "UNCONFIRMED_"
     wide_header = KEY + ["module", "anchor_date", "anchor_source", "anchor_biopsy_kind"] + [f"field_{k}" for k in config["patient_fields"]]
+    treatment = any(tp.get("relative_to") == "treatment_start" for tp in config["timepoints"])
     for tp in config["timepoints"]:
+        if tp.get("relative_to") == "treatment_start":
+            wide_header += [f"{tp['name']}_reference_date", f"{tp['name']}_reference_offset_days"]
         for v in config["variables"]:
             wide_header += [f"{tp['name']}_{v['name']}", f"{tp['name']}_{v['name']}_date", f"{tp['name']}_{v['name']}_n"]
         if config["egfr"]:
             wide_header += [f"{tp['name']}_egfr", f"{tp['name']}_egfr_formula"]
-    long_header = LONG_COLUMNS + (CYSTATIN_COLUMNS if config["egfr"] and "cystatin_variable" in config["egfr"] else [])
+    long_header = LONG_COLUMNS + (CYSTATIN_COLUMNS if config["egfr"] and "cystatin_variable" in config["egfr"] else []) \
+        + (REFERENCE_COLUMNS if treatment else [])
+    if no_dates:
+        # Custom fields are dropped by their definition (value_type date), whatever their code is called.
+        date_fields = {f"field_{k}" for k in date_field_keys(data_dir, config["patient_fields"])}
+        dated = lambda c: c in DATE_COLUMNS or c in date_fields or c.endswith("_date") and not c.endswith("_offset_days")  # noqa: E731
+        long_header = [c for c in long_header if c not in DATE_COLUMNS]
+        wide_header = [c for c in wide_header if not dated(c)]
     files = {f"{prefix}time_windows_long.csv": (long_header, long_rows),
              f"{prefix}time_windows_wide.csv": (wide_header, wide_rows),
              f"{prefix}time_windows_no_anchor.csv": (KEY + ["module", "reason"], excluded)}
     for name, (header, rows) in files.items():
+        if no_dates:
+            rows = [{k: r.get(k, "") for k in header} for r in rows]
         write_rows(out_dir/name, header, rows)
     log = {"script": SCRIPT_VERSION, "analysis_core": VERSION, "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
            "confirmed": config["confirmed"], "confirmed_by": config["confirmed_by"], "confirmed_date": config["confirmed_date"],
            "note": ("配置已由研究团队确认。" if config["confirmed"] else
                     "配置尚未确认：时间点、窗口与变量为模板或草稿，输出文件以 UNCONFIRMED_ 开头，不能作为正式分析数据。"),
            "selection_rule": "窗口内取距目标日最近的一天；距离相同取较早的一天；同一天多个值取中位数。窗口边界包含在内。",
-           "allow_fully_excluded_centers": bool(allow_fully_excluded_centers),
+           "allow_fully_excluded_centers": bool(allow_fully_excluded_centers), "no_dates": bool(no_dates),
            "config": config, "config_sha256": sha256(config_path), "input_sha256": inputs,
            "output_sha256": {name: sha256(out_dir/name) for name in files}, **summary}
     (out_dir/f"{prefix}TIME_WINDOWS_LOG.json").write_text(json.dumps(log, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
@@ -548,9 +628,11 @@ def main(argv=None):
     parser.add_argument("--out", required=True, help="new or empty output directory")
     parser.add_argument("--allow-fully-excluded-centers", action="store_true",
                         help="proceed when consent filtering leaves a project/center with no patient (recorded in the log)")
+    parser.add_argument("--no-dates", action="store_true",
+                        help="write no calendar date of any patient: only whole days from the anchor date")
     args = parser.parse_args(argv)
     try:
-        out_dir, log = run(args.data, args.config, args.out, args.allow_fully_excluded_centers)
+        out_dir, log = run(args.data, args.config, args.out, args.allow_fully_excluded_centers, args.no_dates)
     except (ConfigError, DataContractError) as exc:
         print(f"未生成时间窗数据表：{exc}", file=sys.stderr)
         return 2

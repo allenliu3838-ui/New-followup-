@@ -1,7 +1,7 @@
-// 化验记录 / 用药记录 / 终点事件 / 肾活检记录的 CSV 批量导入：模板、字段规则、化验项目映射、两级校验与错误报告。
+// 化验记录 / 用药记录 / 终点事件 / 肾活检记录 / 影像记录的 CSV 批量导入：模板、字段规则、化验项目映射、两级校验与错误报告。
 // 纯函数模块：不访问网络、不操作页面，便于浏览器测试直接加载。写入仍走 import_registry_rows（数据库为最终校验）。
 
-export const BATCH_KINDS = Object.freeze(['labs', 'meds', 'events', 'biopsies']);
+export const BATCH_KINDS = Object.freeze(['labs', 'meds', 'events', 'biopsies', 'imaging']);
 export const CHUNK_SIZE = 500;
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
 export const MAX_FILE_ROWS = 10000;
@@ -12,8 +12,9 @@ export const SKIP_MAPPING = '__skip__';
 export const IMPORT_COLUMNS = Object.freeze({
   labs: ['patient_code', 'lab_date', 'lab_test_code', 'value_raw', 'unit_symbol', 'result_text', 'ref_range', 'abnormal_flag', 'notes'],
   meds: ['patient_code', 'drug_name', 'drug_class', 'dose_value', 'dose_unit', 'route', 'frequency', 'start_date', 'end_date', 'indication', 'notes'],
-  events: ['patient_code', 'event_type', 'event_date', 'event_detail', 'evidence_source', 'notes'],
+  events: ['patient_code', 'event_type', 'event_date', 'event_detail', 'evidence_source', 'notes', 'los_days'],
   biopsies: ['patient_code', 'biopsy_date', 'biopsy_kind', 'is_index', 'glomeruli_total', 'crescent_pct', 'oxford_m', 'oxford_e', 'oxford_s', 'oxford_t', 'oxford_c', 'notes'],
+  imaging: ['patient_code', 'exam_date', 'modality', 'left_length_cm', 'left_width_cm', 'left_depth_cm', 'right_length_cm', 'right_width_cm', 'right_depth_cm', 'liver_cysts', 'mayo_image_class', 'notes'],
 });
 /** 模板列：化验额外有 lab_item_name（只用于映射化验项目，不写入数据库）。 */
 export const TEMPLATE_COLUMNS = Object.freeze({
@@ -21,8 +22,9 @@ export const TEMPLATE_COLUMNS = Object.freeze({
   meds: IMPORT_COLUMNS.meds,
   events: IMPORT_COLUMNS.events,
   biopsies: IMPORT_COLUMNS.biopsies,
+  imaging: IMPORT_COLUMNS.imaging,
 });
-const REQUIRED_COLUMNS = Object.freeze({ labs: ['patient_code', 'lab_date'], meds: ['patient_code', 'drug_name', 'start_date'], events: ['patient_code', 'event_type', 'event_date', 'evidence_source'], biopsies: ['patient_code', 'biopsy_date', 'biopsy_kind'] });
+const REQUIRED_COLUMNS = Object.freeze({ labs: ['patient_code', 'lab_date'], meds: ['patient_code', 'drug_name', 'start_date'], events: ['patient_code', 'event_type', 'event_date', 'evidence_source'], biopsies: ['patient_code', 'biopsy_date', 'biopsy_kind'], imaging: ['patient_code', 'exam_date', 'modality'] });
 
 export const DRUG_CLASSES = Object.freeze(['RAS阻断剂', 'SGLT2抑制剂', '糖皮质激素', '免疫抑制剂', '利尿剂', '降压药（其他）', '降糖药（其他）', '降脂药', '抗凝/抗血小板',
   '内皮素受体拮抗剂', '补体抑制剂', '盐皮质激素受体拮抗剂', '预防性抗生素', '试验药物', '疫苗', '血管加压素V2受体拮抗剂', '其他']);
@@ -30,16 +32,34 @@ export const DRUG_CLASSES = Object.freeze(['RAS阻断剂', 'SGLT2抑制剂', '�
 const DRUG_CLASS_INPUT = Object.freeze({ era: '内皮素受体拮抗剂', mra: '盐皮质激素受体拮抗剂', vaccine: '疫苗', '疫苗接种': '疫苗', '研究药物': '试验药物',
   'v2受体拮抗剂': '血管加压素V2受体拮抗剂', '血管加压素受体拮抗剂': '血管加压素V2受体拮抗剂' });
 export const ROUTES = Object.freeze({ PO: '口服', IV: '静脉', SC: '皮下注射', IM: '肌肉注射', topical: '外用', other: '其他' });
-export const IMPORTABLE_EVENTS = Object.freeze({ esrd: '终末期肾病', dialysis_start: '开始透析', kidney_transplant: '肾移植', death: '死亡', relapse: '复发', serious_infection: '严重感染', hospitalization: '住院', custom: '其他' });
+export const IMPORTABLE_EVENTS = Object.freeze({ esrd: '终末期肾病', dialysis_start: '开始透析', kidney_transplant: '肾移植', death: '死亡', relapse: '复发', serious_infection: '严重感染', hospitalization: '住院',
+  er_visit: '急诊', icu_admission: '入住 ICU', infection: '感染（任何）', venous_thromboembolism: '静脉血栓栓塞', cardiovascular_event: '心血管事件', malignancy: '恶性肿瘤',
+  osteoporosis: '骨量减少或骨质疏松', fracture: '骨折', avascular_necrosis: '缺血性骨坏死', new_diabetes: '新发糖尿病', hypertension_new_or_worse: '新发或加重的高血压', pregnancy: '妊娠', custom: '其他' });
 /** 须在事件细节中写明内容的事件类型（与数据库 check_clinical_row 一致）。 */
-export const DETAIL_REQUIRED_EVENTS = Object.freeze(['custom', 'serious_infection', 'hospitalization']);
+export const DETAIL_REQUIRED_EVENTS = Object.freeze(['custom', 'serious_infection', 'hospitalization', 'er_visit', 'icu_admission', 'infection', 'cardiovascular_event', 'malignancy', 'fracture', 'pregnancy']);
+/** 事件细节要写什么（按事件类型）。 */
+export const EVENT_DETAIL_HINTS = Object.freeze({ custom: '事件内容', serious_infection: '感染部位或诊断', hospitalization: '住院原因', er_visit: '急诊原因', icu_admission: '入住 ICU 原因',
+  infection: '感染部位或病原', cardiovascular_event: '类型，如心肌梗死、卒中、心力衰竭', malignancy: '肿瘤类型', fracture: '骨折部位', pregnancy: '妊娠结局，如活产、早产、流产、终止妊娠或仍在妊娠' });
+/** 可填写住院天数的事件类型（与数据库 events_long_los_days_check 一致）。 */
+export const LOS_EVENTS = Object.freeze(['hospitalization', 'icu_admission']);
+export const IMAGING_MODALITIES = Object.freeze({ ultrasound: '超声', ct: 'CT', mri: '磁共振' });
+export const LIVER_CYSTS = Object.freeze({ present: '有', absent: '无' });
+export const MAYO_IMAGE_CLASSES = Object.freeze({ typical: '典型', atypical: '非典型' });
+export const IMAGING_DIMENSIONS = Object.freeze([['left_length_cm', '左肾长径'], ['left_width_cm', '左肾宽径'], ['left_depth_cm', '左肾厚径'], ['right_length_cm', '右肾长径'], ['right_width_cm', '右肾宽径'], ['right_depth_cm', '右肾厚径']]);
+/** 总肾体积（mL）：椭球公式 π/6 × 长 × 宽 × 厚，左右肾相加，保留 1 位小数；与数据库 imaging_long.tkv_ml 一致。六条径线不全时为 null。 */
+export function imagingTkv(d) {
+  const xs = IMAGING_DIMENSIONS.map(([k]) => d?.[k]);
+  if (xs.some(x => x == null || x === '' || !Number.isFinite(Number(x)))) return null;
+  const [a, b, c, e, f, g] = xs.map(Number);
+  return Math.round(Math.PI / 6 * (a * b * c + e * f * g) * 10) / 10;
+}
 export const BIOPSY_KINDS = Object.freeze({ native: '自体肾', transplant: '移植肾' });
 export const DERIVED_EVENTS = Object.freeze(['egfr_decline_40pct', 'egfr_decline_57pct', 'complete_remission', 'partial_remission']);
 export const EVIDENCE_SOURCES = Object.freeze({ medical_record: '病历记录', lab_review: '化验数据复核', phone_followup: '电话随访', death_certificate: '死亡证明', other: '其他' });
 /** 终点事件中需要同时在“研究状态”登记的类型（患者随访状态仍为“在访”时给警告）。 */
 const STATUS_EVENTS = new Set(['death', 'esrd', 'dialysis_start', 'kidney_transplant']);
 
-export const KIND_LABELS = Object.freeze({ baseline: '患者基线', visits: '随访记录', labs: '化验记录', meds: '用药记录', events: '终点事件', biopsies: '肾活检记录', fields: '入组字段' });
+export const KIND_LABELS = Object.freeze({ baseline: '患者基线', visits: '随访记录', labs: '化验记录', meds: '用药记录', events: '终点事件', biopsies: '肾活检记录', imaging: '影像记录', fields: '入组字段' });
 
 export const TEMPLATES = Object.freeze({
   labs: {
@@ -84,19 +104,20 @@ export const TEMPLATES = Object.freeze({
     ],
   },
   events: {
-    filename: 'template_events_v1.csv', label: '终点事件', version: 'v1',
+    filename: 'template_events_v2.csv', label: '终点事件', version: 'v2',
     examples: [
       { patient_code: 'DEMO-001', event_type: 'esrd', event_date: '2025-01-24', event_detail: 'eGFR 进行性下降至终末期肾病', evidence_source: 'lab_review' },
-      { patient_code: 'DEMO-002', event_type: 'dialysis_start', event_date: '2025-03-02', event_detail: '维持性血液透析', evidence_source: 'medical_record' },
-      { patient_code: 'DEMO-003', event_type: 'custom', event_date: '2025-05-20', event_detail: '急性肾损伤住院', evidence_source: 'phone_followup', notes: '演示数据' },
+      { patient_code: 'DEMO-003', event_type: 'hospitalization', event_date: '2025-05-20', event_detail: '急性肾损伤', evidence_source: 'medical_record', los_days: '6', notes: '演示数据' },
+      { patient_code: 'DEMO-003', event_type: 'pregnancy', event_date: '2025-09-01', event_detail: '活产，足月', evidence_source: 'phone_followup' },
     ],
     fields: [
       ['patient_code', '研究编号', '必填', '项目内已存在的研究编号。'],
-      ['event_type', '事件类型', '必填', 'esrd（终末期肾病）、dialysis_start（开始透析）、kidney_transplant（肾移植）、death（死亡）、relapse（复发）、serious_infection（严重感染）、hospitalization（住院）、custom（其他）；后三种须填事件细节。疫苗接种请用用药记录模板导入（药物类别“疫苗”）。eGFR 下降与缓解由分析脚本按研究方案计算，不接受导入。'],
+      ['event_type', '事件类型', '必填', 'esrd（终末期肾病）、dialysis_start（开始透析）、kidney_transplant（肾移植）、death（死亡）、relapse（复发）、serious_infection（严重感染）、hospitalization（住院）、er_visit（急诊）、icu_admission（入住 ICU）、infection（感染）、venous_thromboembolism（静脉血栓栓塞）、cardiovascular_event（心血管事件）、malignancy（恶性肿瘤）、osteoporosis（骨量减少或骨质疏松）、fracture（骨折）、avascular_necrosis（缺血性骨坏死）、new_diabetes（新发糖尿病）、hypertension_new_or_worse（新发或加重的高血压）、pregnancy（妊娠）、custom（其他），也可填中文名称。疫苗接种请用用药记录模板导入（药物类别“疫苗”）。eGFR 下降与缓解由分析脚本按研究方案计算，不接受导入。'],
       ['event_date', '事件日期', '必填', 'YYYY-MM-DD，事件实际发生日；死亡以死亡日期为准。'],
-      ['event_detail', '事件细节', 'custom、serious_infection、hospitalization 时必填', '如透析方式、移植类型、感染部位或诊断、住院原因，最多 500 字。'],
+      ['event_detail', '事件细节', '部分类型必填', '其他、严重感染、住院、急诊、ICU、感染、心血管事件、恶性肿瘤、骨折、妊娠须填写：原因、类型、部位或妊娠结局；最多 500 字。'],
       ['evidence_source', '判定依据来源', '必填', 'medical_record（病历记录）、lab_review（化验数据复核）、phone_followup（电话随访）、death_certificate（死亡证明）、other（其他）。'],
       ['notes', '备注', '选填', '最多 500 字，勿填身份信息。'],
+      ['los_days', '住院天数', '选填', '只用于 hospitalization（住院）和 icu_admission（入住 ICU），0–3650 的整数。'],
     ],
   },
   biopsies: {
@@ -119,6 +140,28 @@ export const TEMPLATES = Object.freeze({
       ['oxford_t', '牛津分型 T', '选填', '0、1 或 2。'],
       ['oxford_c', '牛津分型 C', '选填', '0、1 或 2；与新月体比例同时填写时须一致：C0 为 0，C1 小于 25，C2 为 25 及以上。'],
       ['notes', '备注', '选填', '最多 500 字，勿填身份信息；不要粘贴病理报告原文。'],
+    ],
+  },
+  imaging: {
+    filename: 'template_imaging_v1.csv', label: '影像记录', version: 'v1',
+    examples: [
+      { patient_code: 'DEMO-001', exam_date: '2024-03-12', modality: 'mri', left_length_cm: '18.2', left_width_cm: '9.1', left_depth_cm: '8.4', right_length_cm: '17.5', right_width_cm: '8.8', right_depth_cm: '8.0', liver_cysts: 'present', mayo_image_class: 'typical', notes: '磁共振 T2 冠状位测量' },
+      { patient_code: 'DEMO-001', exam_date: '2025-04-20', modality: 'ultrasound', left_length_cm: '18.9', right_length_cm: '18.0', liver_cysts: 'present' },
+      { patient_code: 'DEMO-002', exam_date: '2025-01-08', modality: 'ultrasound', left_length_cm: '13.6', right_length_cm: '14.1', liver_cysts: 'absent' },
+    ],
+    fields: [
+      ['patient_code', '研究编号', '必填', '项目内已存在的研究编号。'],
+      ['exam_date', '检查日期', '必填', 'YYYY-MM-DD，不能晚于今天，不早于 1900-01-01。'],
+      ['modality', '检查方式', '必填', 'ultrasound（超声）、ct、mri（磁共振），也可填“超声”“B超”“磁共振”。同一患者同一日期同一检查方式只能一行。'],
+      ['left_length_cm', '左肾长径', '径线与肝囊肿至少一项', '厘米（cm），大于 0、不超过 40，不带单位，例如 18.2。超声至少填左右肾长径。'],
+      ['left_width_cm', '左肾宽径', '选填', '厘米，同上。'],
+      ['left_depth_cm', '左肾厚径', '选填', '厘米，同上。'],
+      ['right_length_cm', '右肾长径', '选填', '厘米，同上。'],
+      ['right_width_cm', '右肾宽径', '选填', '厘米，同上。'],
+      ['right_depth_cm', '右肾厚径', '选填', '厘米，同上。左右肾长宽厚六项都填时，系统按椭球公式计算总肾体积（TKV），不能导入 TKV。'],
+      ['liver_cysts', '肝囊肿', '选填', 'present（有）或 absent（无），也可填“有”“无”；留空为未记录。'],
+      ['mayo_image_class', 'Mayo 影像分型', '选填', 'typical（典型）或 atypical（非典型），只用于 CT 或磁共振；超声请留空。'],
+      ['notes', '备注', '选填', '最多 500 字，勿填身份信息；可写测量方法或层面。'],
     ],
   },
 });
@@ -159,6 +202,27 @@ export const LAB_ALIASES = Object.freeze({
   URBC_UL: ['尿红细胞', '尿红细胞计数', '尿液红细胞', '尿沉渣红细胞', '红细胞(尿)', '尿rbc', 'urbc', '尿红细胞(仪器)', '尿红细胞定量', '尿红细胞/μl'],
   URBC_HPF: ['尿红细胞', '尿红细胞计数', '尿液红细胞', '尿沉渣红细胞', '红细胞(尿)', '尿rbc', 'urbc', '尿红细胞(镜检)', '镜检红细胞', '尿沉渣镜检红细胞', '尿红细胞/hpf'],
   PLA2R: ['pla2r', 'pla2r-ab', '抗pla2r抗体'],
+  TBIL: ['tbil', '总胆红素', '血清总胆红素', '血总胆红素'],
+  IGG: ['igg', '血清igg', '免疫球蛋白g'],
+  IGM: ['igm', '血清igm', '免疫球蛋白m'],
+  GDIGA1: ['gd-iga1', 'gdiga1', '半乳糖缺陷iga1', '半乳糖缺乏iga1'],
+  NEUT: ['neut#', 'neu#', 'anc', '中性粒细胞计数', '中性粒细胞绝对值'],
+  LYMPH: ['lymph#', 'lym#', '淋巴细胞计数', '淋巴细胞绝对值'],
+  MONO: ['mono#', 'mon#', '单核细胞计数', '单核细胞绝对值'],
+  EOS: ['eos#', '嗜酸性粒细胞计数', '嗜酸性粒细胞绝对值'],
+  BASO: ['baso#', 'bas#', '嗜碱性粒细胞计数', '嗜碱性粒细胞绝对值'],
+  UTP24: ['24h尿蛋白', '24小时尿蛋白', '24小时尿蛋白定量', '24h尿蛋白定量', '24h-utp'],
+  UALB24: ['24h尿白蛋白', '24小时尿白蛋白', '24小时尿微量白蛋白'],
+  UCREA24: ['24h尿肌酐', '24小时尿肌酐'],
+  ANA: ['ana', '抗核抗体'],
+  MPO_ANCA: ['mpo-anca', 'p-anca', '抗mpo抗体', '抗髓过氧化物酶抗体'],
+  PR3_ANCA: ['pr3-anca', 'c-anca', '抗pr3抗体', '抗蛋白酶3抗体'],
+  ANTI_GBM: ['anti-gbm', '抗gbm抗体', '抗肾小球基底膜抗体'],
+  HBSAG: ['hbsag', '乙肝表面抗原', '乙型肝炎表面抗原'],
+  HCV_AB: ['anti-hcv', 'hcv-ab', '丙肝抗体', '丙型肝炎抗体'],
+  HIV_AB: ['anti-hiv', 'hiv抗体', 'hiv抗原抗体'],
+  RPR: ['rpr', '快速血浆反应素', '梅毒rpr'],
+  TP_AB: ['tp-ab', 'tppa', '梅毒螺旋体抗体', '梅毒抗体'],
 });
 
 const EVENT_INPUT = Object.freeze({
@@ -167,8 +231,18 @@ const EVENT_INPUT = Object.freeze({
   kidney_transplant: 'kidney_transplant', transplant: 'kidney_transplant', '肾移植': 'kidney_transplant',
   death: 'death', '死亡': 'death', relapse: 'relapse', '复发': 'relapse',
   serious_infection: 'serious_infection', '严重感染': 'serious_infection', hospitalization: 'hospitalization', '住院': 'hospitalization',
+  er_visit: 'er_visit', '急诊': 'er_visit', icu_admission: 'icu_admission', icu: 'icu_admission', '入住icu': 'icu_admission', '重症监护': 'icu_admission',
+  infection: 'infection', '感染': 'infection', venous_thromboembolism: 'venous_thromboembolism', vte: 'venous_thromboembolism', '静脉血栓栓塞': 'venous_thromboembolism', '静脉血栓': 'venous_thromboembolism',
+  cardiovascular_event: 'cardiovascular_event', '心血管事件': 'cardiovascular_event', malignancy: 'malignancy', '恶性肿瘤': 'malignancy', '肿瘤': 'malignancy',
+  osteoporosis: 'osteoporosis', '骨质疏松': 'osteoporosis', '骨量减少': 'osteoporosis', '骨量减少或骨质疏松': 'osteoporosis', fracture: 'fracture', '骨折': 'fracture',
+  avascular_necrosis: 'avascular_necrosis', '缺血性骨坏死': 'avascular_necrosis', '股骨头坏死': 'avascular_necrosis',
+  new_diabetes: 'new_diabetes', '新发糖尿病': 'new_diabetes', hypertension_new_or_worse: 'hypertension_new_or_worse', '新发或加重的高血压': 'hypertension_new_or_worse',
+  pregnancy: 'pregnancy', '妊娠': 'pregnancy',
   custom: 'custom', other: 'custom', '其他': 'custom',
 });
+const MODALITY_INPUT = Object.freeze({ ultrasound: 'ultrasound', us: 'ultrasound', '超声': 'ultrasound', 'b超': 'ultrasound', '彩超': 'ultrasound', ct: 'ct', mri: 'mri', mr: 'mri', '磁共振': 'mri', '核磁': 'mri', '核磁共振': 'mri' });
+const LIVER_CYST_INPUT = Object.freeze({ present: 'present', absent: 'absent', '有': 'present', '无': 'absent', yes: 'present', no: 'absent' });
+const MAYO_CLASS_INPUT = Object.freeze({ typical: 'typical', atypical: 'atypical', '典型': 'typical', '非典型': 'atypical' });
 /** 疫苗接种不再是终点事件类型（迁移 0043），改在用药记录中登记。 */
 const VACCINE_EVENT_INPUT = new Set(['vaccination', 'vaccine', '疫苗接种', '疫苗']);
 const BIOPSY_KIND_INPUT = Object.freeze({ native: 'native', '自体肾': 'native', '自体': 'native', '原肾': 'native', transplant: 'transplant', '移植肾': 'transplant', '移植': 'transplant' });
@@ -266,8 +340,8 @@ function payloadSignature(payload) {
   return JSON.stringify(Object.keys(payload).sort().map(k => [k, NUMERIC_COLUMNS.has(k) ? decimalParts(payload[k])?.canonical ?? payload[k] : payload[k]]));
 }
 /** 业务键（与数据库 import_clinical_row 一致）。 */
-export const BUSINESS_KEYS = Object.freeze({ labs: ['patient_code', 'lab_date', 'lab_test_code'], meds: ['patient_code', 'drug_name', 'start_date'], events: ['patient_code', 'event_type', 'event_date'], biopsies: ['patient_code', 'biopsy_date', 'biopsy_kind'] });
-const BUSINESS_KEY_LABELS = Object.freeze({ labs: '研究编号 + 化验日期 + 化验项目', meds: '研究编号 + 药物名称 + 起始日期', events: '研究编号 + 事件类型 + 事件日期', biopsies: '研究编号 + 活检日期 + 活检类型' });
+export const BUSINESS_KEYS = Object.freeze({ labs: ['patient_code', 'lab_date', 'lab_test_code'], meds: ['patient_code', 'drug_name', 'start_date'], events: ['patient_code', 'event_type', 'event_date'], biopsies: ['patient_code', 'biopsy_date', 'biopsy_kind'], imaging: ['patient_code', 'exam_date', 'modality'] });
+const BUSINESS_KEY_LABELS = Object.freeze({ labs: '研究编号 + 化验日期 + 化验项目', meds: '研究编号 + 药物名称 + 起始日期', events: '研究编号 + 事件类型 + 事件日期', biopsies: '研究编号 + 活检日期 + 活检类型', imaging: '研究编号 + 检查日期 + 检查方式' });
 /** 牛津分型 C 与新月体比例（Trimarchi 2017）：C0 无新月体，C1 少于 25%，C2 为 25% 及以上。 */
 export function oxfordCMatchesCrescents(c, pct) { return (c === 0 && pct === 0) || (c === 1 && pct > 0 && pct < 25) || (c === 2 && pct >= 25); }
 export const DUPLICATE_CONFLICT_REASON = '同一文件内同一业务键有两行内容不同，请合并为一行。';
@@ -480,6 +554,34 @@ export function validateBatch(kind, headers, data, ctx = {}) {
       const existing = ctx.indexBiopsies?.get(code);
       if (isIndex && existing && (existing.biopsy_date !== biopsyDate || existing.biopsy_kind !== biopsyKind)) block('is_index', '该患者在系统中已有另一次基准活检；每位患者只能有一次。', '核对哪一次是确诊活检；需要更换时先在工作台删除原记录并说明原因。');
       if (biopsyDate && biopsyKind && code) bizKey = `${code}\u0000${biopsyDate}\u0000${biopsyKind}`;
+    } else if (kind === 'imaging') {
+      const examDate = date('exam_date', '检查日期', true);
+      const rawModality = v('modality'); let modality = null;
+      if (!rawModality) block('modality', '检查方式不能为空。', 'ultrasound（超声）、ct 或 mri（磁共振）。');
+      else { modality = MODALITY_INPUT[enumKey(rawModality)] || null; if (!modality) block('modality', '检查方式不在允许的取值中。', 'ultrasound（超声）、ct 或 mri（磁共振）。'); else payload.modality = modality; }
+      const dims = {};
+      for (const [col, label] of IMAGING_DIMENSIONS) {
+        const t = v(col); if (!t) continue;
+        const d = decimalParts(t); const n = Number(t);
+        if (!d || d.negative || !(n > 0 && n <= 40)) block(col, `${label}须为大于 0、不超过 40 的数字（厘米）。`, '只填数字，不带 cm，例如 18.2。');
+        else { payload[col] = t; dims[col] = n; }
+      }
+      const cystText = v('liver_cysts');
+      if (cystText) { const c = LIVER_CYST_INPUT[enumKey(cystText)]; if (!c) block('liver_cysts', '肝囊肿只能填 present / absent（或 有 / 无）。', '未评估请留空。'); else payload.liver_cysts = c; }
+      const mayoText = v('mayo_image_class');
+      if (mayoText) {
+        const m = MAYO_CLASS_INPUT[enumKey(mayoText)];
+        if (!m) block('mayo_image_class', 'Mayo 影像分型只能填 typical / atypical（或 典型 / 非典型）。', '1A–1E 分级由分析包计算，这里只填典型或非典型。');
+        else if (modality === 'ultrasound') block('mayo_image_class', 'Mayo 影像分型只适用于 CT 或磁共振。', '超声检查请留空。');
+        else payload.mayo_image_class = m;
+      }
+      const anyDim = IMAGING_DIMENSIONS.some(([col]) => v(col));
+      if (!anyDim && !cystText) block('left_length_cm', '至少填写一项肾脏径线或肝囊肿情况。', '超声至少填左右肾长径。');
+      const tkv = imagingTkv(dims);
+      if (tkv != null) info('right_depth_cm', `左右肾三条径线齐全，系统将计算总肾体积约 ${tkv} mL。`);
+      else if (modality && modality !== 'ultrasound' && anyDim) warn('left_width_cm', 'CT 或磁共振没有填齐左右肾的长、宽、厚，系统不会计算总肾体积。', '按报告补齐六条径线；确实没有测量可忽略。');
+      text('notes', '备注', 500);
+      if (examDate && modality && code) bizKey = `${code}\u0000${examDate}\u0000${modality}`;
     } else {
       const raw = v('event_type'); let type = null;
       if (!raw) block('event_type', '事件类型不能为空。', 'esrd、dialysis_start、kidney_transplant、death、relapse、custom');
@@ -492,7 +594,13 @@ export function validateBatch(kind, headers, data, ctx = {}) {
       }
       const eventDate = date('event_date', '事件日期', true);
       const detail = text('event_detail', '事件细节', 500);
-      if (DETAIL_REQUIRED_EVENTS.includes(type) && !detail && !issues.some(x => x.col === 'event_detail')) block('event_detail', type === 'custom' ? '事件类型为“其他”时须填写事件细节。' : '严重感染和住院须在事件细节中写明感染部位或诊断、住院原因。', '简要说明事件内容，勿填身份信息。');
+      if (DETAIL_REQUIRED_EVENTS.includes(type) && !detail && !issues.some(x => x.col === 'event_detail')) block('event_detail', `该事件类型须在事件细节中写明${EVENT_DETAIL_HINTS[type] || '事件内容'}。`, '简要说明，勿填身份信息。');
+      const losText = v('los_days');
+      if (losText) {
+        if (!/^[0-9]{1,4}$/.test(losText) || Number(losText) > 3650) block('los_days', '住院天数须为 0–3650 的整数。', '只填整数天数。');
+        else if (type && !LOS_EVENTS.includes(type)) block('los_days', '住院天数只用于住院和入住 ICU 事件。', '其他事件类型请留空。');
+        else payload.los_days = String(Number(losText));
+      }
       const src = v('evidence_source');
       if (!src) block('evidence_source', '判定依据来源不能为空。', '病历记录、化验数据复核、电话随访、死亡证明、其他');
       else { const s = EVIDENCE_INPUT[enumKey(src)] || EVIDENCE_INPUT[src]; if (!s) block('evidence_source', '判定依据来源不在允许的枚举中。', 'medical_record、lab_review、phone_followup、death_certificate、other'); else payload.evidence_source = s; }
