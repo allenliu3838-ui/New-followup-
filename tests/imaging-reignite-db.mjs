@@ -93,6 +93,19 @@ try {
       VALUES($1,'P-1','hospitalization',$2,'medical_record','肺炎住院')`, [pid, d60]);
   });
   assert.equal((await importRows(editor, 'labs', [{patient_code: 'P-1', lab_date: d30, lab_test_code: 'CREAT', value_raw: '100', unit_symbol: 'μmol/L'}])).inserted, 1);
+  // Visit and event batches imported on v8, one of them stamped as 0040-0041 did (before
+  // visits_long.height_cm existed), and one record that will be edited after the upgrade.
+  const d90 = await day(-90), d120 = await day(-120), d150 = await day(-150);
+  const v8Visits = randomUUID(), v8Events = randomUUID(), v6Visits = randomUUID(), editedVisits = randomUUID();
+  assert.equal((await importRows(editor, 'visits', [{patient_code: 'P-2', visit_date: d90, scr_umol_l: '82'}], v8Visits)).inserted, 1);
+  assert.equal((await importRows(editor, 'events', [{patient_code: 'P-2', event_type: 'hospitalization', event_date: d90,
+    evidence_source: 'medical_record', event_detail: '尿路感染住院'}], v8Events)).inserted, 1);
+  assert.equal((await importRows(editor, 'visits', [{patient_code: 'P-2', visit_date: d120, scr_umol_l: '81'}], v6Visits)).inserted, 1);
+  assert.equal((await importRows(editor, 'visits', [{patient_code: 'P-1', visit_date: d150, scr_umol_l: '79'}], editedVisits)).inserted, 1);
+  await db.exec("BEGIN; SET LOCAL timezone='UTC'");
+  await db.query(`UPDATE public.registry_import_records r SET record_sha256=encode(sha256(convert_to((to_jsonb(v)-'height_cm')::text,'UTF8')),'hex')
+    FROM public.visits_long v WHERE r.batch_id=$1 AND v.id=r.record_id`, [v6Visits]);
+  await db.exec('COMMIT');
 
   const snapshot = async () => ({
     baseline: await rows('SELECT * FROM public.patients_baseline WHERE project_id=$1 ORDER BY patient_code', [pid]),
@@ -112,6 +125,18 @@ try {
   assert.equal(await count('SELECT count(*) AS n FROM public.events_long WHERE los_days IS NOT NULL'), 0);
   assert.equal(await count('SELECT count(*) AS n FROM public.imaging_long'), 0);
   pass('0047 and 0048 apply on a 0046 database, are safe to re-run and change no stored value');
+
+  // ---- Undo of batches imported before the upgrade ------------------------------------------
+  await as(editor, () => db.query("UPDATE public.visits_long SET weight_kg=61 WHERE project_id=$1 AND patient_code='P-1' AND visit_date=$2", [pid, d150]));
+  const undone = {};
+  for (const [name, batch] of Object.entries({v8Visits, v8Events, v6Visits, editedVisits})) undone[name] = await undo(editor, batch, '核对后撤销升级前的导入');
+  assert.deepEqual([undone.v8Visits.deleted, undone.v8Events.deleted, undone.v6Visits.deleted], [1, 1, 1],
+    'columns added later and still empty do not count as edits (weight_kg, los_days, height_cm)');
+  assert.deepEqual([undone.editedVisits.deleted, undone.editedVisits.kept_changed], [0, 1], 'a weight entered after the upgrade is an edit');
+  assert.equal(await count("SELECT count(*) AS n FROM public.visits_long WHERE project_id=$1 AND patient_code='P-2'", [pid]), 0);
+  assert.equal(await count("SELECT count(*) AS n FROM public.visits_long WHERE project_id=$1 AND patient_code='P-1' AND weight_kg=61", [pid]), 1);
+  assert.equal(await count("SELECT count(*) AS n FROM public.events_long WHERE project_id=$1 AND patient_code='P-2'", [pid]), 0);
+  pass('batches imported before 0042 or 0048 are still undone; a value entered afterwards keeps the record');
 
   // ---- Imaging records: entry, total kidney volume, rules, audit ---------------------------
   const ct = await insertImaging(editor, {patient_code: 'P-1', exam_date: longAgo, modality: 'ct', left_length_cm: 18.2, left_width_cm: 9.1,

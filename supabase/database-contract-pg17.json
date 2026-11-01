@@ -3,7 +3,7 @@
   "database_server_major": 17,
   "reference_server_version": "17.6",
   "runtime": "@embedded-postgres/linux-x64@17.6.0-beta.15",
-  "migration_manifest_sha256": "2d20b320649f50a23a29f7c02ae730aa09ca839f2125cf89f7f1ef1897e3d4ce",
+  "migration_manifest_sha256": "b7bbaa5e6c745151d54ee378f1a2563d6b8ba4b270de25f01cda85273cab81f3",
   "database_contract_sha256": "aca7000205680905a853fc72280ff60a2f99af32d8b2807bb761de7769ed6b29",
   "profile_definition": "canonical: all reviewed LF SQL; historical_crlf: first 33 reviewed SQL files encoded CRLF, then ten new LF migrations. UTC and fixed search_path. Synthetic Auth/Storage only.",
   "database_contract_profiles": {
@@ -19239,6 +19239,18 @@
         {
           "owner": "postgres",
           "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "registry_private.import_record_matches(text,uuid,text)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "5c847b309d647664b0863f93e9ced615",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
           "language": "sql",
           "parallel": "u",
           "signature": "registry_private.local_today()",
@@ -19652,7 +19664,7 @@
           "signature": "undo_import_batch(uuid,uuid,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "d91b48d1224e7fac87cc8f03fd6eeb16",
+          "definition_md5": "aaba9d99018cb64549e52548cfc1464d",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -38954,6 +38966,18 @@
         {
           "owner": "postgres",
           "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "registry_private.import_record_matches(text,uuid,text)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "5c847b309d647664b0863f93e9ced615",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
           "language": "sql",
           "parallel": "u",
           "signature": "registry_private.local_today()",
@@ -39367,7 +39391,7 @@
           "signature": "undo_import_batch(uuid,uuid,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "d91b48d1224e7fac87cc8f03fd6eeb16",
+          "definition_md5": "aaba9d99018cb64549e52548cfc1464d",
           "security_definer": true,
           "authenticated_execute": true
         },

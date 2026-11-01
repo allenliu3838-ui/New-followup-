@@ -11,6 +11,11 @@
 --  * events_long.los_days: length of stay in days (0-3650), only for hospitalization and ICU
 --    admission (protocol 3.2: hospitalizations by reason and length of stay).
 --  * visits_long.weight_kg (1-300 kg), recorded with the visit like the height.
+--  * Undo of import batches: a fingerprint stored when a visit or event was imported is compared
+--    again ignoring columns added later while they are still empty (visits_long.height_cm from
+--    0042, visits_long.weight_kg and events_long.los_days from 0048), so adding a column does not
+--    make every earlier imported record look edited. A value entered in such a column still
+--    counts as an edit and the record is kept.
 --  * Laboratory dictionary: IgG, IgM, galactose-deficient IgA1, the white-cell differential
 --    (absolute counts), 24-hour urine protein, albumin and creatinine, and the qualitative
 --    serologies ANA, MPO-ANCA, PR3-ANCA, anti-GBM, HBsAg, anti-HCV, HIV, RPR and treponemal
@@ -23,6 +28,8 @@
 --    registry_private.check_clinical_row (0047_imaging_records.sql)
 --    registry_private.import_clinical_row (0047_imaging_records.sql)
 --    public._registry_validate_input (0047_imaging_records.sql)
+--    registry_private.import_record_matches (new)
+--    public.undo_import_batch (0047_imaging_records.sql)
 BEGIN;
 
 DO $$
@@ -39,7 +46,8 @@ BEGIN
     SELECT string_agg(t,'、' ORDER BY t) INTO missing
       FROM unnest(ARRAY['public._registry_input_columns(text)','public._registry_validate_input(text,jsonb)',
         'registry_private.validate_clinical_input(text,jsonb)','registry_private.check_clinical_row(text,jsonb)',
-        'registry_private.import_clinical_row(uuid,text,jsonb,integer,uuid)']) AS t
+        'registry_private.import_clinical_row(uuid,text,jsonb,integer,uuid)','registry_private.import_record_digest(text,uuid)',
+        'public.undo_import_batch(uuid,uuid,text)']) AS t
       WHERE to_regprocedure(t) IS NULL;
   END IF;
   IF missing IS NOT NULL THEN
@@ -432,6 +440,109 @@ BEGIN
       RAISE EXCEPTION 'invalid_consent_version';
     END IF;
   END LOOP;
+END $$;
+
+CREATE OR REPLACE FUNCTION registry_private.import_record_matches(p_table text,p_id uuid,p_sha text)
+RETURNS boolean LANGUAGE plpgsql STABLE SET search_path = pg_catalog, public, pg_temp SET timezone = 'UTC' AS $$
+-- True when the record still matches the fingerprint stored at import. Fingerprints are whole-row
+-- JSON, so a column added after the import (newest first) is left out again while it is empty.
+-- A value entered in such a column is an edit and never matches.
+DECLARE r jsonb; late text[]; c text;
+BEGIN
+  IF p_sha IS NULL THEN RETURN false; END IF;
+  IF registry_private.import_record_digest(p_table,p_id) = p_sha THEN RETURN true; END IF;
+  late := CASE p_table WHEN 'visits_long' THEN ARRAY['weight_kg','height_cm']
+    WHEN 'events_long' THEN ARRAY['los_days'] ELSE ARRAY[]::text[] END;
+  IF cardinality(late) = 0 THEN RETURN false; END IF;
+  EXECUTE format('SELECT to_jsonb(t) FROM public.%I t WHERE t.id=$1',p_table) INTO r USING p_id;
+  IF r IS NULL THEN RETURN false; END IF;
+  FOREACH c IN ARRAY late LOOP
+    IF NOT (r ? c) OR jsonb_typeof(r->c) <> 'null' THEN RETURN false; END IF;
+    r := r - c;
+    IF encode(sha256(convert_to(r::text,'UTF8')),'hex') = p_sha THEN RETURN true; END IF;
+  END LOOP;
+  RETURN false;
+END $$;
+REVOKE ALL ON FUNCTION registry_private.import_record_matches(text,uuid,text) FROM PUBLIC,anon,authenticated;
+
+CREATE OR REPLACE FUNCTION public.undo_import_batch(p_project_id uuid,p_batch_id uuid,p_reason text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
+DECLARE b public.registry_import_batches%ROWTYPE; reason text := btrim(p_reason); tbl text; m record;
+  ins_sha text; ins_undone boolean;
+  n_deleted int := 0; n_kept int := 0; n_referenced int := 0; n_missing int := 0; old_reason text; outcome jsonb; found_id uuid;
+BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'authentication_required'; END IF;
+  PERFORM public.assert_project_permission(p_project_id,'write');
+  IF reason IS NULL OR char_length(reason) NOT BETWEEN 2 AND 500 OR reason ~ '[[:cntrl:]]' THEN
+    RAISE EXCEPTION 'undo_reason_required' USING HINT='请填写撤销原因（2–500 字，不含身份信息）。';
+  END IF;
+  IF public._contains_pii(reason) THEN
+    RAISE EXCEPTION 'pii_detected_blocked' USING HINT='撤销原因中检测到疑似个人身份信息，请删除后重试。';
+  END IF;
+  PERFORM 1 FROM public.projects WHERE id=p_project_id FOR UPDATE;
+  PERFORM public.assert_project_permission(p_project_id,'write');
+  SELECT * INTO b FROM public.registry_import_batches
+    WHERE project_id=p_project_id AND batch_id=p_batch_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'import_batch_not_found'; END IF;
+  IF b.kind NOT IN ('visits','labs','meds','events','biopsies','fields','imaging') THEN
+    RAISE EXCEPTION 'batch_kind_not_undoable' USING HINT='患者基线批次不能整批撤销，请在记录纠错中逐条更正。';
+  END IF;
+  IF b.undone_at IS NOT NULL THEN
+    RETURN b.undo_result || jsonb_build_object('already_undone',true);
+  END IF;
+  PERFORM public.assert_project_write_allowed(p_project_id);
+  IF NOT b.undo_tracked THEN
+    RAISE EXCEPTION 'batch_undo_not_tracked'
+      USING HINT='该批次在系统支持撤销之前导入，没有逐条记录写入了哪些数据，不能自动撤销；请在记录纠错中逐条核实。';
+  END IF;
+  tbl := CASE b.kind WHEN 'visits' THEN 'visits_long' WHEN 'labs' THEN 'labs_long'
+    WHEN 'meds' THEN 'meds_long' WHEN 'biopsies' THEN 'biopsies_long' WHEN 'fields' THEN 'patient_field_values'
+    WHEN 'imaging' THEN 'imaging_long' ELSE 'events_long' END;
+  old_reason := current_setting('app.registry_change_reason',true);
+  PERFORM set_config('app.registry_change_reason','撤销导入批次 ' || p_batch_id::text || '：' || reason,true);
+  -- Candidates: every record this batch inserted or skipped (own = inserted by this batch).
+  FOR m IN SELECT r.record_id,bool_or(r.action='inserted') AS own FROM public.registry_import_records r
+    WHERE r.project_id=p_project_id AND r.kind=b.kind AND r.batch_id=p_batch_id
+    GROUP BY r.record_id ORDER BY r.record_id LOOP
+    -- Digest taken when the record was inserted, and whether its inserting batch is undone.
+    ins_sha := NULL; ins_undone := NULL;
+    SELECT i.record_sha256,(ib.undone_at IS NOT NULL) INTO ins_sha,ins_undone
+      FROM public.registry_import_records i
+      JOIN public.registry_import_batches ib ON ib.project_id=i.project_id AND ib.batch_id=i.batch_id
+      WHERE i.project_id=p_project_id AND i.kind=b.kind AND i.record_id=m.record_id AND i.action='inserted'
+      LIMIT 1;
+    IF NOT m.own AND ins_undone IS NOT TRUE THEN CONTINUE; END IF;
+    EXECUTE format('SELECT t.id FROM public.%I t WHERE t.id=$1 AND t.project_id=$2 FOR UPDATE',tbl)
+      INTO found_id USING m.record_id,p_project_id;
+    IF found_id IS NULL THEN
+      IF m.own THEN n_missing := n_missing+1; END IF;
+    ELSIF NOT registry_private.import_record_matches(tbl,m.record_id,ins_sha) THEN
+      IF m.own THEN n_kept := n_kept+1; END IF;
+      CONTINUE;
+    ELSIF EXISTS (SELECT 1 FROM public.registry_import_records o
+        JOIN public.registry_import_batches ob ON ob.project_id=o.project_id AND ob.batch_id=o.batch_id
+        WHERE o.project_id=p_project_id AND o.kind=b.kind AND o.record_id=m.record_id
+          AND o.batch_id<>p_batch_id AND ob.undone_at IS NULL) THEN
+      IF m.own THEN n_referenced := n_referenced+1; END IF;
+      CONTINUE;
+    ELSE
+      EXECUTE format('DELETE FROM public.%I WHERE id=$1 AND project_id=$2',tbl) USING m.record_id,p_project_id;
+      n_deleted := n_deleted+1;
+    END IF;
+    DELETE FROM public.registry_import_records
+      WHERE project_id=p_project_id AND kind=b.kind AND record_id=m.record_id;
+  END LOOP;
+  outcome := jsonb_build_object('deleted',n_deleted,'kept_changed',n_kept,'kept_referenced',n_referenced,
+    'missing',n_missing,'already_undone',false);
+  UPDATE public.registry_import_batches SET undone_at=now(),undone_by=auth.uid(),undo_reason=reason,
+    undo_result=outcome - 'already_undone'
+    WHERE project_id=p_project_id AND batch_id=p_batch_id;
+  INSERT INTO public.audit_log(project_id,actor_uid,action,details)
+    VALUES(p_project_id,auth.uid(),'import_batch_undone',jsonb_build_object('batch_id',p_batch_id,'kind',b.kind,
+      'reason',reason,'deleted',n_deleted,'kept_changed',n_kept,'kept_referenced',n_referenced,'missing',n_missing,
+      'file_sha256',b.file_sha256,'chunk_index',b.chunk_index,'chunk_total',b.chunk_total));
+  PERFORM set_config('app.registry_change_reason',coalesce(old_reason,''),true);
+  RETURN outcome;
 END $$;
 
 -- ---- Laboratory dictionary ---------------------------------------------------------------------

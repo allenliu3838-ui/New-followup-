@@ -19234,6 +19234,18 @@
         {
           "owner": "postgres",
           "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "registry_private.import_record_matches(text,uuid,text)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "5c847b309d647664b0863f93e9ced615",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
           "language": "sql",
           "parallel": "u",
           "signature": "registry_private.local_today()",
@@ -19647,7 +19659,7 @@
           "signature": "undo_import_batch(uuid,uuid,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "d91b48d1224e7fac87cc8f03fd6eeb16",
+          "definition_md5": "aaba9d99018cb64549e52548cfc1464d",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -38949,6 +38961,18 @@
         {
           "owner": "postgres",
           "strict": false,
+          "language": "plpgsql",
+          "parallel": "u",
+          "signature": "registry_private.import_record_matches(text,uuid,text)",
+          "volatility": "s",
+          "anon_execute": false,
+          "definition_md5": "5c847b309d647664b0863f93e9ced615",
+          "security_definer": false,
+          "authenticated_execute": false
+        },
+        {
+          "owner": "postgres",
+          "strict": false,
           "language": "sql",
           "parallel": "u",
           "signature": "registry_private.local_today()",
@@ -39362,7 +39386,7 @@
           "signature": "undo_import_batch(uuid,uuid,text)",
           "volatility": "v",
           "anon_execute": false,
-          "definition_md5": "d91b48d1224e7fac87cc8f03fd6eeb16",
+          "definition_md5": "aaba9d99018cb64549e52548cfc1464d",
           "security_definer": true,
           "authenticated_execute": true
         },
@@ -39434,7 +39458,7 @@
     }
   },
   "database_contract_protocol": "registry-contract-v3-pg17",
-  "database_contract_reference_sha256": "b5dc46ab78918b1379ce7ac758bb1e0f90bb460c4935bd95969e4547bac6bfc5",
+  "database_contract_reference_sha256": "45f9886eb5e736edaba2091e1202be1704fcd7bdbe6cd6ba9d752bacb4858bc9",
   "database_contract_sha256": "aca7000205680905a853fc72280ff60a2f99af32d8b2807bb761de7769ed6b29",
   "database_server_major": 17,
   "files": {
@@ -39495,7 +39519,7 @@
       "old_sha256": "8da066c8b250968199bc4cfe4c986215c7ff0d308eb9fc0cc32073ba596ce718"
     },
     "assets/sql/batch6_latest.sql": {
-      "new_sha256": "3582a13d5867eb9baa312792b522dfa8da2f174efb173696aeb678591af1a39c",
+      "new_sha256": "cfa32b4993455a124232f36891f3e67c20c7d06037151976b4aa084a82a4ad63",
       "old_sha256": "ba3eafc26ea9d549b4832c7448f70390a348cbb31a86f31a9f9ab4ac9d8cc366"
     },
     "assets/template/METHODS_TEMPLATE_EN.md": {
@@ -39503,7 +39527,7 @@
       "old_sha256": "adbe4631dddcd5805d96c0b740b1cd5e88feaf83ff96ffb6d15e10e35af9daca"
     },
     "assets/template/README_PACK.md": {
-      "new_sha256": "87ad95d127aeb174947ad865556a54d48c106cae3f571cf3680a20690c67af00",
+      "new_sha256": "e739905a8f9972e476346852b542bea703c1d360329069981125935c280a1000",
       "old_sha256": "eb64245bb0aaf23f2772d998f4ddbaf1422d68817879b4ba6f18e115de3b980f"
     },
     "assets/template/descriptive_summary.py": {
@@ -39539,7 +39563,7 @@
       "old_sha256": "a9a952560fde67a50ea954be02384fa3923614b13aa7f6862fc54eabf5a7a981"
     },
     "assets/template/time_windows.py": {
-      "new_sha256": "e3c765b37bfd2b28f3a2153e376b042c8728a58694066c9a8afbefb5125b2a32",
+      "new_sha256": "db9839bc4b77a37b96b4547aff3f1140ee253aa9c0d7f2e97f37c66163ed7c48",
       "old_sha256": "001f350198e7491483cc091d646c458c8c3a71bae8b914a17df468f50fe8b24e"
     },
     "assets/template/time_windows_reignite.json": {
@@ -39772,7 +39796,7 @@
     }
   },
   "format": 2,
-  "migration_manifest_sha256": "2d20b320649f50a23a29f7c02ae730aa09ca839f2125cf89f7f1ef1897e3d4ce",
+  "migration_manifest_sha256": "b7bbaa5e6c745151d54ee378f1a2563d6b8ba4b270de25f01cda85273cab81f3",
   "project_ref": "ksr-aliyun-cn-shanghai-1",
   "release": "registry-20261031-cn-v10",
   "required_db_checks": [

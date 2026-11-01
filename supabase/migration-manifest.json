@@ -21,7 +21,7 @@
     "0048_reignite_batch2"
   ],
   "order": "lexicographic filenames; historical duplicate prefixes retained, unique full filenames",
-  "bundle_sha256": "4e411e9c8425e9b1fabbb979dc006539015ab0fd184560c7aa06335f79b264bd",
+  "bundle_sha256": "5bde14c31bbda4267bf16d605dbff268cc9d846de1cbf9e837105f1a60776ab6",
   "migrations": [
     {
       "ordinal": 1,
@@ -271,7 +271,7 @@
     {
       "ordinal": 50,
       "file": "0048_reignite_batch2.sql",
-      "sha256": "176fb83768380b415957b13d5b52a49f1a9c061dbc2e425ee18c92ef0661b342"
+      "sha256": "f34f874ff06e961184d481e1c717304d931ee9ec6b549554fa995e356eac2757"
     }
   ]
 }

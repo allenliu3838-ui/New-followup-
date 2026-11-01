@@ -404,6 +404,25 @@ class TimeWindowTests(unittest.TestCase):
         _, _, rows, _ = self.run_tw("out4")
         self.assertNotIn("field_ethnicity", read_csv(self.tmp / "out4" / "time_windows_wide.csv")[0], "no field columns unless configured")
 
+    def test_no_dates_drops_date_type_fields_whatever_their_code(self):
+        """--no-dates omits a custom field defined as a date even when its code does not end in _date."""
+        a = lambda code, **kw: {"project_id": SP, "center_code": "A", "patient_code": code, "module": "IGAN", **kw}
+        write_csv(self.data / "project_fields.csv", ["id", "project_id", "center_code", "module", "field_key", "label_cn", "value_type", "choices"], [
+            {"id": "f1", "project_id": SP, "center_code": "A", "module": "IGAN", "field_key": "symptom_onset", "label_cn": "起病日", "value_type": "date"},
+            {"id": "f2", "project_id": SP, "center_code": "A", "module": "IGAN", "field_key": "ethnicity", "label_cn": "民族", "value_type": "text"}])
+        write_csv(self.data / "patient_field_values.csv", ra.TABLE_COLUMNS["patient_field_values"], [
+            a("P1", id="x1", field_key="symptom_onset", value_date="2020-03-04"),
+            a("P1", id="x2", field_key="ethnicity", value_text="hui")])
+        out, _, _, _ = self.run_tw(patient_fields=["symptom_onset", "ethnicity"])
+        self.assertEqual({r["patient_code"]: r for r in read_csv(out / "time_windows_wide.csv")}["P1"]["field_symptom_onset"], "2020-03-04", "kept when dates are allowed")
+        out2, log2 = tw.run(self.data, config(self.tmp, patient_fields=["symptom_onset", "ethnicity"]), self.tmp / "nodates2", no_dates=True)
+        self.assertTrue(log2["no_dates"])
+        for name in ("time_windows_wide.csv", "time_windows_long.csv"):
+            text = (out2 / name).read_text(encoding="utf-8-sig")
+            self.assertNotIn("2020-03-04", text)
+            self.assertNotIn("symptom_onset", text)
+        self.assertEqual({r["patient_code"]: r for r in read_csv(out2 / "time_windows_wide.csv")}["P1"]["field_ethnicity"], "hui")
+
     def test_values_are_rounded_half_up_at_their_decimal_form(self):
         self.assertEqual([tw._fmt(v, 1) for v in (103.05, 88.45, 0.05, 2.675 * 10)], ["103.1", "88.5", "0.1", "26.8"])
         self.assertEqual((tw._fmt(1999.5, 0), tw._fmt(float("nan"), 1), tw._fmt(None, 1)), ("2000", "", ""))

@@ -440,6 +440,15 @@ def field_values(data_dir, frames, keys):
     return out
 
 
+def date_field_keys(data_dir, keys):
+    """The listed custom field codes whose definition (project_fields.csv value_type) is a date."""
+    path = Path(data_dir)/"project_fields.csv"
+    if not keys or not path.is_file():
+        return set()
+    with path.open(encoding="utf-8-sig", newline="") as f:
+        return {r.get("field_key") for r in csv.DictReader(f) if r.get("field_key") in keys and (r.get("value_type") or "").strip() == "date"}
+
+
 def treatment_starts(meds, classes, anchors, search_from):
     """{patient key: earliest start_date of the listed classes on or after anchor + search_from days}."""
     out = {}
@@ -588,7 +597,9 @@ def run(data_dir, config_path, out_dir, allow_fully_excluded_centers=False, no_d
     long_header = LONG_COLUMNS + (CYSTATIN_COLUMNS if config["egfr"] and "cystatin_variable" in config["egfr"] else []) \
         + (REFERENCE_COLUMNS if treatment else [])
     if no_dates:
-        dated = lambda c: c in DATE_COLUMNS or c.endswith("_date") and not c.endswith("_offset_days")  # noqa: E731
+        # Custom fields are dropped by their definition (value_type date), whatever their code is called.
+        date_fields = {f"field_{k}" for k in date_field_keys(data_dir, config["patient_fields"])}
+        dated = lambda c: c in DATE_COLUMNS or c in date_fields or c.endswith("_date") and not c.endswith("_offset_days")  # noqa: E731
         long_header = [c for c in long_header if c not in DATE_COLUMNS]
         wide_header = [c for c in wide_header if not dated(c)]
     files = {f"{prefix}time_windows_long.csv": (long_header, long_rows),
