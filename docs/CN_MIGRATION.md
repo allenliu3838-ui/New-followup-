@@ -755,7 +755,9 @@ unset PGPASSWORD OLD_DB_URL OLD_KEY
 
 **状态（2026-10-31）：** v8（`registry-20261030-cn-v8`，发布包取自提交 77c672b）已于 2026-10-31 上线：生产库在备份 `registry-20261031-105452` 之后执行了 0046，预检报告逐项通过；网站服务器先只读检查，再发布前端，发布后的自动核对全部通过（首页 200，ADPKD 病种模块、草案按钮、问答条目、描述性汇总脚本均在，`config.js` 未改动）。网页回退命令保存在网站服务器 `/root/cn-cutover/pre-v8-77c672b/ROLLBACK.txt`。
 
-**补充（2026-10-30）：** 研究广场页（`/research.html`）等公开页面改动进入 v9（`registry-20261030-cn-v9`），以 v8 清单为生产基线，没有新迁移，可以在 v8 之后直接发布（见附录 C.9）。
+**补充（2026-10-30）：** 研究广场页（`/research.html`）等公开页面改动进入 v9（`registry-20261030-cn-v9`），以 v8 清单为生产基线，没有新迁移（见附录 C.9）。
+
+**补充（2026-11-01）：** v9 没有单独上线。研究广场与影像记录（0047）、IgA 肾病第二批（0048）合并为 v10（`registry-20261031-cn-v10`），以已上线的 v8 清单为生产基线（见附录 C.10）。
 
 | 文件 | 位置 | 现状 | 需要的改动 |
 |---|---|---|---|
@@ -1129,7 +1131,7 @@ docker exec -i supabase-db psql -U postgres -d postgres -X -t -A \
 
 前端与分析包（v8）：新建项目可选“ADPKD（常染色体显性多囊肾病）”；ADPKD 项目的负责人可在“自定义入组字段”中载入多囊肾入组字段草案（12 个字段，定义在 `site/lib/project-fields.js`，经 `save_project_field` 逐个新增，草案尚未与牵头单位的病例报告表核对；不含基因检测结果）；用药下拉与批量导入增加新类别。分析包新增 `descriptive_summary.py`（按中心统计入组字段、用药类别与结局事件的人数和占比，只输出人数与统计量），`merge_centers.py` 同时合并各中心的字段定义 `project_fields.csv`；`run_analysis.py` 与 `feasibility_report.py` 的病种代码加入 `ADPKD`。
 
-### C.9 v9：研究广场页（无迁移）
+### C.9 v9：研究广场页（无迁移；未单独上线，随 v10 发布）
 
 v9（`registry-20261030-cn-v9`）只改公开页面，不含迁移，以 v8 清单（发布包取自提交 77c672b）为生产基线：
 各文件的基线 = v8 的 `new_sha256`，新文件 `research.html` 的基线为空。发布工具核对线上文件时，只认基线或目标两种字节，
@@ -1146,3 +1148,50 @@ v9（`registry-20261030-cn-v9`）只改公开页面，不含迁移，以 v8 清�
   运行 `node scripts/build_collaboration_pages.mjs` 重新生成，`--check` 只检查；`tests/ui/public-a-smoke.mjs` 逐字核对。
 
 发布步骤与 v8 相同：数据库服务器只生成预检报告（没有迁移要执行），网站服务器先只读检查，再发布前端。
+
+### C.10 v10：影像记录（0047）、IgA 肾病第二批（0048）与研究广场
+
+v10（`registry-20261031-cn-v10`）以 v8 清单（发布包取自提交 77c672b，2026-10-31 上线）为生产基线：各文件的基线 = v8 的 `new_sha256`，
+v8 之后新增的文件（研究广场 `research.html`、`assets/template/imaging_metrics.py`、`assets/template/time_windows_reignite.json`）基线为空。
+两个迁移须按顺序在 0046 之后执行；未登记前一个时中止并整体回滚。两者都不改已有数据，可重复执行
+（验收测试 `tests/imaging-reignite-db.mjs` 先建到 0046 并写入样例数据，对比迁移前后的基线、随访、化验、事件、导入记录与审计行）。
+
+**0047 影像记录与总胆红素**
+
+- 新表 `imaging_long`：每次肾脏影像检查一行（`ultrasound` 超声、`ct`、`mri` 磁共振，可多次），检查日期、左右肾长宽厚（cm，大于 0 且不超过 40）、
+  肝囊肿（有 / 无）、CT 与磁共振的 Mayo 影像分型（典型 / 非典型，超声不允许填）、备注。同一患者同一日期同一检查方式只能一行；至少填一项径线或肝囊肿。
+- 总肾体积 `tkv_ml` 是生成列：左右肾六条径线都有时按椭球公式 π/6 × 长 × 宽 × 厚相加，保留 1 位小数；不能写入，导入列中也没有。
+- 保护与肾活检记录相同：行级安全四条策略、7 个触发器（身份不可改、字段审计含删除、检查日期不晚于今天、建立人、只读锁、更新信息、备注个人信息拦截）、
+  客户端角色不能 TRUNCATE。录错的记录可以删除，删除写入字段审计。
+- 批量导入 kind `imaging`（业务键：患者 + 检查日期 + 检查方式），可按批次撤销；冻结导出加入 `imaging_long` 与字段说明。
+- 化验字典增加 `TBIL` 血清总胆红素（标准单位 μmol/L，mg/dL × 17.104）；缩写 TKV、htTKV；字段说明字典增加检查方式、TKV、Mayo 影像分型。
+- 重建的 9 个函数（输入列、校验、导入、撤销、导出）由脚本从上一版原文生成，只含上述增量。
+
+**0048 IgA 肾病第二批（按 REIGNITE 方案 V1.0）**
+
+- 事件类型增加 12 种手工登记的类型：急诊、入住 ICU、任何感染、静脉血栓栓塞、心血管事件、恶性肿瘤、骨量减少或骨质疏松、骨折、缺血性骨坏死、
+  新发糖尿病、新发或加重的高血压、妊娠。急诊、ICU、感染、心血管事件、恶性肿瘤、骨折和妊娠导入时须填事件细节。细分编码等研究的数据字典确定后再加。
+- `events_long.los_days`：住院天数（0–3650），只用于住院和入住 ICU。
+- `visits_long.weight_kg`：随访体重（1–300 kg），可空。
+- 化验字典增加 20 项：IgG、IgM、半乳糖缺陷 IgA1、白细胞分类五项绝对计数、24 小时尿蛋白、尿白蛋白、尿肌酐（带单位换算），
+  以及只记定性结果的 ANA、MPO-ANCA、PR3-ANCA、抗 GBM 抗体、乙肝表面抗原、丙肝抗体、HIV、RPR、梅毒螺旋体抗体（标准单位写“定性”，没有可选单位）。
+- 重建 5 个函数（输入列、两层校验、导入），只含上述增量。数据只在本系统内，迁移不向外发送任何数据。
+
+执行方式与 0046 相同，两个迁移依次执行并各自核对：
+
+```bash
+for m in 0047_imaging_records 0048_reignite_batch2; do
+  docker exec -i supabase-db psql -U postgres -d postgres -X -q -v ON_ERROR_STOP=1 -f - < supabase/migrations/$m.sql || break
+  docker exec -i supabase-db psql -U postgres -d postgres -X -t -A -c "SELECT version FROM public.registry_schema_versions WHERE version='$m'"
+done
+# 预期依次输出：0047_imaging_records、0048_reignite_batch2
+```
+
+然后重新生成只读预检报告，`0047_imaging_records`、`imaging_records_table`、`0048_reignite_batch2`、`reignite_batch2_vocabulary` 均须为 `true`。
+先升级数据库、暂不发布前端没有影响：v8 网页不显示新表单，已有功能不变。
+
+前端与分析包（v10）：附加数据区新增“肾脏影像记录”（六条径线齐全时即时显示 TKV，保存后显示数据库计算值）；终点事件下拉增加 12 种事件，
+住院与 ICU 显示住院天数；随访录入加体重；字典中没有单位的化验可手工录入定性结果；批量导入新增影像模板，终点事件模板改为 v2（增加 `los_days`）。
+分析包新增 `imaging_metrics.py`（htTKV、Mayo 1A–1E、超声肾长径，程序计算，须研究者核对）与 `time_windows_reignite.json`
+（REIGNITE 方案的时间点与窗口，未确认）；`time_windows.py` 支持“相对开始治疗”的时间点和 `--no-dates`（只输出距对齐日的天数）。
+研究广场（附录 C.9）随 v10 一起发布。

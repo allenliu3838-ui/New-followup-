@@ -2598,7 +2598,7 @@ async function buildAndDownloadPack(op,frozen,{source='new_snapshot'}={}){
   const tables=Object.fromEntries(Object.entries(frozen.content.tables).filter(([t])=>t!=='data_issues').map(([t,rows])=>[t,rows.map(r=>({...r,center_code:frozen.content.project.center_code,module:frozen.content.project.module}))]));
   const issues=frozen.content.tables.data_issues||[];
   const readAsset=async name=>{const r=await fetch('/assets/template/'+name,{cache:'no-cache'});if(!r.ok)throw new Error(`分析模板 ${name} 加载失败 (${r.status})`);const text=await r.text();if(/^\s*<!doctype html/i.test(text))throw new Error(`分析模板 ${name} 返回了网页`);return text;};
-  const assetNames=['run_analysis.py','merge_centers.py','requirements.txt','METHODS_TEMPLATE_EN.md','README_PACK.md','protocol_template.json','feasibility_report.py','feasibility_criteria_template.json','time_windows.py','time_windows_template.json','descriptive_summary.py'];
+  const assetNames=['run_analysis.py','merge_centers.py','requirements.txt','METHODS_TEMPLATE_EN.md','README_PACK.md','protocol_template.json','feasibility_report.py','feasibility_criteria_template.json','time_windows.py','time_windows_template.json','descriptive_summary.py','imaging_metrics.py','time_windows_reignite.json'];
   const assets=await Promise.all(assetNames.map(readAsset));assertContext(op);
   const metaRecord=frozen;
   const zip=new JSZip(),files={},counts={};
@@ -2619,6 +2619,8 @@ async function buildAndDownloadPack(op,frozen,{source='new_snapshot'}={}){
   files['analysis/time_windows.py']=assets[8];files['analysis/time_windows_template.json']=assets[9];
   // 描述性汇总：按中心统计入组字段、用药类别与结局事件的人数和占比，只输出人数与统计量。
   files['analysis/descriptive_summary.py']=assets[10];
+  // 影像指标：htTKV、Mayo 1A–1E 与肾长径，程序计算，须研究者核对；REIGNITE 方案时间窗配置（未确认）。
+  files['analysis/imaging_metrics.py']=assets[11];files['analysis/time_windows_reignite.json']=assets[12];
   // JSON preserves exact raw strings/types independently of spreadsheet-safe CSV escaping.
   files['research_data.json']=frozen.content_text;
   files['qc_issues.csv']='\ufeff'+toCsv(issues,exportColumns(issues,['id','project_id','patient_code','record_type','record_id','rule_code','severity','status','message','resolution_note']));

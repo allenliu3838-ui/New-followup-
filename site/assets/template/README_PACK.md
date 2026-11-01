@@ -128,6 +128,9 @@ KFRE 风险计算已停用：旧实现用 UPCR 替代 UACR、猜测检验单位�
   - 没有身高、没有可配对的胱抑素 C，或选中的肌酐、胱抑素 C 不是正数（例如误录为 0），都不计算，并在状态列写明原因（`missing_height`、`no_cystatin_paired`、`creatinine_not_positive`、`cystatin_not_positive`），这些行不计入取到 eGFR 的人数。用到胱抑素 C 时，长表增加 `cystatin_mg_l_used`、`cystatin_date_used` 两列。库中保存的 eGFR 不使用，`run_analysis.py` 的终点判定仍用肌酐公式。
   - 胱抑素 C 公式要求检测可溯源至国际参考物质 ERM-DA471/IFCC；CKiD U25 公式在慢性肾脏病儿童中建立，肾功能正常时可能低估。公式来源：Inker 等 NEJM 2012、2021；Pierce 等 Kidney Int 2021。
 - **尿红细胞**：仪器计数（`URBC_UL`，个/μL）与显微镜检计数（`URBC_HPF`，个/HPF）是两个化验项目，没有准确的换算关系，模板中也是两个变量。不要把两者放进同一个变量；确需合并时，须由研究双方约定换算系数，写在该来源的 `factor` 中并在方法中报告。
+- **相对开始治疗的时间点**：时间点可写 `"relative_to": "treatment_start"`，并列出 `drug_classes`（用药记录的药物类别）和 `treatment_search_from_days`。这时目标日和窗口从“开始治疗日”算起：取这些类别在 `meds_long.csv` 中最早的起始日期，从对齐日期加 `treatment_search_from_days` 天起查找。没有这类用药的患者在该时间点记为 `no_treatment_start`。长表和宽表增加 `reference_date`（所用的开始治疗日）与 `reference_offset_days`；其余天数仍从对齐日期算。
+- **不含日期的输出**：运行时加 `--no-dates`，长表和宽表不含任何日历日期，只保留距对齐日期的天数，日志中也不含患者日期。本系统的数据只存放在境内；向其他机构提供数据须按数据使用协议和适用法规另行审批，`--no-dates` 不能代替审批。
+- **REIGNITE 方案配置**：`analysis/time_windows_reignite.json` 按 REIGNITE 方案 V1.0 第 1.3 节写好了时间点与窗口：活检前 12 个月取前 12 到前 3 个月，活检时取前 3 到后 2.5 个月，第 3 个月取 2.5 到 4 个月，之后每 3 个月前后 1 个月（列到第 60 个月），另加开始治疗前后 30 天。月数按 30.4375 天换算为整数天，相邻窗口不重叠。哪些药物算“开始治疗”、变量清单都要由研究双方核对，确认前输出带 `UNCONFIRMED_`。
 - **人群**：与 `run_analysis.py` 相同，只纳入知情同意状态为已同意或伦理豁免的患者。
 
 使用步骤：
@@ -151,3 +154,16 @@ KFRE 风险计算已停用：旧实现用 UPCR 替代 UACR、猜测检验单位�
    - `SUMMARY_RUN_LOG.json`：输入文件 SHA-256、知情同意筛选、各项口径说明与提示。
 3. 合计行（`ALL`）的入组字段按字段代码汇总，只计入定义了该字段的项目。同一代码在不同项目中类型不同，或数值字段的单位写法不同时，不汇总合计行（脚本不换算单位）；显示名称不同时合并显示。这些情况都在日志中提示。
 4. 人群、年龄和基线 eGFR 的口径与 `run_analysis.py` 相同。人数很少的格子也可能识别出个人：对外提供汇总结果前，按数据使用协议的小样本抑制规则处理。
+
+## 10. 影像指标（可选，`imaging_metrics.py`）
+
+从影像记录 `imaging_long.csv` 计算身高校正总肾体积、Mayo 影像分级和超声肾长径，每条影像记录一行。所有数值都由程序按登记数据计算，不是临床报告，使用前须由研究者核对。
+
+1. 运行 `python3 analysis/imaging_metrics.py --data analysis/data --out imaging`（输出目录须为新的空目录）。身高默认取检查日前后 365 天内最近的一次随访身高，可用 `--height-window-days` 修改。
+2. 结果 `imaging_metrics.csv`：
+   - `tkv_ml`：登记系统按椭球公式（π/6 × 长 × 宽 × 厚，左右肾相加）计算的总肾体积，只有左右肾三条径线都填写时才有值。它不是分割软件测得的体积。
+   - `httkv_ml_m`：TKV 除以身高（米），身高取 `height_cm_used`（日期 `height_date_used`）。
+   - `mayo_class`：Mayo 影像分级 1A–1E（Irazabal 等，J Am Soc Nephrol 2015）。只对 CT 或磁共振、影像分型为典型、有 htTKV、年龄 15–80 岁的记录计算：估计年增长率 = ((htTKV / 150)^(1/年龄) − 1) × 100%，1A 小于 1.5%，1B 1.5% 至小于 3%，1C 3% 至小于 4.5%，1D 4.5% 至小于 6%，1E 6% 及以上。没有分级的记录在 `mayo_reason` 写明原因：不是 CT 或磁共振、非典型（2 类，不分级）、未填影像分型、没有 TKV、窗口内没有身高、年龄不在 15–80 岁。
+   - `max_length_cm`、`length_over_16_5_cm`：左右肾长径中较长的一侧，以及是否超过 16.5 cm（Bhutani 等，Kidney Int 2015，CRISP 队列 15–46 岁）。
+   - `IMAGING_METRICS_LOG.json`：记录数、患者数、各级人数、未分级原因、输入与输出文件 SHA-256。
+3. 年龄为“检查年份减出生年”，可能差 1 岁；增长率靠近分级界值时，请按实际年龄复核。
