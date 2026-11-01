@@ -27,7 +27,8 @@ const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f
 // ── 合成数据 ────────────────────────────────────────────────
 const pad = n => String(n).padStart(2, '0');
 const isoDay = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const dayOffset = days => { const d = new Date(); d.setDate(d.getDate() + days); return isoDay(d); };
+// 研究日期按北京时间（与页面 researchToday() 一致）；用运行环境的本地日期在 UTC 16:00–24:00 会差一天。
+const dayOffset = days => { const d = new Date(Date.now() + 8 * 3600 * 1000); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); };
 const tsOffset = days => new Date(Date.now() + days * 86400000).toISOString();
 
 const USER = { id: '00000000-0000-4000-8000-0000000000a1', aud: 'authenticated', role: 'authenticated', email: 'pi.synthetic@example.test', app_metadata: { provider: 'email' }, user_metadata: {}, created_at: '2026-01-01T00:00:00Z' };
@@ -152,6 +153,7 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
   const tokens = data.tokens.map(t => ({ ...t }));
   const inquiries = (data.inquiries || []).map(r => ({ ...r }));
   const biopsies = [];          // 肾活检记录（工作台直接写表）
+  const imaging = [];           // 影像记录（工作台直接写表；TKV 由数据库计算）
   let newTokenCount = 0;
   // 冻结数据版本：按请求编号幂等（同一请求重试返回同一版本），内容与 SHA-256 一并保存，供“下载分析包”重新读取。
   const snapshots = [];
@@ -197,6 +199,7 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
       case 'labs_long': case 'meds_long': case 'events_long': case 'variants_long': case 'data_issues': case 'project_fields': case 'patient_field_values':
         return [];
       case 'biopsies_long': return biopsies.filter(b => b.project_id === f.project_id && (!f.is_index || String(b.is_index) === f.is_index));
+      case 'imaging_long': return imaging.filter(r => r.project_id === f.project_id);
       default: unknown.push(`GET ${table}`); return [];
     }
   }
@@ -291,6 +294,13 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
       biopsies.unshift({ id: `70000000-0000-4000-8000-0000000000${String(biopsies.length + 1).padStart(2, '0')}`, ...body, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
       return settle(route.fulfill({ status: 201, headers }));
     }
+    if (table === 'imaging_long' && request.method() === 'POST') {
+      const d = ['left_length_cm', 'left_width_cm', 'left_depth_cm', 'right_length_cm', 'right_width_cm', 'right_depth_cm'].map(k => body[k]);
+      const tkv_ml = d.every(x => x != null) ? Math.round(Math.PI / 6 * (d[0] * d[1] * d[2] + d[3] * d[4] * d[5]) * 10) / 10 : null;
+      const record = { id: `71000000-0000-4000-8000-0000000000${String(imaging.length + 1).padStart(2, '0')}`, ...body, tkv_ml, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+      imaging.unshift(record);
+      return json(201, { tkv_ml });
+    }
     if (table === 'biopsies_long' && request.method() === 'DELETE') {
       const id = filters(url, 'eq').id; const i = biopsies.findIndex(b => b.id === id);
       if (i >= 0) biopsies.splice(i, 1);
@@ -313,7 +323,7 @@ function createMock({ access = ACCESS, data = DEFAULT_DATA } = {}) {
     return () => { holds.delete(`${table}:${patientCode}`); release(); };
   }
 
-  return { requests, external, unknown, importReplies, exportReplies, served, tokens, inquiries, biopsies, hold, handle, rpcCalls: name => requests.filter(r => r.path === `/rest/v1/rpc/${name}`) };
+  return { requests, external, unknown, importReplies, exportReplies, served, tokens, inquiries, biopsies, imaging, hold, handle, rpcCalls: name => requests.filter(r => r.path === `/rest/v1/rpc/${name}`) };
 }
 
 function sessionFor() {
@@ -556,7 +566,7 @@ async function main() {
 
     // 4. 录入随访：130/80 自动拆分、mg/dL 换算、身高、单行 import_registry_rows、skipped 中文提示。
     const boardReadsBeforeEntry = boardReads(mock).length;
-    const today = await page.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
+    const today = dayOffset(0); // 页面按北京时间取“今天”
     await page.click('tr[data-patient-code="P001"] [data-act="visit"]');
     const visitModal = page.locator('[data-registry-modal="visitEntry"]');
     await visitModal.waitFor();
@@ -923,6 +933,41 @@ async function main() {
     const biopsyCsvText = fs.readFileSync(await biopsyCsv.path(), 'utf8').replace(/^\ufeff/, '');
     assert.ok(biopsyCsvText.split(/\r?\n/)[0].startsWith('id,project_id,center_code,module,patient_code,biopsy_date,biopsy_kind,is_index,glomeruli_total,crescent_pct,oxford_m,oxford_e,oxford_s,oxford_t,oxford_c,notes'), biopsyCsvText.split(/\r?\n/)[0]);
     assert.equal(mock.rpcCalls('log_project_audit').at(-1).body.p_details.kind, 'biopsies', '导出留痕记录活检类型');
+
+    // 7e-2. 影像记录（迁移 0047）：超声不能选 Mayo 分型；六条径线齐全时即时显示 TKV，保存后列表显示系统计算的 TKV。
+    for (const t of ['er_visit', 'icu_admission', 'infection', 'venous_thromboembolism', 'cardiovascular_event', 'malignancy', 'osteoporosis', 'fracture', 'avascular_necrosis', 'new_diabetes', 'hypertension_new_or_worse', 'pregnancy']) assert.ok(eventTypes.includes(t), `事件类型应有 ${t}`);
+    assert.equal(await page.locator('#evtLosRow').isVisible(), false, '住院天数默认隐藏');
+    await page.selectOption('#evtType', 'icu_admission');
+    assert.equal(await page.locator('#evtLosRow').isVisible(), true, '入住 ICU 显示住院天数');
+    await page.selectOption('#evtType', 'fracture');
+    assert.equal(await page.locator('#evtLosRow').isVisible(), false, '其他事件不显示住院天数');
+    await page.selectOption('#evtType', '');
+    const imagingPosts = () => mock.requests.filter(r => r.method === 'POST' && r.path === '/rest/v1/imaging_long');
+    await page.fill('#imgPatientCode', 'P001');
+    await page.fill('#imgDate', dayOffset(-30));
+    await page.selectOption('#imgModality', 'ultrasound');
+    assert.equal(await page.isDisabled('#imgMayo'), true, '超声不能选 Mayo 影像分型');
+    await page.selectOption('#imgModality', 'mri');
+    assert.equal(await page.isDisabled('#imgMayo'), false);
+    for (const [id, v] of [['#imgLLength', '18.2'], ['#imgLWidth', '9.1'], ['#imgLDepth', '8.4'], ['#imgRLength', '17.5'], ['#imgRWidth', '8.8'], ['#imgRDepth', '8']]) await page.fill(id, v);
+    await eventually(async () => (await text(page.locator('#imgHint')))?.includes('1373.5'), '六条径线齐全时即时显示总肾体积');
+    await page.fill('#imgRDepth', '45');
+    await eventually(async () => (await page.getAttribute('#imgHint', 'data-tone')) === 'error', '径线超出范围即时提示');
+    await page.click('#btnAddImaging');
+    await eventually(async () => (await page.locator('.toast').innerText().catch(() => '')).includes('不超过 40'), '超出范围不保存');
+    assert.equal(imagingPosts().length, 0);
+    await page.fill('#imgRDepth', '8');
+    await page.selectOption('#imgLiverCysts', 'present');
+    await page.selectOption('#imgMayo', 'typical');
+    await page.click('#btnAddImaging');
+    await eventually(async () => imagingPosts().length === 1, '应写入一条影像记录');
+    assert.deepEqual(imagingPosts()[0].body, { project_id: PROJECT.id, patient_code: 'P001', exam_date: dayOffset(-30), modality: 'mri', left_length_cm: 18.2, left_width_cm: 9.1, left_depth_cm: 8.4, right_length_cm: 17.5, right_width_cm: 8.8, right_depth_cm: 8, liver_cysts: 'present', mayo_image_class: 'typical', notes: null }, '写入内容不含 TKV');
+    await eventually(async () => (await text(page.locator('#imagingPreview')))?.includes('TKV 1373.5 mL'), '列表显示系统计算的 TKV');
+    const imagingRow = await text(page.locator('#imagingPreview tbody tr').first());
+    for (const needle of ['P001', '磁共振', '左 18.2×9.1×8.4 cm', '肝囊肿有', 'Mayo 典型']) assert.ok(imagingRow.includes(needle), `影像列表应显示：${needle}（实际：${imagingRow}）`);
+    assert.equal(await page.inputValue('#imgDate'), '', '保存后清空表单');
+    const [imagingCsv] = await Promise.all([page.waitForEvent('download'), page.click('#btnExportImaging')]);
+    assert.match(imagingCsv.suggestedFilename(), /^imaging_long_TST01_.*\.csv$/);
 
     // 7f. 服务器已创建但响应丢失：不能说“没有创建”，提示无法确认并刷新列表（新版本出现在列表中）；
     //     本页重试沿用同一请求编号，不会多出版本。服务器明确拒绝时才说“没有创建”。

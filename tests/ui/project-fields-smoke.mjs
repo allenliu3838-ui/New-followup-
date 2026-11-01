@@ -90,7 +90,7 @@ function createMock({ access, fields = [], values = [], project = PROJECT }) {
       case 'project_fields': return fields.filter(x => x.project_id === f.project_id);
       case 'patient_field_values': return values.filter(v => v.project_id === f.project_id && (!f.patient_code || v.patient_code === f.patient_code));
       case 'patient_tokens': case 'visits_long': case 'patients_baseline': case 'user_profiles': case 'project_custom_labs': case 'lab_test_catalog': case 'lab_test_unit_map':
-      case 'labs_long': case 'meds_long': case 'events_long': case 'variants_long': case 'data_issues': case 'biopsies_long':
+      case 'labs_long': case 'meds_long': case 'events_long': case 'variants_long': case 'data_issues': case 'biopsies_long': case 'imaging_long':
         return [];
       default: unknown.push(`GET ${table}`); return [];
     }

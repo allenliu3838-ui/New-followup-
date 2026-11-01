@@ -466,6 +466,7 @@
               <option value="meds">用药记录</option>
               <option value="events">终点事件</option>
               <option value="biopsies">肾活检记录</option>
+              <option value="imaging">影像记录</option>
               <option value="fields">入组字段（自定义）</option>
             </select>
             <div id="importLegacyOptions"><label for="importBaselineUnit">CSV 未标注时的基线 UPCR 单位</label><select id="importBaselineUnit"><option value="">请明确选择（有 UPCR 时必需）</option><option value="mg/g">mg/g</option><option value="g/g">g/g</option></select></div>
@@ -525,6 +526,7 @@
               <button class="btn" id="btnExportVariants" hidden>导出基因变异</button>
               <button class="btn" id="btnExportEvents">导出终点事件</button>
               <button class="btn" id="btnExportBiopsies">导出肾活检记录</button>
+              <button class="btn" id="btnExportImaging">导出影像记录</button>
               <button class="btn" id="btnExportFields" hidden>导出入组字段</button>
             </div>
           </div>
@@ -635,6 +637,11 @@
               <div class="col">
                 <label for="labValue">化验数值（录入值）</label>
                 <input id="labValue" type="number" step="0.01" placeholder="填写原始数值"/>
+              </div>
+              <div class="col" id="labResultCol" hidden>
+                <label for="labResultText">结果（定性项目）</label>
+                <input id="labResultText" list="labResultOptions" maxlength="50" placeholder="例如：阴性 / 阳性 1:320"/>
+                <datalist id="labResultOptions"><option value="阴性"></option><option value="阳性"></option><option value="弱阳性"></option><option value="待复核"></option></datalist>
               </div>
               <div class="col">
                 <label for="labUnit">单位
@@ -808,6 +815,67 @@
           </div>
         </div>
 
+        <h3 class="fu-h3" id="imagingHeading">肾脏影像记录</h3>
+        <div class="muted small" style="margin-bottom:10px">每次超声、CT 或磁共振检查登记一条，可多次。径线以厘米填写；左右肾长、宽、厚六项都填时，系统按椭球公式自动计算总肾体积（TKV），不能手工填写。超声至少填左右肾长径。Mayo 影像分型只用于 CT 或磁共振，1A–1E 分级由分析包计算并需研究者核对。录错的记录可以删除，删除会留痕。</div>
+        <div class="row" id="imagingSection">
+          <div class="col">
+            <label for="imgPatientCode">研究编号</label>
+            <input id="imgPatientCode" list="patientCodeOptions" placeholder="例如：0001"/>
+            <div class="row">
+              <div class="col">
+                <label for="imgDate">检查日期</label>
+                <input id="imgDate" type="date"/>
+              </div>
+              <div class="col">
+                <label for="imgModality">检查方式</label>
+                <select id="imgModality">
+                  <option value="">-- 选择 --</option>
+                  <option value="ultrasound">超声</option>
+                  <option value="ct">CT</option>
+                  <option value="mri">磁共振</option>
+                </select>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col"><label for="imgLLength">左肾长径（cm）</label><input id="imgLLength" type="number" min="0.1" max="40" step="0.1" inputmode="decimal" placeholder="例如：18.2"/></div>
+              <div class="col"><label for="imgLWidth">左肾宽径（cm）</label><input id="imgLWidth" type="number" min="0.1" max="40" step="0.1" inputmode="decimal" placeholder="例如：9.1"/></div>
+              <div class="col"><label for="imgLDepth">左肾厚径（cm）</label><input id="imgLDepth" type="number" min="0.1" max="40" step="0.1" inputmode="decimal" placeholder="例如：8.4"/></div>
+            </div>
+            <div class="row">
+              <div class="col"><label for="imgRLength">右肾长径（cm）</label><input id="imgRLength" type="number" min="0.1" max="40" step="0.1" inputmode="decimal" placeholder="例如：17.5"/></div>
+              <div class="col"><label for="imgRWidth">右肾宽径（cm）</label><input id="imgRWidth" type="number" min="0.1" max="40" step="0.1" inputmode="decimal" placeholder="例如：8.8"/></div>
+              <div class="col"><label for="imgRDepth">右肾厚径（cm）</label><input id="imgRDepth" type="number" min="0.1" max="40" step="0.1" inputmode="decimal" placeholder="例如：8.0"/></div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <label for="imgLiverCysts">肝囊肿</label>
+                <select id="imgLiverCysts">
+                  <option value="">未记录</option>
+                  <option value="present">有</option>
+                  <option value="absent">无</option>
+                </select>
+              </div>
+              <div class="col">
+                <label for="imgMayo">Mayo 影像分型（CT 或磁共振）</label>
+                <select id="imgMayo">
+                  <option value="">未评估</option>
+                  <option value="typical">典型</option>
+                  <option value="atypical">非典型</option>
+                </select>
+              </div>
+            </div>
+            <div id="imgHint" class="fu-hint small" aria-live="polite"></div>
+            <label for="imgNotes">备注（可选，勿填身份信息）</label>
+            <input id="imgNotes" maxlength="500" placeholder="例如：磁共振 T2 冠状位测量"/>
+            <div class="btnbar">
+              <button class="btn" id="btnAddImaging">添加影像记录</button>
+            </div>
+          </div>
+          <div class="col">
+            <div id="imagingPreview" class="muted small" style="margin-top:8px">暂无记录</div>
+          </div>
+        </div>
+
         <h3 class="fu-h3">临床终点事件</h3>
         <div class="muted small" style="margin-bottom:10px">手动录入经核实的终点事件，须注明判定依据来源。事件定义与判定标准以研究方案为准；eGFR 下降与缓解建议由分析脚本按研究方案计算，导出分析包后运行脚本，并由研究团队按方案核对与确认。死亡、肾衰竭等研究状态请另在看板的“研究状态”中登记。</div>
         <div class="row">
@@ -826,6 +894,18 @@
                   <option value="relapse">复发</option>
                   <option value="serious_infection">严重感染（在事件细节中写明部位或诊断）</option>
                   <option value="hospitalization">住院（在事件细节中写明原因）</option>
+                  <option value="er_visit">急诊（写明原因）</option>
+                  <option value="icu_admission">入住 ICU（写明原因）</option>
+                  <option value="infection">感染，任何程度（写明部位或病原）</option>
+                  <option value="venous_thromboembolism">静脉血栓栓塞</option>
+                  <option value="cardiovascular_event">心血管事件（写明类型）</option>
+                  <option value="malignancy">恶性肿瘤（写明类型）</option>
+                  <option value="osteoporosis">骨量减少或骨质疏松</option>
+                  <option value="fracture">骨折（写明部位）</option>
+                  <option value="avascular_necrosis">缺血性骨坏死</option>
+                  <option value="new_diabetes">新发糖尿病</option>
+                  <option value="hypertension_new_or_worse">新发或加重的高血压</option>
+                  <option value="pregnancy">妊娠（写明结局）</option>
                   <option value="egfr_decline_40pct">eGFR 下降 ≥40%（建议由分析脚本按研究方案计算）</option>
                   <option value="egfr_decline_57pct">eGFR 下降 ≥57%（建议由分析脚本按研究方案计算）</option>
                   <option value="complete_remission">完全缓解（建议由分析脚本按研究方案计算）</option>
@@ -847,8 +927,12 @@
               <option value="death_certificate">死亡证明</option>
               <option value="other">其他</option>
             </select>
-            <label for="evtDetail">事件细节（“其他”、严重感染、住院时必填，勿填身份信息）</label>
+            <label for="evtDetail">事件细节（括号里写了“写明”的类型必填，勿填身份信息）</label>
             <input id="evtDetail" maxlength="500" placeholder="例如：血液透析 / 活体供肾移植"/>
+            <div id="evtLosRow" hidden>
+              <label for="evtLosDays">住院天数（可选，整数）</label>
+              <input id="evtLosDays" type="number" min="0" max="3650" step="1" inputmode="numeric" placeholder="例如：6"/>
+            </div>
             <label for="evtNotes">备注（可选，勿填身份信息）</label>
             <input id="evtNotes" maxlength="500" placeholder="例如：缓解确认日期"/>
             <div class="btnbar">

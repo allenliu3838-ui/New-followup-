@@ -8,8 +8,10 @@ import { renderOverviewHtml, renderBoardHtml, renderFilterBar, sortBoardRows, re
 import { createFollowupDialogs, openModal } from "/lib/followup-dialogs.js?v=registry-20261031-cn-v10";
 import { validateFieldsBatch, fieldsTemplateCsv, fieldsTemplateHelp, fieldsExportCsv, activeFields } from "/lib/project-fields.js?v=registry-20261031-cn-v10";
 import { createProjectFieldsUi } from "/lib/project-fields-ui.js?v=registry-20261031-cn-v10";
-import { BATCH_KINDS, TEMPLATES as BATCH_TEMPLATES, KIND_LABELS, PII_NOTICE, SKIP_MAPPING, CHUNK_SIZE, MAX_FILE_BYTES, MAX_FILE_ROWS, EVIDENCE_SOURCES, IMPORTABLE_EVENTS, DETAIL_REQUIRED_EVENTS, BIOPSY_KINDS, oxfordCMatchesCrescents, templateCsv, validateBatch, buildChunks, errorReportCsv, piiHeaderColumns, baseFileName, beijingToday, MASKED_CODE } from "/lib/batch-import.js?v=registry-20261031-cn-v10";
+import { BATCH_KINDS, TEMPLATES as BATCH_TEMPLATES, KIND_LABELS, PII_NOTICE, SKIP_MAPPING, CHUNK_SIZE, MAX_FILE_BYTES, MAX_FILE_ROWS, EVIDENCE_SOURCES, IMPORTABLE_EVENTS, DETAIL_REQUIRED_EVENTS, EVENT_DETAIL_HINTS, LOS_EVENTS, BIOPSY_KINDS, IMAGING_MODALITIES, LIVER_CYSTS, MAYO_IMAGE_CLASSES, IMAGING_DIMENSIONS, imagingTkv, oxfordCMatchesCrescents, templateCsv, validateBatch, buildChunks, errorReportCsv, piiHeaderColumns, baseFileName, beijingToday, MASKED_CODE } from "/lib/batch-import.js?v=registry-20261031-cn-v10";
 
+// 影像记录表单：数据库列 → 输入框
+const IMAGING_INPUTS=[['left_length_cm','imgLLength'],['left_width_cm','imgLWidth'],['left_depth_cm','imgLDepth'],['right_length_cm','imgRLength'],['right_width_cm','imgRWidth'],['right_depth_cm','imgRDepth']];
 const sb = supabase();
 // 基因数据涉及人类遗传资源管理：默认关闭，仅当服务器配置 CONFIG.FEATURES.GENETICS === true 时显示。
 const GENETICS_ENABLED = window.CONFIG?.FEATURES?.GENETICS === true;
@@ -166,9 +168,12 @@ function injectAuthGatedContent() {
   el.evtEvidence = qs("#evtEvidence");
   el.evtDetail = qs("#evtDetail");
   el.btnAddEvent = qs("#btnAddEvent");
+  el.evtLosRow = qs("#evtLosRow");
+  el.evtLosDays = qs("#evtLosDays");
   el.eventsPreview = qs("#eventsPreview");
 
   for (const id of ["bxPatientCode","bxDate","bxKind","bxIndex","bxGlomeruli","bxCrescentPct","bxMestRow","bxM","bxE","bxS","bxT","bxC","bxHint","bxNotes","btnAddBiopsy","biopsiesPreview"]) el[id] = qs("#"+id);
+  for (const id of ["imgPatientCode","imgDate","imgModality","imgLLength","imgLWidth","imgLDepth","imgRLength","imgRWidth","imgRDepth","imgLiverCysts","imgMayo","imgHint","imgNotes","btnAddImaging","imagingPreview"]) el[id] = qs("#"+id);
 
   el.btnExportBaseline = qs("#btnExportBaseline");
   el.btnExportVisits = qs("#btnExportVisits");
@@ -177,6 +182,7 @@ function injectAuthGatedContent() {
   el.btnExportVariants = qs("#btnExportVariants");
   el.btnExportEvents = qs("#btnExportEvents");
   el.btnExportBiopsies = qs("#btnExportBiopsies");
+  el.btnExportImaging = qs("#btnExportImaging");
   el.btnExportFields = qs("#btnExportFields");
   el.projectFieldsDetails = qs("#projectFieldsDetails");
   el.btnNewField = qs("#btnNewField");
@@ -277,6 +283,9 @@ function bindAuthGatedEvents() {
   el.btnAddMed?.addEventListener("click", addMed);
   el.btnAddEvent?.addEventListener("click", addEvent);
   el.btnAddBiopsy?.addEventListener("click", addBiopsy);
+  el.btnAddImaging?.addEventListener("click", addImaging);
+  [...IMAGING_INPUTS.map(([,id])=>id),"imgModality","imgMayo"].forEach(k=>{el[k]?.addEventListener("input", refreshImagingHint);el[k]?.addEventListener("change", refreshImagingHint);});
+  el.evtType?.addEventListener("change", refreshEventForm);
   ["bxCrescentPct","bxC","bxGlomeruli"].forEach(k=>{el[k]?.addEventListener("input", refreshBiopsyHint);el[k]?.addEventListener("change", refreshBiopsyHint);});
 
   el.btnExportBaseline?.addEventListener("click", ()=>exportTable("baseline"));
@@ -286,6 +295,7 @@ function bindAuthGatedEvents() {
   el.btnExportVariants?.addEventListener("click", ()=>exportTable("variants"));
   el.btnExportEvents?.addEventListener("click", ()=>exportTable("events"));
   el.btnExportBiopsies?.addEventListener("click", ()=>exportTable("biopsies"));
+  el.btnExportImaging?.addEventListener("click", ()=>exportTable("imaging"));
   el.btnExportFields?.addEventListener("click", exportFields);
   el.btnNewField?.addEventListener("click", ()=>fieldsUi.openEditor());
   el.btnLoadFieldPreset?.addEventListener("click", ()=>fieldsUi.openPreset());
@@ -392,7 +402,7 @@ function requireProjectCapability(capability){
   toast(!selectedProject?'请先选择项目':!projectAccess?'项目权限尚未加载，请重试':reason&&['can_write','can_manage_tokens'].includes(capability)?registryErrorMessage(reason):'当前项目角色没有此操作权限，请联系项目负责人');return false;
 }
 function applyProjectAccess(){
-  const groups={can_write:['btnCreatePatient','btnAddVariant','btnAddLab','btnAddMed','btnAddEvent','btnAddBiopsy','importFile','btnConfirmImport','btnOpenVisitEntry'],can_manage_project:['btnSaveSettings','btnNewField','btnLoadFieldPreset','btnLoadAdpkdPreset'],can_export:['btnExportBaseline','btnExportVisits','btnExportLabs','btnExportMeds','btnExportVariants','btnExportEvents','btnExportBiopsies','btnExportFields','btnPaperPack','btnCreateSnapshot','btnRefreshSnapshots']};
+  const groups={can_write:['btnCreatePatient','btnAddVariant','btnAddLab','btnAddMed','btnAddEvent','btnAddBiopsy','btnAddImaging','importFile','btnConfirmImport','btnOpenVisitEntry'],can_manage_project:['btnSaveSettings','btnNewField','btnLoadFieldPreset','btnLoadAdpkdPreset'],can_export:['btnExportBaseline','btnExportVisits','btnExportLabs','btnExportMeds','btnExportVariants','btnExportEvents','btnExportBiopsies','btnExportImaging','btnExportFields','btnPaperPack','btnCreateSnapshot','btnRefreshSnapshots']};
   // data-blocked：按钮因本身状态不可用（如导入预览仍有错误），权限刷新时不重新启用。
   for(const [capability,keys]of Object.entries(groups))for(const key of keys){const node=el[key];if(node){node.dataset.projectCapability=capability;node.disabled=busyButtons.has(node)||!canProject(capability)||node.dataset.blocked==='1';}}
   qsa('[data-project-capability]').forEach(node=>{node.disabled=busyButtons.has(node)||!canProject(node.dataset.projectCapability)||node.dataset.blocked==='1';});
@@ -1100,6 +1110,7 @@ function updateLabUnits(){
     return;
   }
   const units = unitMap[code] || [];
+  setLabQualitative(!units.length);
   // 单位来自数据库目录：用 DOM 属性与 textContent 生成选项，不拼接 HTML。
   el.labUnit.replaceChildren(...units.map(u => {
     const option = document.createElement("option");
@@ -1115,6 +1126,16 @@ function updateLabUnits(){
   if (el.labName) el.labName.value = code;
   updateLabStdValue();
 }
+
+/** 字典中没有任何单位的项目（如乙肝表面抗原、ANA）只记定性结果：显示“结果”文本框，隐藏数值、单位和标准值。 */
+function setLabQualitative(on){
+  const col=qs("#labResultCol");if(col)col.hidden=!on;
+  const valueCol=el.labValue?.closest(".col");if(valueCol)valueCol.style.display=on?"none":"";
+  if(el.labUnit)el.labUnit.style.display=on?"none":"";
+  if(el.labStdValue)el.labStdValue.closest(".col").style.display=on?"none":"";
+  if(!on&&qs("#labResultText"))qs("#labResultText").value="";
+}
+const labIsQualitative=code=>!!code&&code!=="CUSTOM"&&!code.startsWith("PROJ:")&&!(unitMap[code]||[]).length&&labCatalog.some(c=>c.code===code);
 
 function updateLabStdValue(){
   const code = el.labTestCode?.value;
@@ -1564,17 +1585,19 @@ async function loadExtras(){
     if (el.medsPreview) el.medsPreview.textContent = "";
     if (el.eventsPreview) el.eventsPreview.textContent = "暂无记录";
     if (el.biopsiesPreview) el.biopsiesPreview.textContent = "暂无记录";
+    if (el.imagingPreview) el.imagingPreview.textContent = "暂无记录";
     return;
   }
   const op=captureContext();
   const pid = op.project.id;
   try{
-    const [varsRes, labsRes, medsRes, evtsRes, biopsyRes] = await Promise.all([
+    const [varsRes, labsRes, medsRes, evtsRes, biopsyRes, imagingRes] = await Promise.all([
       GENETICS_ENABLED ? sb.from("variants_long").select("*").eq("project_id", pid).order("created_at", {ascending:false}).limit(10) : Promise.resolve({data:[],error:null}),
       sb.from("labs_long").select("*").eq("project_id", pid).order("created_at", {ascending:false}).limit(10),
       sb.from("meds_long").select("*").eq("project_id", pid).order("created_at", {ascending:false}).limit(10),
       sb.from("events_long").select("*").eq("project_id", pid).order("created_at", {ascending:false}).limit(20),
       sb.from("biopsies_long").select("*").eq("project_id", pid).order("created_at", {ascending:false}).limit(20),
+      sb.from("imaging_long").select("*").eq("project_id", pid).order("created_at", {ascending:false}).limit(20),
     ]);
     if (varsRes.error) throw varsRes.error;
     if (labsRes.error) throw labsRes.error;
@@ -1587,16 +1610,17 @@ async function loadExtras(){
     renderMedsPreview(medsRes.data || []);
     if(evtsRes.error)el.eventsPreview.textContent="终点事件读取失败，请重试："+registryErrorMessage(evtsRes.error);else renderEventsPreview(evtsRes.data||[]);
     if(biopsyRes.error){if(el.biopsiesPreview)el.biopsiesPreview.textContent="活检记录读取失败，请重试："+registryErrorMessage(biopsyRes.error);}else renderBiopsiesPreview(biopsyRes.data||[]);
+    if(imagingRes.error){if(el.imagingPreview)el.imagingPreview.textContent="影像记录读取失败，请重试："+registryErrorMessage(imagingRes.error);}else renderImagingPreview(imagingRes.data||[]);
   }catch(e){
     console.error(e);
-    if(selectedProject?.id===pid)[el.variantsPreview,el.labsPreview,el.medsPreview,el.eventsPreview,el.biopsiesPreview].forEach(n=>{if(n)n.textContent="读取失败，请重新选择项目或刷新。";});
+    if(selectedProject?.id===pid)[el.variantsPreview,el.labsPreview,el.medsPreview,el.eventsPreview,el.biopsiesPreview,el.imagingPreview].forEach(n=>{if(n)n.textContent="读取失败，请重新选择项目或刷新。";});
   }
 }
 
-// ── 通用删除函数（用药 / 基因 / 事件 / 活检）──────────────────────────────────
+// ── 通用删除函数（用药 / 基因 / 事件 / 活检 / 影像）──────────────────────────────────
 async function deleteRecord(table, id){
   if(!requireProjectCapability('can_write'))return;
-  if(!selectedProject||!['variants_long','meds_long','events_long','biopsies_long'].includes(table))return;
+  if(!selectedProject||!['variants_long','meds_long','events_long','biopsies_long','imaging_long'].includes(table))return;
   const op=captureContext();if(busyButtons.size)return toast('正在保存，请稍候');
   if (!confirm(`确认删除项目 ${op.project.name} 的这条记录？请先核对原始记录。操作不可撤销。`)) return;
   const marker={dataset:{},textContent:'删除记录'};setBusy(marker,true);
@@ -1642,7 +1666,7 @@ function renderLabsPreview(rows){
       <td><b>${escapeHtml(r.patient_code??"")}</b></td>
       <td>${escapeHtml(r.lab_date??"")}</td>
       <td>${escapeHtml(r.lab_name||r.lab_test_code||"")}</td>
-      <td>${escapeHtml(r.lab_value!=null ? String(r.lab_value) : (r.value_raw!=null ? String(r.value_raw) : ""))}</td>
+      <td>${escapeHtml(r.lab_value!=null ? String(r.lab_value) : (r.value_raw!=null ? String(r.value_raw) : (r.result_text??"")))}</td>
       <td>${escapeHtml(r.lab_unit||r.unit_symbol||"")}</td>
       <td><button class="btn small" style="color:#b91c1c" data-project-capability="can_write" data-edit-table="labs_long" data-record-id="${escapeHtml(r.id??"")}">核对 / 更正</button></td>
     </tr>
@@ -1732,6 +1756,33 @@ function renderBiopsiesPreview(rows){
     <div class="muted small">最近 20 条：</div>
     <table class="table">
       <thead><tr><th>研究编号</th><th>活检日期</th><th>类型</th><th>病理</th><th></th></tr></thead>
+      <tbody>${trs}</tbody>
+    </table>
+  `;
+  applyProjectAccess();
+}
+
+function imagingSizeText(r){
+  const side=(l,w,d)=>[l,w,d].some(x=>x!=null)?[l,w,d].map(x=>x==null?'-':Number(x)).join('×'):'';
+  const left=side(r.left_length_cm,r.left_width_cm,r.left_depth_cm),right=side(r.right_length_cm,r.right_width_cm,r.right_depth_cm);
+  return [left?`左 ${left} cm`:'',right?`右 ${right} cm`:'',r.tkv_ml!=null?`TKV ${Number(r.tkv_ml)} mL`:'',r.liver_cysts?`肝囊肿${LIVER_CYSTS[r.liver_cysts]||''}`:'',r.mayo_image_class?`Mayo ${MAYO_IMAGE_CLASSES[r.mayo_image_class]||''}`:''].filter(Boolean).join(' · ');
+}
+function renderImagingPreview(rows){
+  if (!el.imagingPreview) return;
+  if (!rows.length){ el.imagingPreview.innerHTML = "暂无记录"; return; }
+  const trs = rows.map(r=>`
+    <tr>
+      <td><b>${escapeHtml(r.patient_code??"")}</b></td>
+      <td>${escapeHtml(r.exam_date??"")}</td>
+      <td>${escapeHtml(IMAGING_MODALITIES[r.modality]||"其他")}</td>
+      <td class="muted small">${escapeHtml(imagingSizeText(r))}</td>
+      <td><button class="btn small" style="color:#b91c1c" data-project-capability="can_write" data-delete-table="imaging_long" data-record-id="${escapeHtml(r.id??"")}">删除</button></td>
+    </tr>
+  `).join("");
+  el.imagingPreview.innerHTML = `
+    <div class="muted small">最近 20 条：</div>
+    <table class="table">
+      <thead><tr><th>研究编号</th><th>检查日期</th><th>方式</th><th>径线与结果</th><th></th></tr></thead>
       <tbody>${trs}</tbody>
     </table>
   `;
@@ -1869,6 +1920,33 @@ async function addVariant(){
   }
 }
 
+async function addQualitativeLab(op, patient_code, lab_test_code){
+  const lab_date = el.labDate?.value || "";
+  if (!lab_date) return toast("请填写化验日期");
+  const today = researchToday();
+  if (lab_date > today) return toast(`化验日期不能晚于今天（北京时间 ${today}）`);
+  const result_text = qs("#labResultText")?.value.trim() || "";
+  if (!result_text) return toast("该项目只记定性结果：请填写结果，例如阴性或阳性");
+  if ([...result_text].length > 50) return toast("结果最多 50 字");
+  try { assertNoPII(result_text, "化验结果"); } catch(e){ return toast(e.message); }
+  const btn = el.btnAddLab;
+  btn.dataset.label = "添加化验记录";
+  setBusy(btn, true);
+  try{
+    const { error } = await sb.from("labs_long").insert({ project_id: op.project.id, patient_code, lab_date, lab_test_code, result_text });
+    if (error) throw error;
+    assertContext(op);
+    toast(`已添加化验：${labCatalog.find(c=>c.code===lab_test_code)?.name_cn||lab_test_code} ${result_text}`);
+    if (qs("#labResultText")) qs("#labResultText").value = "";
+    await loadExtras();
+  }catch(e){
+    console.error(e);
+    toast("添加失败：" + registryErrorMessage(e));
+  }finally{
+    setBusy(btn, false);
+  }
+}
+
 async function addLab(){
   if(!requireProjectCapability('can_write'))return;
   if (!selectedProject) return toast("请先选择项目");
@@ -1877,6 +1955,7 @@ async function addLab(){
   if (!patient_code) return toast("请填写患者研究编号");
   const lab_test_code = el.labTestCode?.value;
   if (!lab_test_code) return toast("请从下拉列表选择化验项目");
+  if (labIsQualitative(lab_test_code)) return addQualitativeLab(op, patient_code, lab_test_code);
   const rawVal = el.labValue?.value !== "" ? Number(el.labValue?.value) : null;
   if (rawVal === null || isNaN(rawVal)) return toast("请填写化验数值");
 
@@ -2063,7 +2142,7 @@ async function addEvent(){
   const evidence_source = el.evtEvidence?.value || "";
   if (!EVIDENCE_SOURCES[evidence_source]) return toast("请选择判定依据来源");
   const event_detail = el.evtDetail?.value.trim() || null;
-  if (DETAIL_REQUIRED_EVENTS.includes(event_type) && !event_detail) return toast("该事件类型需要在事件细节中写明内容（事件内容、感染部位或诊断、住院原因）");
+  if (DETAIL_REQUIRED_EVENTS.includes(event_type) && !event_detail) return toast(`该事件类型需要在事件细节中写明${EVENT_DETAIL_HINTS[event_type]||"事件内容"}`);
   if (event_detail && [...event_detail].length > 500) return toast("事件细节最多 500 字");
   const event_date = el.evtDate?.value || null;
   if (event_date && event_date > beijingToday()) return toast("事件日期不能晚于今天");
@@ -2078,6 +2157,8 @@ async function addEvent(){
     event_detail,
     notes: el.evtNotes?.value.trim().slice(0, 500) || null,
   };
+  const losRaw = LOS_EVENTS.includes(event_type) ? (el.evtLosDays?.value.trim() ?? "") : "";
+  if (losRaw !== "") { const n = Number(losRaw); if (!Number.isInteger(n) || n < 0 || n > 3650) return toast("住院天数须为 0–3650 的整数"); payload.los_days = n; }
   try{assertNoPII(payload.notes||'','事件备注');assertNoPII(event_detail||'','事件细节');}catch(e){return toast(e.message);}
   const btn = el.btnAddEvent;
   btn.dataset.label = "录入终点事件";
@@ -2087,7 +2168,7 @@ async function addEvent(){
     if (error) throw error;
     assertContext(op);
     toast(["death","esrd","dialysis_start","kidney_transplant"].includes(event_type) ? "已录入终点事件。如患者研究状态有变化（死亡、肾衰竭等），请到该患者的“研究状态”中登记。" : "已录入终点事件");
-    ['evtDate','evtNotes','evtDetail'].forEach(k=>{ if (el[k]) el[k].value = ""; });
+    ['evtDate','evtNotes','evtDetail','evtLosDays'].forEach(k=>{ if (el[k]) el[k].value = ""; });
     await loadExtras();
   await loadSnapshots();
   }catch(e){
@@ -2155,17 +2236,87 @@ async function addBiopsy(){
   }
 }
 
-const EXPORT_TABLES={baseline:'patients_baseline',visits:'visits_long',labs:'labs_long',meds:'meds_long',variants:'variants_long',events:'events_long',biopsies:'biopsies_long'};
+// ── 终点事件：住院天数只用于住院和入住 ICU ───────────────────────────────────
+function refreshEventForm(){
+  const los=LOS_EVENTS.includes(el.evtType?.value||"");
+  if(el.evtLosRow)el.evtLosRow.hidden=!los;
+  if(!los&&el.evtLosDays)el.evtLosDays.value="";
+}
+
+// ── 肾脏影像记录 ─────────────────────────────────────────────────────────────
+function imagingDims(){
+  const dims={},errors=[];
+  for(const [k,id] of IMAGING_INPUTS){
+    const raw=el[id]?.value.trim()??"";if(raw==="")continue;
+    const n=Number(raw),label=IMAGING_DIMENSIONS.find(([c])=>c===k)?.[1]||k;
+    if(!Number.isFinite(n)||n<=0||n>40)errors.push(`${label}须为大于 0、不超过 40 的数字（厘米）`);else dims[k]=n;
+  }
+  return {dims,errors};
+}
+/** 填写时即时显示总肾体积；超声时 Mayo 影像分型不可选。 */
+function refreshImagingHint(){
+  if(!el.imgHint)return;
+  const us=el.imgModality?.value==="ultrasound";
+  if(el.imgMayo){el.imgMayo.disabled=us;if(us)el.imgMayo.value="";}
+  const {dims,errors}=imagingDims(),tkv=imagingTkv(dims);
+  let msg='',tone='';
+  if(errors.length){msg=errors[0]+'。';tone='error';}
+  else if(tkv!=null)msg=`总肾体积（椭球公式，自动计算）：约 ${tkv} mL。保存后由系统计算并存档。`;
+  else if(Object.keys(dims).length&&el.imgModality?.value&&!us)msg='CT 或磁共振填齐左右肾长、宽、厚六项后，系统会自动计算总肾体积。';
+  el.imgHint.textContent=msg;if(tone)el.imgHint.dataset.tone=tone;else delete el.imgHint.dataset.tone;
+}
+async function addImaging(){
+  if(!requireProjectCapability('can_write'))return;
+  if (!selectedProject) return toast("请先选择项目");
+  const op=captureContext();
+  const patient_code=el.imgPatientCode?.value.trim();
+  if(!patient_code)return toast("请填写研究编号");
+  const exam_date=el.imgDate?.value||"";
+  if(!exam_date)return toast("请填写检查日期");
+  const today=researchToday();
+  if(exam_date>today)return toast(`检查日期不能晚于今天（北京时间 ${today}）`);
+  if(exam_date<"1900-01-01")return toast("检查日期不能早于 1900-01-01");
+  const modality=el.imgModality?.value||"";
+  if(!IMAGING_MODALITIES[modality])return toast("请选择检查方式：超声、CT 或磁共振");
+  const {dims,errors}=imagingDims();
+  if(errors.length)return toast(errors[0]);
+  const liver_cysts=el.imgLiverCysts?.value||null;
+  const mayo_image_class=modality==="ultrasound"?null:(el.imgMayo?.value||null);
+  if(!Object.keys(dims).length&&!liver_cysts)return toast("请至少填写一项肾脏径线或肝囊肿情况");
+  const payload={project_id:op.project.id,patient_code,exam_date,modality,...Object.fromEntries(IMAGING_INPUTS.map(([k])=>[k,dims[k]??null])),liver_cysts,mayo_image_class,notes:null};
+  const notes=el.imgNotes?.value.trim()||"";
+  if(notes){if([...notes].length>500)return toast("备注最多 500 字");try{assertNoPII(notes,"影像备注");}catch(e){return toast(e.message);}payload.notes=notes;}
+  const btn=el.btnAddImaging;
+  btn.dataset.label="添加影像记录";
+  setBusy(btn,true);
+  try{
+    const {data,error}=await sb.from("imaging_long").insert(payload).select("tkv_ml").single();
+    if(error)throw error;
+    assertContext(op);
+    toast(data?.tkv_ml!=null?`已添加影像记录，总肾体积 ${Number(data.tkv_ml)} mL`:"已添加影像记录");
+    ['imgDate','imgNotes','imgLiverCysts','imgMayo',...IMAGING_INPUTS.map(([,id])=>id)].forEach(k=>{if(el[k])el[k].value="";});
+    refreshImagingHint();
+    await loadExtras();
+  }catch(e){
+    console.error(e);
+    toast("添加失败："+registryErrorMessage(e));
+  }finally{
+    setBusy(btn,false);
+  }
+}
+
+const EXPORT_TABLES={baseline:'patients_baseline',visits:'visits_long',labs:'labs_long',meds:'meds_long',variants:'variants_long',events:'events_long',biopsies:'biopsies_long',imaging:'imaging_long'};
 const COMMON_EXPORT_COLUMNS=['id','project_id','center_code','module','patient_code'];
 const PROJECT_FIELD_COLUMNS=['id','project_id','center_code','module','field_key','label_cn','value_type','choices','unit','min_value','max_value','sort_order','active','source','help_cn'];
 const EXPORT_FIELDS={
 patients_baseline:['sex','birth_year','baseline_date','baseline_scr','baseline_upcr','baseline_upcr_unit','baseline_upcr_raw','baseline_upcr_original_unit','biopsy_date','oxford_m','oxford_e','oxford_s','oxford_t','oxford_c','ln_biopsy_date','ln_class','ln_activity_index','ln_chronicity_index','ln_podocytopathy','c3g_biopsy_date','c3g_if_c3_dominant','c3g_em_pattern','c3g_crescent_pct','c3g_paraprotein','treatment_arm','randomization_id','randomization_date','consent_status','consent_date','consent_version','followup_status','followup_status_date','created_at','updated_at'],
-visits_long:['visit_date','sbp','dbp','scr_umol_l','upcr','height_cm','egfr','egfr_formula_version','notes','qc_reason','created_at','updated_at'],
+visits_long:['visit_date','sbp','dbp','scr_umol_l','upcr','height_cm','weight_kg','egfr','egfr_formula_version','notes','qc_reason','created_at','updated_at'],
 labs_long:['lab_date','lab_test_code','lab_name','value_raw','unit_symbol','value_standard','standard_unit','lab_value','lab_unit','measured_at','qc_reason','created_at','updated_at'],
 meds_long:['drug_name','drug_class','dose','route','frequency','start_date','end_date','created_at','updated_at'],
 variants_long:['test_date','test_name','gene','variant','hgvs_c','hgvs_p','transcript','zygosity','classification','lab_name','notes','created_at','updated_at'],
-events_long:['event_type','event_date','confirmed','source','notes','created_at','updated_at'],
+events_long:['event_type','event_date','event_detail','evidence_source','los_days','confirmed','source','notes','created_at','updated_at'],
 biopsies_long:['biopsy_date','biopsy_kind','is_index','glomeruli_total','crescent_pct','oxford_m','oxford_e','oxford_s','oxford_t','oxford_c','notes','created_at','updated_at'],
+imaging_long:['exam_date','modality','left_length_cm','left_width_cm','left_depth_cm','right_length_cm','right_width_cm','right_depth_cm','tkv_ml','liver_cysts','mayo_image_class','notes','created_at','updated_at'],
 patient_field_values:['field_key','value_text','value_codes','value_num','value_date','created_at','updated_at'],
 ktx_baseline_ext:['transplant_date','donor_type','induction_therapy','maintenance_immuno','hla_mismatch_count','pra_status','dsa_status','dsa_titer','baseline_creatinine','baseline_egfr','created_at','updated_at'],
 ktx_visits_ext:['visit_date','tac_trough','csa_trough','weight_kg','infection_event','rejection_event','biopsy_banff','graft_failure_date','death_date','return_to_dialysis','return_to_dialysis_date','created_at','updated_at']
@@ -2176,7 +2327,7 @@ async function exportTable(kind){
   if(!requireProjectCapability('can_export'))return;
   if(!selectedProject)return toast('请先选择项目');
   const op=captureContext(), table=EXPORT_TABLES[kind];if(!table)return;
-  const btn=el['btnExport'+({baseline:'Baseline',visits:'Visits',labs:'Labs',meds:'Meds',variants:'Variants',events:'Events',biopsies:'Biopsies'}[kind])];
+  const btn=el['btnExport'+({baseline:'Baseline',visits:'Visits',labs:'Labs',meds:'Meds',variants:'Variants',events:'Events',biopsies:'Biopsies',imaging:'Imaging'}[kind])];
   setBusy(btn,true);
   try{
     const data=await readAllRows(sb,table,op.project.id,()=>assertContext(op));
@@ -2370,10 +2521,10 @@ async function loadIssues(page=0){
 }
 const EDIT_FIELDS={
   patients_baseline:['sex','birth_year','baseline_date','baseline_scr','baseline_upcr','biopsy_date','oxford_m','oxford_e','oxford_s','oxford_t','oxford_c','ln_biopsy_date','ln_class','ln_activity_index','ln_chronicity_index','ln_podocytopathy','c3g_biopsy_date','c3g_if_c3_dominant','c3g_em_pattern','c3g_crescent_pct','c3g_paraprotein','treatment_arm','randomization_id','randomization_date'],
-  visits_long:['visit_date','sbp','dbp','scr_umol_l','upcr','height_cm','notes'],
+  visits_long:['visit_date','sbp','dbp','scr_umol_l','upcr','height_cm','weight_kg','notes'],
   labs_long:['lab_date','lab_test_code','value_raw','unit_symbol']
 };
-const EDIT_LABELS={sex:'性别 M/F',birth_year:'出生年份',baseline_date:'基线日期',baseline_scr:'基线肌酐 μmol/L',baseline_upcr:'基线UPCR原始化验值',visit_date:'随访日期',sbp:'收缩压 mmHg',dbp:'舒张压 mmHg',scr_umol_l:'肌酐 μmol/L',upcr:'UPCR mg/g',notes:'备注（不含身份信息）',lab_date:'化验日期',lab_test_code:'化验目录代码',value_raw:'原始化验值',unit_symbol:'原始化验单位',biopsy_date:'肾穿日期',ln_biopsy_date:'LN肾穿日期',ln_class:'LN病理分型',ln_activity_index:'LN活动指数',ln_chronicity_index:'LN慢性指数',ln_podocytopathy:'足细胞病 true/false',c3g_biopsy_date:'C3G肾穿日期',c3g_if_c3_dominant:'免疫荧光C3优势 true/false',c3g_em_pattern:'C3G电镜分型 C3GN/DDD/unclassified',c3g_crescent_pct:'新月体比例 %',c3g_paraprotein:'单克隆筛查 negative/positive/not_tested',height_cm:'身高 cm',treatment_arm:'研究分组',randomization_id:'分组记录编号',randomization_date:'分组日期'};
+const EDIT_LABELS={sex:'性别 M/F',birth_year:'出生年份',baseline_date:'基线日期',baseline_scr:'基线肌酐 μmol/L',baseline_upcr:'基线UPCR原始化验值',visit_date:'随访日期',sbp:'收缩压 mmHg',dbp:'舒张压 mmHg',scr_umol_l:'肌酐 μmol/L',upcr:'UPCR mg/g',notes:'备注（不含身份信息）',lab_date:'化验日期',lab_test_code:'化验目录代码',value_raw:'原始化验值',unit_symbol:'原始化验单位',biopsy_date:'肾穿日期',ln_biopsy_date:'LN肾穿日期',ln_class:'LN病理分型',ln_activity_index:'LN活动指数',ln_chronicity_index:'LN慢性指数',ln_podocytopathy:'足细胞病 true/false',c3g_biopsy_date:'C3G肾穿日期',c3g_if_c3_dominant:'免疫荧光C3优势 true/false',c3g_em_pattern:'C3G电镜分型 C3GN/DDD/unclassified',c3g_crescent_pct:'新月体比例 %',c3g_paraprotein:'单克隆筛查 negative/positive/not_tested',height_cm:'身高 cm',weight_kg:'体重 kg',treatment_arm:'研究分组',randomization_id:'分组记录编号',randomization_date:'分组日期'};
 const EDIT_NUMBERS=new Set(['birth_year','baseline_scr','baseline_upcr','oxford_m','oxford_e','oxford_s','oxford_t','oxford_c','ln_activity_index','ln_chronicity_index','c3g_crescent_pct','sbp','dbp','scr_umol_l','upcr','height_cm','value_raw']);
 // 更正时的数值范围，与数据库约束一致（数据库仍是最终校验）。血肌酐另按 creatinineUmol 检查并提示单位。
 const EDIT_LIMITS={birth_year:{integer:true,min:1900,max:Number(researchToday().slice(0,4))},oxford_m:{integer:true,min:0,max:1},oxford_e:{integer:true,min:0,max:1},oxford_s:{integer:true,min:0,max:1},oxford_t:{integer:true,min:0,max:2},oxford_c:{integer:true,min:0,max:2},ln_activity_index:{min:0,max:24},ln_chronicity_index:{min:0,max:12},c3g_crescent_pct:{min:0,max:100},sbp:CLINICAL_LIMITS.sbp,dbp:CLINICAL_LIMITS.dbp,upcr:CLINICAL_LIMITS.upcr,height_cm:CLINICAL_LIMITS.height_cm,baseline_upcr:{min:0}};
@@ -3322,7 +3473,7 @@ const IMPORT_TEMPLATES={
 };
 // 入组字段导入的列随项目的字段定义变化（project-fields.js），预览、分块提交与撤销与其他批量导入相同。
 const isBatchKind=type=>BATCH_KINDS.includes(type)||type==='fields';
-const UNDOABLE_KINDS=['visits','labs','meds','events','biopsies','fields'];
+const UNDOABLE_KINDS=['visits','labs','meds','events','biopsies','imaging','fields'];
 const ROW_STATUS_LABELS={ok:'可写入',warn:'警告',block:'阻断',ignored:'不导入'};
 const NO_ACTIVE_FIELDS='本项目还没有启用的入组字段，请项目负责人先在“自定义入组字段”中添加。';
 function downloadImportTemplate(){

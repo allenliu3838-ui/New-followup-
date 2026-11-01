@@ -39619,7 +39619,7 @@
       "old_sha256": "5bfa97ded368de86a54e1963f085bc99d05a7029f2911790135e3428c11ab8d6"
     },
     "lib/batch-import.js": {
-      "new_sha256": "a85f283b935f1063f555cc53be60e27d35db88bf86bedda74f9bf3c320c084ab",
+      "new_sha256": "eafdac484e4ada3e87fbf70c9bd82d316ecfc2b151e27b875bb34136fbd27339",
       "old_sha256": "a85f283b935f1063f555cc53be60e27d35db88bf86bedda74f9bf3c320c084ab"
     },
     "lib/error-logger.js": {
@@ -39627,11 +39627,11 @@
       "old_sha256": "0131572e8e9a20d43e75623caac9f35280946af4160a6b70e274b1b01247a291"
     },
     "lib/followup-board.js": {
-      "new_sha256": "a7610ac8fa689214753cd366ff56481b8b200d883ee7daf378b1b2df8bdc46cb",
+      "new_sha256": "8a8d3dca85e2b3f52b0b048cdfabe388a4d81a9f65b59a05184eafdbc0815a27",
       "old_sha256": "a7610ac8fa689214753cd366ff56481b8b200d883ee7daf378b1b2df8bdc46cb"
     },
     "lib/followup-dialogs.js": {
-      "new_sha256": "3cc0475d70e11d39330e4487f84058d52c232a5d8d118d94e5d3bd10d6de7b08",
+      "new_sha256": "4851851273a036cc6eb68698707ce31587175fd5c3068983f1d9422473f8fad0",
       "old_sha256": "bf1cc323ecbc5263f599aeb036af67ed17428d4f58ed33b86b875ee31fda01d3"
     },
     "lib/help-assistant.js": {
@@ -39671,7 +39671,7 @@
       "old_sha256": "7816d4f99f25a429517acbffa4317887383c5ca2dc383538318e7f0da5c772c0"
     },
     "lib/registry-data.js": {
-      "new_sha256": "e584b8cd935b7939463e2181baee4244330987daae839c3e366d1e2c2813e3ab",
+      "new_sha256": "c14d8eea4e4da825765852c4ea7df6c11f1188545ce0c0ef8f64352a9a4a4cda",
       "old_sha256": "e584b8cd935b7939463e2181baee4244330987daae839c3e366d1e2c2813e3ab"
     },
     "lib/supabase-client.js": {
@@ -39747,11 +39747,11 @@
       "old_sha256": "f07e25f41e9978a30fdfbae71e71af0747ff39d92210d905315490c5057456f5"
     },
     "staff.html": {
-      "new_sha256": "a1de30de87cd55dbc98f261894ad3337d36fd8d22594fd356a6ebdd30e8e62f5",
+      "new_sha256": "d71197f7f5524762e166922843a504bd066ec92cfa13e53cb3a78ef0a7ab02e4",
       "old_sha256": "a51b9673629f922e2b699c619f030a0ec20de970f233effbf17671573d5b6318"
     },
     "staff.js": {
-      "new_sha256": "72301204a87c14f0044c0d0474892caf7b51fa995ab1f006baa2cb5ba1ff9ad5",
+      "new_sha256": "3cab5f2120f2b21ce9c966e2b32b79a6518fd539be14d2e0baf2f4ab1904875b",
       "old_sha256": "aba57a64a6df4e626f049899f3e7e455fd745f31f147736015b4618607454ef5"
     },
     "terms.html": {

@@ -116,6 +116,7 @@ function createMock({ access }) {
       case 'labs_long': case 'meds_long': case 'events_long': case 'variants_long': case 'data_issues': case 'project_fields': case 'patient_field_values':
         return [];
       // 已有的基准活检：P002 在系统中已有一次（导入预览据此提示）。
+      case 'imaging_long': return [];
       case 'biopsies_long': return f.is_index === 'true' ? [{ id: '71000000-0000-4000-8000-000000000001', patient_code: 'P002', biopsy_date: '2023-05-05', biopsy_kind: 'native' }] : [];
       default: unknown.push(`GET ${table}`); return [];
     }
@@ -340,7 +341,7 @@ async function main() {
     assert.equal(await page.locator('#importControls').isVisible(), true, '负责人可见导入入口');
     assert.equal(await page.locator('#importPiiNotice').isVisible(), true, '上传页显示隐私提示');
     assert.ok((await text(page.locator('#importPiiNotice'))).includes('不得包含姓名、身份证号、手机号、病案号'));
-    assert.deepEqual(await page.locator('#importType option').evaluateAll(o => o.map(x => x.value)), ['baseline', 'visits', 'labs', 'meds', 'events', 'biopsies', 'fields']);
+    assert.deepEqual(await page.locator('#importType option').evaluateAll(o => o.map(x => x.value)), ['baseline', 'visits', 'labs', 'meds', 'events', 'biopsies', 'imaging', 'fields']);
     // 入组字段的模板随项目的字段定义生成；本项目没有字段时说明原因，不下载空模板（字段导入见 project-fields-smoke.mjs）。
     await page.selectOption('#importType', 'fields');
     await page.click('#btnDownloadTemplate');
@@ -350,8 +351,9 @@ async function main() {
     const HEADERS = {
       labs: ['template_labs_v1.csv', 'patient_code,lab_date,lab_test_code,lab_item_name,value_raw,unit_symbol,result_text,ref_range,abnormal_flag,notes'],
       meds: ['template_meds_v1.csv', 'patient_code,drug_name,drug_class,dose_value,dose_unit,route,frequency,start_date,end_date,indication,notes'],
-      events: ['template_events_v1.csv', 'patient_code,event_type,event_date,event_detail,evidence_source,notes'],
+      events: ['template_events_v2.csv', 'patient_code,event_type,event_date,event_detail,evidence_source,notes,los_days'],
       biopsies: ['template_biopsies_v1.csv', 'patient_code,biopsy_date,biopsy_kind,is_index,glomeruli_total,crescent_pct,oxford_m,oxford_e,oxford_s,oxford_t,oxford_c,notes'],
+      imaging: ['template_imaging_v1.csv', 'patient_code,exam_date,modality,left_length_cm,left_width_cm,left_depth_cm,right_length_cm,right_width_cm,right_depth_cm,liver_cysts,mayo_image_class,notes'],
     };
     for (const [kind, [filename, header]] of Object.entries(HEADERS)) {
       await page.selectOption('#importType', kind);
@@ -496,29 +498,44 @@ async function main() {
     ], '定性结果不带单位；数值按原文提交');
     await page.click('#btnCancelImport');
 
+    // 2b. 影像记录（迁移 0047）：径线范围、超声不能填 Mayo 分型、至少一项测量；六条径线齐全时预览说明将计算 TKV。
+    await page.selectOption('#importType', 'imaging');
+    await page.setInputFiles('#importFile', csvFile('imaging.csv', [HEADERS.imaging[1],
+      'P001,2025-03-01,磁共振,18.2,9.1,8.4,17.5,8.8,8.0,有,典型,',
+      'P003,2025-03-02,B超,16.0,,,15.8,,,,typical,',
+      'P003,2025-03-03,ct,,,,,,,,,',
+      'P001,2025-03-04,ultrasound,41,,,16,,,,,']));
+    await page.locator('#importCounts').waitFor({ state: 'visible' });
+    assert.deepEqual(await counts(page), { total: 4, writable: 1, warn: 0, block: 3 });
+    assert.ok((await rowText(2)).includes('1373.5'), '六条径线齐全时说明将计算的总肾体积');
+    assert.ok((await rowText(3)).includes('只适用于 CT 或磁共振'), '超声不能填 Mayo 分型');
+    assert.ok((await rowText(4)).includes('至少填写一项肾脏径线'), '至少一项测量');
+    assert.ok((await rowText(5)).includes('不超过 40'), '径线范围');
+    await page.click('#btnCancelImport');
+
     // 3. 终点事件：派生终点阻断、死亡 + 在访患者给警告、“其他”须填细节。
     await page.selectOption('#importType', 'events');
     await page.setInputFiles('#importFile', csvFile('events.csv', [HEADERS.events[1],
-      'P001,egfr_decline_40pct,2025-03-01,,lab_review,',
-      'P001,complete_remission,2025-03-01,,medical_record,',
-      'P001,death,2025-04-01,,death_certificate,',
-      'P003,custom,2025-04-01,,phone_followup,',
-      'P003,开始透析,2025-05-01,血液透析,病历记录,',
-      'P003,lost_followup,2025-05-02,,other,',
-      'P001,relapse,2023-12-01,,medical_record,',
-      'P003,严重感染,2025-05-03,,medical_record,',
-      'P003,住院,2025-05-04,肺炎住院 6 天,病历记录,',
-      'P003,疫苗接种,2025-05-05,四价脑膜炎球菌结合疫苗,medical_record,']));
+      'P001,egfr_decline_40pct,2025-03-01,,lab_review,,',
+      'P001,complete_remission,2025-03-01,,medical_record,,',
+      'P001,death,2025-04-01,,death_certificate,,',
+      'P003,custom,2025-04-01,,phone_followup,,',
+      'P003,开始透析,2025-05-01,血液透析,病历记录,,',
+      'P003,lost_followup,2025-05-02,,other,,',
+      'P001,relapse,2023-12-01,,medical_record,,',
+      'P003,严重感染,2025-05-03,,medical_record,,',
+      'P003,住院,2025-05-04,肺炎住院 6 天,病历记录,,',
+      'P003,疫苗接种,2025-05-05,四价脑膜炎球菌结合疫苗,medical_record,,']));
     await page.locator('#importCounts').waitFor({ state: 'visible' });
     assert.deepEqual(await counts(page), { total: 10, writable: 4, warn: 3, block: 6 });
     assert.ok((await rowText(2)).includes('不接受导入') && (await rowText(3)).includes('不接受导入'), '派生终点阻断');
     assert.ok((await rowText(4)).includes('请到该患者的研究状态登记'), '死亡事件 + 在访患者给警告');
     assert.match(await page.locator('#importTable tr[data-line="4"]').getAttribute('class'), /bi-row-warn/);
-    assert.ok((await rowText(5)).includes('须填写事件细节'));
+    assert.ok((await rowText(5)).includes('须在事件细节中写明事件内容'));
     assert.ok((await rowText(6)).includes('请到该患者的研究状态登记'), '开始透析也提示登记研究状态');
     assert.ok((await rowText(7)).includes('改用 custom'));
     assert.ok((await rowText(8)).includes('早于该患者的基线日期'));
-    assert.ok((await rowText(9)).includes('严重感染和住院须在事件细节中写明'), '严重感染须填细节');
+    assert.ok((await rowText(9)).includes('须在事件细节中写明感染部位或诊断'), '严重感染须填细节');
     assert.match(await page.locator('#importTable tr[data-line="10"]').getAttribute('class'), /bi-row-ok/, '中文“住院”可导入');
     assert.ok((await rowText(11)).includes('疫苗接种改为在用药记录中登记'), '疫苗接种不再作为终点事件导入');
     await page.click('#btnCancelImport');

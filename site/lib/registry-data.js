@@ -29,6 +29,7 @@ export const CLINICAL_LIMITS = Object.freeze({
   upcr: { min: 0, max: 50000, unit: 'mg/g' },
   egfr: { min: 0, max: 200 },
   height_cm: { min: 30, max: 250, unit: 'cm' },
+  weight_kg: { min: 1, max: 300, unit: 'kg' },
 });
 
 /**
@@ -154,7 +155,7 @@ const CONSENT_INPUT=Object.freeze({unconfirmed:'unconfirmed',consented:'consente
 const C3G_EM_INPUT=Object.freeze({C3GN:'C3GN',DDD:'DDD',unclassified:'unclassified','C3肾小球肾炎':'C3GN','C3 肾小球肾炎':'C3GN','致密物沉积病':'DDD','未能分型':'unclassified'});
 const C3G_PARAPROTEIN_INPUT=Object.freeze({negative:'negative',positive:'positive',not_tested:'not_tested','阴性':'negative','阳性':'positive','未查':'not_tested'});
 const FOLLOWUP_INPUT=Object.freeze({active:'active',lost:'lost',withdrawn:'withdrawn',deceased:'deceased',kidney_failure:'kidney_failure',transferred:'transferred','在访':'active','失访':'lost','退出':'withdrawn','退出研究':'withdrawn','死亡':'deceased','肾衰竭':'kidney_failure','转院':'transferred'});
-export const VISIT_IMPORT_FIELDS=['patient_code','visit_date','sbp','dbp','scr_umol_l','upcr','egfr','notes','height_cm'];
+export const VISIT_IMPORT_FIELDS=['patient_code','visit_date','sbp','dbp','scr_umol_l','upcr','egfr','notes','height_cm','weight_kg'];
 // 研究日期的“今天”按北京时间（UTC+8），与数据库 registry_private.local_today() 和 followup-board.js 的 researchToday() 一致。
 function researchDateText(now=Date.now()){return new Date(Number(now)+8*3600*1000).toISOString().slice(0,10);}
 export function normalizeImportRow(kind,input,defaultUpcrUnit=''){
@@ -186,7 +187,7 @@ export function normalizeImportRow(kind,input,defaultUpcrUnit=''){
     result.visit_date=strictDate(result.visit_date,'随访日期',true);
     const today=researchDateText();if(result.visit_date>today)throw new Error(`随访日期不能晚于今天（北京时间 ${today}）`);
     if('scr_umol_l'in result)result.scr_umol_l=creatinineUmol(result.scr_umol_l,'umol','血肌酐');
-    for(const key of ['sbp','dbp','upcr','egfr','height_cm'])if(key in result)result[key]=finiteNumber(result[key],fieldLabel(key),CLINICAL_LIMITS[key]);
+    for(const key of ['sbp','dbp','upcr','egfr','height_cm','weight_kg'])if(key in result)result[key]=finiteNumber(result[key],fieldLabel(key),CLINICAL_LIMITS[key]);
     if(!['sbp','dbp','scr_umol_l','upcr','egfr'].some(key=>key in result))throw new Error('请至少填写一项测量值（收缩压、舒张压、血肌酐或 UPCR）');
     if('sbp'in result&&'dbp'in result&&result.dbp>=result.sbp)throw new Error('舒张压须低于收缩压，请核对是否填反');
     if('notes'in result&&[...result.notes].length>500)throw new Error('备注最多 500 字');
@@ -197,6 +198,8 @@ export function normalizeImportRow(kind,input,defaultUpcrUnit=''){
 // Chinese labels for CSV columns and correction fields; users never see raw column keys in messages.
 export const FIELD_LABELS=Object.freeze({patient_code:'研究编号',sex:'性别',birth_year:'出生年份',baseline_date:'基线日期',baseline_scr:'基线血肌酐',baseline_upcr:'基线UPCR',baseline_upcr_unit:'基线UPCR单位',baseline_upcr_raw:'基线UPCR原始值',baseline_upcr_original_unit:'基线UPCR原始单位',biopsy_date:'肾穿日期',oxford_m:'牛津分型M',oxford_e:'牛津分型E',oxford_s:'牛津分型S',oxford_t:'牛津分型T',oxford_c:'牛津分型C',ln_biopsy_date:'LN肾穿日期',ln_class:'LN病理分型',ln_activity_index:'LN活动指数',ln_chronicity_index:'LN慢性指数',ln_podocytopathy:'足细胞病变',treatment_arm:'研究分组',randomization_id:'随机号',randomization_date:'随机化日期',visit_date:'随访日期',sbp:'收缩压',dbp:'舒张压',scr_umol_l:'血肌酐（μmol/L）',upcr:'UPCR（mg/g）',egfr:'eGFR',notes:'备注',consent_status:'知情同意状态',consent_date:'知情同意日期',consent_version:'知情同意书版本',followup_status:'随访状态',followup_status_date:'随访状态日期',followup_start_date:'提醒起算日',c3g_biopsy_date:'C3G肾穿日期',c3g_if_c3_dominant:'免疫荧光C3优势',c3g_em_pattern:'C3G电镜分型',c3g_crescent_pct:'新月体比例（%）',c3g_paraprotein:'单克隆免疫球蛋白筛查',height_cm:'身高（cm）',
   biopsy_kind:'活检类型',is_index:'基准活检',glomeruli_total:'肾小球总数',crescent_pct:'新月体比例（%）',
+  weight_kg:'体重（kg）',los_days:'住院天数',exam_date:'检查日期',modality:'检查方式',left_length_cm:'左肾长径（cm）',left_width_cm:'左肾宽径（cm）',left_depth_cm:'左肾厚径（cm）',
+  right_length_cm:'右肾长径（cm）',right_width_cm:'右肾宽径（cm）',right_depth_cm:'右肾厚径（cm）',tkv_ml:'总肾体积（mL）',liver_cysts:'肝囊肿',mayo_image_class:'Mayo 影像分型',
   lab_date:'化验日期',lab_test_code:'化验项目编码',lab_item_name:'化验项目名称',value_raw:'结果数值',unit_symbol:'单位',result_text:'结果文本',ref_range:'参考范围',abnormal_flag:'异常标志',
   drug_name:'药物名称',drug_class:'药物类别',dose_value:'剂量数值',dose_unit:'剂量单位',route:'给药途径',frequency:'频次',start_date:'起始日期',end_date:'结束日期',indication:'用药目的',
   event_type:'事件类型',event_date:'事件日期',event_detail:'事件细节',evidence_source:'判定依据来源',file_name:'文件名',file_sha256:'文件校验值'});
@@ -242,6 +245,18 @@ const ERROR_MESSAGES=[
   ['invalid_biopsy_kind','活检类型只能为自体肾（native）或移植肾（transplant）。'],
   ['biopsy_date_required','请填写活检日期。'],
   ['future_biopsy_date','活检日期不能晚于今天（北京时间）。'],
+  // 影像记录（迁移 0047）与 IgA 肾病第二批（迁移 0048）。
+  ['imaging_long_business_key','该患者在这一天已有同一检查方式的影像记录，请核对后再保存。'],
+  ['future_exam_date','检查日期不能晚于今天（北京时间）。'],
+  ['exam_date_required','请填写检查日期。'],
+  ['imaging_modality_required','请选择检查方式：超声、CT 或磁共振。'],
+  ['invalid_imaging_modality','检查方式只能为超声、CT 或磁共振。'],
+  ['imaging_measurement_required','请至少填写一项肾脏径线或肝囊肿情况。'],
+  ['mayo_class_requires_ct_or_mri','Mayo 影像分型只适用于 CT 或磁共振，超声检查请留空。'],
+  ['invalid_mayo_image_class','Mayo 影像分型只能为典型或非典型。'],
+  ['invalid_liver_cysts','肝囊肿只能为有或无；未评估请留空。'],
+  ['los_days_not_applicable','住院天数只用于住院和入住 ICU 事件。'],
+  ['invalid_weight_kg','体重须在 1–300 kg 之间。'],
   ['integer_required','该项须为不带小数点的整数。'],
   ['invalid_boolean','该项只能填“是”或“否”（true / false）。'],
   // 化验 / 用药 / 终点事件批量导入（迁移 0040）。较长、较具体的代码放在前面。
@@ -414,6 +429,12 @@ const CONSTRAINT_FIELDS=Object.freeze({
   biopsies_long_oxford_m_check:['牛津分型M','只能为 0 或 1'],biopsies_long_oxford_e_check:['牛津分型E','只能为 0 或 1'],biopsies_long_oxford_s_check:['牛津分型S','只能为 0 或 1'],
   biopsies_long_oxford_t_check:['牛津分型T','只能为 0、1 或 2'],biopsies_long_oxford_c_check:['牛津分型C','只能为 0、1 或 2'],
   biopsies_long_oxford_c_crescents:['牛津分型C','须与新月体比例一致（C0 为 0，C1 小于 25%，C2 为 25% 及以上）'],biopsies_long_notes_length:['备注','须为 1–500 字'],
+  imaging_long_modality_check:['检查方式','只能为超声、CT 或磁共振'],imaging_long_date_floor:['检查日期','不能早于 1900-01-01'],
+  imaging_long_left_length_range:['左肾长径','须大于 0、不超过 40 cm'],imaging_long_left_width_range:['左肾宽径','须大于 0、不超过 40 cm'],imaging_long_left_depth_range:['左肾厚径','须大于 0、不超过 40 cm'],
+  imaging_long_right_length_range:['右肾长径','须大于 0、不超过 40 cm'],imaging_long_right_width_range:['右肾宽径','须大于 0、不超过 40 cm'],imaging_long_right_depth_range:['右肾厚径','须大于 0、不超过 40 cm'],
+  imaging_long_liver_cysts_check:['肝囊肿','只能为有或无'],imaging_long_mayo_class_check:['Mayo 影像分型','只能为典型或非典型'],imaging_long_mayo_class_modality:['Mayo 影像分型','只适用于 CT 或磁共振'],
+  imaging_long_has_measurement:['影像记录','至少填写一项肾脏径线或肝囊肿情况'],imaging_long_notes_length:['备注','须为 1–500 字'],
+  events_long_los_days_check:['住院天数','须为 0–3650 的整数，且只用于住院和入住 ICU 事件'],visits_long_weight_kg_check:['体重','须在 1–300 kg 之间'],
 });
 const COLUMN_KEYS=Object.keys(FIELD_LABELS).sort((a,b)=>b.length-a.length);
 /** 约束错误对应的字段：先查已知约束，再从 column 或约束名中找已知列名。不读取 details（其中是失败行的原始内容）。 */
