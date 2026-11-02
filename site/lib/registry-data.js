@@ -166,6 +166,7 @@ export function normalizeImportRow(kind,input,defaultUpcrUnit=''){
     if(value!==''&&value!=null)result[key]=String(value).trim();
   }
   if(!result.patient_code)throw new Error('研究编号不能为空');
+  if(result.patient_code.length>64||result.patient_code!==result.patient_code.trim()||/[\u0000-\u001f\u007f]/.test(result.patient_code))throw new Error('研究编号须为 1–64 个字符，不能包含首尾空格或控制字符');
   if(kind==='baseline'){
     if(result.sex){result.sex=({'男':'M','女':'F','M':'M','F':'F'})[result.sex];if(!result.sex)throw new Error('性别须为 M/F/男/女');}
     if('baseline_scr'in result)result.baseline_scr=creatinineUmol(result.baseline_scr,'umol','基线血肌酐');
@@ -331,6 +332,8 @@ const ERROR_MESSAGES=[
   ['missing_visit_date','请填写随访日期。'],
   ['invalid_iso_date','日期无效：格式须为 YYYY-MM-DD，且须是实际存在的日期（如 2 月没有 30 日）。'],
   ['invalid_patient_code','研究编号须为 1–64 个字符，不能包含首尾空格或控制字符。'],
+  ['visit_not_patient_submission','只有患者经随访链接提交的记录可以标为已核对。'],
+  ['patient_code_too_long','研究编号须为 1–64 个字符。请缩短后再保存。'],
   ['invalid_birth_year','出生年份无效。'],
   ['invalid_oxford_score','牛津分型评分超出允许范围。'],
   ['invalid_ln_score','LN 活动或慢性指数超出允许范围。'],

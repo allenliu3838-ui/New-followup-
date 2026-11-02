@@ -145,7 +145,7 @@
     <template id="authGatedTpl">
 
     <div class="card" id="appCard" data-testid="workspace-card" style="display:none">
-      <nav id="workspaceNav" aria-label="工作台导航"><strong id="currentProjectLabel">请先选择或创建项目</strong><a href="#projectSection">项目</a><a href="#overviewSection">概览</a><a href="#boardSection">随访看板</a><a href="#patientsSection">新增患者</a><a href="#issuePanel">数据质控</a><a href="#importSection">批量导入</a><a href="#exportSection">导出与快照</a><a href="#extrasSection">附加数据</a><a href="/user-manual-cn" target="_blank" rel="noopener">帮助</a></nav>
+      <nav id="workspaceNav" aria-label="工作台导航"><strong id="currentProjectLabel">请先选择或创建项目</strong><a href="#projectSection">项目</a><a href="#overviewSection">概览</a><a href="#boardSection">随访看板</a><a href="#patientsSection">新增患者</a><a href="#issuePanel">数据质控</a><a href="#auditPanel">修改记录</a><a href="#importSection">批量导入</a><a href="#exportSection">导出与快照</a><a href="#extrasSection">附加数据</a><a href="/user-manual-cn" target="_blank" rel="noopener">帮助</a></nav>
 
       <!-- ===== 项目 ===== -->
       <section id="projectSection" class="ws-section is-first" aria-labelledby="projectHeading">
@@ -164,6 +164,7 @@
           <div class="fu-grid">
             <div><label for="projName">项目名称</label><input id="projName" placeholder="例如：IgA肾病随访（BJ01）"/></div>
             <div><label for="projCenter">中心代码（必填）</label><input id="projCenter" placeholder="例如：BJ01 / SH02"/></div>
+            <div><label for="projInterval">随访间隔（天，7–730）</label><input id="projInterval" type="number" min="7" max="730" step="1" value="90"/></div>
             <div>
               <label for="projModule">病种模块</label>
               <select id="projModule">
@@ -250,8 +251,8 @@
           <div class="muted small">只录入研究编号，不录入姓名、病案号等可识别信息。</div>
           <div class="row">
             <div class="col">
-              <label for="patCode">研究编号</label>
-              <input id="patCode" placeholder="例如：0001 / A023"/>
+              <label for="patCode">研究编号（最多 64 个字符）</label>
+              <input id="patCode" maxlength="64" placeholder="例如：0001 / A023"/>
             </div>
             <div class="col">
               <label for="patSex">性别</label>
@@ -260,6 +261,7 @@
                 <option value="M">男</option>
                 <option value="F">女</option>
               </select>
+              <div class="small muted">选填。不填也能保存，但 eGFR 需要性别和出生年份才能自动计算，建议现在填写。</div>
             </div>
             <div class="col">
               <label for="patBirthYear">出生年份（用于计算 eGFR）</label>
@@ -440,6 +442,15 @@
         <div id="issueList" style="margin-top:8px"></div>
         <div class="btnbar" style="margin-top:8px">
           <button class="btn" id="btnLoadIssues">查看未解决的问题</button>
+        </div>
+      </section>
+
+      <section id="auditPanel" class="ws-section" aria-labelledby="auditHeading">
+        <h2 id="auditHeading">修改记录</h2>
+        <p class="muted small">项目负责人可查看本项目的操作记录（导出、冻结、成员变更）和字段修改记录（谁在何时把哪一项从原值改成新值，以及原因）。记录不能在页面上删除。没有单独的 /audit 地址；未知网址会返回“页面未找到”。</p>
+        <div id="auditList" class="muted small">请先选择项目。</div>
+        <div class="btnbar" style="margin-top:8px">
+          <button class="btn" id="btnLoadAudit" type="button">查看修改记录</button>
         </div>
       </section>
 

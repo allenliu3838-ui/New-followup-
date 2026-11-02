@@ -184,6 +184,7 @@ async function openWorkspace(browser, origin, { access = OWNER } = {}) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, serviceWorkers: 'block', locale: 'zh-CN', acceptDownloads: true });
   await context.addInitScript(([key, value]) => { try { localStorage.setItem(key, value); } catch { /* 忽略 */ } }, [STORAGE_KEY, JSON.stringify(sessionFor())]);
   await context.route('**/*', route => mock.handle(route, origin));
+  await context.addInitScript(() => { window.__autoAcceptConfirm = true; window.__confirms = []; });
   const page = await context.newPage();
   const pageErrors = []; const dialogs = []; const toasts = [];
   page.on('pageerror', error => pageErrors.push(error.message));
@@ -446,7 +447,7 @@ async function main() {
     assert.deepEqual(mock.rpcCalls('register_import_file')[0].body, { p_project_id: PROJECT.id, p_batch_id: labCall.p_batch_id, p_file_sha256: sha256(labBuffer), p_file_name: 'labs-oct.csv', p_chunk_index: 1, p_chunk_total: 1 });
     await eventually(async () => (await text(page.locator('#importResult')))?.includes('导入完成'), '应显示结果页');
     assert.ok((await text(page.locator('#importResult'))).includes('新增 7'));
-    assert.ok(dialogs.some(d => d.includes('阻断的 4 行不会写入')), '确认框说明阻断行不写入');
+    assert.ok((await page.evaluate(() => window.__confirms)).some(d => d.includes('阻断的 4 行不会写入')), '确认框说明阻断行不写入');
 
     // 2b. 物理行号（空行、引号内换行）、定性结果的单位、同一文件内重复业务键、疑似个人信息的研究编号、数值范围、文本换行。
     const lab2Lines = [LAB_HEADER,

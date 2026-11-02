@@ -70,7 +70,7 @@ const NEW_LABS = ['IGG', 'IGM', 'GDIGA1', 'NEUT', 'LYMPH', 'MONO', 'EOS', 'BASO'
 try {
   // ---- A v8 database at 0046 -------------------------------------------------------------
   const upTo46 = migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) <= 46);
-  assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 46), NEW_MIGRATIONS,
+  assert.deepEqual(migrations.map(m => m.file).filter(f => Number(f.slice(0, 4)) > 46), [...NEW_MIGRATIONS, '0049_qc_entry_review.sql'],
     'the two reviewed increments directly follow 0046');
   for (const file of upTo46) await apply(file);
   assert.equal(await count('SELECT count(*) AS n FROM public.registry_schema_versions'), 15);

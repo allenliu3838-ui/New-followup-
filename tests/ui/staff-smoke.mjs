@@ -340,6 +340,7 @@ async function openWorkspace(browser, origin, { configOverride = '', viewport = 
   // 模拟“上次操作”的时间戳（只写入时间，不含其他信息）。
   if (lastActivity !== null) await context.addInitScript(at => { try { localStorage.setItem('ks_staff_last_activity', String(at)); } catch { /* 忽略 */ } }, lastActivity);
   if (clock) await context.clock.install();
+  await context.addInitScript(() => { window.__autoAcceptConfirm = true; window.__confirms = []; });
   await context.route('**/*', route => mock.handle(route, origin, configOverride));
   const { page, pageErrors, dialogs } = await openPage(context, origin, entry, expect);
   return { context, page, mock, pageErrors, dialogs };
@@ -425,6 +426,34 @@ async function checkPureHelpers() {
     [{ dbp: '19' }, /舒张压须在 20–200 mmHg 之间/], [{ scr_umol_l: '1.1' }, /mg\/dL/], [{ scr_umol_l: '5001' }, /10–5000/], [{ upcr: '50001' }, /0–50000 mg\/g/], [{ sbp: '80', dbp: '80' }, /舒张压须低于收缩压/]]) {
     assert.throws(() => csvVisit(row), pattern, JSON.stringify(row));
   }
+  assert.throws(() => data.normalizeImportRow('baseline', { patient_code: 'P'.repeat(65) }), /1–64/, '研究编号超过 64 个字符应在导入预览被拒绝');
+  const visit = over => board.buildVisitRow({ patientCode: 'P1', visitDate: '2026-01-02', scrUnit: 'umol', upcrUnit: 'mgg', ...over }, { today: '2026-01-02' });
+  const high = visit({ sbp: '300', dbp: '80', scr: '100', upcr: '1' });
+  assert.equal(high.errors.length, 0, '收缩压 300 仍在硬范围 40–300 内，可以保存');
+  assert.ok(high.warnings.some(w => w.includes('70–220')), '收缩压 300 应提示超出常见范围');
+  const lowUpcr = visit({ sbp: '120', dbp: '80', upcr: '-1' });
+  assert.ok(lowUpcr.errors.some(e => e.field === 'upcr' && e.message.includes('不能小于 0')), lowUpcr.errors.map(e => e.message).join('；'));
+  assert.ok(!lowUpcr.errors.some(e => e.message.includes('请填写数字')), '负数不应被说成不是数字');
+  const negSbp = visit({ sbp: '-5', dbp: '80' });
+  assert.ok(negSbp.errors.some(e => e.message.includes('40–300')), negSbp.errors.map(e => e.message).join('；'));
+  const core = board.coreCompletenessText({ n_visits: 1, n_core_complete_visits: 0, core_completeness: 1 });
+  assert.equal(core.percent, '0%', '百分比按完整条数 / 总条数计算，不单独相信库里的比例');
+  assert.equal(core.hint, '完整 0 条 / 共 1 条随访');
+  assert.equal(board.coreCompletenessText({ n_visits: 3, n_core_complete_visits: 3 }).percent, '100%');
+  assert.equal(board.coreCompletenessText({ n_visits: 0 }).hint, '尚无随访');
+  const activeTrial = board.accountStatusLabel({ plan: 'trial', can_write: true, trial_expires_at: '2099-01-01T00:00:00Z' });
+  assert.equal(activeTrial.state, '试用中 · 可录入');
+  assert.equal(activeTrial.writable, true);
+  const expiredTrial = board.accountStatusLabel({ plan: 'trial', can_write: false, trial_expires_at: '2000-01-01T00:00:00Z' });
+  assert.equal(expiredTrial.state, '试用已到期 · 只读');
+  const openDespiteFlag = board.accountStatusLabel({ plan: 'trial', can_write: false, trial_expires_at: '2099-01-01T00:00:00Z' }, Date.parse('2026-01-01T00:00:00Z'));
+  assert.equal(openDespiteFlag.state, '试用中 · 可录入', '试用到期日未到时不标成只读');
+  assert.equal(board.baselineEditorValue({ baseline_scr: 120, baseline_upcr: 2100, baseline_upcr_raw: 2.1 }, 'baseline_scr'), 120);
+  assert.equal(board.baselineEditorValue({ baseline_scr: 120, baseline_upcr: 2100, baseline_upcr_raw: 2.1 }, 'baseline_upcr'), 2.1);
+  assert.equal(board.baselineEditorValue({ baseline_upcr: 450 }, 'baseline_upcr'), 450, '没有原始值时预填已保存的 mg/g');
+  assert.equal(board.visitSourceLabel({ submitted_via_token_id: 't1' }).label, '患者提交 · 待核对');
+  assert.equal(board.visitSourceLabel({ submitted_via_token_id: 't1', staff_reviewed_at: '2026-01-01' }).label, '患者提交 · 已核对');
+  assert.equal(board.visitSourceLabel({}).label, '工作人员录入');
   assert.equal(data.correctionReasonError(' 改 '), '请填写更正原因（3–500 字），说明依据的原始资料。');
   assert.equal(data.correctionReasonError('核对原始化验单'), '');
   assert.match(data.correctionReasonError('核'.repeat(501)), /最多 500 字/);
@@ -536,6 +565,8 @@ async function main() {
     await eventually(async () => (await metric('n_patients')) === '9', '概览未显示入组人数');
     const expectedMetrics = { n_patients: '9', n_active: '7', n_visits: '13', n_visits_30d: '3', core_completeness: '69.2%', n_overdue: '3', n_due_soon: '2', n_no_visit: '1', n_consent_confirmed: '2', n_consent_unconfirmed: '6', n_open_issues: '3' };
     for (const [name, value] of Object.entries(expectedMetrics)) assert.equal(await metric(name), value, `概览 ${name}`);
+    assert.match(await text(page.locator('#trialBadge')), /试用中 · 可录入/, '有效试用应显示可录入，而不是只读');
+    assert.match(await text(page.locator('#projectOverview [data-metric="core_completeness"]')), /完整 9 条 \/ 共 13 条随访/);
 
     // 3. 随访看板：逾期优先排序、状态徽章、筛选与搜索。
     assert.deepEqual(await boardCodes(page), EXPECTED_ORDER, '看板应按逾期优先排序');
@@ -756,10 +787,9 @@ async function main() {
     assert.equal(await page.inputValue('#ssFollowup'), 'withdrawn');
     await page.fill('#ssConsentVersion', '');
     await page.fill('#ssReason', '患者书面撤回同意');
-    const dialogCount = dialogs.length;
     await page.click('#ssSave');
     await eventually(() => mock.rpcCalls('set_patient_study_status').length === 2, '撤回同意没有提交');
-    assert.ok(dialogs.slice(dialogCount).some(m => m.includes('有效随访链接将被自动撤销')), '提交前应再次确认链接将被撤销');
+    assert.ok((await page.evaluate(() => window.__confirms)).some(m => m.includes('有效随访链接将被自动撤销')), '提交前应再次确认链接将被撤销');
     assert.deepEqual(mock.rpcCalls('set_patient_study_status')[1].body, { p_project_id: PROJECT.id, p_patient_code: 'P003', p_changes: { consent_status: 'withdrawn', consent_date: today, consent_version: '', followup_status: 'withdrawn' }, p_reason: '患者书面撤回同意' });
     await page.locator('[data-registry-modal="studyStatus"]').waitFor({ state: 'detached' });
     // 从“撤回”改回“已同意”（离开退出状态）同样必须填写原因。
