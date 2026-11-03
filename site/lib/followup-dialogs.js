@@ -6,7 +6,7 @@ import {
   visitSaveMessage, validationDetails, isSameDayConflict, tokenState, revokeReasonLabel, buildFollowupLink,
   linkMessageText, revokesLinks, newLinkBlockReason, CONSENT_STATUSES, FOLLOWUP_STATUSES, FOLLOWUP_STATUS_OPTIONS, FOLLOWUP_STATES, REASON_REQUIRED_CONSENT, REASON_REQUIRED_FOLLOWUP,
   EXIT_CONSENT_STATUSES, EXIT_FOLLOWUP_STATUSES, consentDateLabel, inactiveReason,
-} from '/lib/followup-board.js?v=registry-20261031-cn-v10';
+} from '/lib/followup-board.js?v=registry-20261103-cn-v11';
 
 const TOKEN_COLUMNS = 'id,patient_code,created_at,expires_at,single_use,used_at,revoked_at,revoke_reason,active';
 
@@ -100,6 +100,42 @@ export function openModal({ id, title, html, wide = false, onClose = null }) {
   document.body.appendChild(overlay);
   const q = selector => overlay.querySelector(selector);
   return { overlay, q, close, isOpen: () => overlay.isConnected };
+}
+
+/** 页面内确认，代替浏览器的 confirm()。消息按纯文本显示。 */
+export function confirmInPage(message, { title = '请确认', confirmLabel = '确认', cancelLabel = '取消' } = {}) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'fu-modal-overlay';
+    overlay.dataset.registryModal = 'confirm';
+    overlay.style.zIndex = '9600';
+    overlay.innerHTML = `<section class="fu-modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">`
+      + `<div class="fu-modal-head"><h2 id="confirmTitle">${escapeHtml(title)}</h2></div>`
+      + `<div class="fu-modal-body"><p id="confirmMessage" style="white-space:pre-wrap;margin:0 0 12px"></p>`
+      + `<div class="btnbar"><button type="button" class="btn primary" data-confirm-ok>${escapeHtml(confirmLabel)}</button>`
+      + `<button type="button" class="btn" data-confirm-cancel>${escapeHtml(cancelLabel)}</button></div></div></section>`;
+    overlay.querySelector('#confirmMessage').textContent = String(message ?? '');
+    let settled = false;
+    const finish = ok => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('keydown', onKey, true);
+      overlay.remove();
+      resolve(ok);
+    };
+    const onKey = event => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopPropagation();
+      finish(false);
+    };
+    overlay.querySelector('[data-confirm-ok]').addEventListener('click', () => finish(true));
+    overlay.querySelector('[data-confirm-cancel]').addEventListener('click', () => finish(false));
+    // 监听挂在 window 的捕获阶段：先于下层对话框（挂在 document）收到 Escape，只关闭这个确认框。
+    window.addEventListener('keydown', onKey, true);
+    document.body.appendChild(overlay);
+    overlay.querySelector('[data-confirm-cancel]').focus();
+  });
 }
 
 function setFeedback(node, messages, tone = 'error', action = null) {
@@ -313,7 +349,7 @@ export function createFollowupDialogs(deps) {
       setFeedback(feedback, []);
       applyBloodPressureSplit();
       refreshHints();
-      const { row, errors } = buildVisitRow(draft(), { today: researchToday(), containsPII: deps.containsPII });
+      const { row, errors, warnings } = buildVisitRow(draft(), { today: researchToday(), containsPII: deps.containsPII });
       const known = row.patient_code ? deps.getRow(row.patient_code) : null;
       if (row.patient_code && deps.rowsLoaded() && !known) {
         errors.unshift({ field: 'code', message: '未在本项目找到该研究编号。请核对，或先在“新增患者”中建立基线。' });
@@ -325,6 +361,10 @@ export function createFollowupDialogs(deps) {
         setFeedback(feedback, errors.length === 1 ? errors[0].message : ['请先修正以下内容：', ...errors.map(e => e.message)], 'error');
         ({ code: fields.code, date: fields.date, sbp: fields.sbp, dbp: fields.dbp, scr: fields.scr, upcr: fields.upcr, height: fields.height, weight: fields.weight, notes: fields.notes })[errors[0].field]?.focus();
         return;
+      }
+      if (warnings?.length) {
+        const proceed = await confirmInPage(`${warnings.join('\n')}\n\n仍要保存这条随访吗？`, { title: '数值超出常见范围', confirmLabel: '仍要保存', cancelLabel: '返回修改' });
+        if (!proceed || !modal.isOpen()) return;
       }
       try { deps.assertCurrent(op); } catch (e) { setFeedback(feedback, deps.errorMessage(e), 'error'); return; }
       const key = JSON.stringify(row);
@@ -399,7 +439,7 @@ export function createFollowupDialogs(deps) {
       html: `<p class="muted small">随访链接让患者或随访人员无需登录即可填写该患者的随访。为保护患者，链接全文只在生成时显示一次，系统只保存无法还原链接的校验值；如遗失，请撤销后重新生成。链接泄露或发错对象时请立即撤销，已提交的数据不受影响。</p>
 <fieldset class="fu-fieldset"><legend>生成新链接</legend>
   <div class="fu-grid">
-    <div><label for="lkDays">有效期（天，1–365）</label><input id="lkDays" type="number" min="1" max="365" step="1" value="30"/></div>
+    <div><label for="lkDays">有效期（天）</label><input id="lkDays" type="number" min="1" max="365" step="1" value="30"/><div class="fu-hint small">默认 30 天，可改为 1–365 天；生成后按所填天数生效。</div></div>
     <div class="fu-check"><label><input id="lkSingle" type="checkbox" checked/> 单次使用（提交一次后自动失效）</label></div>
   </div>
   <div class="fu-radio"><label><input id="lkRevokeOld" type="checkbox"/> 同时撤销该患者此前仍有效的链接（新链接生成成功后再撤销，已提交的数据不受影响）</label></div>
@@ -533,7 +573,7 @@ export function createFollowupDialogs(deps) {
       const active = activeTokens();
       if (active.length < 2) { setFeedback(feedback, '该患者只有一条或没有有效链接，无需撤销。', 'info'); return; }
       const older = active.slice(1).map(t => t.id);
-      if (!window.confirm(`将撤销该患者除最新一条以外的 ${older.length} 条有效链接，撤销后立即失效，已提交的数据不受影响。确认撤销？`)) return;
+      if (!await confirmInPage(`将撤销该患者除最新一条以外的 ${older.length} 条有效链接，撤销后立即失效，已提交的数据不受影响。确认撤销？`)) return;
       const button = q('#lkKeepNewest');
       try {
         deps.assertCurrent(op);
@@ -554,7 +594,7 @@ export function createFollowupDialogs(deps) {
     function renderOnce(days, single) {
       const box = q('#lkOnce');
       box.hidden = false;
-      box.innerHTML = `<p><b>新链接已生成</b>（${days} 天内有效，${single ? '单次使用' : '可多次使用'}）。<b>请立即复制，之后无法再次查看。</b>系统只保存无法还原链接的校验值，关闭此窗口后无法再显示完整链接；如遗失，请撤销后重新生成。为避免链接留在本机浏览器的历史记录中，这里不提供直接打开；如需了解患者看到的页面，请查看“使用说明”。</p>
+      box.innerHTML = `<p><b>新链接已生成</b>（按所填 ${days} 天内有效，可选 1–365 天；${single ? '单次使用' : '可多次使用'}）。<b>请立即复制，之后无法再次查看。</b>系统只保存无法还原链接的校验值，关闭此窗口后无法再显示完整链接；如遗失，请撤销后重新生成。为避免链接留在本机浏览器的历史记录中，这里不提供直接打开；如需了解患者看到的页面，请查看“使用说明”。</p>
 <label for="lkOnceLink" class="sr-only">新生成的随访链接</label><input id="lkOnceLink" readonly autocomplete="off"/>
 <label for="lkOnceMsg">可直接发送的说明文字（粘贴到聊天工具后可再修改）</label><textarea id="lkOnceMsg" readonly rows="3"></textarea>
 <div class="btnbar"><button type="button" class="btn small primary" id="lkCopy">复制链接</button><button type="button" class="btn small" id="lkCopyMsg">复制发送文本</button><button type="button" class="btn small" id="lkOnceDone">已发送，从页面移除</button></div>`;
@@ -586,7 +626,7 @@ export function createFollowupDialogs(deps) {
         // 勾选了同时撤销：生成前说明将撤销几条，由用户确认；列表没读到时无法确认条数，不生成。
         if (!listLoaded) { setFeedback(feedback, '链接列表尚未读取，无法确认会撤销哪些链接。请稍后再试，或取消勾选“同时撤销”后再生成。'); return; }
         const n = activeTokens().length;
-        if (n > 0 && !window.confirm(`将生成新链接，并在生成成功后撤销该患者此前仍有效的 ${n} 条链接；撤销后立即失效，已提交的数据不受影响。确认？`)) return;
+        if (n > 0 && !await confirmInPage(`将生成新链接，并在生成成功后撤销该患者此前仍有效的 ${n} 条链接；撤销后立即失效，已提交的数据不受影响。确认？`)) return;
       }
       clearOnce();
       const knownIds = listLoaded ? new Set(tokens.map(t => t.id)) : null;
@@ -789,7 +829,7 @@ ${exitOnly ? '<p id="ssExitOnly" class="fu-warn-line small">账户当前为只�
       if ([...reason].length > 500) errors.push('修改原因最多 500 字。');
       if (deps.containsPII(reason) || deps.containsPII(changes.consent_version || '')) errors.push('内容中检测到疑似个人身份信息，请删除后再保存。');
       if (errors.length) { setFeedback(feedback, errors.length === 1 ? errors[0] : ['请先修正以下内容：', ...errors]); return; }
-      if (revokesLinks(changes) && !window.confirm('保存后，该患者的有效随访链接将被自动撤销，已提交的数据不受影响。确认保存？')) return;
+      if (revokesLinks(changes) && !await confirmInPage('保存后，该患者的有效随访链接将被自动撤销，已提交的数据不受影响。确认保存？')) return;
       const button = q('#ssSave');
       try {
         deps.assertCurrent(op);
@@ -961,7 +1001,7 @@ ${exitOnly ? '<p id="ssExitOnly" class="fu-warn-line small">账户当前为只�
       if (errors.length) { setFeedback(feedback, errors.length === 1 ? errors[0] : ['请先修正以下内容：', ...errors]); return; }
       const label = CONSENT_STATUSES[status].label;
       const linkWarning = REASON_REQUIRED_CONSENT.includes(status) ? '这些患者仍有效的随访链接将被自动撤销。' : '';
-      if (!window.confirm(`将把 ${list.length} 位患者的知情同意状态登记为“${label}”。${linkWarning}确认保存？`)) return;
+      if (!await confirmInPage(`将把 ${list.length} 位患者的知情同意状态登记为“${label}”。${linkWarning}确认保存？`)) return;
       const button = q('#bcSave');
       try {
         deps.assertCurrent(op);

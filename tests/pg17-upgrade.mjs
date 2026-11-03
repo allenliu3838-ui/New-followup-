@@ -124,9 +124,9 @@ try {
         `${table}: every other pre-existing column value remains unchanged`);
     }
   }
-  assert.equal(Number((await row('SELECT count(*) AS n FROM public.registry_schema_versions')).n), 17);
+  assert.equal(Number((await row('SELECT count(*) AS n FROM public.registry_schema_versions')).n), 18);
   assert.equal(Number((await row('SELECT count(*) AS n FROM public.patient_tokens WHERE token IS NOT NULL')).n), 0);
-  pass('incremental 0032–0048 preserves historical clinical, receipt and dictionary values; consent default and plaintext links change exactly as reviewed; 0042, 0043 and 0045–0048 add only their dictionary entries');
+  pass('incremental 0032–0049 preserves historical clinical, receipt and dictionary values; consent default and plaintext links change exactly as reviewed; 0042, 0043 and 0045–0048 add only their dictionary entries');
 
   const dictionaryInsertStatements = [
     "INSERT INTO public.abbreviation_dictionary(abbr,full_name_cn,category_cn) VALUES('DENIED','Denied','Denied')",
@@ -173,11 +173,29 @@ try {
       assert.equal((await db.query(`SELECT * FROM public.${fn}($1,30)`, [token.valid])).rows.length, 1, `${fn}: valid token reads own record`);
       for (const badToken of [token.expired, token.revoked, token.consumed, token.inactive, 'synthetic-unknown-token']) {
         await assert.rejects(db.query(`SELECT * FROM public.${fn}($1,30)`, [badToken]),
-          error => error.code === '42501' && /token_invalid_or_expired/.test(error.message), `${fn}: invalid bearer denied`);
+          error => error.code === '42501' && /token_expired|token_revoked|single_use_token_already_used|token_invalid/.test(error.message), `${fn}: invalid bearer denied`);
       }
     }
   });
   pass('all four patient list RPCs reject expired, revoked, consumed, inactive and unknown tokens');
+
+  const oddVisit = (await db.query(`INSERT INTO public.visits_long(project_id,patient_code,visit_date,sbp,dbp,scr_umol_l,notes,created_by)
+    VALUES($1,$2,CURRENT_DATE-1,300,80,100,'qc range',$3) RETURNING id`, [project, patientCode, owner])).rows[0];
+  const oddIssues = (await db.query(`SELECT rule_code, message FROM public.data_issues WHERE record_id=$1 AND status='OPEN' ORDER BY rule_code`, [oddVisit.id])).rows;
+  const byRule = Object.fromEntries(oddIssues.map(r => [r.rule_code, r.message]));
+  assert.match(byRule.OUT_OF_RANGE || '', /收缩压 300(\.0+)? mmHg 超出常见范围 70–220/);
+  assert.match(byRule.MISSING_CORE_FIELD || '', /尿蛋白肌酐比/);
+  assert.equal(byRule.MISSING_EGFR_INPUTS, undefined, '性别和出生年份都在时不提示缺这几项');
+  await db.query(`INSERT INTO public.patients_baseline(project_id,patient_code,baseline_date,birth_year,baseline_scr,created_by)
+    VALUES($1,'SYN-NOSEX',CURRENT_DATE-20,1975,90,$2)`, [project, owner]);
+  const noSex = (await db.query(`INSERT INTO public.visits_long(project_id,patient_code,visit_date,sbp,dbp,scr_umol_l,upcr,notes,created_by)
+    VALUES($1,'SYN-NOSEX',CURRENT_DATE-1,120,70,100,20,'no sex',$2) RETURNING id`, [project, owner])).rows[0];
+  const egfrMsg = (await row(`SELECT message FROM public.data_issues WHERE record_id=$1 AND rule_code='MISSING_EGFR_INPUTS' AND status='OPEN'`, [noSex.id])).message;
+  assert.match(egfrMsg, /缺少患者性别/);
+  assert.doesNotMatch(egfrMsg, /出生年份/);
+  await assert.rejects(db.query(`INSERT INTO public.patients_baseline(project_id,patient_code,baseline_date,created_by) VALUES($1,$2,CURRENT_DATE,$3)`,
+    [project, 'X'.repeat(65), owner]), error => /patients_baseline_patient_code_len|check constraint/.test(error.message));
+  pass('plausible blood pressure, missing UPCR, named eGFR inputs and research-id length');
 
   const newToken = await asRole(owner, async () => (await row('SELECT public.create_patient_token_v2($1,$2,1,true) AS token', [project, patientCode])).token);
   assert.equal(typeof newToken, 'string');

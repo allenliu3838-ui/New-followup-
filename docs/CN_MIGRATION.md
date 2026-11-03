@@ -755,6 +755,8 @@ unset PGPASSWORD OLD_DB_URL OLD_KEY
 
 **状态（2026-10-31）：** v8（`registry-20261030-cn-v8`，发布包取自提交 77c672b）已于 2026-10-31 上线：生产库在备份 `registry-20261031-105452` 之后执行了 0046，预检报告逐项通过；网站服务器先只读检查，再发布前端，发布后的自动核对全部通过（首页 200，ADPKD 病种模块、草案按钮、问答条目、描述性汇总脚本均在，`config.js` 未改动）。网页回退命令保存在网站服务器 `/root/cn-cutover/pre-v8-77c672b/ROLLBACK.txt`。
 
+**状态（2026-11-02）：** v10（`registry-20261031-cn-v10`，发布包取自提交 0406f2d）已于 2026-11-02 上线：生产库在备份之后依次执行了 0047、0048，预检报告逐项通过（`failed []`）；网站服务器先只读检查，再发布前端，发布后的自动核对全部通过（首页 200，影像表单、新事件类型、影像模板、影像指标脚本、研究广场、问答条目和登录服务均在，`config.js` 未改动）。网页回退命令保存在网站服务器 `/root/cn-cutover/pre-v10-0406f2d/ROLLBACK.txt`。此后的改动进入 v11（`registry-20261103-cn-v11`），以 v10 清单为生产基线，含迁移 0049（录入与质控核对，见附录 C.11）。
+
 **补充（2026-10-30）：** 研究广场页（`/research.html`）等公开页面改动进入 v9（`registry-20261030-cn-v9`），以 v8 清单为生产基线，没有新迁移（见附录 C.9）。
 
 **补充（2026-11-01）：** v9 没有单独上线。研究广场与影像记录（0047）、IgA 肾病第二批（0048）合并为 v10（`registry-20261031-cn-v10`），以已上线的 v8 清单为生产基线（见附录 C.10）。
@@ -1195,3 +1197,39 @@ done
 分析包新增 `imaging_metrics.py`（htTKV、Mayo 1A–1E、超声肾长径，程序计算，须研究者核对）与 `time_windows_reignite.json`
 （REIGNITE 方案的时间点与窗口，未确认）；`time_windows.py` 支持“相对开始治疗”的时间点和 `--no-dates`（只输出距对齐日的天数）。
 研究广场（附录 C.9）随 v10 一起发布。
+
+### C.11 v11：录入与质控核对（0049）
+
+来自 2026-11 两轮验收测试的发现。0049 只新增，不改动任何已有记录、时间戳、质控问题或审计记录，也不对已有随访做任何批量处理；
+账户、套餐、试用期和权限判断不变。
+
+- 随访质控规则（新增和修改的随访才适用）：缺收缩压、舒张压、血肌酐、UPCR 中任何一项都逐项点名；数值在数据库硬范围内、
+  但超出常见范围（收缩压 70–220、舒张压 40–130 mmHg，UPCR 超过 10000 mg/g）时允许保存并生成“超出常见范围”警告；
+  eGFR 无法计算时说明缺的是性别、出生年份，还是 1–17 岁患者本次随访的身高。
+- 已有随访不自动重算。质控区新增“按当前规则重新检查已有随访”（`recheck_visit_quality`）：项目录入权限、项目可写时才能用；
+  只生成或关闭质控问题，不改随访；已“接受不修复”的问题保持关闭；每次检查写入操作记录。上线后质控条数是否增加，取决于是否点这个按钮。
+- 研究编号 1–64 个字符、无首尾空格和控制字符（约束为 NOT VALID：已有的超长编号保留，修改该患者基线前须先缩短）。
+- `visits_long.staff_reviewed_at`：患者经随访链接提交的随访，工作人员核对后标为“已核对”（`mark_patient_visit_reviewed`，不改临床数值）。
+  撤销导入时，这一新列为空不算改动（与 0048 对身高、体重、住院天数的处理相同）。
+- 持有随访链接的人能看到链接是已停用、已过期还是已经提交过；不认识的链接仍只得到笼统提示。
+- `create_project` 增加随访间隔参数（7–730 天，默认 90），原来的四参数调用仍然有效；新建项目的账户检查不变。
+
+执行方式与 0046 相同：
+
+```bash
+docker exec -i supabase-db psql -U postgres -d postgres -X -q -v ON_ERROR_STOP=1 -f - < supabase/migrations/0049_qc_entry_review.sql
+docker exec -i supabase-db psql -U postgres -d postgres -X -t -A -c "SELECT version FROM public.registry_schema_versions WHERE version='0049_qc_entry_review'"
+# 预期输出：0049_qc_entry_review
+```
+
+然后重新生成只读预检报告，`0049_qc_entry_review`、`qc_entry_review_rules` 均须为 `true`，`account_project_signature` 也须为 `true`
+（只剩五参数的 `create_project`）。0049 改了 `create_project` 的参数，接口服务会在数据库结构变化后自动刷新；如发布后新建项目报
+“找不到函数”，在数据库服务器执行 `docker exec supabase-db psql -U postgres -d postgres -c "NOTIFY pgrst, 'reload schema'"` 即可，
+不需要重启容器。
+
+前端（v11）：随访录入在超出常见范围时先提示、确认后保存；核心四项完整率显示“完整 X 条 / 共 Y 条随访”；质控列表处理后即时刷新；
+账户标签在试用期内显示“试用中 · 可录入”；患者提交的随访标“待核对”，可标为已核对；研究编号最长 64 字；修改记录有入口；
+基线更正框用中文选项并回填原值；新建项目可设随访间隔；确认操作改为页面内对话框。
+
+`/audit` 等未知地址目前仍返回首页，原因在 Nginx 的兜底规则。改法见 `docs/cn-migration/nginx-unknown-path-404.conf`，
+属于服务器配置变更，不随 v11 自动执行，须另行确认后由运维改。

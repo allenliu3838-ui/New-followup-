@@ -17,7 +17,7 @@ WITH checks AS (
   'patient_idempotent_signature',to_regprocedure('public.patient_submit_visit_v2(text,date,numeric,numeric,numeric,numeric,numeric,text,uuid)') IS NOT NULL,
   'atomic_import_signature',to_regprocedure('public.import_registry_rows(uuid,text,jsonb,uuid)') IS NOT NULL,
   'correction_signature',to_regprocedure('public.correct_registry_record(uuid,text,uuid,jsonb,text)') IS NOT NULL,
-  'account_project_signature',to_regprocedure('public.create_project(text,text,text,text)') IS NOT NULL,
+  'account_project_signature',to_regprocedure('public.create_project(text,text,text,text,integer)') IS NOT NULL AND to_regprocedure('public.create_project(text,text,text,text)') IS NULL,
   'legacy_submit_disabled',NOT EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='patient_submit_visit' AND (has_function_privilege('anon',p.oid,'EXECUTE') OR has_function_privilege('authenticated',p.oid,'EXECUTE'))),
   'internal_anonymous_writes_disabled',NOT EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('upsert_lab_record','log_field_change','raise_or_update_issue','resolve_issue_if_exists','admin_set_subscription','admin_set_expiry') AND has_function_privilege('anon',p.oid,'EXECUTE')),
   'core_rls',NOT EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname IN ('projects','patients_baseline','visits_long','labs_long','meds_long','variants_long','events_long','patient_tokens','billing_orders','registry_schema_versions') AND NOT c.relrowsecurity),
@@ -60,13 +60,15 @@ WITH checks AS (
   'imaging_records_table',COALESCE((SELECT c.relrowsecurity FROM pg_class c WHERE c.oid=to_regclass('public.imaging_long')),false) AND (SELECT count(*)=4 FROM pg_policies WHERE schemaname='public' AND tablename='imaging_long') AND (SELECT count(*)=7 FROM pg_trigger WHERE tgrelid=to_regclass('public.imaging_long') AND NOT tgisinternal AND tgenabled='O') AND EXISTS(SELECT 1 FROM pg_attribute WHERE attrelid=to_regclass('public.imaging_long') AND attname='tkv_ml' AND attgenerated='s') AND EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.registry_import_batches'::regclass AND conname='registry_import_batches_kind_check' AND pg_get_constraintdef(oid) ~ 'imaging') AND (SELECT count(*)=3 FROM public.lab_test_unit_map WHERE lab_test_code='TBIL'),
   '0048_reignite_batch2',EXISTS(SELECT 1 FROM public.registry_schema_versions WHERE version='0048_reignite_batch2'),
   'reignite_batch2_vocabulary',EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.events_long'::regclass AND conname='events_long_event_type_check' AND pg_get_constraintdef(oid) ~ 'hypertension_new_or_worse' AND pg_get_constraintdef(oid) ~ 'pregnancy') AND EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.events_long'::regclass AND conname='events_long_los_days_check') AND EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.visits_long'::regclass AND conname='visits_long_weight_kg_check') AND (SELECT count(*)=20 FROM public.lab_test_catalog WHERE code IN ('IGG','IGM','GDIGA1','NEUT','LYMPH','MONO','EOS','BASO','UTP24','UALB24','UCREA24','ANA','MPO_ANCA','PR3_ANCA','ANTI_GBM','HBSAG','HCV_AB','HIV_AB','RPR','TP_AB')),
+  '0049_qc_entry_review',EXISTS(SELECT 1 FROM public.registry_schema_versions WHERE version='0049_qc_entry_review'),
+  'qc_entry_review_rules',EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='public.patients_baseline'::regclass AND conname='patients_baseline_patient_code_len' AND NOT convalidated) AND EXISTS(SELECT 1 FROM pg_attribute WHERE attrelid=to_regclass('public.visits_long') AND attname='staff_reviewed_at' AND NOT attisdropped) AND COALESCE((SELECT position('OUT_OF_RANGE' in p.prosrc)>0 AND position('Schwartz' in p.prosrc)>0 FROM pg_proc p WHERE p.oid=to_regprocedure('registry_private.qc_visit_check(public.visits_long,boolean)')),false) AND COALESCE((SELECT position('staff_reviewed_at' in p.prosrc)>0 FROM pg_proc p WHERE p.oid=to_regprocedure('registry_private.import_record_matches(text,uuid,text)')),false) AND to_regprocedure('public.mark_patient_visit_reviewed(uuid,uuid)') IS NOT NULL AND to_regprocedure('public.recheck_visit_quality(uuid)') IS NOT NULL,
   'single_billing_order_overload',(SELECT count(*)=1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='create_billing_order')
  ) AS value
 ), contract AS (
  __DATABASE_CONTRACT_QUERY__
 )
 SELECT jsonb_build_object(
- 'release','registry-20261031-cn-v10',
+ 'release','registry-20261103-cn-v11',
  'contract_protocol','registry-contract-v3-pg17',
  'database_server_major',current_setting('server_version_num')::int/10000,
  'database_contract_sha256','__DATABASE_CONTRACT_SHA256__',

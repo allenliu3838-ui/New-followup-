@@ -170,6 +170,17 @@ async function openWorkspace(browser, origin, options) {
   const mock = createMock(options);
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, serviceWorkers: 'block', locale: 'zh-CN', acceptDownloads: true });
   await context.addInitScript(([key, value]) => { try { localStorage.setItem(key, value); } catch { /* 忽略 */ } }, [STORAGE_KEY, JSON.stringify(sessionFor())]);
+  await context.addInitScript(() => {
+    // 页面内确认框：记下提示文字并点“确认”（只在测试浏览器里）。
+    window.__confirms = [];
+    new MutationObserver(() => {
+      const box = document.querySelector('[data-registry-modal="confirm"]:not([data-test-seen])');
+      if (!box) return;
+      box.setAttribute('data-test-seen', '1');
+      window.__confirms.push(box.querySelector('#confirmMessage')?.textContent || '');
+      setTimeout(() => box.querySelector('[data-confirm-ok]')?.click(), 0);
+    }).observe(document, { childList: true, subtree: true });
+  });
   await context.route('**/*', route => mock.handle(route, origin));
   const page = await context.newPage();
   const pageErrors = []; const dialogs = [];

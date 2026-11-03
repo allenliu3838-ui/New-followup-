@@ -135,6 +135,60 @@ export function formatPercent(fraction) {
   return `${Number((n * 100).toFixed(1))}%`;
 }
 
+/**
+ * 核心四项完整率与分数用同一对计数：完整条数 / 随访总条数。
+ * 百分比按这两项现算，避免库里的比例和页面上的分子分母对不上。
+ */
+export function coreCompletenessText(overview) {
+  const total = Number(overview?.n_visits);
+  const complete = Number(overview?.n_core_complete_visits);
+  if (!Number.isFinite(total) || total <= 0) return { percent: '—', hint: '尚无随访' };
+  const done = Number.isFinite(complete) && complete > 0 ? complete : 0;
+  return {
+    percent: formatPercent(done / total),
+    hint: `完整 ${formatCount(done)} 条 / 共 ${formatCount(total)} 条随访`,
+  };
+}
+
+/** 账户徽章。试用期内可录入时不写成“只读”；试用到期才标明只读。 */
+export function accountStatusLabel(quota, now = Date.now()) {
+  const plan = quota?.plan || 'trial';
+  const names = { trial: '试用', pro: 'Pro', institution: '机构版', institutional: '机构版', partner: '合作伙伴' };
+  const label = names[plan] || plan || '账户';
+  const end = quota?.ends_at || quota?.trial_expires_at || null;
+  const endMs = end ? Date.parse(end) : NaN;
+  const flag = quota?.can_write === true || quota?.can_write === 'true';
+  const trialOpen = plan === 'trial' && Number.isFinite(endMs) && endMs > now;
+  const writable = flag || trialOpen;
+  const state = plan === 'trial'
+    ? (writable ? '试用中 · 可录入' : '试用已到期 · 只读')
+    : `${label} · ${writable ? '可录入' : '只读'}`;
+  return { writable, state, end };
+}
+
+/** 随访来源。患者经链接提交且尚未由工作人员核对时标为待核对。 */
+export function visitSourceLabel(row) {
+  if (!row?.submitted_via_token_id) return { label: '工作人员录入', tone: 'muted', pending: false };
+  if (row.staff_reviewed_at) return { label: '患者提交 · 已核对', tone: 'ok', pending: false };
+  return { label: '患者提交 · 待核对', tone: 'warn', pending: true };
+}
+
+/** 基线更正框的预填值。UPCR 优先用原始化验值；没有原始值时用已保存的 mg/g。 */
+export function baselineEditorValue(record, key) {
+  if (!record) return '';
+  if (key === 'baseline_upcr') {
+    if (record.baseline_upcr_raw != null && record.baseline_upcr_raw !== '') return record.baseline_upcr_raw;
+    return record.baseline_upcr ?? '';
+  }
+  if (key === 'ln_podocytopathy' || key === 'c3g_if_c3_dominant') {
+    if (record[key] === true) return 'true';
+    if (record[key] === false) return 'false';
+    return '';
+  }
+  const value = record[key];
+  return value == null ? '' : value;
+}
+
 // ── 看板：筛选与排序 ──────────────────────────────────────────
 
 export function matchesState(row, filter) {
@@ -195,6 +249,7 @@ function tile({ metric, value, label, tone = '', filter, consent, action, hint }
 export function renderOverviewHtml(o) {
   if (!o) return '<p class="muted small">暂无概览数据。</p>';
   const interval = Number(o.followup_interval_days);
+  const core = coreCompletenessText(o);
   const groups = [
     ['入组与随访', [
       tile({ metric: 'n_patients', value: formatCount(o.n_patients), label: '入组患者', filter: 'all', consent: 'all' }),
@@ -208,7 +263,7 @@ export function renderOverviewHtml(o) {
       tile({ metric: 'n_no_visit', value: formatCount(o.n_no_visit), label: '尚无随访', hint: '未到首次随访日期', filter: 'no_visit' }),
     ]],
     ['数据质量与知情同意', [
-      tile({ metric: 'core_completeness', value: formatPercent(o.core_completeness), label: '核心四项完整率', hint: o.n_visits ? `${formatCount(o.n_core_complete_visits)} / ${formatCount(o.n_visits)} 条随访` : '尚无随访' }),
+      tile({ metric: 'core_completeness', value: core.percent, label: '核心四项完整率', hint: core.hint }),
       tile({ metric: 'n_consent_confirmed', value: formatCount(o.n_consent_confirmed), label: '知情同意已确认', consent: 'confirmed', filter: 'all' }),
       tile({ metric: 'n_consent_unconfirmed', value: formatCount(o.n_consent_unconfirmed), label: '知情同意未确认', tone: Number(o.n_consent_unconfirmed) > 0 ? 'warn' : '', consent: 'unconfirmed', filter: 'all' }),
       tile({ metric: 'n_open_issues', value: formatCount(o.n_open_issues), label: '待处理数据质控问题', tone: Number(o.n_open_issues) > 0 ? 'warn' : '', action: 'issues' }),
@@ -335,13 +390,20 @@ export function normalizeDigits(text) {
   return String(text ?? '').replace(/[０-９．／]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).trim();
 }
 
-/** 空白返回 null；不是非负十进制数返回 NaN。 */
+/** 空白返回 null；不是有限十进制数（可带一个负号）返回 NaN。负数交给范围检查，而不是当成“不是数字”。 */
 export function parseDecimal(text) {
   const t = normalizeDigits(text);
   if (t === '') return null;
-  if (!/^\d+(\.\d+)?$/.test(t)) return NaN;
+  if (!/^-?\d+(\.\d+)?$/.test(t)) return NaN;
   return Number(t);
 }
+
+/** 常见范围：落在数据库硬范围之内时只警告。与患者填写页、质控规则一致。 */
+export const PLAUSIBLE = Object.freeze({
+  sbp: { min: 70, max: 220 },
+  dbp: { min: 40, max: 130 },
+  upcrMgG: 10000,
+});
 
 // 血压写法“收缩压/舒张压”：允许前后空格、全角数字与斜杠、其他常见斜杠字符和末尾的 mmHg；
 // 零宽字符（从网页或聊天软件复制时常带）一并去掉。两项都须是 2–3 位数（可带小数）。
@@ -425,6 +487,7 @@ export function visitUnitHints(draft) {
  */
 export function buildVisitRow(draft, { today = researchToday(), containsPII = () => false } = {}) {
   const errors = [];
+  const warnings = [];
   const code = String(draft.patientCode ?? '').trim();
   const date = String(draft.visitDate ?? '').trim();
   if (!code) errors.push({ field: 'code', message: '请填写研究编号。' });
@@ -458,11 +521,21 @@ export function buildVisitRow(draft, { today = researchToday(), containsPII = ()
         : `血肌酐（换算后 ${scr} μmol/L）超出系统允许的 10–5000 μmol/L，请核对数值与单位。` });
   }
   const upcr = upcrToMgG(upcrRaw, draft.upcrUnit);
+  if (ok(upcr) && upcr < 0) errors.push({ field: 'upcr', message: '尿蛋白肌酐比不能小于 0 mg/g，缺失不能用负数代替，请核对。' });
   if (ok(upcr) && upcr > UPCR_MAX_MGG) {
     const looksMgg = draft.upcrUnit === 'gg' && upcrRaw <= UPCR_MAX_MGG;
     errors.push({ field: 'upcr', message: looksMgg
       ? `尿蛋白肌酐比 ${upcrRaw} g/g 换算后为 ${upcr} mg/g，超出系统允许的 0–50000 mg/g。这个数值看起来是 mg/g，请把单位切换为 mg/g 后再保存。`
       : `尿蛋白肌酐比（换算后 ${upcr} mg/g）超出系统允许的 0–50000 mg/g，请核对数值与单位。` });
+  }
+  if (ok(sbp) && sbp >= 40 && sbp <= 300 && (sbp < PLAUSIBLE.sbp.min || sbp > PLAUSIBLE.sbp.max)) {
+    warnings.push(`收缩压 ${sbp} mmHg 超出常见范围 ${PLAUSIBLE.sbp.min}–${PLAUSIBLE.sbp.max} mmHg，请对照原始记录核对。仍可保存，保存后会计入数据质控问题。`);
+  }
+  if (ok(dbp) && dbp >= 20 && dbp <= 200 && (dbp < PLAUSIBLE.dbp.min || dbp > PLAUSIBLE.dbp.max)) {
+    warnings.push(`舒张压 ${dbp} mmHg 超出常见范围 ${PLAUSIBLE.dbp.min}–${PLAUSIBLE.dbp.max} mmHg，请对照原始记录核对。仍可保存，保存后会计入数据质控问题。`);
+  }
+  if (ok(upcr) && upcr >= 0 && upcr <= UPCR_MAX_MGG && upcr > PLAUSIBLE.upcrMgG) {
+    warnings.push(`尿蛋白肌酐比 ${upcr} mg/g 超出常见范围（≤${PLAUSIBLE.upcrMgG} mg/g），请核对数值和单位。仍可保存，保存后会计入数据质控问题。`);
   }
   if (ok(heightRaw) && (heightRaw < 30 || heightRaw > 250)) errors.push({ field: 'height', message: '身高须在 30–250 cm 之间，请核对。' });
   if (ok(weightRaw) && (weightRaw < 1 || weightRaw > 300)) errors.push({ field: 'weight', message: '体重须在 1–300 kg 之间，请核对。' });
@@ -479,7 +552,7 @@ export function buildVisitRow(draft, { today = researchToday(), containsPII = ()
   if (ok(heightRaw)) row.height_cm = heightRaw;
   if (ok(weightRaw)) row.weight_kg = weightRaw;
   if (notes) row.notes = notes;
-  return { row, errors, missing };
+  return { row, errors, missing, warnings };
 }
 
 /** 把 import_registry_rows 的返回（inserted/updated/skipped，兼容 added/changed）翻译成中文。 */
