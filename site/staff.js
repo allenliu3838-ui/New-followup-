@@ -473,6 +473,7 @@ function clearProjectWorkspace(){
   ['importPreview','importProgress','snapshotOut'].forEach(k=>{if(el[k]){el[k].style.display='none';if(k!=='importPreview')el[k].textContent='';}});
   ['issueSummary','snapshotsList','patientsList','variantsPreview','labsPreview','medsPreview','eventsPreview'].forEach(k=>{if(el[k])el[k].textContent='请等待当前项目加载。';});
   if(el.issueList)el.issueList.textContent='';
+  if(el.auditList)el.auditList.textContent='';
   boardLoad=null;rowRefreshSeq.clear();
   followupDialogs.closeAll();
   document.querySelectorAll('[data-registry-modal]').forEach(n=>n.remove());

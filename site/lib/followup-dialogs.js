@@ -119,7 +119,7 @@ export function confirmInPage(message, { title = '请确认', confirmLabel = '�
     const finish = ok => {
       if (settled) return;
       settled = true;
-      document.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('keydown', onKey, true);
       overlay.remove();
       resolve(ok);
     };
@@ -131,7 +131,8 @@ export function confirmInPage(message, { title = '请确认', confirmLabel = '�
     };
     overlay.querySelector('[data-confirm-ok]').addEventListener('click', () => finish(true));
     overlay.querySelector('[data-confirm-cancel]').addEventListener('click', () => finish(false));
-    document.addEventListener('keydown', onKey, true);
+    // 监听挂在 window 的捕获阶段：先于下层对话框（挂在 document）收到 Escape，只关闭这个确认框。
+    window.addEventListener('keydown', onKey, true);
     document.body.appendChild(overlay);
     overlay.querySelector('[data-confirm-cancel]').focus();
   });

@@ -346,7 +346,7 @@ async function openWorkspace(browser, origin, { configOverride = '', viewport = 
     window.__confirms = [];
     new MutationObserver(() => {
       const box = document.querySelector('[data-registry-modal="confirm"]:not([data-test-seen])');
-      if (!box) return;
+      if (!box || window.__holdConfirm) return;
       box.setAttribute('data-test-seen', '1');
       window.__confirms.push(box.querySelector('#confirmMessage')?.textContent || '');
       setTimeout(() => box.querySelector('[data-confirm-ok]')?.click(), 0);
@@ -657,6 +657,21 @@ async function main() {
     assert.ok(!(await text(page.locator('#veFeedback'))).includes('第 2 行'), '单条录入不显示 CSV 行号');
     assert.equal(await page.locator('#veFeedback button', { hasText: '查看该患者随访记录' }).count(), 1, '同日冲突应提供查看随访记录的入口');
     assert.equal(await visitModal.isVisible(), true);
+    // 超出常见范围先确认；在确认框里按 Escape 只关闭确认框，录入对话框和已填的值都保留。
+    await page.evaluate(() => { window.__holdConfirm = true; });
+    const callsBeforeRange = mock.rpcCalls('import_registry_rows').length;
+    await page.fill('#veSbp', '230');
+    await page.click('#veSave');
+    const rangeConfirm = page.locator('[data-registry-modal="confirm"]');
+    await rangeConfirm.waitFor();
+    assert.ok((await text(rangeConfirm)).includes('收缩压 230 mmHg 超出常见范围'), await text(rangeConfirm));
+    await page.keyboard.press('Escape');
+    await rangeConfirm.waitFor({ state: 'detached' });
+    assert.equal(await visitModal.isVisible(), true, 'Escape 只关闭确认框');
+    assert.equal(await page.inputValue('#veSbp'), '230', '已填的值保留');
+    assert.equal(mock.rpcCalls('import_registry_rows').length, callsBeforeRange, '取消确认时不提交');
+    await page.fill('#veSbp', '130');
+    await page.evaluate(() => { window.__holdConfirm = false; });
     // 保存并录下一位：新内容使用新的提交编号；网络中断后重试同一内容沿用同一提交编号（服务器据此去重）。
     await page.fill('#veUpcr', '460');
     mock.importReplies.push({ abort: true });
