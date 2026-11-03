@@ -876,8 +876,9 @@ async function main() {
     await page.check('#importUnitsConfirm');
     mock.importReplies.push({ abort: true });
     await page.click('#btnConfirmImport');
-    await eventually(async () => (await text(page.locator('#importProgress')))?.includes('未确认完成'), '网络失败应提示保留批次');
-    assert.ok((await text(page.locator('#importProgress'))).includes('网络连接失败'));
+    // 上一次点击（单位未确认）也写了“未确认完成”，所以等网络失败的提示本身出现。
+    await eventually(async () => (await text(page.locator('#importProgress')))?.includes('网络连接失败'), '网络失败应提示');
+    assert.ok((await text(page.locator('#importProgress'))).includes('未确认完成'), '网络失败应提示保留批次');
     mock.importReplies.push({ inserted: 2, updated: 0, skipped: 0, total: 2, replayed: false });
     await page.click('#btnConfirmImport');
     await eventually(async () => (await text(page.locator('#importProgress')))?.includes('导入成功'), '重试后应导入成功');
