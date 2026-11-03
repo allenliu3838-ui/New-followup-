@@ -1,14 +1,14 @@
-import { supabase } from "/lib/supabase-client.js?v=registry-20261031-cn-v10";
-import { createProjectMembers } from "/lib/project-members.js?v=registry-20261031-cn-v10";
-import { qs, qsa, toast, toCsv, downloadText, downloadCsvUtf8Bom, fmtDate, daysLeft, escapeHtml } from "/lib/utils.js?v=registry-20261031-cn-v10";
-import { throttle } from "/lib/rate-limit.js?v=registry-20261031-cn-v10";
-import { validatePassword } from "/lib/password-strength.js?v=registry-20261031-cn-v10";
-import { strictDate, finiteNumber, normalizeUpcr, parseRegistryCsv, readAllRows, readKeysetRows, exportColumns, sha256Text, BASELINE_IMPORT_FIELDS, VISIT_IMPORT_FIELDS, normalizeImportRow, registryErrorMessage, containsPII, assertNoPII, fieldLabel, creatinineUmol, correctionReasonError, CLINICAL_LIMITS, SCR_MGDL_TO_UMOL } from "/lib/registry-data.js?v=registry-20261031-cn-v10";
-import { renderOverviewHtml, renderBoardHtml, renderFilterBar, sortBoardRows, researchToday, formatLocalDateTime } from "/lib/followup-board.js?v=registry-20261031-cn-v10";
-import { createFollowupDialogs, openModal } from "/lib/followup-dialogs.js?v=registry-20261031-cn-v10";
-import { validateFieldsBatch, fieldsTemplateCsv, fieldsTemplateHelp, fieldsExportCsv, activeFields } from "/lib/project-fields.js?v=registry-20261031-cn-v10";
-import { createProjectFieldsUi } from "/lib/project-fields-ui.js?v=registry-20261031-cn-v10";
-import { BATCH_KINDS, TEMPLATES as BATCH_TEMPLATES, KIND_LABELS, PII_NOTICE, SKIP_MAPPING, CHUNK_SIZE, MAX_FILE_BYTES, MAX_FILE_ROWS, EVIDENCE_SOURCES, IMPORTABLE_EVENTS, DETAIL_REQUIRED_EVENTS, EVENT_DETAIL_HINTS, LOS_EVENTS, BIOPSY_KINDS, IMAGING_MODALITIES, LIVER_CYSTS, MAYO_IMAGE_CLASSES, IMAGING_DIMENSIONS, imagingTkv, oxfordCMatchesCrescents, templateCsv, validateBatch, buildChunks, errorReportCsv, piiHeaderColumns, baseFileName, beijingToday, MASKED_CODE } from "/lib/batch-import.js?v=registry-20261031-cn-v10";
+import { supabase } from "/lib/supabase-client.js?v=registry-20261103-cn-v11";
+import { createProjectMembers } from "/lib/project-members.js?v=registry-20261103-cn-v11";
+import { qs, qsa, toast, toCsv, downloadText, downloadCsvUtf8Bom, fmtDate, daysLeft, escapeHtml } from "/lib/utils.js?v=registry-20261103-cn-v11";
+import { throttle } from "/lib/rate-limit.js?v=registry-20261103-cn-v11";
+import { validatePassword } from "/lib/password-strength.js?v=registry-20261103-cn-v11";
+import { strictDate, finiteNumber, normalizeUpcr, parseRegistryCsv, readAllRows, readKeysetRows, exportColumns, sha256Text, BASELINE_IMPORT_FIELDS, VISIT_IMPORT_FIELDS, normalizeImportRow, registryErrorMessage, containsPII, assertNoPII, fieldLabel, creatinineUmol, correctionReasonError, CLINICAL_LIMITS, SCR_MGDL_TO_UMOL } from "/lib/registry-data.js?v=registry-20261103-cn-v11";
+import { renderOverviewHtml, renderBoardHtml, renderFilterBar, sortBoardRows, researchToday, formatLocalDateTime, accountStatusLabel, visitSourceLabel, baselineEditorValue } from "/lib/followup-board.js?v=registry-20261103-cn-v11";
+import { createFollowupDialogs, openModal, confirmInPage } from "/lib/followup-dialogs.js?v=registry-20261103-cn-v11";
+import { validateFieldsBatch, fieldsTemplateCsv, fieldsTemplateHelp, fieldsExportCsv, activeFields } from "/lib/project-fields.js?v=registry-20261103-cn-v11";
+import { createProjectFieldsUi } from "/lib/project-fields-ui.js?v=registry-20261103-cn-v11";
+import { BATCH_KINDS, TEMPLATES as BATCH_TEMPLATES, KIND_LABELS, PII_NOTICE, SKIP_MAPPING, CHUNK_SIZE, MAX_FILE_BYTES, MAX_FILE_ROWS, EVIDENCE_SOURCES, IMPORTABLE_EVENTS, DETAIL_REQUIRED_EVENTS, EVENT_DETAIL_HINTS, LOS_EVENTS, BIOPSY_KINDS, IMAGING_MODALITIES, LIVER_CYSTS, MAYO_IMAGE_CLASSES, IMAGING_DIMENSIONS, imagingTkv, oxfordCMatchesCrescents, templateCsv, validateBatch, buildChunks, errorReportCsv, piiHeaderColumns, baseFileName, beijingToday, MASKED_CODE } from "/lib/batch-import.js?v=registry-20261103-cn-v11";
 
 // 影像记录表单：数据库列 → 输入框
 const IMAGING_INPUTS=[['left_length_cm','imgLLength'],['left_width_cm','imgLWidth'],['left_depth_cm','imgLDepth'],['right_length_cm','imgRLength'],['right_width_cm','imgRWidth'],['right_depth_cm','imgRDepth']];
@@ -57,6 +57,7 @@ function injectAuthGatedContent() {
   el.appCard = qs("#appCard");
   el.projName = qs("#projName");
   el.projCenter = qs("#projCenter");
+  el.projInterval = qs("#projInterval");
   el.projModule = qs("#projModule");
   el.projDesc = qs("#projDesc");
   el.btnCreateProject = qs("#btnCreateProject");
@@ -265,7 +266,7 @@ function bindAuthGatedEvents() {
   el.patBaselineUpcrUnit?.addEventListener("change", renderBaselineConversion);
   el.patBaselineScr?.addEventListener("input", renderBaselineScrHint);
   el.patBaselineScrUnit?.addEventListener("change", renderBaselineScrHint);
-  qs("#btnResetBaseline")?.addEventListener("click", ()=>{if(confirm("放弃本次未保存的基线？"))resetBaseline();});
+  qs("#btnResetBaseline")?.addEventListener("click", async ()=>{if(await confirmInPage("放弃本次未保存的基线？"))resetBaseline();});
   qs("#workspaceNav")?.addEventListener("click", e=>{ const a=e.target.closest("a");if(!a)return;const href=a.getAttribute("href");if(!href?.startsWith("#"))return;const t=qs(href);const d=t?.tagName==="DETAILS"?t:t?.querySelector(":scope > details");if(d)d.open=true; });
   el.btnOpenVisitEntry?.addEventListener("click", ()=>followupDialogs.openVisitEntry(''));
   el.patientsList?.addEventListener("click", onBoardClick);
@@ -342,6 +343,10 @@ function bindAuthGatedEvents() {
   el.labUnit?.addEventListener("change", updateLabStdValue);
 
   el.btnLoadIssues?.addEventListener("click", loadIssues);
+  qs("#btnRecheckIssues")?.addEventListener("click", recheckVisitQuality);
+  el.auditList = qs("#auditList");
+  el.btnLoadAudit = qs("#btnLoadAudit");
+  el.btnLoadAudit?.addEventListener("click", ()=>loadAudit());
 
   // 附加数据列表中的删除 / 更正按钮：用 data 属性与事件委托，不在 HTML 中拼接脚本。
   [el.variantsPreview, el.labsPreview, el.medsPreview, el.eventsPreview, el.projCustomLabsList].forEach(box => box?.addEventListener("click", e => {
@@ -617,12 +622,12 @@ async function loadUserSubscriptionBadge(){
   try{
     const {data,error}=await sb.rpc('check_project_quota');if(!sameIdentity(identity))return;if(error)throw error;
     const q=Array.isArray(data)?data[0]:data;if(!q)throw new Error('服务器未返回账户权益');
-    const label=({trial:'试用',pro:'Pro',institution:'机构版',institutional:'机构版',partner:'合作伙伴'})[q.plan]||q.plan||'账户';
-    const end=q.ends_at||q.trial_expires_at,left=end?daysLeft(end):null;
-    el.trialBadge.className=q.can_write?'badge ok':'badge warn';
-    el.trialBadge.textContent=`${label} · ${q.can_write?'可录入':'只读'}${end?' · 到期 '+fmtDate(end):''} · 项目 ${q.used ?? 0}/${q.quota ?? '—'}`;
+    const status=accountStatusLabel(q);
+    const end=status.end,left=end?daysLeft(end):null;
+    el.trialBadge.className=status.writable?'badge ok':'badge warn';
+    el.trialBadge.textContent=`${status.state}${end?' · 到期 '+fmtDate(end):''} · 项目 ${q.used ?? 0}/${q.quota ?? '—'}`;
     el.trialBadge.style.display='inline-flex';
-    if(el.upgradeBtn){el.upgradeBtn.href='/checkout';el.upgradeBtn.textContent=q.plan==='trial'?'查看订阅':'续费';el.upgradeBtn.style.display=(!q.can_write||(left!==null&&left<=30))?'inline-flex':'none';}
+    if(el.upgradeBtn){el.upgradeBtn.href='/checkout';el.upgradeBtn.textContent=(q.plan||'trial')==='trial'?'查看订阅':'续费';el.upgradeBtn.style.display=(!status.writable||(left!==null&&left<=30))?'inline-flex':'none';}
   }catch(e){if(!sameIdentity(identity))return;el.trialBadge.className='badge warn';el.trialBadge.textContent='账户权益读取失败，请刷新重试';el.trialBadge.style.display='inline-flex';if(el.upgradeBtn)el.upgradeBtn.style.display='none';}
 }
 function renderTrialBadge(){loadUserSubscriptionBadge();}
@@ -1294,15 +1299,17 @@ async function createProject(){
   const center_code = el.projCenter.value.trim();
   const module = el.projModule.value;
   const description = el.projDesc.value.trim() || null;
+  const interval = Number(String(el.projInterval?.value ?? '90').trim());
 
   if (!name) return toast("请输入项目名称");
   if (!center_code) return toast("请输入中心代码");
+  if (!Number.isInteger(interval) || interval < 7 || interval > 730) return toast("随访间隔须为 7–730 天的整数");
 
   const btn = el.btnCreateProject;
   btn.dataset.label = "创建项目";
   setBusy(btn, true);
   try{
-    const { error } = await sb.rpc("create_project", {p_name:name,p_center_code:center_code,p_module:module,p_description:description});
+    const { error } = await sb.rpc("create_project", {p_name:name,p_center_code:center_code,p_module:module,p_description:description,p_followup_interval_days:interval});
     if (error) throw error;
     if(!sameIdentity(identity))return;
     toast("项目已创建");
@@ -1503,7 +1510,7 @@ async function refreshFollowup(op=captureContext()){await Promise.all([loadBoard
 function onFollowupSaved(kind,{patientCode}={}){
   if(!selectedProject)return;
   const op=captureContext(),jobs=[loadOverview(op),patientCode?refreshPatientRow(op,patientCode):loadBoard(op)];
-  if(kind==='visit')jobs.push(loadIssueSummary());
+  if(kind==='visit')jobs.push(loadIssueSummary(), loadIssues(issuePage));
   Promise.all(jobs).catch(()=>{});
 }
 
@@ -1795,6 +1802,7 @@ async function createPatientBaseline(){
   const op=captureContext();
   const patient_code = el.patCode.value.trim();
   if (!patient_code) return toast("请输入研究编号");
+  if (patient_code.length > 64 || patient_code !== el.patCode.value.trim() || /[\u0000-\u001f\u007f]/.test(patient_code)) return toast("研究编号须为 1–64 个字符，不能包含换行或首尾空格");
 
   const birth_year = el.patBirthYear.value ? Number(el.patBirthYear.value) : null;
   if (birth_year !== null){
@@ -1809,7 +1817,8 @@ async function createPatientBaseline(){
   try{scr=creatinineUmol(el.patBaselineScr.value,el.patBaselineScrUnit?.value||'umol','基线血肌酐');upcr=normalizeUpcr(el.patBaselineUpcr.value,el.patBaselineUpcrUnit.value);baselineDate=strictDate(el.patBaselineDate.value,'基线日期');assertNoPII(patient_code,'研究编号');}catch(e){if(/血肌酐/.test(e.message))el.patBaselineScr?.focus();return toast(e.message);}
   if(!baselineDate)return toast("请填写基线日期");
   const scrNote=scr!=null&&el.patBaselineScrUnit?.value==='mgdl'?`（由 ${el.patBaselineScr.value} mg/dL 换算）`:'';
-  if(!confirm(`确认保存患者 ${patient_code} 到 ${op.project.name}？\n基线日期：${baselineDate}；血肌酐：${scr??'未填'} μmol/L${scrNote}；UPCR：${upcr??'未填'} mg/g`))return;
+  const sexNote = el.patSex.value ? '' : '\n未填写性别：eGFR 需要性别和出生年份才能自动计算，可在保存后于“核对 / 更正基线”中补充。';
+  if(!await confirmInPage(`确认保存患者 ${patient_code} 到 ${op.project.name}？\n基线日期：${baselineDate}；血肌酐：${scr??'未填'} μmol/L${scrNote}；UPCR：${upcr??'未填'} mg/g${sexNote}`, {title:'核对并保存基线', confirmLabel:'保存基线'}))return;
   const payload = {
     project_id: op.project.id,
     patient_code,
@@ -1858,7 +1867,6 @@ async function createPatientBaseline(){
   }
 
   const btn = el.btnCreatePatient;
-  btn.dataset.label = "保存基线";
   setBusy(btn,true);
   try{
     const { error } = await sb.from("patients_baseline").insert(payload);
@@ -2493,19 +2501,53 @@ async function loadSnapshots(){
 const SEVERITY_LABEL={critical:'严重',warning:'警告',info:'提示'};
 const ISSUE_RECORD_LABELS={visit:'随访',lab:'化验',baseline:'基线',event:'终点事件',medication:'用药'};
 let issuePage=0;
+let issueLoadSeq=0;
+const AUDIT_ACTIONS={export_csv:'导出表格',paper_package:'下载分析包',snapshot_lock:'冻结数据版本',member_add:'添加协作成员',member_remove:'移除协作成员',member_role:'修改成员角色'};
+async function loadAudit(){
+  if(!selectedProject||!el.auditList)return;
+  if(!canProject('can_read')&&!projectAccess){el.auditList.textContent='请先选择项目。';return;}
+  const op=captureContext();
+  el.auditList.textContent='正在读取修改记录…';
+  try{
+    const [ops, fields]=await Promise.all([
+      sb.from('audit_log').select('id,action,created_at,actor_uid,snapshot_id,details').eq('project_id',op.project.id).order('created_at',{ascending:false}).limit(80),
+      sb.from('field_audit_log').select('id,patient_code,table_name,field_name,old_value,new_value,change_reason,changed_at,changed_by').eq('project_id',op.project.id).order('changed_at',{ascending:false}).limit(80),
+    ]);
+    if(!currentContext(op))return;
+    if(ops.error)throw ops.error;
+    if(fields.error)throw fields.error;
+    const opRows=(ops.data||[]).map(r=>`<tr><td>${escapeHtml(formatLocalDateTime(r.created_at))}</td><td>操作</td><td>${escapeHtml(AUDIT_ACTIONS[r.action]||r.action||'')}</td><td>${escapeHtml(r.snapshot_id||'')}</td><td class="muted small">${escapeHtml(r.details?JSON.stringify(r.details).slice(0,180):'')}</td></tr>`);
+    const fieldRows=(fields.data||[]).map(r=>`<tr><td>${escapeHtml(formatLocalDateTime(r.changed_at))}</td><td>${escapeHtml(r.patient_code||'')}</td><td>${escapeHtml(fieldLabel(r.field_name)||r.field_name||'')}</td><td>${escapeHtml(r.old_value??'空')} → ${escapeHtml(r.new_value??'空')}</td><td>${escapeHtml(r.change_reason||'')}</td></tr>`);
+    el.auditList.innerHTML=`<h3 class="fu-h3">操作记录</h3>${opRows.length?`<div style="overflow:auto"><table class="table"><thead><tr><th>时间</th><th>类型</th><th>动作</th><th>快照</th><th>说明</th></tr></thead><tbody>${opRows.join('')}</tbody></table></div>`:'<p class="muted small">暂无操作记录。</p>'}<h3 class="fu-h3">字段修改</h3>${fieldRows.length?`<div style="overflow:auto"><table class="table"><thead><tr><th>时间</th><th>研究编号</th><th>字段</th><th>修改</th><th>原因</th></tr></thead><tbody>${fieldRows.join('')}</tbody></table></div>`:'<p class="muted small">暂无字段修改记录。</p>'}`;
+  }catch(e){if(currentContext(op))el.auditList.textContent='修改记录读取失败：'+registryErrorMessage(e);}
+}
 async function loadIssueSummary(){
   if(!selectedProject||!el.issueSummary)return;const op=captureContext();
   const {data,error}=await sb.rpc('get_issue_summary',{p_project_id:op.project.id});if(!currentContext(op))return;
   if(error||!data){el.issueSummary.textContent='质控状态读取失败，请刷新重试；当前不能判断是否存在问题。';return;}
   el.issueSummary.textContent=`待处理的数据质控问题 ${Number(data.total_open||0)+Number(data.total_in_prog||0)} 条；已修正 ${data.total_resolved||0} 条；接受不修复 ${data.total_wontfix||0} 条（接受不修复不代表原始数据已更正）。`;
 }
+async function recheckVisitQuality(){
+  if(!selectedProject)return;const op=captureContext();
+  if(!await confirmInPage('按当前质控规则检查本项目已有的全部随访：缺项、超出常见范围、无法计算 eGFR 等会生成质控问题，已符合的自动关闭。不会修改任何随访数据；已选择“接受不修复”的问题保持关闭。本次检查会写入操作记录。',{title:'重新检查已有随访',confirmLabel:'开始检查'}))return;
+  const btn=qs('#btnRecheckIssues');if(btn)btn.disabled=true;
+  try{
+    const {data,error}=await sb.rpc('recheck_visit_quality',{p_project_id:op.project.id});
+    if(error)throw error;
+    if(!currentContext(op))return;
+    toast(`已检查 ${data?.visits??0} 条随访，未解决的随访质控问题由 ${data?.open_before??0} 条变为 ${data?.open_after??0} 条。`);
+    await Promise.all([loadIssueSummary(),loadIssues(0)]);
+  }catch(e){if(currentContext(op))toast('重新检查失败：'+registryErrorMessage(e));}
+  finally{if(btn)btn.disabled=false;}
+}
+
 async function loadIssues(page=0){
-  if(!selectedProject||!el.issueList)return;const op=captureContext();issuePage=Number.isInteger(page)?page:0;const requestedPage=issuePage;
+  if(!selectedProject||!el.issueList)return;const op=captureContext();const seq=++issueLoadSeq;issuePage=Number.isInteger(page)?page:0;const requestedPage=issuePage;
   el.issueList.textContent='正在读取全部质控记录…';
   try{
     const all=await readAllRows(sb,'data_issues',op.project.id,()=>assertContext(op));
     const rows=all.filter(r=>!['RESOLVED','WONT_FIX'].includes(r.status)).sort((a,b)=>({critical:0,warning:1,info:2}[a.severity]-{critical:0,warning:1,info:2}[b.severity])||String(b.created_at).localeCompare(a.created_at));
-    if(requestedPage!==issuePage)return;
+    if(seq!==issueLoadSeq||requestedPage!==issuePage)return;
     if(!rows.length){el.issueList.textContent='当前没有未解决的数据质控问题。仍需按研究方案核对数据来源与单位。';return;}
     const pages=Math.ceil(rows.length/50);issuePage=Math.min(issuePage,pages-1);const visible=rows.slice(issuePage*50,issuePage*50+50);
     el.issueList.innerHTML=`<p>未解决共 ${rows.length} 条，第 ${issuePage+1}/${pages} 页</p><table class="table"><thead><tr><th>等级</th><th>研究编号</th><th>问题与说明</th><th>操作</th></tr></thead><tbody>${visible.map(r=>`<tr><td>${escapeHtml(SEVERITY_LABEL[r.severity]||r.severity)}</td><td>${escapeHtml(r.patient_code)}</td><td title="规则编号：${escapeHtml(r.rule_code)}">${escapeHtml(ISSUE_RECORD_LABELS[r.record_type]||'')}${ISSUE_RECORD_LABELS[r.record_type]?'：':''}${escapeHtml(r.message??'')}</td><td><button class="btn small" data-project-capability="can_write" data-correct-id="${escapeHtml(r.id)}">核对原记录</button><button class="btn small" data-project-capability="can_write" data-wontfix-id="${escapeHtml(r.id)}">接受不修复</button></td></tr>`).join('')}</tbody></table><div class="btnbar"><button class="btn" id="issuePrev" ${issuePage===0?'disabled':''}>上一页</button><button class="btn" id="issueNext" ${issuePage===pages-1?'disabled':''}>下一页</button></div>`;
@@ -2524,7 +2566,26 @@ const EDIT_FIELDS={
   visits_long:['visit_date','sbp','dbp','scr_umol_l','upcr','height_cm','weight_kg','notes'],
   labs_long:['lab_date','lab_test_code','value_raw','unit_symbol']
 };
-const EDIT_LABELS={sex:'性别 M/F',birth_year:'出生年份',baseline_date:'基线日期',baseline_scr:'基线肌酐 μmol/L',baseline_upcr:'基线UPCR原始化验值',visit_date:'随访日期',sbp:'收缩压 mmHg',dbp:'舒张压 mmHg',scr_umol_l:'肌酐 μmol/L',upcr:'UPCR mg/g',notes:'备注（不含身份信息）',lab_date:'化验日期',lab_test_code:'化验目录代码',value_raw:'原始化验值',unit_symbol:'原始化验单位',biopsy_date:'肾穿日期',ln_biopsy_date:'LN肾穿日期',ln_class:'LN病理分型',ln_activity_index:'LN活动指数',ln_chronicity_index:'LN慢性指数',ln_podocytopathy:'足细胞病 true/false',c3g_biopsy_date:'C3G肾穿日期',c3g_if_c3_dominant:'免疫荧光C3优势 true/false',c3g_em_pattern:'C3G电镜分型 C3GN/DDD/unclassified',c3g_crescent_pct:'新月体比例 %',c3g_paraprotein:'单克隆筛查 negative/positive/not_tested',height_cm:'身高 cm',weight_kg:'体重 kg',treatment_arm:'研究分组',randomization_id:'分组记录编号',randomization_date:'分组日期'};
+const EDIT_LABELS={sex:'性别',birth_year:'出生年份',baseline_date:'基线日期',baseline_scr:'基线血肌酐（μmol/L）',baseline_upcr:'基线尿蛋白肌酐比（原始化验值）',visit_date:'随访日期',sbp:'收缩压（mmHg）',dbp:'舒张压（mmHg）',scr_umol_l:'血肌酐（μmol/L）',upcr:'尿蛋白肌酐比（mg/g）',notes:'备注（不含身份信息）',lab_date:'化验日期',lab_test_code:'化验项目',value_raw:'原始化验值',unit_symbol:'原始化验单位',biopsy_date:'肾穿日期',oxford_m:'牛津分型 M（系膜细胞增生）',oxford_e:'牛津分型 E（内皮细胞增生）',oxford_s:'牛津分型 S（节段硬化）',oxford_t:'牛津分型 T（小管萎缩/间质纤维化）',oxford_c:'牛津分型 C（新月体）',ln_biopsy_date:'狼疮肾炎肾穿日期',ln_class:'狼疮肾炎病理分型',ln_activity_index:'狼疮肾炎活动指数',ln_chronicity_index:'狼疮肾炎慢性指数',ln_podocytopathy:'足细胞病变',c3g_biopsy_date:'C3 肾小球病肾穿日期',c3g_if_c3_dominant:'免疫荧光 C3 优势',c3g_em_pattern:'C3 肾小球病电镜分型',c3g_crescent_pct:'新月体比例（%）',c3g_paraprotein:'单克隆免疫球蛋白筛查',height_cm:'身高（cm）',weight_kg:'体重（kg）',treatment_arm:'研究分组',randomization_id:'分组记录编号',randomization_date:'分组日期'};
+const EDITOR_CHOICES={
+  sex:[['','未填（eGFR 需要性别）'],['M','男'],['F','女']],
+  oxford_m:[['','未填'],['0','M0 无系膜细胞增生'],['1','M1 系膜细胞增生']],
+  oxford_e:[['','未填'],['0','E0 无内皮细胞增生'],['1','E1 内皮细胞增生']],
+  oxford_s:[['','未填'],['0','S0 无节段硬化'],['1','S1 节段硬化']],
+  oxford_t:[['','未填'],['0','T0 小管萎缩/间质纤维化 ≤25%'],['1','T1 26%–50%'],['2','T2 >50%']],
+  oxford_c:[['','未填'],['0','C0 无新月体'],['1','C1 新月体 <25%'],['2','C2 新月体 ≥25%']],
+  ln_podocytopathy:[['','未填'],['true','是'],['false','否']],
+  c3g_if_c3_dominant:[['','未填'],['true','是'],['false','否']],
+  c3g_em_pattern:[['','未填'],['C3GN','C3 肾小球肾炎'],['DDD','致密物沉积病'],['unclassified','未能分型']],
+  c3g_paraprotein:[['','未填'],['negative','阴性'],['positive','阳性'],['not_tested','未查']],
+};
+function editorControlHtml(key){
+  const label=EDIT_LABELS[key]||fieldLabel(key);
+  const choices=EDITOR_CHOICES[key];
+  if(choices)return `<div><label for="edit_${key}">${escapeHtml(label)}</label><select id="edit_${key}" data-field="${key}">${choices.map(([value,text])=>`<option value="${escapeHtml(value)}">${escapeHtml(text)}</option>`).join('')}</select></div>`;
+  const kind=key.endsWith('_date')?'date':EDIT_NUMBERS.has(key)?'number':'text';
+  return `<div><label for="edit_${key}">${escapeHtml(label)}</label><input id="edit_${key}" data-field="${key}" type="${kind}" ${EDIT_NUMBERS.has(key)?'step="any"':''}/></div>`;
+}
 const EDIT_NUMBERS=new Set(['birth_year','baseline_scr','baseline_upcr','oxford_m','oxford_e','oxford_s','oxford_t','oxford_c','ln_activity_index','ln_chronicity_index','c3g_crescent_pct','sbp','dbp','scr_umol_l','upcr','height_cm','value_raw']);
 // 更正时的数值范围，与数据库约束一致（数据库仍是最终校验）。血肌酐另按 creatinineUmol 检查并提示单位。
 const EDIT_LIMITS={birth_year:{integer:true,min:1900,max:Number(researchToday().slice(0,4))},oxford_m:{integer:true,min:0,max:1},oxford_e:{integer:true,min:0,max:1},oxford_s:{integer:true,min:0,max:1},oxford_t:{integer:true,min:0,max:2},oxford_c:{integer:true,min:0,max:2},ln_activity_index:{min:0,max:24},ln_chronicity_index:{min:0,max:12},c3g_crescent_pct:{min:0,max:100},sbp:CLINICAL_LIMITS.sbp,dbp:CLINICAL_LIMITS.dbp,upcr:CLINICAL_LIMITS.upcr,height_cm:CLINICAL_LIMITS.height_cm,baseline_upcr:{min:0}};
@@ -2536,12 +2597,22 @@ async function openVisitHistory(patientCode){
     const overlay=document.createElement('div');overlay.dataset.registryModal='history';overlay.style.cssText='position:fixed;inset:0;background:#102d46aa;z-index:8900;display:grid;place-items:center;padding:16px';
     let page=0;const render=()=>{
       const pages=Math.max(1,Math.ceil(rows.length/30));
-      overlay.innerHTML=`<section role="dialog" aria-modal="true" aria-labelledby="historyTitle" style="background:white;color:#102d46;padding:24px;border-radius:16px;max-width:900px;width:100%;max-height:90vh;overflow:auto"><h2 id="historyTitle">随访记录 · ${escapeHtml(patientCode)}</h2><p>${escapeHtml(op.project.name)} · 共 ${rows.length} 条，第 ${page+1}/${pages} 页。请对照原始资料更正，所有更正均需说明原因。</p><div style="overflow:auto"><table class="table"><thead><tr><th>随访日期</th><th>血压 mmHg</th><th>血肌酐 μmol/L</th><th>UPCR mg/g</th><th>身高 cm</th><th>eGFR</th><th title="仅标注系统能确认的经随访链接提交的记录">来源</th><th></th></tr></thead><tbody>${rows.slice(page*30,(page+1)*30).map(r=>`<tr><td>${escapeHtml(r.visit_date)}</td><td>${escapeHtml(r.sbp??'—')}/${escapeHtml(r.dbp??'—')}</td><td>${escapeHtml(r.scr_umol_l??'—')}</td><td>${escapeHtml(r.upcr??'—')}</td><td>${escapeHtml(r.height_cm??'—')}</td><td>${escapeHtml(r.egfr??'—')}</td><td>${r.submitted_via_token_id?'随访链接':'—'}</td><td><button class="btn small" data-project-capability="can_write" data-visit-id="${escapeHtml(r.id)}">核对 / 更正</button></td></tr>`).join('')}</tbody></table></div>${!rows.length?'<p>尚无随访记录。</p>':''}<div class="btnbar"><button class="btn primary" data-project-capability="can_write" data-history-entry>为该患者录入随访</button><button class="btn" data-project-capability="can_write" data-history-baseline>核对 / 更正基线</button><button class="btn" data-history-prev ${page===0?'disabled':''}>上一页</button><button class="btn" data-history-next ${page===pages-1?'disabled':''}>下一页</button><button class="btn" data-history-close>关闭</button></div></section>`;
+      overlay.innerHTML=`<section role="dialog" aria-modal="true" aria-labelledby="historyTitle" style="background:white;color:#102d46;padding:24px;border-radius:16px;max-width:900px;width:100%;max-height:90vh;overflow:auto"><h2 id="historyTitle">随访记录 · ${escapeHtml(patientCode)}</h2><p>${escapeHtml(op.project.name)} · 共 ${rows.length} 条，第 ${page+1}/${pages} 页。请对照原始资料更正，所有更正均需说明原因。</p><div style="overflow:auto"><table class="table"><thead><tr><th>随访日期</th><th>血压 mmHg</th><th>血肌酐 μmol/L</th><th>UPCR mg/g</th><th>身高 cm</th><th>eGFR</th><th>来源</th><th></th></tr></thead><tbody>${rows.slice(page*30,(page+1)*30).map(r=>`<tr><td>${escapeHtml(r.visit_date)}</td><td>${escapeHtml(r.sbp??'—')}/${escapeHtml(r.dbp??'—')}</td><td>${escapeHtml(r.scr_umol_l??'—')}</td><td>${escapeHtml(r.upcr??'—')}</td><td>${escapeHtml(r.height_cm??'—')}</td><td>${escapeHtml(r.egfr??'—')}</td><td>${(()=>{const source=visitSourceLabel(r);return `<span class="fu-badge tone-${source.tone}">${escapeHtml(source.label)}</span>`;})()}</td><td><button class="btn small" data-project-capability="can_write" data-visit-id="${escapeHtml(r.id)}">核对 / 更正</button>${visitSourceLabel(r).pending?`<button class="btn small" data-project-capability="can_write" data-review-id="${escapeHtml(r.id)}">标为已核对</button>`:''}</td></tr>`).join('')}</tbody></table></div>${!rows.length?'<p>尚无随访记录。</p>':''}<div class="btnbar"><button class="btn primary" data-project-capability="can_write" data-history-entry>为该患者录入随访</button><button class="btn" data-project-capability="can_write" data-history-baseline>核对 / 更正基线</button><button class="btn" data-history-prev ${page===0?'disabled':''}>上一页</button><button class="btn" data-history-next ${page===pages-1?'disabled':''}>下一页</button><button class="btn" data-history-close>关闭</button></div></section>`;
       overlay.querySelector('[data-history-close]').addEventListener('click',()=>overlay.remove());
       overlay.querySelector('[data-history-entry]').addEventListener('click',()=>{overlay.remove();followupDialogs.openVisitEntry(patientCode);});
       overlay.querySelector('[data-history-baseline]').addEventListener('click',()=>{const id=patients.find(p=>p.patient_code===patientCode)?.patient_id;if(!id)return toast('未找到该患者的基线记录，请刷新看板后重试。');overlay.remove();openRecordEditor('patients_baseline',id);});
       overlay.querySelector('[data-history-prev]').addEventListener('click',()=>{page--;render();applyProjectAccess();});overlay.querySelector('[data-history-next]').addEventListener('click',()=>{page++;render();applyProjectAccess();});
       overlay.querySelectorAll('[data-visit-id]').forEach(b=>b.addEventListener('click',()=>{overlay.remove();openRecordEditor('visits_long',b.dataset.visitId);}));
+      overlay.querySelectorAll('[data-review-id]').forEach(b=>b.addEventListener('click',async()=>{
+        if(!await confirmInPage('确认这条由患者经随访链接提交的记录已对照原始资料核对？不会修改血压、血肌酐或尿蛋白数值。',{title:'标为已核对',confirmLabel:'标为已核对'}))return;
+        try{
+          assertContext(op);
+          const {error}=await sb.rpc('mark_patient_visit_reviewed',{p_project_id:op.project.id,p_visit_id:b.dataset.reviewId});
+          if(error)throw error;
+          const row=rows.find(x=>x.id===b.dataset.reviewId);if(row)row.staff_reviewed_at=new Date().toISOString();
+          render();applyProjectAccess();toast('已标为核对。');
+        }catch(e){toast('未能标为已核对：'+registryErrorMessage(e));}
+      }));
     };render();document.body.appendChild(overlay);applyProjectAccess();
   }catch(e){toast('随访记录读取失败：'+registryErrorMessage(e));}
 }
@@ -2554,9 +2625,15 @@ async function openRecordEditor(table,id){
     const {data:record,error}=await sb.from(table).select('*').eq('project_id',op.project.id).eq('id',id).single();if(error)throw error;assertContext(op);
     if(table==='labs_long'&&!record.lab_test_code)return toast('此记录使用旧自定义化验格式。请先联系负责人确认目录映射，不能按标准化化验直接覆盖。');
     const overlay=document.createElement('div');overlay.dataset.registryModal='editor';overlay.style.cssText='position:fixed;inset:0;background:#102d46bb;z-index:9000;display:grid;place-items:center;padding:16px';
-    const original={...record};if(table==='patients_baseline'&&record.baseline_upcr_raw!=null)original.baseline_upcr=record.baseline_upcr_raw;
-    overlay.innerHTML=`<section role="dialog" aria-modal="true" aria-labelledby="editTitle" style="background:white;color:#102d46;padding:24px;border-radius:16px;max-width:760px;width:100%;max-height:90vh;overflow:auto"><h2 id="editTitle">核对并更正 · ${escapeHtml(record.patient_code)}</h2><p>${escapeHtml(op.project.name)} · ${escapeHtml(({patients_baseline:'基线记录',visits_long:'随访记录',labs_long:'化验记录'})[table]||'记录')}。研究编号不能修改；更正原因与修改前后的值都会留痕。${table==='patients_baseline'?'知情同意与随访状态不在此处更正，请在看板中该患者的“研究状态”里修改。':''}</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">${EDIT_FIELDS[table].map(k=>`<div><label for="edit_${k}">${escapeHtml(EDIT_LABELS[k]||k)}</label><input id="edit_${k}" data-field="${k}" type="${k.endsWith('_date')?'date':EDIT_NUMBERS.has(k)?'number':'text'}" ${EDIT_NUMBERS.has(k)?'step="any"':''} value="${escapeHtml(original[k]??'')}"/></div>`).join('')}</div>${table==='patients_baseline'?`<label for="edit_upcr_unit">基线UPCR原始单位（历史未确认的记录请按原始报告核对）</label><select id="edit_upcr_unit"><option value="">未确认</option><option value="mg/g" ${record.baseline_upcr_original_unit==='mg/g'?'selected':''}>mg/g</option><option value="g/g" ${record.baseline_upcr_original_unit==='g/g'?'selected':''}>g/g</option></select>`:''}<label for="editReason">更正原因（必填，3–500 字，不含身份信息）</label><textarea id="editReason" maxlength="500" placeholder="说明原始资料依据及更正原因"></textarea><div id="editFeedback" role="status"></div><div class="btnbar"><button class="btn primary" id="editSave">核对变更并保存</button><button class="btn" id="editCancel">取消</button></div></section>`;
-    document.body.appendChild(overlay);qs('#editCancel',overlay).addEventListener('click',()=>overlay.remove());
+    const original={...record};
+    if(table==='patients_baseline')original.baseline_upcr=baselineEditorValue(record,'baseline_upcr');
+    const storedHint=table==='patients_baseline'
+      ?`<p class="muted small">当前保存值：血肌酐 ${record.baseline_scr==null?'空':escapeHtml(record.baseline_scr)+' μmol/L'}；尿蛋白肌酐比 ${record.baseline_upcr==null?'空':escapeHtml(record.baseline_upcr)+' mg/g'}${record.baseline_upcr_raw!=null?`（原始化验值 ${escapeHtml(record.baseline_upcr_raw)} ${escapeHtml(record.baseline_upcr_original_unit||'')}）`:''}。性别用于计算 eGFR，未填时请补上。</p>`
+      :'';
+    overlay.innerHTML=`<section role="dialog" aria-modal="true" aria-labelledby="editTitle" style="background:white;color:#102d46;padding:24px;border-radius:16px;max-width:760px;width:100%;max-height:90vh;overflow:auto"><h2 id="editTitle">核对并更正 · ${escapeHtml(record.patient_code)}</h2><p>${escapeHtml(op.project.name)} · ${escapeHtml(({patients_baseline:'基线记录',visits_long:'随访记录',labs_long:'化验记录'})[table]||'记录')}。研究编号不能修改；更正原因与修改前后的值都会留痕。${table==='patients_baseline'?'知情同意与随访状态不在此处更正，请在看板中该患者的“研究状态”里修改。':''}</p>${storedHint}<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">${EDIT_FIELDS[table].map(editorControlHtml).join('')}</div>${table==='patients_baseline'?`<label for="edit_upcr_unit">基线尿蛋白肌酐比的原始单位（历史未确认的记录请按原始报告核对）</label><select id="edit_upcr_unit"><option value="">未确认</option><option value="mg/g" ${record.baseline_upcr_original_unit==='mg/g'?'selected':''}>mg/g</option><option value="g/g" ${record.baseline_upcr_original_unit==='g/g'?'selected':''}>g/g</option></select>`:''}<label for="editReason">更正原因（必填，3–500 字，不含身份信息）</label><textarea id="editReason" maxlength="500" placeholder="说明原始资料依据及更正原因"></textarea><div id="editFeedback" role="status"></div><div class="btnbar"><button class="btn primary" id="editSave">核对变更并保存</button><button class="btn" id="editCancel">取消</button></div></section>`;
+    document.body.appendChild(overlay);
+    for(const key of EDIT_FIELDS[table]){const input=qs('#edit_'+key,overlay);if(input)input.value=String(baselineEditorValue(record,key)??'');}
+    qs('#editCancel',overlay).addEventListener('click',()=>overlay.remove());
     qs('#editSave',overlay).addEventListener('click',async()=>{
       const btn=qs('#editSave',overlay),feedback=qs('#editFeedback',overlay);try{
         assertContext(op);const reason=qs('#editReason',overlay).value.trim();
@@ -2582,7 +2659,7 @@ async function openRecordEditor(table,id){
         }
         if(!Object.keys(changes).length)throw new Error('没有字段发生变化');
         const summary=Object.entries(changes).filter(([k])=>!['baseline_upcr_raw','baseline_upcr_original_unit'].includes(k)).map(([k,v])=>`${EDIT_LABELS[k]||k}：${record[k]??'空'} → ${v??'空'}`).join('\n');
-        if(!confirm('请核对本次变更：\n'+summary+'\n\n确认保存？'))return;
+        if(!await confirmInPage('请核对本次变更：\n'+summary+'\n\n确认保存？',{title:'核对变更',confirmLabel:'保存更正'}))return;
         setBusy(btn,true);feedback.textContent='正在保存并重新校验…';const {data,error}=await sb.rpc('correct_registry_record',{p_project_id:op.project.id,p_table:table,p_record_id:id,p_changes:changes,p_reason:reason});
         if(error)throw error;assertContext(op);if(!data?.record)throw new Error('服务器未返回更正记录');overlay.remove();toast('更正已保存并留痕，请查看重新校验后的数据质控状态');
         // 更正只影响这位患者：只重新读取该患者的看板行和项目概览。
@@ -3644,7 +3721,7 @@ async function confirmImport(){
   try{
     assertContext(batch.op);if(batch.results.some(r=>!r.ok))throw new Error('请先修正全部错误');
     if(!qs('#importUnitsConfirm')?.checked)throw new Error('请先确认肌酐与随访UPCR单位');
-    if(!confirm(`将 ${batch.results.length} 行提交到「${batch.op.project.name}」？基线只更新本次非空字段，服务器将整批校验并去重。`))return;
+    if(!await confirmInPage(`将 ${batch.results.length} 行提交到「${batch.op.project.name}」？基线只更新本次非空字段，服务器将整批校验并去重。`))return;
     setBusy(btn,true);el.importProgress.style.display='block';el.importProgress.textContent='正在事务提交，请保留页面；若断线可用同一预览重试。';
     const {data,error}=await sb.rpc('import_registry_rows',{p_project_id:batch.op.project.id,p_kind:batch.type,p_rows:batch.results.map(r=>r.data),p_batch_id:batch.batchId});
     if(error)throw error;assertContext(batch.op);if(!data||data.total!==batch.results.length)throw new Error('服务器返回数量不一致，请保留批次并联系管理员核对');
@@ -3665,7 +3742,7 @@ async function confirmBatchImport(){
     if(c.warn&&!qs('#importWarnConfirm')?.checked)throw new Error('有警告行：请逐行核对后勾选“已核对警告”，再确认导入');
     if(!b.chunks){
       const n=Math.ceil(c.writable/CHUNK_SIZE);
-      if(!confirm(`将 ${c.writable} 行${KIND_LABELS[b.type]}分 ${n} 块提交到「${b.op.project.name}」？${c.block?`阻断的 ${c.block} 行不会写入。`:''}${c.warn?`其中 ${c.warn} 行警告已核对。`:''}`))return;
+      if(!await confirmInPage(`将 ${c.writable} 行${KIND_LABELS[b.type]}分 ${n} 块提交到「${b.op.project.name}」？${c.block?`阻断的 ${c.block} 行不会写入。`:''}${c.warn?`其中 ${c.warn} 行警告已核对。`:''}`))return;
       b.chunks=buildChunks(b.result,()=>crypto.randomUUID());
       renderBatchPreview();
     }

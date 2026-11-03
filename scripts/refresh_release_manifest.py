@@ -7,10 +7,9 @@ Run only after the source changes have been reviewed. It recomputes, never relax
   3. the release manifest and reviewed-tool hashes under releases/<release dir>/
 
 Production baselines (old_sha256) are the bytes production serves when this release is applied.
-v10 is pinned against the manifest that production serves: v8 (registry-cn-v8-20261030, kit from
-77c672b, live since 2026-10-31). v9 (the research square) was never deployed; its changes ride in
-v10. Every file's baseline is v8's new_sha256 and files new since v8 get old_sha256 = None. The
-release tool refuses files whose live bytes match neither baseline nor target.
+v11 is pinned against the manifest that production serves: v10 (registry-cn-v10-20261031, kit from
+0406f2d, live since 2026-11-02). Every file's baseline is v10's new_sha256 and files new since v10 get
+old_sha256 = None. The release tool refuses files whose live bytes match neither baseline nor target.
 CI must only verify (npm test); it must never run this script.
 """
 from pathlib import Path
@@ -25,13 +24,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 import registry_integrated_release as release  # noqa: E402
 
-RELEASE_DIR = ROOT / 'releases/registry-cn-v10-20261031'
-MANIFEST_NAME = 'registry-cn-v10-20261031.manifest.json'
-PREVIOUS = ROOT / 'releases/registry-cn-v8-20261030/registry-cn-v8-20261030.manifest.json'
-# PREVIOUS（v8，发布包取自提交 77c672b）已于 2026-10-31 上线：v10 的基线 = 它的 new_sha256。
-# v9 没有单独上线，研究广场随 v10 一起发布。
+RELEASE_DIR = ROOT / 'releases/registry-cn-v11-20261103'
+MANIFEST_NAME = 'registry-cn-v11-20261103.manifest.json'
+PREVIOUS = ROOT / 'releases/registry-cn-v10-20261031/registry-cn-v10-20261031.manifest.json'
+# PREVIOUS（v10，发布包取自提交 0406f2d）已于 2026-11-02 上线：v11 的基线 = 它的 new_sha256。
 PREVIOUS_DEPLOYED = True
-PRODUCTION_BASELINE_COMMIT = '77c672b8cb7ab71fc050bd1fe99ac4f4949dfe25'
+PRODUCTION_BASELINE_COMMIT = '0406f2df33464dc4bbd74a51d91646f31d29466c'
 TOOLS = ['build_database_contract_pg17.mjs', 'registry_integrated_release.py', 'registry_pages_release.py', 'registry_visual_release.py']
 BUNDLE_HEADER = '-- GENERATED from supabase/migrations in canonical filename order.\n-- Fresh/isolated databases only; use reviewed increments for production.\n\n'
 ORDER = 'lexicographic filenames; historical duplicate prefixes retained, unique full filenames'

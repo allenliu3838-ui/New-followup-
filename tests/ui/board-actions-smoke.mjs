@@ -196,6 +196,17 @@ async function openWorkspace(browser, origin, { access = OWNER, viewport = { wid
   const context = await browser.newContext({ viewport, serviceWorkers: 'block', locale: 'zh-CN' });
   await context.addInitScript(([key, value]) => { try { localStorage.setItem(key, value); } catch { /* 忽略 */ } }, [STORAGE_KEY, JSON.stringify(sessionFor())]);
   await context.route('**/*', route => mock.handle(route, origin));
+  await context.addInitScript(() => {
+    // 页面内确认框：记下提示文字并点“确认”（只在测试浏览器里）。
+    window.__confirms = [];
+    new MutationObserver(() => {
+      const box = document.querySelector('[data-registry-modal="confirm"]:not([data-test-seen])');
+      if (!box) return;
+      box.setAttribute('data-test-seen', '1');
+      window.__confirms.push(box.querySelector('#confirmMessage')?.textContent || '');
+      setTimeout(() => box.querySelector('[data-confirm-ok]')?.click(), 0);
+    }).observe(document, { childList: true, subtree: true });
+  });
   const page = await context.newPage();
   const pageErrors = []; const dialogs = [];
   page.on('pageerror', error => pageErrors.push(error.message));
@@ -359,7 +370,7 @@ async function main() {
     await page.click('#bcSave');
     await eventually(async () => (await text(page.locator('#bcFeedback')))?.includes('（研究编号 H002；本次没有修改任何患者。）'), '应显示出错患者的研究编号');
     assert.ok((await text(page.locator('#bcFeedback'))).includes('只读'), '错误为中文说明');
-    assert.ok(dialogs.some(d => d.includes('将把 2 位患者的知情同意状态登记为“已同意”')), '保存前确认');
+    assert.ok((await page.evaluate(() => window.__confirms)).some(m => m.includes('将把 2 位患者的知情同意状态登记为“已同意”')), '保存前确认');
     await page.click('#bcSave');
     await consentModal.waitFor({ state: 'detached' });
     assert.deepEqual(mock.rpcCalls('set_consent_bulk').at(-1).body, { p_project_id: PROJECT.id, p_patient_codes: ['H001', 'H002'], p_status: 'consented', p_version: 'V2.0（2026-03-01）', p_date: dayOffset(-10), p_reason: '纸质同意书存档于研究办公室 A 柜' });
@@ -381,10 +392,9 @@ async function main() {
     assert.equal(await text(page.locator('#lkKeepNewest')), '撤销除最新一条以外的全部有效链接');
     assert.equal(await page.locator('#lkKeepNewestBar').isVisible(), true, '多条有效链接时显示整理按钮');
     await page.check('#lkRevokeOld');
-    const dialogsBefore = dialogs.length;
     await page.click('#lkCreate');
     await eventually(() => mock.rpcCalls('revoke_patient_token_by_id').length === 3, '应撤销此前的 3 条有效链接');
-    assert.ok(dialogs.slice(dialogsBefore).some(d => d.includes('撤销该患者此前仍有效的 3 条链接')), `生成前确认并写明条数：${dialogs.slice(dialogsBefore).join(' | ')}`);
+    assert.ok((await page.evaluate(() => window.__confirms)).some(m => m.includes('撤销该患者此前仍有效的 3 条链接')), '生成前确认并写明条数');
     const revoked = mock.rpcCalls('revoke_patient_token_by_id').map(r => r.body);
     assert.deepEqual(revoked.map(b => b.p_token_id).sort(), [token(1).id, token(2).id, token(3).id].sort(), '只撤销生成前已有的有效链接');
     assert.ok(revoked.every(b => b.p_reason === REVOKE_OLD_REASON && b.p_project_id === PROJECT.id));
@@ -407,7 +417,7 @@ async function main() {
     assert.equal(mock.rpcCalls('revoke_patient_token_by_id').length, before, '未勾选时不撤销任何链接');
     await page.click('#lkKeepNewest');
     await eventually(() => mock.rpcCalls('revoke_patient_token_by_id').length === before + 2, '应撤销较早的两条');
-    assert.ok(dialogs.some(d => d.includes('将撤销该患者除最新一条以外的 2 条有效链接')), '撤销前确认');
+    assert.ok((await page.evaluate(() => window.__confirms)).some(m => m.includes('将撤销该患者除最新一条以外的 2 条有效链接')), '撤销前确认');
     assert.deepEqual(mock.rpcCalls('revoke_patient_token_by_id').slice(-2).map(r => r.body.p_token_id).sort(), [token(5).id, token(6).id].sort(), '保留刚生成的最新一条，撤销原有两条');
     assert.ok(mock.rpcCalls('revoke_patient_token_by_id').slice(-2).every(r => r.body.p_reason === KEEP_NEWEST_REASON && r.body.p_project_id === PROJECT.id));
     await eventually(async () => (await text(page.locator('#lkFeedback')))?.includes('保留最新的一条'), '提示结果');

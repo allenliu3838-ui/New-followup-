@@ -1,10 +1,10 @@
-import { supabase } from "/lib/supabase-client.js?v=registry-20261031-cn-v10";
-import { qs, toast, escapeHtml } from "/lib/utils.js?v=registry-20261031-cn-v10";
+import { supabase } from "/lib/supabase-client.js?v=registry-20261103-cn-v11";
+import { qs, toast, escapeHtml } from "/lib/utils.js?v=registry-20261103-cn-v11";
 import {
   normalizedNumber, validateVisit, createRequestId, ckdepi2021, DB_LIMITS, SCR_MGDL_TO_UMOL,
   studyInfo, classifyPatientError, contextErrorMessage, submissionOutcome, dataLocationLead,
   beijingDateString, formatLocalDateTime, formatLocalDate, linkFromAddress, addressWithoutLink,
-} from "/lib/patient-workflow.js?v=registry-20261031-cn-v10";
+} from "/lib/patient-workflow.js?v=registry-20261103-cn-v11";
 
 // The participant page never needs Supabase auth session detection —
 // disabling it prevents the client from misreading ?pt= as an auth token
